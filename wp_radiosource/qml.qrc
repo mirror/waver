@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>RS_CategorySettings.qml</file>
+        <file>RS_Import.qml</file>
+    </qresource>
+</RCC>

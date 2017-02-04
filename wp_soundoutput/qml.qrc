@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/">
+        <file>SO_Settings.qml</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>MainWindow.qml</file>
+        <file>PlatformLabel.qml</file>
+    </qresource>
+</RCC>

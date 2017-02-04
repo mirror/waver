@@ -1,0 +1,48 @@
+<?xml version='1.0' encoding='utf-8'?>
+
+<!--
+    This file is part of Waver
+
+    Copyright (C) 2017 Peter Papp <peter.papp.p@gmail.com>
+
+    Please visit https://launchpad.net/waver for details
+
+    Waver is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Waver is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    (GPL.TXT) along with Waver. If not, see <http://www.gnu.org/licenses/>.
+
+-->
+
+<resources>
+    <array name="qt_sources">
+        <item>https://download.qt.io/ministro/android/qt5/qt-5.7</item>
+    </array>
+
+    <!-- The following is handled automatically by the deployment tool. It should
+         not be edited manually. -->
+
+    <array name="bundled_libs">
+        <!-- %%INSERT_EXTRA_LIBS%% -->
+    </array>
+
+     <array name="qt_libs">
+         <!-- %%INSERT_QT_LIBS%% -->
+     </array>
+
+    <array name="bundled_in_lib">
+        <!-- %%INSERT_BUNDLED_IN_LIB%% -->
+    </array>
+    <array name="bundled_in_assets">
+        <!-- %%INSERT_BUNDLED_IN_ASSETS%% -->
+    </array>
+
+</resources>
