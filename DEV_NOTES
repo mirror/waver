@@ -1,0 +1,59 @@
+Waver currently uses Qt version 5.7
+
+Please note that even though the source contains some platform-specific code, 
+Waver is currently being developed and tested on Ubuntu Linux only!
+
+How to build:
+
+1. qmake --version
+
+should produce an output similar to this:
+
+    QMake version 3.0
+    Using Qt version 5.7.0 in <path_to_qt_lib>
+
+You can download Qt 5.7 at https://www.qt.io/qt5-7/
+
+Please note that you might have multiple versions of QMake on your system. 
+For example, you might have to pinpoint the correct QMake by like this: 
+~/Qt/5.7/gcc_64/bin/qmake
+
+
+2. cd to the branch
+
+
+3. qmake waver_all.pro
+
+Again, make sure you launch the correct QMake, so prefix it with the path if 
+needed.
+
+
+4. make
+
+
+5. If you want to run Waver:
+
+Do not use 'make install', it's not working yet.
+
+First make sure you have all the runtime dependencies.
+See DEPS_RT for more info.
+
+Then do the following:
+
+    mkdir ~/waver_rt
+    cp waver/waver ~/waver_rt/
+    cp wp_equalizer/libwp_equalizer.so.1.0.0 ~/waver_rt/
+    cp wp_genericdecoder/libwp_genericdecoder.so.1.0.0 ~/waver_rt/
+    cp wp_localsource/libwp_localsource.so.1.0.0 ~/waver_rt/
+    cp wp_radiosource/libwp_radiosource.so.1.0.0 ~/waver_rt/
+    cp wp_soundoutput/libwp_soundoutput.so.1.0.0 ~/waver_rt/
+    cp wp_taglibinfo/libwp_taglibinfo.so.1.0.0 ~/waver_rt/
+    ~/waver_rt/waver
+
+
+6. To reset your branch:
+
+    make clean
+    bzr clean-tree
+
+
