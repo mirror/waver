@@ -36,7 +36,7 @@ HEADERS += soundoutput.h        \
     feeder.h
 
 unix {
-    target.path = /usr/lib
+    target.path = /opt/waver/bin
     INSTALLS += target
 }
 

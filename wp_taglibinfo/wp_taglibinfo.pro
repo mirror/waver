@@ -38,6 +38,6 @@ HEADERS += taglibinfo.h\
 LIBS += /usr/lib/x86_64-linux-gnu/libtag.so
 
 unix {
-    target.path = /usr/lib
+    target.path = /opt/waver/bin
     INSTALLS += target
 }

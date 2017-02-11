@@ -34,7 +34,7 @@ HEADERS += radiosource.h\
     ../waver/pluginsource.h
 
 unix {
-    target.path = /usr/lib
+    target.path = /opt/waver/bin
     INSTALLS += target
 }
 

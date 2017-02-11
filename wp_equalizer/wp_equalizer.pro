@@ -51,7 +51,7 @@ HEADERS += equalizer.h\
     fadeoutdetector.h
 
 unix {
-    target.path = /usr/lib
+    target.path = /opt/waver/bin
     INSTALLS += target
 }
 

@@ -39,6 +39,6 @@ HEADERS += genericdecoder.h\
     networkdownloader.h
 
 unix {
-    target.path = /usr/lib
+    target.path = /opt/waver/bin
     INSTALLS += target
 }
