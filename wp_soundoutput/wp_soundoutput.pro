@@ -26,6 +26,8 @@ TEMPLATE = lib
 
 DEFINES += WP_SOUNDOUTPUT_LIBRARY
 
+CONFIG += c++11
+
 SOURCES += soundoutput.cpp \
     feeder.cpp
 

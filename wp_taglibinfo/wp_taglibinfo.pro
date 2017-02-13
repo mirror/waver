@@ -27,6 +27,8 @@ TEMPLATE = lib
 
 DEFINES += WP_TAGLIBINFO_LIBRARY
 
+CONFIG += c++11
+
 SOURCES += taglibinfo.cpp
 
 HEADERS += taglibinfo.h\

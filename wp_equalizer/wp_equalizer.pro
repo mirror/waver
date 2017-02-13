@@ -26,6 +26,8 @@ TEMPLATE = lib
 
 DEFINES += WP_EQUALIZER_LIBRARY
 
+CONFIG += c++11
+
 SOURCES += equalizer.cpp \
     analyzer.cpp \
     main.cpp \

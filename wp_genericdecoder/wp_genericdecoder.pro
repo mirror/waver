@@ -29,6 +29,8 @@ TEMPLATE = lib
 
 DEFINES += WP_GENERICDECODER_LIBRARY
 
+CONFIG += c++11
+
 SOURCES += genericdecoder.cpp \
     networkdownloader.cpp
 

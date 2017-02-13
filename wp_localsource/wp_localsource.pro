@@ -27,6 +27,8 @@ TEMPLATE = lib
 
 DEFINES += WP_LOCALSOURCE_LIBRARY
 
+CONFIG += c++11
+
 SOURCES += localsource.cpp \
     filescanner.cpp
 

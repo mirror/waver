@@ -26,6 +26,8 @@ TEMPLATE = lib
 
 DEFINES += WP_RADIOSOURCE_LIBRARY
 
+CONFIG += c++11
+
 SOURCES += radiosource.cpp
 
 HEADERS += radiosource.h\
