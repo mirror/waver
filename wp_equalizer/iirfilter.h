@@ -24,6 +24,8 @@
 #ifndef IIRFILTER_H
 #define IIRFILTER_H
 
+#include <QtCore>
+
 #include <QAudioFormat>
 
 #include "coefficientlist.h"
