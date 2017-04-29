@@ -37,14 +37,13 @@ HEADERS += taglibinfo.h\
     ../waver/pluginsource.h \
     ../waver/plugininfo.h
 
-unix:LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -ltag
-
 # Debian packaging
 translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
 install.depends = translatedestdir
 QMAKE_EXTRA_TARGETS += install translatedestdir
 
 unix {
+    LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -ltag
     target.path = /opt/waver/bin
     INSTALLS += target
 }
