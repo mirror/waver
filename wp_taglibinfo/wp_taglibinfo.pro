@@ -39,9 +39,9 @@ HEADERS += taglibinfo.h\
 
 linux-g++ {
     !contains(QT_ARCH, x86_64) {
-        LIBS += /usr/lib/x86_64-linux-gnu/libtag.so
-    } else {
         LIBS += /usr/lib/i386-linux-gnu/libtag.so
+    } else {
+        LIBS += /usr/lib/x86_64-linux-gnu/libtag.so
     }
 }
 
