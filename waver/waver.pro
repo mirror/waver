@@ -66,6 +66,11 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/waver/bin
 !isEmpty(target.path): INSTALLS += target
 
+# Debian packaging
+translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
+install.depends = translatedestdir
+QMAKE_EXTRA_TARGETS += install translatedestdir
+
 android {
     DISTFILES += \
         android/AndroidManifest.xml \

@@ -40,5 +40,11 @@ unix {
     INSTALLS += target
 }
 
+# Debian packaging
+translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
+install.depends = translatedestdir
+QMAKE_EXTRA_TARGETS += install translatedestdir
+
 RESOURCES += \
     qml.qrc
+

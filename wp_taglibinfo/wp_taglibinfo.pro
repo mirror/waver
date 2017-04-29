@@ -39,6 +39,11 @@ HEADERS += taglibinfo.h\
 
 LIBS += /usr/lib/x86_64-linux-gnu/libtag.so
 
+# Debian packaging
+translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
+install.depends = translatedestdir
+QMAKE_EXTRA_TARGETS += install translatedestdir
+
 unix {
     target.path = /opt/waver/bin
     INSTALLS += target
