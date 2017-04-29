@@ -37,7 +37,13 @@ HEADERS += taglibinfo.h\
     ../waver/pluginsource.h \
     ../waver/plugininfo.h
 
-LIBS += /usr/lib/x86_64-linux-gnu/libtag.so
+linux-g++ {
+    !contains(QT_ARCH, x86_64) {
+        LIBS += /usr/lib/x86_64-linux-gnu/libtag.so
+    } else {
+        LIBS += /usr/lib/i386-linux-gnu/libtag.so
+    }
+}
 
 # Debian packaging
 translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
