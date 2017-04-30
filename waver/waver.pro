@@ -66,10 +66,18 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/waver/bin
 !isEmpty(target.path): INSTALLS += target
 
-# Debian packaging
-translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
-install.depends = translatedestdir
-QMAKE_EXTRA_TARGETS += install translatedestdir
+# Debian specific
+unix {
+    launcher.path = /usr/share/applications
+    launcher.files = launcher/waver.desktop
+    icon.path = /opt/waver/pixmaps
+    icon.files = launcher/waver_icon.png
+    INSTALLS += launcher icon
+
+    translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
+    install.depends = translatedestdir
+    QMAKE_EXTRA_TARGETS += install translatedestdir
+}
 
 android {
     DISTFILES += \

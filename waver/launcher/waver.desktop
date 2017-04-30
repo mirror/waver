@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Waver
+Comment=Waver is a free sound player with a flexible plug-in architecture, built on the Qt framework. Features automatic ReplayGain normalization for all supported formats!
+Exec=/opt/waver/bin/waver
+Terminal=false
+Type=Application
+Icon=/opt/waver/pixmaps/waver_icon.png
+Categories=Audio;Player;
