@@ -27,6 +27,8 @@ TEMPLATE = lib
 
 DEFINES += WP_TAGLIBINFO_LIBRARY
 
+CONFIG += c++11
+
 SOURCES += taglibinfo.cpp
 
 HEADERS += taglibinfo.h\
@@ -35,9 +37,13 @@ HEADERS += taglibinfo.h\
     ../waver/pluginsource.h \
     ../waver/plugininfo.h
 
-LIBS += /usr/lib/x86_64-linux-gnu/libtag.so
+# Debian packaging
+translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
+install.depends = translatedestdir
+QMAKE_EXTRA_TARGETS += install translatedestdir
 
 unix {
-    target.path = /usr/lib
+    LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -ltag
+    target.path = /opt/waver/bin
     INSTALLS += target
 }

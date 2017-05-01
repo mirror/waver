@@ -63,8 +63,21 @@ QML_IMPORT_PATH =
 
 # Default rules for deployment.
 qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/$${TARGET}/bin
+else: unix:!android: target.path = /opt/waver/bin
 !isEmpty(target.path): INSTALLS += target
+
+# Debian specific
+unix {
+    launcher.path = /usr/share/applications
+    launcher.files = launcher/waver.desktop
+    icon.path = /opt/waver/pixmaps
+    icon.files = launcher/waver_icon.png
+    INSTALLS += launcher icon
+
+    translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
+    install.depends = translatedestdir
+    QMAKE_EXTRA_TARGETS += install translatedestdir
+}
 
 android {
     DISTFILES += \
@@ -88,7 +101,7 @@ android {
 
     CONFIG(release, debug|release) {
         ANDROID_EXTRA_LIBS += /home/pp/Fejleszt/waver/build-wp_localsource-Android_for_armeabi_v7a_GCC_4_9_Qt_5_7_0-Release/android-build/libs/armeabi-v7a/libwp_localsource.so
-        ANDROID_EXTRA_LIBS += /home/pp/Fejleszt/waver/build-wp_androiddecoder-Android_for_armeabi_v7a_GCC_4_9_Qt_5_7_0-Debug/android-build/libs/armeabi-v7a/libwp_androiddecoder.so
+        ANDROID_EXTRA_LIBS += /home/pp/Fejleszt/waver/build-wp_androiddecoder-Android_for_armeabi_v7a_GCC_4_9_Qt_5_7_0-Release/android-build/libs/armeabi-v7a/libwp_androiddecoder.so
         ANDROID_EXTRA_LIBS += /home/pp/Fejleszt/waver/build-wp_soundoutput-Android_for_armeabi_v7a_GCC_4_9_Qt_5_7_0-Release/android-build/libs/armeabi-v7a/libwp_soundoutput.so
     }
 }

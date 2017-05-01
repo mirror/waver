@@ -29,6 +29,8 @@ TEMPLATE = lib
 
 DEFINES += WP_GENERICDECODER_LIBRARY
 
+CONFIG += c++11
+
 SOURCES += genericdecoder.cpp \
     networkdownloader.cpp
 
@@ -39,6 +41,12 @@ HEADERS += genericdecoder.h\
     networkdownloader.h
 
 unix {
-    target.path = /usr/lib
+    target.path = /opt/waver/bin
     INSTALLS += target
 }
+
+# Debian packaging
+translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
+install.depends = translatedestdir
+QMAKE_EXTRA_TARGETS += install translatedestdir
+

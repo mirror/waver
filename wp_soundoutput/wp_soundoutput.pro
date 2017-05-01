@@ -26,6 +26,8 @@ TEMPLATE = lib
 
 DEFINES += WP_SOUNDOUTPUT_LIBRARY
 
+CONFIG += c++11
+
 SOURCES += soundoutput.cpp \
     feeder.cpp
 
@@ -36,9 +38,14 @@ HEADERS += soundoutput.h        \
     feeder.h
 
 unix {
-    target.path = /usr/lib
+    target.path = /opt/waver/bin
     INSTALLS += target
 }
+
+# Debian packaging
+translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
+install.depends = translatedestdir
+QMAKE_EXTRA_TARGETS += install translatedestdir
 
 RESOURCES += \
     qml.qrc

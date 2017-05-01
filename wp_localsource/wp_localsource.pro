@@ -27,6 +27,8 @@ TEMPLATE = lib
 
 DEFINES += WP_LOCALSOURCE_LIBRARY
 
+CONFIG += c++11
+
 SOURCES += localsource.cpp \
     filescanner.cpp
 
@@ -37,11 +39,17 @@ HEADERS += localsource.h \
     filescanner.h
 
 unix {
-    target.path = /usr/lib
+    target.path = /opt/waver/bin
     INSTALLS += target
 }
 
 DISTFILES +=
 
+# Debian packaging
+translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
+install.depends = translatedestdir
+QMAKE_EXTRA_TARGETS += install translatedestdir
+
 RESOURCES += \
     qml.qrc
+

@@ -147,7 +147,8 @@ void SoundOutput::loadedConfiguration(QUuid uniqueId, QJsonDocument configuratio
     }
 
     if (audioOutput != NULL) {
-        audioOutput->setVolume((qreal)volume);
+        // TODO volume control disabled
+        //audioOutput->setVolume((qreal)volume);
     }
 }
 
@@ -206,8 +207,7 @@ void SoundOutput::bufferAvailable(QUuid uniqueId)
 
         audioOutput = new QAudioOutput(bufferQueue->at(0)->format());
         audioOutput->setNotifyInterval(NOTIFICATION_INTERVAL_MILLISECONDS);
-        // volume control disabled
-        //
+        // TODO volume control disabled
         //audioOutput->setVolume((qreal)volume);
 
         connect(audioOutput, SIGNAL(notify()),                    this, SLOT(audioOutputNotification()));

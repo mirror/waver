@@ -26,6 +26,8 @@ TEMPLATE = lib
 
 DEFINES += WP_EQUALIZER_LIBRARY
 
+CONFIG += c++11
+
 SOURCES += equalizer.cpp \
     analyzer.cpp \
     main.cpp \
@@ -51,9 +53,14 @@ HEADERS += equalizer.h\
     fadeoutdetector.h
 
 unix {
-    target.path = /usr/lib
+    target.path = /opt/waver/bin
     INSTALLS += target
 }
+
+# Debian packaging
+translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
+install.depends = translatedestdir
+QMAKE_EXTRA_TARGETS += install translatedestdir
 
 RESOURCES += \
     qml.qrc
