@@ -58,16 +58,10 @@ SOURCES += main.cpp \
 RESOURCES += qml.qrc \
     visual.qrc
 
-# Additional import path used to resolve QML modules in Qt Creator's code model
-QML_IMPORT_PATH =
-
-# Default rules for deployment.
-qnx: target.path = /tmp/$${TARGET}/bin
-else: unix:!android: target.path = /opt/waver/bin
-!isEmpty(target.path): INSTALLS += target
-
-# Debian specific
 unix {
+    target.path = /opt/waver/bin
+    INSTALLS += target
+
     launcher.path = /usr/share/applications
     launcher.files = launcher/waver.desktop
     icon.path = /opt/waver/pixmaps

@@ -43,10 +43,8 @@ HEADERS += genericdecoder.h\
 unix {
     target.path = /opt/waver/bin
     INSTALLS += target
+
+    translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
+    install.depends = translatedestdir
+    QMAKE_EXTRA_TARGETS += install translatedestdir
 }
-
-# Debian packaging
-translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
-install.depends = translatedestdir
-QMAKE_EXTRA_TARGETS += install translatedestdir
-
