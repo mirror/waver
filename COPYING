@@ -13,15 +13,15 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-(GPL.TXT) along with Waver. If not, see <http://www.gnu.org/licenses/>.
+You should have received a copy of the GNU General Public License (GPL.TXT)
+along with Waver. If not, see <http://www.gnu.org/licenses/>.
 
 
 Additionaly:
 
 1. mp3gain
 
-Some portions of Waver is based on (but does not contain parts of) mp3gain
+Some portions of Waver is based on and contain parts of mp3gain
 
 mp3gain is free sotware under the terms of GNU Lesser General Public License
 Copyright (C) 2001-2009 David Robinson and Glen Sawyer
