@@ -887,19 +887,26 @@ void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
             bufferOuputDoneCounters.remove(buffer);
         }
 
-        // if this is the main output, and this track isn't just starting anymore, then queue the next buffer to the first dsp plugin, if any
-        if ((pluginId == mainOutputId) && (dspInitialBufferCount >= PluginOutput::CACHE_BUFFER_COUNT) && (dspSynchronizerQueue.count() > 0)) {
-            // this should never be null, because dspSynchronizerQueue will not contain anything unless there's at least one ready dsp plugin
-            QUuid firstDspPluginId = dspPriority.at(0);
+        // if this is the main output, and this track isn't just starting anymore, then queue the next buffer to the first dsp plugin
+        if ((pluginId == mainOutputId) && (dspInitialBufferCount >= PluginOutput::CACHE_BUFFER_COUNT)) {
+            // make sure there's at least one buffer in the synchonizer queue
+            if (dspSynchronizerQueue.count() > 0) {
+                // this should never be null, because dspSynchronizerQueue will not contain anything unless there's at least one ready dsp plugin
+                QUuid firstDspPluginId = dspPriority.at(0);
 
-            // queue to first dsp plugin (by this time dsp thread is runnning for sure)
-            dspPlugins.value(firstDspPluginId).bufferMutex->lock();
-            dspPlugins.value(firstDspPluginId).bufferQueue->append(dspSynchronizerQueue.at(0));
-            dspPlugins.value(firstDspPluginId).bufferMutex->unlock();
-            emit bufferAvailable(firstDspPluginId);
+                // queue to first dsp plugin (by this time dsp thread is runnning for sure)
+                dspPlugins.value(firstDspPluginId).bufferMutex->lock();
+                dspPlugins.value(firstDspPluginId).bufferQueue->append(dspSynchronizerQueue.at(0));
+                dspPlugins.value(firstDspPluginId).bufferMutex->unlock();
+                emit bufferAvailable(firstDspPluginId);
 
-            // don't queue the same buffer again, housekeeping
-            dspSynchronizerQueue.remove(0);
+                // don't queue the same buffer again, housekeeping
+                dspSynchronizerQueue.remove(0);
+            }
+            else {
+                // some plugin might be slow, give it another chance
+                dspInitialBufferCount = 0;
+            }
         }
     }
 }

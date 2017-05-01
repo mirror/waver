@@ -101,7 +101,7 @@ android {
 
     CONFIG(release, debug|release) {
         ANDROID_EXTRA_LIBS += /home/pp/Fejleszt/waver/build-wp_localsource-Android_for_armeabi_v7a_GCC_4_9_Qt_5_7_0-Release/android-build/libs/armeabi-v7a/libwp_localsource.so
-        ANDROID_EXTRA_LIBS += /home/pp/Fejleszt/waver/build-wp_androiddecoder-Android_for_armeabi_v7a_GCC_4_9_Qt_5_7_0-Debug/android-build/libs/armeabi-v7a/libwp_androiddecoder.so
+        ANDROID_EXTRA_LIBS += /home/pp/Fejleszt/waver/build-wp_androiddecoder-Android_for_armeabi_v7a_GCC_4_9_Qt_5_7_0-Release/android-build/libs/armeabi-v7a/libwp_androiddecoder.so
         ANDROID_EXTRA_LIBS += /home/pp/Fejleszt/waver/build-wp_soundoutput-Android_for_armeabi_v7a_GCC_4_9_Qt_5_7_0-Release/android-build/libs/armeabi-v7a/libwp_soundoutput.so
     }
 }
