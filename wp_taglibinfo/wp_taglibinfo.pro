@@ -47,3 +47,10 @@ unix {
     install.depends = translatedestdir
     QMAKE_EXTRA_TARGETS += install translatedestdir
 }
+
+windows {
+    INCLUDEPATH += C:\Libraries\taglib\include
+    DEPENDPATH += C:\Libraries\taglib\include
+    LIBS += -LC:\Libraries\taglib\lib\ -ltag
+    PRE_TARGETDEPS += C:\Libraries\taglib\lib\tag.lib
+}
