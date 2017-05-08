@@ -37,4 +37,5 @@ HEADERS += \
     ../waver/plugindecoder.h \
     feed.h
 
-LIBS += mpg123lib/win32/libmpg123-0.lib
+LIBS += -L$$PWD/mpg123lib/win32 -lmpg123-0
+
