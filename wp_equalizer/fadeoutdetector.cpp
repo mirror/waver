@@ -120,9 +120,9 @@ void FadeOutDetector::filterCallback(double *sample, int channelIndex)
             firstAverage = sum / sumCounter;
         }
         else if (envelope.count() == 0) {
-            envelope.append({ positionUSec, ((sum / sumCounter) + firstAverage) / 2 });
+            envelope.append({ positionUSec, sum / sumCounter, ((sum / sumCounter) + firstAverage) / 2 });
         } else {
-            envelope.append({ positionUSec, ((sum / sumCounter) + envelope.last().movingAverage) / 2 });
+            envelope.append({ positionUSec, sum / sumCounter, ((sum / sumCounter) + envelope.last().oneSecAverage) / 2 });
         }
         sum                  = 0.0;
         sumCounter           = 0;

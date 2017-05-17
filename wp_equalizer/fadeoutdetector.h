@@ -50,6 +50,7 @@ private:
 
     struct EnvelopePoint {
         qint64 positionUSec;
+        double oneSecAverage;
         double movingAverage;
     };
 

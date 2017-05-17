@@ -40,7 +40,7 @@ QString Analyzer::pluginName()
 // overrided virtual function
 int Analyzer::pluginVersion()
 {
-    return 1;
+    return 2;
 }
 
 
