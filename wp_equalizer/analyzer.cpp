@@ -210,9 +210,11 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
             // check some stuff that's needed for transitions
             if (enableTransitions) {
                 // usually there's at least one tenth of a second silence at the begining of tracks; if not, chances are it's a live recording or a medley or something similar
-                if (!firstNonSilentPositionChecked && (fadeOutDetector->getFirstNonSilentMSec() > 0) && (fadeOutDetector->getFirstNonSilentMSec() < 100)) {
+                if (!firstNonSilentPositionChecked && (fadeOutDetector->getFirstNonSilentMSec() > 0)) {
                     firstNonSilentPositionChecked = true;
-                    emit requestFadeIn(id, Track::INTERRUPT_FADE_SECONDS * 1000);
+                    if (fadeOutDetector->getFirstNonSilentMSec() < 100) {
+                        emit requestFadeIn(id, Track::INTERRUPT_FADE_SECONDS * 1000);
+                    }
                 }
 
                 // track transitions can be made after the entire track has been analyzed (this might not happen here, see decoderDone)
@@ -255,21 +257,27 @@ void Analyzer::decoderDone(QUuid uniqueId)
 // private method (must be called only after all buffers are analyzed)
 void Analyzer::transition()
 {
-    qint64 fadeOutStart  = fadeOutDetector->getFadeOutStartPoisitionMSec();
-    qint64 fadeOutLength = (fadeOutDetector->getLastNonSilentMSec() - fadeOutStart);
+    qint64 fadeOutStart  = fadeOutDetector->getFadeOutStartPoisitionMSec();                 qDebug() << fadeOutStart;
+    qint64 fadeOutLength = (fadeOutDetector->getLastNonSilentMSec() - fadeOutStart);        qDebug() << fadeOutLength;
 
     // crossfade
-    if (fadeOutLength >= 10000) {
+    if ((fadeOutLength >= 4000) && (fadeOutLength < 15000)) {
         emit requestAboutToFinishSend(id, fadeOutStart + (fadeOutLength / 3));
-        emit requestFadeInForNextTrack(id, fadeOutDetector->getLastNonSilentMSec() - fadeOutStart);
+        emit requestFadeInForNextTrack(id, fadeOutLength / 3 * 2);
+        return;
+    }
+
+    // early start
+    if (fadeOutLength >= 15000) {
+        emit requestAboutToFinishSend(id, qMax(fadeOutStart + (fadeOutLength / 2), fadeOutDetector->getLastNonSilentMSec() - 30000));
         return;
     }
 
     // live recording, medley, etc
     if ((fadeOutDetector->getFirstNonSilentMSec() > 0) && (fadeOutDetector->getFirstNonSilentMSec() < 100)) {
-        emit requestInterrupt(id, fadeOutDetector->getLastNonSilentMSec() - (Track::INTERRUPT_FADE_SECONDS * 1000), true);
+        emit requestInterrupt(id, fadeOutDetector->getLastNonSilentMSec() - (Track::INTERRUPT_FADE_SECONDS * 1000) - 500, true);
     }
 
     // gapless play
-    emit requestAboutToFinishSend(id, fadeOutDetector->getLastNonSilentMSec());
+    emit requestAboutToFinishSend(id, fadeOutDetector->getLastNonSilentMSec() - 500);
 }
