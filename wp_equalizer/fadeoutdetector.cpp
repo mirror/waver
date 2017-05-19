@@ -149,6 +149,12 @@ qint64 FadeOutDetector::getFadeOutStartPoisitionMSec()
 }
 
 
+qint64 FadeOutDetector::getFadeOutEndPoisitionMSec()
+{
+    return envelope.last().positionUSec / 1000;
+}
+
+
 qint64 FadeOutDetector::getFirstNonSilentMSec()
 {
     return firstNonSilentUSec / 1000;

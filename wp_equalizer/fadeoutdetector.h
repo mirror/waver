@@ -42,6 +42,7 @@ public:
 
     void   filterCallback(double *sample, int channelIndex) override;
     qint64 getFadeOutStartPoisitionMSec();
+    qint64 getFadeOutEndPoisitionMSec();
     qint64 getFirstNonSilentMSec();
     qint64 getLastNonSilentMSec();
 

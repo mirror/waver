@@ -257,19 +257,19 @@ void Analyzer::decoderDone(QUuid uniqueId)
 // private method (must be called only after all buffers are analyzed)
 void Analyzer::transition()
 {
-    qint64 fadeOutStart  = fadeOutDetector->getFadeOutStartPoisitionMSec();                 qDebug() << fadeOutStart;
-    qint64 fadeOutLength = (fadeOutDetector->getLastNonSilentMSec() - fadeOutStart);        qDebug() << fadeOutLength;
+    qint64 fadeOutStart  = fadeOutDetector->getFadeOutStartPoisitionMSec();
+    qint64 fadeOutLength = (fadeOutDetector->getFadeOutEndPoisitionMSec() - fadeOutStart);
 
     // crossfade
-    if ((fadeOutLength >= 4000) && (fadeOutLength < 15000)) {
+    if ((fadeOutLength >= 4000) && (fadeOutLength < 20000)) {
         emit requestAboutToFinishSend(id, fadeOutStart + (fadeOutLength / 3));
-        emit requestFadeInForNextTrack(id, fadeOutLength / 3 * 2);
+        emit requestFadeInForNextTrack(id, fadeOutLength / 3);
         return;
     }
 
     // early start
-    if (fadeOutLength >= 15000) {
-        emit requestAboutToFinishSend(id, qMax(fadeOutStart + (fadeOutLength / 2), fadeOutDetector->getLastNonSilentMSec() - 30000));
+    if (fadeOutLength >= 20000) {
+        emit requestAboutToFinishSend(id, fadeOutStart + (fadeOutLength / 3));
         return;
     }
 
@@ -279,5 +279,5 @@ void Analyzer::transition()
     }
 
     // gapless play
-    emit requestAboutToFinishSend(id, fadeOutDetector->getLastNonSilentMSec() - 500);
+    emit requestAboutToFinishSend(id, fadeOutDetector->getLastNonSilentMSec() - 250);
 }
