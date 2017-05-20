@@ -40,11 +40,12 @@
 #include "replaygaincalculator.h"
 #include "fadeoutdetector.h"
 
-#include <QDebug>
-
-
 #include "../waver/plugindsppre.h"
 #include "../waver/track.h"
+
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
 
 
 // filter coefficients for standard ReplayGain calculation

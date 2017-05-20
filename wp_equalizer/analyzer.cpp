@@ -261,14 +261,14 @@ void Analyzer::transition()
     qint64 fadeOutLength = (fadeOutDetector->getFadeOutEndPoisitionMSec() - fadeOutStart);
 
     // crossfade
-    if ((fadeOutLength >= 4000) && (fadeOutLength < 20000)) {
-        emit requestAboutToFinishSend(id, fadeOutStart + (fadeOutLength / 3));
-        emit requestFadeInForNextTrack(id, fadeOutLength / 3);
+    if ((fadeOutLength >= 8000) && (fadeOutLength < 25000)) {
+        emit requestAboutToFinishSend(id, fadeOutStart + (fadeOutLength / 4));
+        emit requestFadeInForNextTrack(id, fadeOutLength / 2);
         return;
     }
 
     // early start
-    if (fadeOutLength >= 20000) {
+    if (fadeOutLength >= 25000) {
         emit requestAboutToFinishSend(id, fadeOutStart + (fadeOutLength / 3));
         return;
     }

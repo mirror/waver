@@ -51,9 +51,9 @@
 #include "settingshandler.h"
 #include "track.h"
 
-
-#include <QDebug>
-
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
 
 class WaverServer : public QObject
 {

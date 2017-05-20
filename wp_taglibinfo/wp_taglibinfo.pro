@@ -49,8 +49,6 @@ unix {
 }
 
 windows {
-    INCLUDEPATH += C:\Libraries\taglib\include
-    DEPENDPATH += C:\Libraries\taglib\include
-    LIBS += -LC:\Libraries\taglib\lib\ -ltag
-    PRE_TARGETDEPS += C:\Libraries\taglib\lib\libtag.dll.a
+    INCLUDEPATH += $$PWD\taglib\win32\include
+    LIBS += -L$$PWD\taglib\win32\bin\ -ltag
 }

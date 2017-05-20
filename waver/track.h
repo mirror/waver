@@ -44,9 +44,9 @@
 #include "pluginoutput.h"
 #include "pluginsource.h"
 
-
-#include <QDebug>
-
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
 
 class Track : public QObject
 {

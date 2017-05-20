@@ -135,10 +135,15 @@ void FadeOutDetector::filterCallback(double *sample, int channelIndex)
 
 qint64 FadeOutDetector::getFadeOutStartPoisitionMSec()
 {
-    qint64 retval   = 0;
+    qint64 retval   = envelope.last().positionUSec / 1000;
     double previous = 0.0;
 
     int i = envelope.count() - 1;
+    while ((i >= 0) && (envelope.at(i).movingAverage < 10.00)) {
+        retval   = envelope.at(i).positionUSec / 1000;
+        previous = envelope.at(i).movingAverage;
+        i--;
+    }
     while ((i >= 0) && (envelope.at(i).movingAverage > previous)) {
         retval   = envelope.at(i).positionUSec / 1000;
         previous = envelope.at(i).movingAverage;

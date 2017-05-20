@@ -48,10 +48,12 @@
 #include <QVariant>
 #include <QVector>
 
-#include <QDebug>
-
 #include "filescanner.h"
 #include "../waver/pluginsource.h"
+
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
 
 
 extern "C" WP_LOCALSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);

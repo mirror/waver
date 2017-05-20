@@ -44,9 +44,11 @@
 #include <QXmlStreamAttributes>
 #include <QXmlStreamReader>
 
-#include <QDebug>
-
 #include "../waver/pluginsource.h"
+
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
 
 
 extern "C" WP_RADIOSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);

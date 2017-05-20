@@ -31,7 +31,10 @@
 #include "iirfilter.h"
 #include "iirfiltercallback.h"
 
-#include <QDebug>
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
+
 
 class FadeOutDetector : public IIRFilterCallback
 {
