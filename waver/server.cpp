@@ -37,11 +37,13 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     this->arguments.append(arguments);
 
     // initializations
-    previousTrack     = NULL;
-    currentTrack      = NULL;
-    currentCollection = SettingsHandler::DEFAULT_COLLECTION_NAME;
-    unableToStartCount = 0;
-    positionSeconds   = 0;
+    previousTrack                     = NULL;
+    currentTrack                      = NULL;
+    currentCollection                 = "";
+    unableToStartCount                = 0;
+    waitingForLocalSource             = true;
+    waitingForLocalSourceTimerStarted = false;
+    positionSeconds                   = 0;
 
     // so they can be used in inter-thread signals
     qRegisterMetaType<IpcMessageUtils::IpcMessages>("IpcMessageUtils::IpcMessages");
@@ -56,20 +58,6 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
 void WaverServer::run()
 {
     qsrand(QDateTime::currentDateTime().toTime_t());
-
-    // instantiate, set up, and start plugin library loader
-
-    PluginLibsLoader *pluginLibsLoader = new PluginLibsLoader(NULL, &loadedLibs);
-    pluginLibsLoader->moveToThread(&pluginLibsLoaderThread);
-
-    connect(&pluginLibsLoaderThread, SIGNAL(started()),  pluginLibsLoader, SLOT(run()));
-    connect(&pluginLibsLoaderThread, SIGNAL(finished()), pluginLibsLoader, SLOT(deleteLater()));
-
-    connect(pluginLibsLoader, SIGNAL(finished()),        &pluginLibsLoaderThread, SLOT(quit()));
-    connect(pluginLibsLoader, SIGNAL(finished()),        this,                    SLOT(pluginLibsLoaded()));
-    connect(pluginLibsLoader, SIGNAL(failInfo(QString)), this,                    SLOT(pluginLibsFailInfo(QString)));
-
-    pluginLibsLoaderThread.start();
 
     // instantiate, set up, and start interprocess communication handler
 
@@ -163,6 +151,14 @@ void WaverServer::requestPlaylist()
 
     // random which plugin to use
     int pluginIndex = qrand() % readyPlugins.count();
+
+    // give priority to local files at startup
+    if (waitingForLocalSource) {
+        pluginIndex = readyPlugins.indexOf(QUuid("{187C9046-4801-4DB2-976C-128761F25BD8}"));
+        if (pluginIndex < 0) {
+            return;
+        }
+    }
 
     // emit signal
     emit getPlaylist(readyPlugins.at(pluginIndex), MAX_TRACKS_AT_ONCE);
@@ -551,14 +547,38 @@ void WaverServer::ipcReceivedUrl(QUrl url)
 // settings storage signal handler
 void WaverServer::collectionList(QStringList collections, QString currentCollection)
 {
-    // is collection have to changed?
+    // settings storage sends this signal right after it just started at server startup
+    if (this->currentCollection.isEmpty()) {
+        this->currentCollection = currentCollection;
+
+        // instantiate, set up, and start plugin library loader (it sends finished right after plugins are loaded)
+
+        PluginLibsLoader *pluginLibsLoader = new PluginLibsLoader(NULL, &loadedLibs);
+        pluginLibsLoader->moveToThread(&pluginLibsLoaderThread);
+
+        connect(&pluginLibsLoaderThread, SIGNAL(started()),  pluginLibsLoader, SLOT(run()));
+        connect(&pluginLibsLoaderThread, SIGNAL(finished()), pluginLibsLoader, SLOT(deleteLater()));
+
+        connect(pluginLibsLoader, SIGNAL(finished()),        &pluginLibsLoaderThread, SLOT(quit()));
+        connect(pluginLibsLoader, SIGNAL(finished()),        this,                    SLOT(pluginLibsLoaded()));
+        connect(pluginLibsLoader, SIGNAL(failInfo(QString)), this,                    SLOT(pluginLibsFailInfo(QString)));
+
+        pluginLibsLoaderThread.start();
+
+        // nothing else to do now
+        return;
+    }
+
+    // is collection changed?
     if (this->currentCollection.compare(currentCollection) != 0) {
         this->currentCollection = currentCollection;
 
+        // load plugin settings for new collection
         foreach (QUuid pluginId, sourcePlugins.keys()) {
             emit loadPluginSettings(pluginId, this->currentCollection);
         }
 
+        // empty playlist
         QVector<Track*> tracksToBeDeleted;
         tracksToBeDeleted.append(playlistTracks);
         foreach(Track *track, tracksToBeDeleted) {
@@ -566,10 +586,13 @@ void WaverServer::collectionList(QStringList collections, QString currentCollect
             delete track;
         }
 
+        // stop current track
         currentTrack->interrupt();
 
+        // UI signal
         sendPlaylistToClients();
 
+        // next track from newly selected collection
         startNextTrack();
     }
 
@@ -622,10 +645,27 @@ void WaverServer::pluginReady(QUuid uniqueId)
         return;
     }
 
+    // this is for prioritizing local source plugin (see in requestPlaylist)
+    if (waitingForLocalSource && !waitingForLocalSourceTimerStarted) {
+        waitingForLocalSourceTimerStarted = true;
+        QTimer::singleShot(1500, this, SLOT(notWaitingForLocalSourceAnymore()));
+    }
+
     // remember
     sourcePlugins[uniqueId].ready = true;
 
     // get tracks now if needed
+    if (playlistTracks.count() <= 1) {
+        requestPlaylist();
+    }
+}
+
+
+// timer signal handler
+void WaverServer::notWaitingForLocalSourceAnymore()
+{
+    waitingForLocalSource = false;
+
     if (playlistTracks.count() <= 1) {
         requestPlaylist();
     }

@@ -60,7 +60,8 @@ QString SettingsHandler::pluginSettingsFileName(QUuid persistentUniqueId, QStrin
 // thread entry point
 void SettingsHandler::run()
 {
-
+    // send back collections list, server needs this at startup to trigger loading of source plugins
+    getCollectionList();
 }
 
 

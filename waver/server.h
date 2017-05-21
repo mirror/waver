@@ -36,6 +36,7 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QTimer>
 #include <QThread>
 #include <QUrl>
 #include <QUuid>
@@ -99,6 +100,8 @@ private:
     Track::PluginsWithUI pluginsWithUI;
 
     int  unableToStartCount;
+    bool waitingForLocalSource;
+    bool waitingForLocalSourceTimerStarted;
     long positionSeconds;
 
     void finish();
@@ -151,6 +154,8 @@ private slots:
 
     void pluginLibsLoaded();
     void pluginLibsFailInfo(QString info);
+
+    void notWaitingForLocalSourceAnymore();
 
     void ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJsonDocument jsonDocument);
     void ipcReceivedUrl(QUrl url);
