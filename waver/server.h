@@ -98,6 +98,7 @@ private:
 
     Track::PluginsWithUI pluginsWithUI;
 
+    int  unableToStartCount;
     long positionSeconds;
 
     void finish();

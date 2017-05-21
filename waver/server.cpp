@@ -40,6 +40,7 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     previousTrack     = NULL;
     currentTrack      = NULL;
     currentCollection = SettingsHandler::DEFAULT_COLLECTION_NAME;
+    unableToStartCount = 0;
     positionSeconds   = 0;
 
     // so they can be used in inter-thread signals
@@ -147,6 +148,11 @@ void WaverServer::requestPlaylist()
         }
     }
     if (readyPlugins.count() < 1) {
+        return;
+    }
+
+    // not requesting anymore tracks if couldn't start too many tracks already
+    if (unableToStartCount >= (readyPlugins.count() * MAX_TRACKS_AT_ONCE)) {
         return;
     }
 
@@ -778,7 +784,7 @@ void WaverServer::trackPosition(QUrl url, bool cast, bool decoderFinished, long 
         return;
     }
 
-    // start buffering next track 30 seconds before current ends
+    // start buffering next track before current ends
     if ((cast && (positionMilliseconds >= (CAST_PLAYTIME_MILLISECONDS - START_DECODE_PRE_MILLISECONDS))) || (decoderFinished && (positionMilliseconds >= (knownDurationMilliseconds - START_DECODE_PRE_MILLISECONDS)))) {
         if ((playlistTracks.count() > 0) && (playlistTracks.at(0)->status() == Track::Idle)) {
             playlistTracks.at(0)->setStatus(Track::Decoding);
@@ -788,6 +794,8 @@ void WaverServer::trackPosition(QUrl url, bool cast, bool decoderFinished, long 
     // UI signal only once a second
     if (positionSeconds != (positionMilliseconds / 1000)) {
         positionSeconds = (positionMilliseconds / 1000);
+
+        unableToStartCount = 0;
 
         QVariantHash positionHash;
 
@@ -839,6 +847,7 @@ void WaverServer::trackFinished(QUrl url)
     if ((currentTrack != NULL) && (url == currentTrack->getTrackInfo().url)) {
         // send message to source if could not even start
         if (positionSeconds < 1) {
+            unableToStartCount++;
             emit unableToStart(currentTrack->getSourcePluginId(), url);
         }
 
