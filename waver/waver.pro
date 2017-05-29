@@ -20,11 +20,17 @@
 
 QT += qml quick multimedia
 
+unix:!android {
+    QT += dbus
+}
+
 android {
     QT +=androidextras
 }
 
+
 CONFIG += c++11
+
 
 HEADERS += \
     globals.h \
@@ -42,9 +48,11 @@ HEADERS += \
     plugindsppre.h \
     plugindsp.h \
     pluginoutput.h \
-    plugininfo.h
+    plugininfo.h \
+    notificationshandler.h
 
-SOURCES += main.cpp \
+SOURCES += \
+    main.cpp \
     globals.cpp \
     servertcphandler.cpp \
     settingshandler.cpp \
@@ -53,12 +61,27 @@ SOURCES += main.cpp \
     waverapplication.cpp \
     pluginlibsloader.cpp \
     ipcmessageutils.cpp \
-    track.cpp
+    track.cpp \
+    notificationshandler.cpp
+
+
+unix:!android {
+
+    HEADERS += \
+        mediaplayer2dbusadaptor.h \
+        mediaplayer2playerdbusadaptor.h
+
+    SOURCES += \
+        mediaplayer2dbusadaptor.cpp \
+        mediaplayer2playerdbusadaptor.cpp
+}
+
 
 RESOURCES += qml.qrc \
     visual.qrc
 
-unix {
+
+unix:!android {
     target.path = /opt/waver/bin
     INSTALLS += target
 

@@ -52,6 +52,7 @@ IpcMessageUtils::IpcMessageUtils(QObject *parent) : QObject(parent)
     ipcMessagesToStrings[PluginUIResults]          = "plugin_ui_results";
     ipcMessagesToStrings[Position]                 = "position";
     ipcMessagesToStrings[Quit]                     = "quit";
+    ipcMessagesToStrings[QuitClients]              = "quit_clients";
     ipcMessagesToStrings[Resume]                   = "resume";
     ipcMessagesToStrings[Search]                   = "search";
     ipcMessagesToStrings[TrackInfo]                = "track_info";

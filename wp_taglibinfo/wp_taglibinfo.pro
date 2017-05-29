@@ -37,7 +37,7 @@ HEADERS += taglibinfo.h\
     ../waver/pluginsource.h \
     ../waver/plugininfo.h
 
-unix {
+unix:!android {
     LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -ltag
 
     target.path = /opt/waver/bin

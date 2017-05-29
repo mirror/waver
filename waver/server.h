@@ -26,6 +26,7 @@
 
 #include <QtGlobal>
 
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QHash>
 #include <QJsonArray>
@@ -34,6 +35,7 @@
 #include <QNetworkAddressEntry>
 #include <QNetworkInterface>
 #include <QObject>
+#include <QProcess>
 #include <QString>
 #include <QStringList>
 #include <QTimer>
@@ -56,6 +58,7 @@
     #include <QDebug>
 #endif
 
+
 class WaverServer : public QObject
 {
     Q_OBJECT
@@ -63,6 +66,19 @@ class WaverServer : public QObject
 public:
 
     explicit WaverServer(QObject *parent, QStringList arguments);
+
+    PluginSource::TrackInfo notificationsHelper_Metadata();
+    void                    notificationsHelper_Next();
+    void                    notificationsHelper_OpenUri(QString uri);
+    void                    notificationsHelper_Pause();
+    void                    notificationsHelper_Play();
+    Track::Status           notificationsHelper_PlaybackStatus();
+    void                    notificationsHelper_PlayPause();
+    long                    notificationsHelper_Position();
+    void                    notificationsHelper_Quit();
+    void                    notificationsHelper_Raise();
+    void                    notificationsHelper_Stop();
+    double                  notificationsHelper_Volume();
 
 
 private:

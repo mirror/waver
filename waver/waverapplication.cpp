@@ -488,6 +488,10 @@ void WaverApplication::ipcMessage(IpcMessageUtils::IpcMessages message, QJsonDoc
         updateUIPosition(jsonDocument);
         break;
 
+    case IpcMessageUtils::QuitClients:
+        quit();
+        break;
+
     case IpcMessageUtils::Resume:
         emit uiResumed();
         break;

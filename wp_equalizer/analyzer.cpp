@@ -262,8 +262,8 @@ void Analyzer::transition()
 
     // crossfade
     if ((fadeOutLength >= 8000) && (fadeOutLength < 25000)) {
-        emit requestAboutToFinishSend(id, fadeOutStart + (fadeOutLength / 4));
-        emit requestFadeInForNextTrack(id, fadeOutLength / 2);
+        emit requestAboutToFinishSend(id, fadeOutStart);
+        emit requestFadeInForNextTrack(id, qRound64((double)fadeOutLength * 0.75));
         return;
     }
 

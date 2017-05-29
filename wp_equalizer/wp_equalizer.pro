@@ -52,7 +52,7 @@ HEADERS += equalizer.h\
     replaygaincalculator.h \
     fadeoutdetector.h
 
-unix {
+unix:!android {
     target.path = /opt/waver/bin
     INSTALLS += target
 

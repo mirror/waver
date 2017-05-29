@@ -35,6 +35,7 @@
 
 #include "globals.h"
 #include "ipcmessageutils.h"
+#include "notificationshandler.h"
 #include "server.h"
 #include "waverapplication.h"
 
@@ -130,6 +131,7 @@ int main(int argc, char *argv[])
         // start the server, pass arguments to it
         WaverServer *waverServer = new WaverServer(NULL, additionalArguments);
         QObject::connect(waverServer, SIGNAL(finished()), &coreApplication, SLOT(quit()));
+        new NotificationsHandler(waverServer);
         QMetaObject::invokeMethod(waverServer, "run", Qt::QueuedConnection);
         return coreApplication.exec();
     }

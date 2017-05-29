@@ -37,7 +37,7 @@ HEADERS += soundoutput.h        \
         ../waver/pluginoutput.h \
     feeder.h
 
-unix {
+unix:!android {
     target.path = /opt/waver/bin
     INSTALLS += target
 

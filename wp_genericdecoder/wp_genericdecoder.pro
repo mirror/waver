@@ -40,7 +40,7 @@ HEADERS += genericdecoder.h\
     ../waver/plugindecoder.h \
     networkdownloader.h
 
-unix {
+unix:!android {
     target.path = /opt/waver/bin
     INSTALLS += target
 

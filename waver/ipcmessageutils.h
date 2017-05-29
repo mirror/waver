@@ -67,6 +67,7 @@ public:
         PluginUIResults,
         Position,
         Quit,
+        QuitClients,
         Resume,
         Search,
         TrackInfo,

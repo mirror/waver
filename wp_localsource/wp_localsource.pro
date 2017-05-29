@@ -38,7 +38,7 @@ HEADERS += localsource.h \
     ../waver/pluginsource.h \
     filescanner.h
 
-unix {
+unix:!android {
     target.path = /opt/waver/bin
     INSTALLS += target
 

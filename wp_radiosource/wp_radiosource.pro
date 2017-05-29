@@ -35,7 +35,7 @@ HEADERS += radiosource.h\
     ../waver/pluginbase.h \
     ../waver/pluginsource.h
 
-unix {
+unix:!android {
     target.path = /opt/waver/bin
     INSTALLS += target
 

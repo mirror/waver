@@ -983,3 +983,112 @@ void WaverServer::trackLoadedPluginsWithUI(Track::PluginsWithUI pluginsWithUI)
         sendPluginsWithUiToClients();
     }
 }
+
+
+// public method
+PluginSource::TrackInfo WaverServer::notificationsHelper_Metadata()
+{
+    PluginSource::TrackInfo returnValue;
+
+    if (currentTrack != NULL) {
+        returnValue = currentTrack->getTrackInfo();
+    }
+
+    return returnValue;
+}
+
+
+// public method
+void WaverServer::notificationsHelper_Next()
+{
+    ipcReceivedMessage(IpcMessageUtils::Next, QJsonDocument());
+}
+
+
+// public method
+void WaverServer::notificationsHelper_OpenUri(QString uri)
+{
+    QUrl url = QUrl::fromUserInput(uri);
+
+    if (url.isValid()) {
+        ipcReceivedUrl(url);
+    }
+}
+
+
+// public method
+void WaverServer::notificationsHelper_Pause()
+{
+    ipcReceivedMessage(IpcMessageUtils::Pause, QJsonDocument());
+}
+
+
+// public method
+void WaverServer::notificationsHelper_Play()
+{
+    ipcReceivedMessage(IpcMessageUtils::Resume, QJsonDocument());
+}
+
+
+// public method
+Track::Status WaverServer::notificationsHelper_PlaybackStatus()
+{
+    if (currentTrack == NULL) {
+        return Track::Idle;
+    }
+
+    return currentTrack->status();
+}
+
+
+// public method
+void WaverServer::notificationsHelper_PlayPause()
+{
+    if (currentTrack != NULL) {
+        if (currentTrack->status() == Track::Paused) {
+            ipcReceivedMessage(IpcMessageUtils::Resume, QJsonDocument());
+            return;
+        }
+
+        ipcReceivedMessage(IpcMessageUtils::Pause, QJsonDocument());
+    }
+}
+
+
+// public method
+long WaverServer::notificationsHelper_Position()
+{
+    return positionSeconds * 1000000;
+}
+
+
+// public method
+void WaverServer::notificationsHelper_Quit()
+{
+    ipcReceivedMessage(IpcMessageUtils::Quit, QJsonDocument());
+}
+
+
+// public method
+void WaverServer::notificationsHelper_Raise()
+{
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::QuitClients));
+
+    QProcess::startDetached(QCoreApplication::applicationFilePath());
+}
+
+
+// public method
+void WaverServer::notificationsHelper_Stop()
+{
+    ipcReceivedMessage(IpcMessageUtils::Quit, QJsonDocument());
+}
+
+
+// public method
+double WaverServer::notificationsHelper_Volume()
+{
+    // TODO implemet this, until then just return 80%
+    return 0.8;
+}
