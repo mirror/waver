@@ -1,17 +1,5 @@
 #include "notificationshandler.h"
 
-/*
-
-this must be in the Ubuntu installer post script
-must be more smart so it doesn't just overwrite but add
-
-gsettings get com.canonical.indicator.sound interested-media-players
-gsettings set com.canonical.indicator.sound interested-media-players "['rhythmbox.desktop', 'waver']"
-
-also somehow it must be refreshed otherwise it won't take effect until next login
-
-*/
-
 
 // constructor
 NotificationsHandler::NotificationsHandler(WaverServer *waverServer) : QObject((QObject*)waverServer)
@@ -44,5 +32,3 @@ NotificationsHandler::~NotificationsHandler()
 
     #endif
 }
-
-
