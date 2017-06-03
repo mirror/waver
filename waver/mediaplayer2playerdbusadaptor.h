@@ -50,7 +50,9 @@ private:
     WaverServer     *waverServer;
     IpcMessageUtils *ipcMessageUtils;
     
-    bool firstTrack;
+    bool    firstTrack;
+    qint64  startTimeStamp;
+    quint32 notificationId;
 
     bool        canControl();
     bool        canGoNext();

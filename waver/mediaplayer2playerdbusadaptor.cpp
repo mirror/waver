@@ -6,7 +6,9 @@ MediaPlayer2PlayerDBusAdaptor::MediaPlayer2PlayerDBusAdaptor(QObject *parent, Wa
     this->ipcMessageUtils = new IpcMessageUtils();
     this->waverServer     = waverServer;
 
-    firstTrack = true;
+    firstTrack     = true;
+    startTimeStamp = QDateTime::currentMSecsSinceEpoch();
+    notificationId = 0;
 
     connect(this->waverServer, SIGNAL(ipcSend(QString)), this, SLOT(waverServerIpcSend(QString)));
 }
@@ -69,9 +71,11 @@ QVariantMap MediaPlayer2PlayerDBusAdaptor::metadata()
 {
     PluginSource::TrackInfo trackInfo = waverServer->notificationsHelper_Metadata();
 
+    QString mprisId = QString("/org/mpris/MediaPlayer2/Waver/Track/%1").arg(trackInfo.url.fileName(QUrl::FullyEncoded));
+
     QVariantMap returnValue;
 
-    returnValue.insert("mpris:trackid",     QString("/org/mpris/MediaPlayer2/CurrentTrack/%1").arg(QDateTime::currentMSecsSinceEpoch()));
+    returnValue.insert("mpris:trackid",     mprisId);
     returnValue.insert("xesam:url",         QString(trackInfo.url.toEncoded()));
     returnValue.insert("xesam:title",       trackInfo.title);
     returnValue.insert("xesam:artist",      trackInfo.performer);
@@ -181,7 +185,9 @@ void MediaPlayer2PlayerDBusAdaptor::Play()
 
 void MediaPlayer2PlayerDBusAdaptor::PlayPause()
 {
-    waverServer->notificationsHelper_PlayPause();
+    if (QDateTime::currentMSecsSinceEpoch() > (startTimeStamp + 2500)) {
+        waverServer->notificationsHelper_PlayPause();
+    }
 }
 
 
@@ -235,11 +241,31 @@ void MediaPlayer2PlayerDBusAdaptor::waverServerIpcSend(QString data)
     }
 
     if (properties.count() > 0) {
-        QDBusMessage dBusMessage = QDBusMessage::createSignal("/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties", "PropertiesChanged");
-        dBusMessage << "org.mpris.MediaPlayer2.Player";
-        dBusMessage << properties;
-        dBusMessage << QStringList();
+        QDBusMessage mprisMessage = QDBusMessage::createSignal("/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties", "PropertiesChanged");
+        mprisMessage << "org.mpris.MediaPlayer2.Player";
+        mprisMessage << properties;
+        mprisMessage << QStringList();
 
-        QDBusConnection::sessionBus().send(dBusMessage);
+        QDBusConnection::sessionBus().send(mprisMessage);
+
+        if (properties.contains("Metadata")) {
+            QDBusMessage notificationMessage = QDBusMessage::createMethodCall("org.freedesktop.Notifications", "/org/freedesktop/Notifications", "org.freedesktop.Notifications", "Notify");
+            notificationMessage << "Waver";
+            notificationMessage << notificationId;
+            notificationMessage << "";
+            notificationMessage << properties.value("Metadata").toMap().value("xesam:title");
+            notificationMessage << properties.value("Metadata").toMap().value("xesam:artist");
+            notificationMessage << QStringList();
+            notificationMessage << QVariantMap();
+            notificationMessage << 4000;
+
+            QDBusMessage reply = QDBusConnection::sessionBus().call(notificationMessage);
+
+            if (reply.type() == QDBusMessage::ReplyMessage) {
+                if (reply.arguments().count() > 0) {
+                    notificationId = reply.arguments().at(0).toUInt();
+                }
+            }
+        }
     }
 }
