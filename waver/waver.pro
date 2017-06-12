@@ -24,6 +24,10 @@ unix:!android {
     QT += dbus
 }
 
+windows {
+    QT += gui widgets
+}
+
 android {
     QT +=androidextras
 }
@@ -74,6 +78,15 @@ unix:!android {
     SOURCES += \
         mediaplayer2dbusadaptor.cpp \
         mediaplayer2playerdbusadaptor.cpp
+}
+
+windows {
+
+    HEADERS += \
+        trayicon.h
+
+    SOURCES += \
+        trayicon.cpp
 }
 
 

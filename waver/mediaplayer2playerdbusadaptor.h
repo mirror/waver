@@ -11,9 +11,9 @@
 #include <QVariantMap>
 
 #include "ipcmessageutils.h"
+#include "pluginsource.h"
 #include "server.h"
 #include "track.h"
-#include "pluginsource.h"
 
 
 class MediaPlayer2PlayerDBusAdaptor : public QDBusAbstractAdaptor

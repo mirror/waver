@@ -25,13 +25,18 @@
 
 #include <QByteArray>
 #include <QCommandLineParser>
-#include <QCoreApplication>
 #include <QObject>
 #include <QProcess>
 #include <QQmlApplicationEngine>
 #include <QString>
 #include <QStringList>
 #include <QTcpSocket>
+
+#ifdef Q_OS_WIN
+    #include <QApplication>
+#else
+    #include <QCoreApplication>
+#endif
 
 #include "globals.h"
 #include "ipcmessageutils.h"
@@ -107,8 +112,14 @@ int main(int argc, char *argv[])
 
     // server requested
     if (serverRequested) {
-        // console application
-        QCoreApplication coreApplication(argc, argv);
+        // create application object
+        #ifdef Q_OS_WIN
+            // on Windows, GUI and Widgets stuff is needed for the system tray icon
+            QApplication coreApplication(argc, argv);
+        #else
+            // keep it light on other platforms
+            QCoreApplication coreApplication(argc, argv);
+        #endif
         coreApplication.setApplicationName(Globals::appName());
         coreApplication.setApplicationVersion(Globals::appVersion());
 
@@ -128,12 +139,22 @@ int main(int argc, char *argv[])
         // feedback
         Globals::consoleOutput("Server mode", false);
 
-        // start the server, pass arguments to it
+        // create the server, pass arguments to it
         WaverServer *waverServer = new WaverServer(NULL, additionalArguments);
         QObject::connect(waverServer, SIGNAL(finished()), &coreApplication, SLOT(quit()));
-        new NotificationsHandler(waverServer);
+
+        // start the notifications handler
+        NotificationsHandler *notificationsHandler = new NotificationsHandler(waverServer);
+
+        // start the server
         QMetaObject::invokeMethod(waverServer, "run", Qt::QueuedConnection);
-        return coreApplication.exec();
+        int returnValue = coreApplication.exec();
+
+        // housekeeping
+        delete notificationsHandler;
+
+        // it's all done now
+        return returnValue;
     }
 
     // application

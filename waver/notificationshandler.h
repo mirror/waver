@@ -17,6 +17,8 @@
 
 #ifdef Q_OS_WIN
 
+    #include "trayicon.h"
+
 #endif
 
 
