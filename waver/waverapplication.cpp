@@ -94,6 +94,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(uiMainWindow, SIGNAL(menuResume()),                                                        this,         SLOT(menuResume()));
         disconnect(uiMainWindow, SIGNAL(menuNext()),                                                          this,         SLOT(menuNext()));
         disconnect(uiMainWindow, SIGNAL(menuCollection(QVariant)),                                            this,         SLOT(menuCollection(QVariant)));
+        disconnect(uiMainWindow, SIGNAL(menuAbout()),                                                         this,         SLOT(menuAbout()));
         disconnect(uiMainWindow, SIGNAL(menuQuit()),                                                          this,         SLOT(menuQuit()));
         disconnect(uiMainWindow, SIGNAL(collectionsDialogResults(QVariant)),                                  this,         SLOT(collectionsDialogResults(QVariant)));
         disconnect(uiMainWindow, SIGNAL(pluginUIResults(QVariant,QVariant)),                                  this,         SLOT(pluginUIResults(QVariant,QVariant)));
@@ -119,11 +120,13 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(this,         SIGNAL(uiDisplayPluginUI(QVariant,QVariant)),                                uiMainWindow, SLOT(displayPluginUI(QVariant,QVariant)));
     connect(this,         SIGNAL(uiAddToOpenTracksList(QVariant,QVariant,QVariant,QVariant,QVariant)), uiMainWindow, SLOT(addToOpenTracksList(QVariant,QVariant,QVariant,QVariant,QVariant)));
     connect(this,         SIGNAL(uiAddToSearchList(QVariant,QVariant,QVariant)),                       uiMainWindow, SLOT(addToSearchList(QVariant,QVariant,QVariant)));
+    connect(this,         SIGNAL(uiAbout(QVariant,QVariant,QVariant)),                                 uiMainWindow, SLOT(aboutDialog(QVariant,QVariant,QVariant)));
     connect(uiMainWindow, SIGNAL(menuPause()),                                                         this,         SLOT(menuPause()));
     connect(uiMainWindow, SIGNAL(menuResume()),                                                        this,         SLOT(menuResume()));
     connect(uiMainWindow, SIGNAL(menuNext()),                                                          this,         SLOT(menuNext()));
     connect(uiMainWindow, SIGNAL(menuCollection(QVariant)),                                            this,         SLOT(menuCollection(QVariant)));
     connect(uiMainWindow, SIGNAL(menuPlugin(QVariant)),                                                this,         SLOT(menuPlugin(QVariant)));
+    connect(uiMainWindow, SIGNAL(menuAbout()),                                                         this,         SLOT(menuAbout()));
     connect(uiMainWindow, SIGNAL(menuQuit()),                                                          this,         SLOT(menuQuit()));
     connect(uiMainWindow, SIGNAL(collectionsDialogResults(QVariant)),                                  this,         SLOT(collectionsDialogResults(QVariant)));
     connect(uiMainWindow, SIGNAL(pluginUIResults(QVariant,QVariant)),                                  this,         SLOT(pluginUIResults(QVariant,QVariant)));
@@ -186,6 +189,13 @@ void WaverApplication::menuCollection(QVariant collection)
 void WaverApplication::menuPlugin(QVariant id)
 {
     emit ipcSend(IpcMessageUtils::PluginUI, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({{"plugin_id", id.toString()}}))));
+}
+
+
+// menu signal handler
+void WaverApplication::menuAbout()
+{
+    emit uiAbout(Globals::appName(), Globals::appVersion(), Globals::appDesc());
 }
 
 

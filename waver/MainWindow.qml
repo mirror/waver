@@ -55,6 +55,7 @@ ApplicationWindow {
     signal menuNext()
     signal menuCollection(variant collectionLabel)
     signal menuPlugin(variant foreignId)
+    signal menuAbout()
     signal menuQuit()
     signal collectionsDialogResults(variant collectionsArray);
     signal pluginUIResults(variant foreignId, variant results)
@@ -289,6 +290,18 @@ ApplicationWindow {
     }
 
 
+    // about dialog
+    function aboutDialog(appName, AppVersion, appDescription) {
+
+        aboutName.text        = appName
+        aboutVersion.text     = AppVersion
+        aboutDescription.text = appDescription
+
+        about.visible = true;
+        aboutIn.start();
+    }
+
+
     /*****
      handlers for signals within the UI
     *****/
@@ -319,6 +332,10 @@ ApplicationWindow {
 
             collections.visible = true;
             collectionsIn.start();
+            break;
+
+        case 2:
+            menuAbout();
             break;
         }
     }
@@ -626,6 +643,35 @@ ApplicationWindow {
     }
 
 
+    // about dialog transitions
+    // playlist add dialog transitions
+
+    NumberAnimation {
+        id: aboutIn
+        target: about
+        property: "opacity"
+        from: opacity_transparent
+        to: opacity_opaque
+        duration: duration_fadeout
+    }
+
+    NumberAnimation {
+        id: aboutOut
+        target: about
+        property: "opacity"
+        from: opacity_opaque
+        to: opacity_transparent
+        duration: duration_fadeout
+    }
+
+    Timer {
+        id: aboutOutVisibility
+        interval: duration_fadeout + 25
+        onTriggered: {
+            about.visible = false;
+        }
+    }
+
     /*****
      "non-UI" objects
     *****/
@@ -645,6 +691,13 @@ ApplicationWindow {
             labelText: "Collections"
             imageSource: "images/collections.png"
             clickId: 1
+            foreignId: "N/A"
+        }
+
+        ListElement {
+            labelText: "About..."
+            imageSource: "images/about.png"
+            clickId: 2
             foreignId: "N/A"
         }
     }
@@ -1801,4 +1854,104 @@ ApplicationWindow {
         }
     }
 
+
+    /*****
+     about dialog
+    *****/
+
+    Item {
+        id: about
+        anchors.fill: parent
+        opacity: opacity_transparent
+        visible: false;
+
+        MouseArea {
+            anchors.fill: about
+        }
+
+        Rectangle {
+            id: aboutBackground
+            anchors.fill: about
+        }
+
+        MouseArea {
+            anchors.fill: aboutLink
+            cursorShape: Qt.PointingHandCursor
+        }
+
+        PlatformLabel {
+            id: aboutName
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.top: parent.top
+            anchors.topMargin: 6
+            font.pointSize: userMessage.font.pointSize * largeMul
+            font.bold: true
+            text: ""
+        }
+        PlatformLabel {
+            id: aboutVersionLabel
+            anchors.left: aboutName.right
+            anchors.leftMargin: 6
+            anchors.top: parent.top
+            anchors.topMargin: 6
+            font.pointSize: userMessage.font.pointSize * largeMul
+            text: "version"
+        }
+        PlatformLabel {
+            id: aboutVersion
+            anchors.left: aboutVersionLabel.right
+            anchors.leftMargin: 6
+            anchors.top: parent.top
+            anchors.topMargin: 6
+            font.pointSize: userMessage.font.pointSize * largeMul
+            text: ""
+        }
+        PlatformLabel {
+            id: aboutDescription
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.top: aboutName.bottom
+            anchors.topMargin: 12
+            font.italic: true
+            text: ""
+        }
+        PlatformLabel {
+            id: aboutLink
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.top: aboutDescription.bottom
+            anchors.topMargin: 12
+            text: "<a href=\"https://launchpad.net/waver\">https://launchpad.net/waver</a>"
+            onLinkActivated: {
+                Qt.openUrlExternally("https://launchpad.net/waver");
+            }
+        }
+        PlatformLabel {
+            id: aboutCopyright
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.top: aboutLink.bottom
+            anchors.topMargin: 12
+            anchors.bottom: aboutOK.top
+            anchors.bottomMargin: 6
+            elide: Text.ElideNone
+            wrapMode: Text.WordWrap
+            text: "Copyright (C) 2017 Peter Papp <peter.papp.p@gmail.com>\n\nThis is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.\n\nThis software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License (GPL.TXT) along with this software. If not, see http://www.gnu.org/licenses/"
+        }
+        Button {
+            id: aboutOK
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 6
+            text: "OK"
+            onClicked: {
+                aboutOut.start();
+                aboutOutVisibility.start();
+            }
+        }
+    }
 }

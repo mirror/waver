@@ -108,6 +108,7 @@ signals:
     void uiDisplayPluginUI(QVariant id, QVariant qml);
     void uiAddToOpenTracksList(QVariant pluginId, QVariant hasChildren, QVariant selectable, QVariant label, QVariant id);
     void uiAddToSearchList(QVariant pluginId, QVariant label, QVariant id);
+    void uiAbout(QVariant appName, QVariant appVersion, QVariant appDescription);
 
 
 public slots:
@@ -117,6 +118,7 @@ public slots:
     void menuNext();
     void menuCollection(QVariant collection);
     void menuPlugin(QVariant id);
+    void menuAbout();
     void menuQuit();
     void collectionsDialogResults(QVariant collectionsArray);
     void pluginUIResults(QVariant id, QVariant results);
