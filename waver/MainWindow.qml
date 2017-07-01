@@ -695,7 +695,7 @@ ApplicationWindow {
         }
 
         ListElement {
-            labelText: "About..."
+            labelText: "About"
             imageSource: "images/about.png"
             clickId: 2
             foreignId: "N/A"
