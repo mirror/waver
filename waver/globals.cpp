@@ -34,7 +34,7 @@ QString Globals::appName()
 QString Globals::appVersion()
 {
     // don't forget to update the android manifest too
-    return "0.0.1";
+    return "0.0.2";
 }
 
 
