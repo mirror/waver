@@ -892,6 +892,7 @@ ApplicationWindow {
                             pluginId: pluginIdProperty,
                             id: idProperty
                         });
+                        playlistAddSelected.positionViewAtEnd();
                     }
                 }
 
@@ -971,6 +972,7 @@ ApplicationWindow {
                             pluginId: pluginIdProperty,
                             id: idProperty
                         });
+                        searchSelected.positionViewAtEnd();
                     }
                 }
 

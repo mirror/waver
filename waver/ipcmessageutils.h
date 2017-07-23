@@ -62,6 +62,7 @@ public:
         OpenTracksSelected,
         Pause,
         Playlist,
+        PlayPauseState,
         PluginsWithUI,
         PluginUI,
         PluginUIResults,

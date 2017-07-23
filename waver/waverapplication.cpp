@@ -449,6 +449,7 @@ void WaverApplication::ipcOpened()
 {
     emit ipcSend(IpcMessageUtils::CollectionList);
     emit ipcSend(IpcMessageUtils::TrackInfo);
+    emit ipcSend(IpcMessageUtils::PlayPauseState);
     emit ipcSend(IpcMessageUtils::Playlist);
     emit ipcSend(IpcMessageUtils::PluginsWithUI);
 }

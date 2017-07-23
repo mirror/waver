@@ -497,6 +497,16 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
         sendPlaylistToClients();
         break;
 
+    case IpcMessageUtils::PlayPauseState:
+        if (currentTrack != NULL) {
+            if (currentTrack->status() == Track::Paused) {
+                emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Pause));
+                break;
+            }
+        }
+        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Resume));
+        break;
+
     case IpcMessageUtils::PluginsWithUI:
         sendPluginsWithUiToClients();
         break;
