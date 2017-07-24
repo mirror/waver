@@ -88,6 +88,11 @@ private:
     QStringList trackFileNames;
     QStringList alreadyPlayedTrackFileNames;
 
+    QString variationSetting;
+    int     variationCurrent;
+    int     variationRemaining;
+    QString variationDir;
+
     QMimeDatabase mimeDatabase;
 
     void scanDir(QString dir);
@@ -97,6 +102,9 @@ private:
 
     bool      isTrackFile(QFileInfo fileInfo);
     TrackInfo trackInfoFromFilePath(QString filePath);
+
+    int  variationSettingId();
+    void variationSetCurrentRemainingDir();
 
 
 public slots:

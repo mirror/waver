@@ -36,6 +36,26 @@ Item {
         text: "Át a gyárakon"
     }
 
+    Label {
+        id: variationLabel
+        text: "Variation"
+        anchors.left: parent.left
+        anchors.leftMargin: 8
+        anchors.verticalCenter: variation.verticalCenter
+    }
+
+    ComboBox {
+        id: variation
+        anchors.left: variationLabel.right
+        anchors.leftMargin: 8
+        anchors.right: parent.right
+        anchors.rightMargin: 8
+        anchors.top: parent.top
+        anchors.topMargin: 8
+        model: [ "Low", "Medium", "High", "Random" ]
+        currentIndex: 9999
+    }
+
     ListView {
         id: dirs
         focus: true
@@ -43,7 +63,7 @@ Item {
         anchors.leftMargin: 8
         anchors.right: addButton.left
         anchors.rightMargin: 8
-        anchors.top: parent.top
+        anchors.top: variation.bottom
         anchors.topMargin: 8
         anchors.bottom: doneButton.top
         anchors.bottomMargin: 8
@@ -110,7 +130,7 @@ Item {
         font.pointSize: 10
         anchors.right: parent.right
         anchors.rightMargin: 8
-        anchors.top: parent.top
+        anchors.top: variation.bottom
         anchors.topMargin: 8
         onClicked: {
             fileDialog.open();
@@ -141,9 +161,12 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 8
         onClicked: {
-            var retval = [];
+            var retval = {
+                variation: variation.currentText,
+                directories: [],
+            };
             for(var i = 0; i < dirsModel.count; i++) {
-                retval.push(dirsModel.get(i).dirpath);
+                retval.directories.push(dirsModel.get(i).dirpath);
             }
             done(JSON.stringify(retval));
         }
