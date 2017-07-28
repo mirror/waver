@@ -38,7 +38,9 @@ LocalSource::LocalSource()
     id           = QUuid("{187C9046-4801-4DB2-976C-128761F25BD8}");
     readyEmitted = false;
 
-    variationSetting = "Medium";
+    variationSetting           = "Medium";
+    variationSetCountSinceHigh = 0;
+    variationSetCountSinceLow  = 0;
     variationSetCurrentRemainingDir();
 }
 
@@ -245,54 +247,68 @@ void LocalSource::getPlaylist(QUuid uniqueId, int maxCount)
 
         // see what we can select form
         QStringList variationSelection;
-        while (variationSelection.count() == 0) {
-            // first try a simple filter
-            foreach (QString trackFileName, trackFileNames) {
-                // this will append everything is variationDir is empty
-                if (trackFileName.startsWith(variationDir)) {
-                    variationSelection.append(trackFileName);
-                }
-            }
 
-            // if there's no more in current variation directory and variation is Low, then we have to try parent dir
-            if ((variationSelection.count() < 1) && (variationCurrent == 0)) {
-                QString currentVariationDir = variationDir;
-
-                // find the base directory
-                currentVariationDir.append("/");
-                QString baseDirectory;
-                foreach (QString directory, directories) {
-                    if (currentVariationDir.startsWith(directory) && (directory.length() > baseDirectory.length())) {
-                        baseDirectory = directory;
-                    }
-                }
-                if (baseDirectory.endsWith("/")) {
-                    baseDirectory = baseDirectory.left(baseDirectory.length() - 1);
-                }
-
-                // get parent directory path
-                while (currentVariationDir.endsWith("/")) {
-                    currentVariationDir = currentVariationDir.left(currentVariationDir.length() - 1);
-                }
-                currentVariationDir = (currentVariationDir.contains("/") ? currentVariationDir.left(currentVariationDir.lastIndexOf("/")) : "");
-
-                // make sure there is a parent directory
-                if ((currentVariationDir.length() > 0) && (currentVariationDir.compare(baseDirectory) != 0)) {
-                    variationDir = currentVariationDir;
-                    foreach (QString trackFileName, trackFileNames) {
-                        if (trackFileName.startsWith(variationDir)) {
-                            variationSelection.append(trackFileName);
-                        }
-                    }
-                }
-            }
-
-            // is it the end of that directiory?
-            if (variationSelection.count() < 1) {
-                variationSetCurrentRemainingDir();
+        // first try a simple filter
+        foreach (QString trackFileName, trackFileNames) {
+            // this will append everything is variationDir is empty
+            if (trackFileName.startsWith(variationDir)) {
+                variationSelection.append(trackFileName);
             }
         }
 
+        // if there are no more tracks in current variation directory and variation is Low, then we have to try parent dir
+        if ((variationSelection.count() < 1) && (variationCurrent == 0)) {
+            QString currentVariationDir = variationDir;
+
+            // find the base directory
+            currentVariationDir.append("/");
+            QString baseDirectory;
+            foreach (QString directory, directories) {
+                if (currentVariationDir.startsWith(directory) && (directory.length() > baseDirectory.length())) {
+                    baseDirectory = directory;
+                }
+            }
+            if (baseDirectory.endsWith("/")) {
+                baseDirectory = baseDirectory.left(baseDirectory.length() - 1);
+            }
+
+            // get parent directory path
+            while (currentVariationDir.endsWith("/")) {
+                currentVariationDir = currentVariationDir.left(currentVariationDir.length() - 1);
+            }
+            currentVariationDir = (currentVariationDir.contains("/") ? currentVariationDir.left(currentVariationDir.lastIndexOf("/")) : "");
+
+            // make sure there is a parent directory
+            if ((currentVariationDir.length() > 0) && (currentVariationDir.compare(baseDirectory) != 0)) {
+                // set current variation directory to parent
+                variationDir = currentVariationDir;
+
+                // filter again
+                foreach (QString trackFileName, trackFileNames) {
+                    if (trackFileName.startsWith(variationDir)) {
+                        variationSelection.append(trackFileName);
+                    }
+                }
+            }
+        }
+
+        // there are no more tracks in variation directory (or its parent if variation is Low)
+        if (variationSelection.count() < 1) {
+            // set a new variation (directory will be empty, don't have to filter on it)
+            variationSetCurrentRemainingDir();
+
+            // copy without filter
+            foreach (QString trackFileName, trackFileNames) {
+                variationSelection.append(trackFileName);
+            }
+        }
+
+        // this should never happen
+        if (variationSelection.count() < 1) {
+            return;
+        }
+
+        // select random track
         int     variationIndex = qrand() % variationSelection.count();
         QString trackFileName  = variationSelection.at(variationIndex);
         int     trackIndex     = trackFileNames.indexOf(trackFileName);
@@ -304,13 +320,16 @@ void LocalSource::getPlaylist(QUuid uniqueId, int maxCount)
         // scanners can continue
         mutex.unlock();
 
+        // return value
         TrackInfo trackInfo = trackInfoFromFilePath(trackFileName);
         returnValue.append(trackInfo);
 
-        // adjust variation variables
+        // remember variation directory if it was just selected and variation is not not on High
         if ((variationCurrent < 2) && (variationDir.length() < 1)) {
             variationDir = trackFileName.left(trackFileName.lastIndexOf("/"));
         }
+
+        // adjust variation track counter
         variationRemaining--;
     }
 
@@ -695,18 +714,37 @@ int LocalSource::variationSettingId()
 // helper
 void LocalSource::variationSetCurrentRemainingDir()
 {
-    variationCurrent = (variationSettingId() == 3 ? qrand() % 3 : variationSettingId());
+    if (variationSettingId() == 3) {
+        if (variationSetCountSinceHigh >= 4) {
+            variationCurrent = 2;
+        }
+        else if (variationSetCountSinceLow >= 4) {
+            variationCurrent = qrand() % 3;
+        }
+        else {
+            variationCurrent = (qrand() % 2) + 1;
+        }
+    }
+    else {
+        variationCurrent = variationSettingId();
+    }
 
     switch (variationCurrent) {
     case 0:
         variationRemaining = (qrand() % 3) + 4;
+        variationSetCountSinceHigh++;
+        variationSetCountSinceLow = 0;
         break;
     case 1:
         variationRemaining = (qrand() % 2) + 2;
+        variationSetCountSinceHigh++;
+        variationSetCountSinceLow++;
         break;
-    default:
+    case 2:
         variationRemaining = -1;
-    }
+        variationSetCountSinceHigh = 0;
+        variationSetCountSinceLow++;
+     }
 
     variationDir = "";
 }

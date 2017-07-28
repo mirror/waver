@@ -92,6 +92,8 @@ private:
     int     variationCurrent;
     int     variationRemaining;
     QString variationDir;
+    int     variationSetCountSinceHigh;
+    int     variationSetCountSinceLow;
 
     QMimeDatabase mimeDatabase;
 
