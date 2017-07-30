@@ -83,7 +83,9 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(this,         SIGNAL(uiTrackInfo(QVariant,QVariant,QVariant,QVariant,QVariant)),           uiMainWindow, SLOT(updateTrackInfo(QVariant,QVariant,QVariant,QVariant,QVariant)));
         disconnect(this,         SIGNAL(uiPicture(QVariant)),                                                 uiMainWindow, SLOT(updateArt(QVariant)));
         disconnect(this,         SIGNAL(uiPosition(QVariant,QVariant)),                                       uiMainWindow, SLOT(updatePosition(QVariant, QVariant)));
-        disconnect(this,         SIGNAL(uiAddToPlaylist(QVariant,QVariant,QVariant)),                         uiMainWindow, SLOT(addToPlaylist(QVariant,QVariant,QVariant)));
+        disconnect(this,         SIGNAL(uiActions(QVariant)),                                                 uiMainWindow, SLOT(updateTrackActions(QVariant)));
+        disconnect(this,         SIGNAL(uiClearPlaylist()),                                                   uiMainWindow, SLOT(clearPlaylist()));
+        disconnect(this,         SIGNAL(uiAddToPlaylist(QVariant,QVariant,QVariant,QVariant,QVariant)),       uiMainWindow, SLOT(addToPlaylist(QVariant,QVariant,QVariant,QVariant,QVariant)));
         disconnect(this,         SIGNAL(uiPaused()),                                                          uiMainWindow, SLOT(paused()));
         disconnect(this,         SIGNAL(uiResumed()),                                                         uiMainWindow, SLOT(resumed()));
         disconnect(this,         SIGNAL(uiClearPluginsList()),                                                uiMainWindow, SLOT(clearPluginsList()));
@@ -100,6 +102,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(uiMainWindow, SIGNAL(pluginUIResults(QVariant,QVariant)),                                  this,         SLOT(pluginUIResults(QVariant,QVariant)));
         disconnect(uiMainWindow, SIGNAL(getOpenTracks(QVariant,QVariant)),                                    this,         SLOT(getOpenTracks(QVariant,QVariant)));
         disconnect(uiMainWindow, SIGNAL(resolveOpenTracks(QVariant)),                                         this,         SLOT(resolveOpenTracks(QVariant)));
+        disconnect(uiMainWindow, SIGNAL(trackAction(QVariant, QVariant)),                                     this,         SLOT(trackAction(QVariant, QVariant)));
     }
 
     // what we're really interested in is the main application window
@@ -111,8 +114,9 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(this,         SIGNAL(uiTrackInfo(QVariant,QVariant,QVariant,QVariant,QVariant)),           uiMainWindow, SLOT(updateTrackInfo(QVariant,QVariant,QVariant,QVariant,QVariant)));
     connect(this,         SIGNAL(uiPicture(QVariant)),                                                 uiMainWindow, SLOT(updateArt(QVariant)));
     connect(this,         SIGNAL(uiPosition(QVariant,QVariant)),                                       uiMainWindow, SLOT(updatePosition(QVariant, QVariant)));
+    connect(this,         SIGNAL(uiActions(QVariant)),                                                 uiMainWindow, SLOT(updateTrackActions(QVariant)));
     connect(this,         SIGNAL(uiClearPlaylist()),                                                   uiMainWindow, SLOT(clearPlaylist()));
-    connect(this,         SIGNAL(uiAddToPlaylist(QVariant,QVariant,QVariant)),                         uiMainWindow, SLOT(addToPlaylist(QVariant,QVariant,QVariant)));
+    connect(this,         SIGNAL(uiAddToPlaylist(QVariant,QVariant,QVariant,QVariant,QVariant)),       uiMainWindow, SLOT(addToPlaylist(QVariant,QVariant,QVariant,QVariant,QVariant)));
     connect(this,         SIGNAL(uiPaused()),                                                          uiMainWindow, SLOT(paused()));
     connect(this,         SIGNAL(uiResumed()),                                                         uiMainWindow, SLOT(resumed()));
     connect(this,         SIGNAL(uiClearPluginsList()),                                                uiMainWindow, SLOT(clearPluginsList()));
@@ -133,6 +137,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(uiMainWindow, SIGNAL(getOpenTracks(QVariant,QVariant)),                                    this,         SLOT(getOpenTracks(QVariant,QVariant)));
     connect(uiMainWindow, SIGNAL(startSearch(QVariant)),                                               this,         SLOT(startSearch(QVariant)));
     connect(uiMainWindow, SIGNAL(resolveOpenTracks(QVariant)),                                         this,         SLOT(resolveOpenTracks(QVariant)));
+    connect(uiMainWindow, SIGNAL(trackAction(QVariant, QVariant)),                                     this,         SLOT(trackAction(QVariant, QVariant)));
 }
 
 
@@ -272,6 +277,20 @@ void WaverApplication::resolveOpenTracks(QVariant results)
 }
 
 
+// UI signal handler
+void WaverApplication::trackAction(QVariant index, QVariant action)
+{
+    emit ipcSend(IpcMessageUtils::TrackAction, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
+        {
+          "index", index.toString()
+        },
+        {
+          "action", action.toString()
+        }
+    }))));
+}
+
+
 // application activated
 void WaverApplication::active()
 {
@@ -345,6 +364,18 @@ void WaverApplication::updateUITrackInfo(QJsonDocument jsonDocument)
             uiPicturesTimer.start(2500);
         }
     }
+
+    QStringList actions;
+    if (trackInfo.cast) {
+        actions.append("<a href=\"play_more\">More</a>");
+        actions.append("<a href=\"play_forever\">Infinite</a>");
+    }
+    QVector<int> actionKeys(trackInfo.actions.keys().toVector());
+    qSort(actionKeys);
+    foreach (int actionKey, actionKeys) {
+        actions.append(QString("<a href=\"%1\">%2</a>").arg(actionKey).arg(trackInfo.actions.value(actionKey)));
+    }
+    emit uiActions(actions.join(" "));
 }
 
 
@@ -379,11 +410,30 @@ void WaverApplication::updateUIPlaylist(QJsonDocument jsonDocument)
 
     IpcMessageUtils ipcMessageUtils;
 
-    QJsonArray playlist = jsonDocument.array();
+    QVariantHash data                  = jsonDocument.object().toVariantHash();
+    int          contextShowTrackIndex = data.value("contextShowTrackIndex").toInt();
+    QJsonArray   playlist              = QJsonArray::fromVariantList(data.value("playlist").toList());
 
-    foreach (QJsonValue item, playlist) {
-        PluginSource::TrackInfo trackInfo = ipcMessageUtils.jsonDocumentToTrackInfo(QJsonDocument(item.toObject()));
-        emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "images/waver.png"), trackInfo.title, trackInfo.performer);
+    for (int i = 0; i < playlist.count(); i++) {
+        PluginSource::TrackInfo trackInfo = ipcMessageUtils.jsonDocumentToTrackInfo(QJsonDocument(playlist.at(i).toObject()));
+
+        QStringList actions;
+
+        if (i > 0) {
+            actions.append("<a href=\"up\">Up</a>");
+        }
+        if (i < (playlist.count() - 1)) {
+            actions.append("<a href=\"down\">Down</a>");
+        }
+        actions.append("<a href=\"remove\">Remove</a>");
+
+        QVector<int> actionKeys(trackInfo.actions.keys().toVector());
+        qSort(actionKeys);
+        foreach (int actionKey, actionKeys) {
+            actions.append(QString("<a href=\"%1\">%2</a>").arg(actionKey).arg(trackInfo.actions.value(actionKey)));
+        }
+
+        emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "images/waver.png"), trackInfo.title, trackInfo.performer, actions.join(" "), (i == contextShowTrackIndex));
     }
 }
 

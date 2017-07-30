@@ -187,6 +187,7 @@ void WaverServer::startNextTrack()
     // start next track
     currentTrack = playlistTracks.at(0);
     playlistTracks.remove(0);
+    currentCastPlaytimeMilliseconds = CAST_PLAYTIME_MILLISECONDS;
     positionSeconds = -1;
     currentTrack->setStatus(Track::Playing);
 
@@ -317,7 +318,46 @@ void WaverServer::handleSearchSelection(QJsonDocument jsonDocument)
 
 
 // private method
-void WaverServer::sendPlaylistToClients()
+void WaverServer::handleTrackActionsRequest(QJsonDocument jsonDocument)
+{
+    int     index  = jsonDocument.object().toVariantHash().value("index").toInt();
+    QString action = jsonDocument.object().toVariantHash().value("action").toString();
+
+    Track *track = (index < 0 ? currentTrack : playlistTracks.at(index));
+    if (track == NULL) {
+        return;
+    }
+
+    if (action.compare("down") == 0) {
+        playlistTracks.move(index, index + 1);
+        sendPlaylistToClients(index + 1);
+        return;
+    }
+    if (action.compare("up") == 0) {
+        playlistTracks.move(index, index - 1);
+        sendPlaylistToClients(index - 1);
+        return;
+    }
+    if (action.compare("remove") == 0) {
+        Track *toBeRemoved = playlistTracks.at(index);
+        playlistTracks.remove(index);
+        delete toBeRemoved;
+        sendPlaylistToClients();
+        return;
+    }
+    if ((action.compare("play_more") == 0) && (currentCastPlaytimeMilliseconds < ((24 * 60 * 60 * 1000) - CAST_PLAYTIME_MILLISECONDS))) {
+        currentCastPlaytimeMilliseconds += CAST_PLAYTIME_MILLISECONDS;
+        return;
+    }
+    if (action.compare("play_forever") == 0) {
+        currentCastPlaytimeMilliseconds = 24 * 60 * 60 * 1000;
+        return;
+    }
+}
+
+
+// private method
+void WaverServer::sendPlaylistToClients(int contextShowTrackIndex)
 {
     IpcMessageUtils ipcMessageUtils;
     QJsonArray      playlist;
@@ -327,8 +367,22 @@ void WaverServer::sendPlaylistToClients()
         playlist.append(info.object());
     }
 
+    QVariantHash data({
+        {
+            "playlist", playlist
+        },
+        {
+            "contextShowTrackIndex", contextShowTrackIndex
+        }
+    });
+
     // TODO make this able to send to specific client only (when client requests it at startup)
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Playlist, QJsonDocument(playlist)));
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Playlist, QJsonDocument(QJsonObject::fromVariantHash(data))));
+}
+
+void WaverServer::sendPlaylistToClients()
+{
+    sendPlaylistToClients(-1);
 }
 
 
@@ -533,6 +587,10 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
 
     case IpcMessageUtils::Search:
         handleSearchRequest(jsonDocument);
+        break;
+
+    case IpcMessageUtils::TrackAction:
+        handleTrackActionsRequest(jsonDocument);
         break;
 
     case IpcMessageUtils::TrackInfo:
@@ -829,13 +887,13 @@ void WaverServer::trackPosition(QUrl url, bool cast, bool decoderFinished, long 
     }
 
     // stop playing cast if reached time
-    if (cast && (positionMilliseconds >= CAST_PLAYTIME_MILLISECONDS)) {
+    if (cast && (positionMilliseconds >= currentCastPlaytimeMilliseconds)) {
         currentTrack->interrupt();
         return;
     }
 
     // start buffering next track before current ends
-    if ((cast && (positionMilliseconds >= (CAST_PLAYTIME_MILLISECONDS - START_DECODE_PRE_MILLISECONDS))) || (decoderFinished && (positionMilliseconds >= (knownDurationMilliseconds - START_DECODE_PRE_MILLISECONDS)))) {
+    if ((cast && (positionMilliseconds >= (currentCastPlaytimeMilliseconds - START_DECODE_PRE_MILLISECONDS))) || (decoderFinished && (positionMilliseconds >= (knownDurationMilliseconds - START_DECODE_PRE_MILLISECONDS)))) {
         if ((playlistTracks.count() > 0) && (playlistTracks.at(0)->status() == Track::Idle)) {
             playlistTracks.at(0)->setStatus(Track::Decoding);
         }
@@ -849,8 +907,18 @@ void WaverServer::trackPosition(QUrl url, bool cast, bool decoderFinished, long 
 
         QVariantHash positionHash;
 
-        positionHash.insert("elapsed", QDateTime::fromMSecsSinceEpoch(positionMilliseconds).toUTC().toString("mm:ss"));
-        positionHash.insert("remaining", cast ? QDateTime::fromMSecsSinceEpoch(CAST_PLAYTIME_MILLISECONDS - positionMilliseconds).toUTC().toString("mm:ss") : (decoderFinished ? QDateTime::fromMSecsSinceEpoch(knownDurationMilliseconds - positionMilliseconds).toUTC().toString("mm:ss") : ""));
+        QString elapsed   = QDateTime::fromMSecsSinceEpoch(positionMilliseconds).toUTC().toString("hh:mm:ss");
+        QString remaining = cast ? QDateTime::fromMSecsSinceEpoch(currentCastPlaytimeMilliseconds - positionMilliseconds).toUTC().toString("hh:mm:ss") : (decoderFinished ? QDateTime::fromMSecsSinceEpoch(knownDurationMilliseconds - positionMilliseconds).toUTC().toString("hh:mm:ss") : "");
+
+        if (elapsed.startsWith("00:")) {
+            elapsed = elapsed.mid(3);
+        }
+        if (remaining.startsWith("00:")) {
+            remaining = remaining.mid(3);
+        }
+
+        positionHash.insert("elapsed", elapsed);
+        positionHash.insert("remaining", remaining);
 
         IpcMessageUtils ipcMessageUtils;
         emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Position, QJsonDocument(QJsonObject::fromVariantHash(positionHash))));

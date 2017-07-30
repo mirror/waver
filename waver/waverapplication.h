@@ -101,8 +101,9 @@ signals:
     void uiTrackInfo(QVariant title, QVariant performer, QVariant album, QVariant year, QVariant track);
     void uiPicture(QVariant url);
     void uiPosition(QVariant elapsed, QVariant remaining);
+    void uiActions(QVariant linksText);
     void uiClearPlaylist();
-    void uiAddToPlaylist(QVariant pictureUrl, QVariant title, QVariant performer);
+    void uiAddToPlaylist(QVariant pictureUrl, QVariant title, QVariant performer, QVariant actions, QVariant showActions);
     void uiClearPluginsList();
     void uiAddToPluginsList(QVariant id, QVariant label);
     void uiDisplayPluginUI(QVariant id, QVariant qml);
@@ -125,6 +126,7 @@ public slots:
     void getOpenTracks(QVariant pluginId, QVariant parentId);
     void startSearch(QVariant criteria);
     void resolveOpenTracks(QVariant results);
+    void trackAction(QVariant index, QVariant action);
 
 
 private slots:

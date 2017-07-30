@@ -62,6 +62,7 @@ ApplicationWindow {
     signal getOpenTracks(variant pluginId, variant parentId)
     signal startSearch(variant criteria)
     signal resolveOpenTracks(variant selected)
+    signal trackAction(variant index, variant action)
 
 
     /*****
@@ -116,6 +117,9 @@ ApplicationWindow {
         trackInfoChange.newYear = year;
         trackInfoChange.newTrack = track;
         trackInfoChange.start();
+
+        nowPlayingActions.visible = false
+        nowPlayingActionsBackground.visible = false
     }
 
     function updateArt(url)
@@ -129,6 +133,10 @@ ApplicationWindow {
         art1.source = url;
         art2Out.start();
         art1In.start();
+    }
+
+    function updateTrackActions(text) {
+        nowPlayingActions.text = text;
     }
 
     function updatePosition(elapsed, remaining)
@@ -146,7 +154,7 @@ ApplicationWindow {
         playlistAddButton.enabled = true;
     }
 
-    function addToPlaylist(pictureUrl, title, performer)
+    function addToPlaylist(pictureUrl, title, performer, actions, showActions)
     {
         if (title.length < 1) {
             return;
@@ -155,11 +163,13 @@ ApplicationWindow {
         playlistItems.append({
             labelTitle: title,
             labelPerformer: performer,
-            imageSource: pictureUrl
+            labelActions: actions,
+            imageSource: pictureUrl,
+            initialShowActions: showActions
         });
 
         playlistAddButton.enabled = (playlistItems.count < 25);
-        searchButton.enabled = ((searchText.text.length >= 5) && (playlistItems.count < 25));
+        searchButton.enabled = ((searchText.text.length >= 3) && (playlistItems.count < 25));
     }
 
 
@@ -238,7 +248,8 @@ ApplicationWindow {
 
     // open tracks
 
-    function addToOpenTracksList(pluginId, hasChildren, selectable, label, id) {
+    function addToOpenTracksList(pluginId, hasChildren, selectable, label, id)
+    {
         if (!playlistAdd.visible) {
             return;
         }
@@ -276,7 +287,8 @@ ApplicationWindow {
 
     // search
 
-    function addToSearchList(pluginId, label, id) {
+    function addToSearchList(pluginId, label, id)
+    {
         if (!search.visible) {
             return;
         }
@@ -291,7 +303,8 @@ ApplicationWindow {
 
 
     // about dialog
-    function aboutDialog(appName, AppVersion, appDescription) {
+    function aboutDialog(appName, AppVersion, appDescription)
+    {
 
         aboutName.text        = appName
         aboutVersion.text     = AppVersion
@@ -511,7 +524,7 @@ ApplicationWindow {
 
         NumberAnimation {
             property: "opacity"
-            from: opacity_opaque
+            from: opacity_transparent
             duration: duration_fadeout
         }
     }
@@ -756,7 +769,9 @@ ApplicationWindow {
         ListElement {
             labelTitle: "Title"
             labelPerformer: "Performer"
+            labelActions: "<a href=\"action\">Action</a>"
             imageSource: "images/waver.png"
+            initialShowActions: true
         }
     }
 
@@ -765,19 +780,19 @@ ApplicationWindow {
 
         Item {
             id: playlistElementOuter
-            height: playlistElementImage.height + (playlistElementInner.anchors.margins * 2) + playlistElementBorder.anchors.bottomMargin
+            height: playlistElementImage.height + (playlistElementInner.anchors.margins * 2) + playlistActions.height + playlistActions.anchors.bottomMargin + playlistElementBorder.anchors.bottomMargin
             width: playlist.width
 
             Rectangle {
                 id: playlistElementBorder
                 anchors.fill: parent
-                anchors.bottomMargin: 3
+                anchors.bottomMargin: 6
                 border.color: "#AAAAAA"
                 radius: 3
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: "#AAAAAA" }
                     GradientStop { position: 0.5; color: "transparent" }
-                    GradientStop { position: 1.0; color: "#AAAAAA" }
+                    GradientStop { position: 1; color: "#AAAAAA" }
                 }
             }
 
@@ -793,6 +808,23 @@ ApplicationWindow {
                     source: imageSource
                     width: 48
                     height: 48
+                }
+
+                MouseArea {
+                    anchors.fill: playlistElementImage
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: {
+                        if (playlistActions.visible) {
+                            playlistActions.height = 0;
+                            playlistActions.anchors.bottomMargin = 0;
+                            playlistActions.visible = false;
+                        }
+                        else {
+                            playlistActions.height = textMetrics.height + 6;
+                            playlistActions.anchors.bottomMargin = 3;
+                            playlistActions.visible = true;
+                        }
+                    }
                 }
 
                 Rectangle {
@@ -828,6 +860,34 @@ ApplicationWindow {
                     }
                 }
             }
+
+            MouseArea {
+                anchors.fill: playlistActions
+                cursorShape: Qt.PointingHandCursor
+            }
+
+            Rectangle {
+                anchors.fill: playlistActions
+                radius: 3
+                color: "#FFFFFF"
+            }
+
+            PlatformLabel {
+                id: playlistActions
+                anchors.left: parent.left
+                anchors.bottom: playlistElementBorder.bottom
+                anchors.leftMargin: 3
+                anchors.bottomMargin: (initialShowActions ? 3 : 0)
+                leftPadding: 3
+                rightPadding: 3
+                height: (initialShowActions ? textMetrics.height + 6 : 0)
+                visible: (initialShowActions ? true : false)
+                text: labelActions
+                verticalAlignment: Text.AlignVCenter
+                onLinkActivated: {
+                    trackAction(index, link);
+                }
+            }
         }
     }
 
@@ -842,7 +902,7 @@ ApplicationWindow {
         id: playlistAddSelectableElement
 
         Item {
-            height: (textMetrics.height * 2) + (6 + 3 + 6 + 0)
+            height: addElementLabel.height + elementActions.height
             width: playlistAddSelectables.width
 
             MouseArea {
@@ -937,7 +997,7 @@ ApplicationWindow {
         id: searchSelectableElement
 
         Item {
-            height: (textMetrics.height * 2) + (6 + 3 + 6 + 0)
+            height: searchElementLabel.height + elementActions.height
             width: searchSelectables.width
 
             MouseArea {
@@ -1019,7 +1079,7 @@ ApplicationWindow {
         id: collectionsElement
 
         Item {
-            height: (textMetrics.height * 2) + (6 + 3 + 6 + 0)
+            height: collectionsLabel.height + elementActions.height
             width: collectionsList.width
 
             MouseArea {
@@ -1240,14 +1300,13 @@ ApplicationWindow {
         anchors.topMargin: 6
         anchors.bottom: pager.top
 
-
         // now playing page
         Item {
             id: now_playing
 
-            // image - clicking the image does pause/resume
-            MouseArea {
-                id: artMouseArea
+            // image
+            Item {
+                id: artArea
                 anchors.right: parent.right
                 anchors.rightMargin: 6
                 anchors.left: parent.left
@@ -1255,16 +1314,6 @@ ApplicationWindow {
                 anchors.top: parent.top
                 anchors.bottom: title.top
                 anchors.bottomMargin: 6
-                /*
-                onClicked: {
-                    if (artEffect1.brightness == brightness_full) {
-                        menuPause();
-                    }
-                    if (artEffect1.brightness == brightness_dark) {
-                        menuResume();
-                    }
-                }
-                */
 
                 // two images are used for the transition (one is opaque and the other is transparent except during transition)
 
@@ -1274,10 +1323,10 @@ ApplicationWindow {
                     source: "images/waver.png"
                     smooth: true
                     visible: false
-                    anchors.right: artMouseArea.right
-                    anchors.left: artMouseArea.left
-                    anchors.top: artMouseArea.top
-                    anchors.bottom: artMouseArea.bottom
+                    anchors.right: artArea.right
+                    anchors.left: artArea.left
+                    anchors.top: artArea.top
+                    anchors.bottom: artArea.bottom
                 }
 
                 BrightnessContrast {
@@ -1295,10 +1344,10 @@ ApplicationWindow {
                     source: "images/waver.png"
                     smooth: true
                     visible: false
-                    anchors.right: artMouseArea.right
-                    anchors.left: artMouseArea.left
-                    anchors.top: artMouseArea.top
-                    anchors.bottom: artMouseArea.bottom
+                    anchors.right: artArea.right
+                    anchors.left: artArea.left
+                    anchors.top: artArea.top
+                    anchors.bottom: artArea.bottom
                 }
 
                 BrightnessContrast {
@@ -1327,10 +1376,43 @@ ApplicationWindow {
                 style: Text.Outline
                 color: "#800000"
                 styleColor: "#F2F2F2"
-                anchors.horizontalCenter: artMouseArea.horizontalCenter
-                anchors.verticalCenter: artMouseArea.verticalCenter
+                anchors.horizontalCenter: artArea.horizontalCenter
+                anchors.verticalCenter: artArea.verticalCenter
             }
 
+            // track actions - normally invisible
+
+            MouseArea {
+                id: nowPlayingActionsMouseArea
+                anchors.fill: artArea
+                cursorShape: Qt.PointingHandCursor
+                onClicked: {
+                    nowPlayingActions.visible = !nowPlayingActions.visible;
+                    nowPlayingActionsBackground.visible = !nowPlayingActionsBackground.visible;
+                }
+            }
+
+            Rectangle {
+                id: nowPlayingActionsBackground
+                anchors.fill: nowPlayingActions
+                color: "#FFFFFF"
+                radius: 3
+                visible: false
+            }
+
+            PlatformLabel {
+                id: nowPlayingActions
+                text: "<a href=\"action\">Action</a>"
+                horizontalAlignment: Text.AlignHCenter
+                anchors.horizontalCenter: artArea.horizontalCenter
+                anchors.bottom: artArea.bottom
+                anchors.bottomMargin: 18
+                padding: 3
+                visible: false
+                onLinkActivated: {
+                    trackAction(-1, link);
+                }
+            }
 
             // labels and their background
 
@@ -1345,7 +1427,7 @@ ApplicationWindow {
                 radius: 3
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: "#AAAAAA" }
-                    GradientStop { position: 0.36; color: "transparent" }
+                    GradientStop { position: 0.28; color: "transparent" }
                     GradientStop { position: 1.0; color: "#AAAAAA" }
                 }
             }
@@ -1387,7 +1469,7 @@ ApplicationWindow {
                 anchors.left: parent.left
                 anchors.leftMargin: 9
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 2
+                anchors.bottomMargin: 3
             }
             PlatformLabel {
                 id: track
@@ -1399,7 +1481,7 @@ ApplicationWindow {
                 anchors.right: year.left
                 anchors.rightMargin: 6
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 2
+                anchors.bottomMargin: 3
             }
             PlatformLabel {
                 id: year
@@ -1408,10 +1490,9 @@ ApplicationWindow {
                 anchors.right: parent.right
                 anchors.rightMargin: 9
                 anchors.bottom: parent.bottom
-                anchors.bottomMargin: 2
+                anchors.bottomMargin: 3
             }
         }
-
 
         // playlist page
         Item {
@@ -1470,7 +1551,7 @@ ApplicationWindow {
                     searchButton.enabled = ((searchText.text.length >= 3) && (playlistItems.count < 25));
                 }
                 onAccepted: {
-                    if (text.length >= 5) {
+                    if (text.length >= 3) {
                         searchSelectableItems.clear();
                         searchSelectedItems.clear();
 

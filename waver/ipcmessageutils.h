@@ -71,6 +71,7 @@ public:
         QuitClients,
         Resume,
         Search,
+        TrackAction,
         TrackInfo,
     };
 

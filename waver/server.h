@@ -118,6 +118,7 @@ private:
     int  unableToStartCount;
     bool waitingForLocalSource;
     bool waitingForLocalSourceTimerStarted;
+    long currentCastPlaytimeMilliseconds;
     long positionSeconds;
 
     void finish();
@@ -132,7 +133,8 @@ private:
     void handleOpenTracksSelection(QJsonDocument jsonDocument);
     void handleSearchRequest(QJsonDocument jsonDocument);
     void handleSearchSelection(QJsonDocument jsonDocument);
-
+    void handleTrackActionsRequest(QJsonDocument jsonDocument);
+    void sendPlaylistToClients(int contextShowTrackIndex);
     void sendPlaylistToClients();
     void sendPluginsWithUiToClients();
     void sendOpenTracksToClients(IpcMessageUtils::IpcMessages message, QUuid uniqueId, PluginSource::OpenTracks openTracks);

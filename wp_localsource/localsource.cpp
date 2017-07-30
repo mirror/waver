@@ -635,6 +635,8 @@ void LocalSource::jsonToConfig(QJsonDocument jsonDocument)
 
     if (jsonDocument.object().contains("variation")) {
         variationSetting = jsonDocument.object().value("variation").toString();
+        variationSetCountSinceLow  = (variationSettingId() == 3 ? 3 : 0);
+        variationSetCountSinceHigh = 0;
     }
 
     mutex.unlock();
@@ -698,6 +700,7 @@ PluginSource::TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
     trackInfo.year      = 0;
     trackInfo.track     = 0;
     trackInfo.pictures.append(pictures);
+    trackInfo.actions.insert(0, "Ban");
 
     return trackInfo;
 }

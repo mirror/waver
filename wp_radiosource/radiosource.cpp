@@ -64,7 +64,7 @@ QString RadioSource::pluginName()
 // overridden virtual function
 int RadioSource::pluginVersion()
 {
-    return 1;
+    return 2;
 }
 
 
@@ -512,6 +512,7 @@ void RadioSource::getPlaylist(QUuid uniqueId, int maxCount)
         trackInfo.track     = 0;
         trackInfo.url       = selectableStations.at(trackIndex).url;
         trackInfo.year      = 0;
+        trackInfo.actions.insert(0, "Ban");
 
         returnValue.append(trackInfo);
 
@@ -597,6 +598,7 @@ void RadioSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
             trackInfo.track     = 0;
             trackInfo.url       = station.url;
             trackInfo.year      = 0;
+            trackInfo.actions.insert(0, "Ban");
 
             returnValue.append(trackInfo);
         }
