@@ -48,6 +48,8 @@ ApplicationWindow {
     readonly property int  plugins_id_start: 1000
     readonly property int  plugins_id_end: 1999
 
+    property bool active: true
+
 
     // these signals are processed by C++ (WaverApplication class)
     signal menuPause()
@@ -68,6 +70,21 @@ ApplicationWindow {
     /*****
      handlers for signals received from C++
     *****/
+
+    // just to prevent some confusing effect
+
+    function activated()
+    {
+        activatedTimer.start()
+        nowPlayingActionsMouseArea.cursorShape = Qt.PointingHandCursor
+    }
+
+    function inactivated()
+    {
+        active = false;
+        nowPlayingActionsMouseArea.cursorShape = Qt.ArrowCursor;
+    }
+
 
     // error messages and warnings
     function displayUserMessage(messageText)
@@ -357,6 +374,14 @@ ApplicationWindow {
     /*****
      animation definitions
     ****/
+
+    // activation
+
+    Timer {
+        id: activatedTimer
+        interval: 100
+        onTriggered: active = true
+    }
 
     // error messages and warnings
 
@@ -1084,7 +1109,7 @@ ApplicationWindow {
 
             MouseArea {
                 anchors.fill: elementActions
-                cursorShape: Qt.PointingHandCursor
+                cursorShape: (String(label).localeCompare(String("Default")) ? Qt.PointingHandCursor : Qt.ArrowCursor)
             }
 
             PlatformLabel {
@@ -1101,7 +1126,7 @@ ApplicationWindow {
 
             PlatformLabel {
                 id: elementActions
-                text: "<a href=\"delete\">Delete</a>"
+                text: (String(label).localeCompare(String("Default")) ? "<a href=\"delete\">Delete</a>" : "<i>--- can not be deleted ---</i>")
                 anchors.top: collectionsLabel.bottom
                 height: textMetrics.height + 6
                 leftPadding: 6
@@ -1387,8 +1412,10 @@ ApplicationWindow {
                 anchors.fill: artArea
                 cursorShape: Qt.PointingHandCursor
                 onClicked: {
-                    nowPlayingActions.visible = !nowPlayingActions.visible;
-                    nowPlayingActionsBackground.visible = !nowPlayingActionsBackground.visible;
+                    if (active) {
+                        nowPlayingActions.visible = !nowPlayingActions.visible;
+                        nowPlayingActionsBackground.visible = !nowPlayingActionsBackground.visible;
+                    }
                 }
             }
 

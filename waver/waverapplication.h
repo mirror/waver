@@ -74,6 +74,7 @@ private:
     int           uiPictureIndex;
 
     void active();
+    void inactive();
     void suspended();
 
     void quitWithMessage(QString messageText);
@@ -94,6 +95,8 @@ signals:
     void ipcSend(IpcMessageUtils::IpcMessages ipcMessage);
     void ipcSend(IpcMessageUtils::IpcMessages ipcMessage, QJsonDocument ipcJsonData);
 
+    void uiActivated();
+    void uiInactivated();
     void uiUserMessage(QVariant messageText);
     void uiPaused();
     void uiResumed();

@@ -78,6 +78,8 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
 {
     // just in case
     if (uiMainWindow != NULL) {
+        disconnect(this,         SIGNAL(uiActivated()),                                                       uiMainWindow, SLOT(activated()));
+        disconnect(this,         SIGNAL(uiInactivated()),                                                     uiMainWindow, SLOT(inactivated()));
         disconnect(this,         SIGNAL(uiUserMessage(QVariant)),                                             uiMainWindow, SLOT(displayUserMessage(QVariant)));
         disconnect(this,         SIGNAL(uiCollections(QVariant,QVariant)),                                    uiMainWindow, SLOT(fillCollectionsList(QVariant,QVariant)));
         disconnect(this,         SIGNAL(uiTrackInfo(QVariant,QVariant,QVariant,QVariant,QVariant)),           uiMainWindow, SLOT(updateTrackInfo(QVariant,QVariant,QVariant,QVariant,QVariant)));
@@ -109,6 +111,8 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     uiMainWindow = qobject_cast<QQuickWindow*>(qmlApplicationEngine->rootObjects().first());
 
     // signal connections
+    connect(this,         SIGNAL(uiActivated()),                                                       uiMainWindow, SLOT(activated()));
+    connect(this,         SIGNAL(uiInactivated()),                                                     uiMainWindow, SLOT(inactivated()));
     connect(this,         SIGNAL(uiUserMessage(QVariant)),                                             uiMainWindow, SLOT(displayUserMessage(QVariant)));
     connect(this,         SIGNAL(uiCollections(QVariant,QVariant)),                                    uiMainWindow, SLOT(fillCollectionsList(QVariant,QVariant)));
     connect(this,         SIGNAL(uiTrackInfo(QVariant,QVariant,QVariant,QVariant,QVariant)),           uiMainWindow, SLOT(updateTrackInfo(QVariant,QVariant,QVariant,QVariant,QVariant)));
@@ -149,9 +153,15 @@ void WaverApplication::stateChanged(Qt::ApplicationState state)
     case Qt::ApplicationActive:
         active();
         break;
+
+    case Qt::ApplicationInactive:
+        inactive();
+        break;
+
     case Qt::ApplicationSuspended:
         suspended();
         break;
+
     default:
         break;
     }
@@ -301,12 +311,24 @@ void WaverApplication::active()
 
     // attempt to connect to the server if not yet connected
     emit ipcConnect();
+
+    // ui stuff
+    emit uiActivated();
+}
+
+
+// application inactivated
+void WaverApplication::inactive()
+{
+    emit uiInactivated();
 }
 
 
 // application suspended
 void WaverApplication::suspended()
 {
+    inactive();
+
     emit ipcDisconnect();
 }
 
