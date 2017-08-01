@@ -77,7 +77,7 @@ int SoundOutput::pluginType()
 // overrided virtual function
 QString SoundOutput::pluginName()
 {
-    return "Sound output";
+    return "Sound Output";
 }
 
 

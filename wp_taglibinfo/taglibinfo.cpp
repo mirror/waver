@@ -44,7 +44,7 @@ int TagLibInfo::pluginType()
 // global method
 QString TagLibInfo::pluginName()
 {
-    return "Tag reader";
+    return "Tag Reader";
 }
 
 
