@@ -32,33 +32,32 @@
 #include <QThread>
 
 
-class Feeder : public QObject
-{
-    Q_OBJECT
+class Feeder : public QObject {
+        Q_OBJECT
 
-public:
+    public:
 
-    explicit Feeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, QAudioFormat audioFormat, int minWriteBytes);
+        explicit Feeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, QAudioFormat audioFormat, int minWriteBytes);
 
-    void setOutputDevice(QIODevice *outputDevice);
-
-
-private:
-
-    int minWriteBytes;
-
-    QByteArray *outputBuffer;
-    QMutex     *outputBufferMutex;
-    QIODevice  *outputDevice;
-
-    QAudioFormat audioFormat;
-
-    QMutex outputDeviceMutex;
+        void setOutputDevice(QIODevice *outputDevice);
 
 
-public slots:
+    private:
 
-    void run();
+        int minWriteBytes;
+
+        QByteArray *outputBuffer;
+        QMutex     *outputBufferMutex;
+        QIODevice  *outputDevice;
+
+        QAudioFormat audioFormat;
+
+        QMutex outputDeviceMutex;
+
+
+    public slots:
+
+        void run();
 
 };
 

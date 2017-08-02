@@ -53,7 +53,8 @@ SettingsHandler::~SettingsHandler()
 // helper
 QString SettingsHandler::pluginSettingsFileName(QUuid persistentUniqueId, QString collectionName)
 {
-    return QString("%1_%2.cfg").arg(persistentUniqueId.toString().replace(QRegExp("[{}]"), "")).arg(collectionName.replace(QRegExp("\\W"), "_")).toLower();
+    return QString("%1_%2.cfg").arg(persistentUniqueId.toString().replace(QRegExp("[{}]"),
+                "")).arg(collectionName.replace(QRegExp("\\W"), "_")).toLower();
 }
 
 
@@ -84,7 +85,7 @@ void SettingsHandler::saveCollectionList(QStringList collections, QString curren
         return;
     }
     file.write(currentCollection.append("\n").toUtf8());
-    foreach(QString collection, collections) {
+    foreach (QString collection, collections) {
         file.write(collection.append("\n").toUtf8());
     }
     file.close();

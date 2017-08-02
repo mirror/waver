@@ -41,37 +41,36 @@
 #include "pluginbase.h"
 
 
-class PluginLibsLoader : public QObject
-{
-    Q_OBJECT
+class PluginLibsLoader : public QObject {
+        Q_OBJECT
 
-public:
+    public:
 
-    struct LoadedLib {
-        bool            fromEasyPluginInstallDir;
-        WpPluginFactory pluginFactory;
-    };
-    typedef QVector<LoadedLib> LoadedLibs;
+        struct LoadedLib {
+            bool            fromEasyPluginInstallDir;
+            WpPluginFactory pluginFactory;
+        };
+        typedef QVector<LoadedLib> LoadedLibs;
 
-    explicit PluginLibsLoader(QObject *parent = 0, LoadedLibs *loadedLibs = NULL);
-
-
-private:
-
-    LoadedLibs *loadedLibs;
-
-    void libSearch(QString startDir, QStringList *results);
+        explicit PluginLibsLoader(QObject *parent = 0, LoadedLibs *loadedLibs = NULL);
 
 
-signals:
+    private:
 
-    void finished();
-    void failInfo(QString info);
+        LoadedLibs *loadedLibs;
+
+        void libSearch(QString startDir, QStringList *results);
 
 
-public slots:
+    signals:
 
-    void run();
+        void finished();
+        void failInfo(QString info);
+
+
+    public slots:
+
+        void run();
 
 
 };

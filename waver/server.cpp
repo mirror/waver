@@ -68,8 +68,10 @@ void WaverServer::run()
     connect(&serverTcpThread, SIGNAL(finished()), serverTcpHandler, SLOT(deleteLater()));
 
     connect(this,             SIGNAL(ipcSend(QString)),                                     serverTcpHandler, SLOT(send(QString)));
-    connect(serverTcpHandler, SIGNAL(message(IpcMessageUtils::IpcMessages, QJsonDocument)), this,             SLOT(ipcReceivedMessage(IpcMessageUtils::IpcMessages, QJsonDocument)));
-    connect(serverTcpHandler, SIGNAL(url(QUrl)),                                            this,             SLOT(ipcReceivedUrl(QUrl)));
+    connect(serverTcpHandler, SIGNAL(message(IpcMessageUtils::IpcMessages, QJsonDocument)), this,
+        SLOT(ipcReceivedMessage(IpcMessageUtils::IpcMessages, QJsonDocument)));
+    connect(serverTcpHandler, SIGNAL(url(QUrl)),                                            this,
+        SLOT(ipcReceivedUrl(QUrl)));
 
     serverTcpThread.start();
 
@@ -81,13 +83,19 @@ void WaverServer::run()
     connect(&settingsThread, SIGNAL(started()),  settingsHandler, SLOT(run()));
     connect(&settingsThread, SIGNAL(finished()), settingsHandler, SLOT(deleteLater()));
 
-    connect(this,            SIGNAL(saveCollectionList(QStringList,QString)),         settingsHandler, SLOT(saveCollectionList(QStringList,QString)));
-    connect(this,            SIGNAL(saveCollectionList(QString)),                     settingsHandler, SLOT(saveCollectionList(QString)));
+    connect(this,            SIGNAL(saveCollectionList(QStringList, QString)),         settingsHandler,
+        SLOT(saveCollectionList(QStringList, QString)));
+    connect(this,            SIGNAL(saveCollectionList(QString)),                     settingsHandler,
+        SLOT(saveCollectionList(QString)));
     connect(this,            SIGNAL(getCollectionList()),                             settingsHandler, SLOT(getCollectionList()));
-    connect(this,            SIGNAL(savePluginSettings(QUuid,QString,QJsonDocument)), settingsHandler, SLOT(savePluginSettings(QUuid,QString,QJsonDocument)));
-    connect(this,            SIGNAL(loadPluginSettings(QUuid,QString)),               settingsHandler, SLOT(loadPluginSettings(QUuid,QString)));
-    connect(settingsHandler, SIGNAL(collectionList(QStringList,QString)),             this,            SLOT(collectionList(QStringList,QString)));
-    connect(settingsHandler, SIGNAL(loadedPluginSettings(QUuid,QJsonDocument)),       this,            SLOT(loadedPluginSettings(QUuid,QJsonDocument)));
+    connect(this,            SIGNAL(savePluginSettings(QUuid, QString, QJsonDocument)), settingsHandler,
+        SLOT(savePluginSettings(QUuid, QString, QJsonDocument)));
+    connect(this,            SIGNAL(loadPluginSettings(QUuid, QString)),               settingsHandler,
+        SLOT(loadPluginSettings(QUuid, QString)));
+    connect(settingsHandler, SIGNAL(collectionList(QStringList, QString)),             this,
+        SLOT(collectionList(QStringList, QString)));
+    connect(settingsHandler, SIGNAL(loadedPluginSettings(QUuid, QJsonDocument)),       this,
+        SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
 
     settingsThread.start();
 }
@@ -193,15 +201,17 @@ void WaverServer::startNextTrack()
 
     // these signals should be connected with the current track only
     connect(this,         SIGNAL(requestPluginUi(QUuid)),  currentTrack, SLOT(requestedPluginUi(QUuid)));
-    connect(currentTrack, SIGNAL(pluginUi(QUuid,QString)), this,         SLOT(pluginUi(QUuid,QString)));
+    connect(currentTrack, SIGNAL(pluginUi(QUuid, QString)), this,         SLOT(pluginUi(QUuid, QString)));
 
     // info output
-    Globals::consoleOutput(QString("%1 - %2").arg(currentTrack->getTrackInfo().title).arg(currentTrack->getTrackInfo().performer), false);
+    Globals::consoleOutput(QString("%1 - %2").arg(currentTrack->getTrackInfo().title).arg(currentTrack->getTrackInfo().performer),
+        false);
 
     // UI signals
 
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfo, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfo,
+            ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
 
     sendPlaylistToClients();
 }
@@ -211,7 +221,7 @@ void WaverServer::startNextTrack()
 void WaverServer::handleCollectionsDialogResults(QJsonDocument jsonDocument)
 {
     QStringList collections;
-    foreach(QVariant collection, jsonDocument.array()) {
+    foreach (QVariant collection, jsonDocument.array()) {
         collections.append(collection.toString());
     }
 
@@ -236,10 +246,13 @@ void WaverServer::handlePluginUIResults(QJsonDocument jsonDocument)
     QVariantHash object = jsonDocument.object().toVariantHash();
 
     emit pluginUiResults(QUuid(object.value("plugin_id").toString()), (
-        (QString(object.value("ui_results").typeName()).compare("QVariantList") == 0) ? QJsonDocument(QJsonArray::fromVariantList(object.value("ui_results").toList())) :
-        (QString(object.value("ui_results").typeName()).compare("QVariantHash") == 0) ? QJsonDocument(QJsonObject::fromVariantHash(object.value("ui_results").toHash())) :
-        (QString(object.value("ui_results").typeName()).compare("QVariantMap")  == 0) ? QJsonDocument(QJsonObject::fromVariantMap(object.value("ui_results").toMap())) :
-                                                                                        QJsonDocument(object.value("ui_results").toJsonObject())));
+            (QString(object.value("ui_results").typeName()).compare("QVariantList") == 0) ? QJsonDocument(QJsonArray::fromVariantList(
+                    object.value("ui_results").toList())) :
+            (QString(object.value("ui_results").typeName()).compare("QVariantHash") == 0) ? QJsonDocument(QJsonObject::fromVariantHash(
+                    object.value("ui_results").toHash())) :
+            (QString(object.value("ui_results").typeName()).compare("QVariantMap")  == 0) ? QJsonDocument(QJsonObject::fromVariantMap(
+                    object.value("ui_results").toMap())) :
+            QJsonDocument(object.value("ui_results").toJsonObject())));
 }
 
 
@@ -276,7 +289,7 @@ void WaverServer::handleOpenTracksSelection(QJsonDocument jsonDocument)
     QJsonArray jsonArray = jsonDocument.array();
 
     // must put into buckets by plugin
-    QHash<QUuid, QStringList*> requestedTracks;
+    QHash<QUuid, QStringList *> requestedTracks;
     foreach (QVariant track, jsonArray) {
         QVariantHash trackHash = track.toHash();
         QUuid        uuid      = QUuid(trackHash.value("plugin_id").toString());
@@ -303,7 +316,7 @@ void WaverServer::handleSearchRequest(QJsonDocument jsonDocument)
 {
     QString criteria = jsonDocument.object().toVariantHash().value("criteria").toString();
 
-    foreach(QUuid uuid, sourcePlugins.keys()) {
+    foreach (QUuid uuid, sourcePlugins.keys()) {
         emit search(uuid, criteria);
     }
 }
@@ -345,7 +358,8 @@ void WaverServer::handleTrackActionsRequest(QJsonDocument jsonDocument)
         sendPlaylistToClients();
         return;
     }
-    if ((action.compare("play_more") == 0) && (currentCastPlaytimeMilliseconds < ((24 * 60 * 60 * 1000) - CAST_PLAYTIME_MILLISECONDS))) {
+    if ((action.compare("play_more") == 0) &&
+        (currentCastPlaytimeMilliseconds < ((24 * 60 * 60 * 1000) - CAST_PLAYTIME_MILLISECONDS))) {
         currentCastPlaytimeMilliseconds += CAST_PLAYTIME_MILLISECONDS;
         return;
     }
@@ -396,12 +410,14 @@ void WaverServer::sendPluginsWithUiToClients()
 
     // TODO make this able to send to specific client only (when client requests it at startup)
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::PluginsWithUI, QJsonDocument(QJsonObject::fromVariantHash(plugins))));
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::PluginsWithUI,
+            QJsonDocument(QJsonObject::fromVariantHash(plugins))));
 }
 
 
 // private method
-void WaverServer::sendOpenTracksToClients(IpcMessageUtils::IpcMessages message, QUuid uniqueId, PluginSource::OpenTracks openTracks)
+void WaverServer::sendOpenTracksToClients(IpcMessageUtils::IpcMessages message, QUuid uniqueId,
+    PluginSource::OpenTracks openTracks)
 {
     QJsonArray tracksJson;
     foreach (PluginSource::OpenTrack track, openTracks) {
@@ -448,7 +464,7 @@ void WaverServer::pluginLibsLoaded()
             }
 
             // cast the plugin, asked for source plugins only
-            PluginSource *pluginSource = (PluginSource*) plugin;
+            PluginSource *pluginSource = (PluginSource *) plugin;
 
             // remember some info about the plugin
             SourcePlugin pluginData;
@@ -470,22 +486,33 @@ void WaverServer::pluginLibsLoaded()
             // connect source plugin signals
             connect(pluginSource, SIGNAL(ready(QUuid)),                                      this,         SLOT(pluginReady(QUuid)));
             connect(pluginSource, SIGNAL(unready(QUuid)),                                    this,         SLOT(pluginUnready(QUuid)));
-            connect(pluginSource, SIGNAL(saveConfiguration(QUuid,QJsonDocument)),            this,         SLOT(saveConfiguration(QUuid,QJsonDocument)));
+            connect(pluginSource, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),            this,         SLOT(saveConfiguration(QUuid,
+                        QJsonDocument)));
             connect(pluginSource, SIGNAL(loadConfiguration(QUuid)),                          this,         SLOT(loadConfiguration(QUuid)));
-            connect(pluginSource, SIGNAL(uiQml(QUuid,QString)),                              this,         SLOT(pluginUi(QUuid,QString)));
-            connect(pluginSource, SIGNAL(infoMessage(QUuid,QString)),                        this,         SLOT(pluginInfoMessage(QUuid,QString)));
-            connect(pluginSource, SIGNAL(playlist(QUuid,PluginSource::TracksInfo)),          this,         SLOT(playlist(QUuid,PluginSource::TracksInfo)));
-            connect(pluginSource, SIGNAL(requestRemoveTracks(QUuid)),                        this,         SLOT(requestedRemoveTracks(QUuid)));
-            connect(pluginSource, SIGNAL(openTracksResults(QUuid,PluginSource::OpenTracks)), this,         SLOT(openTracksResults(QUuid,PluginSource::OpenTracks)));
-            connect(pluginSource, SIGNAL(searchResults(QUuid,PluginSource::OpenTracks)),     this,         SLOT(searchResults(QUuid,PluginSource::OpenTracks)));
-            connect(this,         SIGNAL(unableToStart(QUuid,QUrl)),                         pluginSource, SLOT(unableToStart(QUuid,QUrl)));
-            connect(this,         SIGNAL(loadedConfiguration(QUuid,QJsonDocument)),          pluginSource, SLOT(loadedConfiguration(QUuid,QJsonDocument)));
+            connect(pluginSource, SIGNAL(uiQml(QUuid, QString)),                              this,         SLOT(pluginUi(QUuid, QString)));
+            connect(pluginSource, SIGNAL(infoMessage(QUuid, QString)),                        this,         SLOT(pluginInfoMessage(QUuid,
+                        QString)));
+            connect(pluginSource, SIGNAL(playlist(QUuid, PluginSource::TracksInfo)),          this,         SLOT(playlist(QUuid,
+                        PluginSource::TracksInfo)));
+            connect(pluginSource, SIGNAL(requestRemoveTracks(QUuid)),                        this,
+                SLOT(requestedRemoveTracks(QUuid)));
+            connect(pluginSource, SIGNAL(openTracksResults(QUuid, PluginSource::OpenTracks)), this,         SLOT(openTracksResults(QUuid,
+                        PluginSource::OpenTracks)));
+            connect(pluginSource, SIGNAL(searchResults(QUuid, PluginSource::OpenTracks)),     this,         SLOT(searchResults(QUuid,
+                        PluginSource::OpenTracks)));
+            connect(this,         SIGNAL(unableToStart(QUuid, QUrl)),                         pluginSource, SLOT(unableToStart(QUuid,
+                        QUrl)));
+            connect(this,         SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),          pluginSource, SLOT(loadedConfiguration(QUuid,
+                        QJsonDocument)));
             connect(this,         SIGNAL(requestPluginUi(QUuid)),                            pluginSource, SLOT(getUiQml(QUuid)));
-            connect(this,         SIGNAL(pluginUiResults(QUuid,QJsonDocument)),              pluginSource, SLOT(uiResults(QUuid,QJsonDocument)));
-            connect(this,         SIGNAL(getPlaylist(QUuid,int)),                            pluginSource, SLOT(getPlaylist(QUuid,int)));
-            connect(this,         SIGNAL(getOpenTracks(QUuid,QString)),                      pluginSource, SLOT(getOpenTracks(QUuid,QString)));
-            connect(this,         SIGNAL(search(QUuid,QString)),                             pluginSource, SLOT(search(QUuid,QString)));
-            connect(this,         SIGNAL(resolveOpenTracks(QUuid,QStringList)),              pluginSource, SLOT(resolveOpenTracks(QUuid,QStringList)));
+            connect(this,         SIGNAL(pluginUiResults(QUuid, QJsonDocument)),              pluginSource, SLOT(uiResults(QUuid,
+                        QJsonDocument)));
+            connect(this,         SIGNAL(getPlaylist(QUuid, int)),                            pluginSource, SLOT(getPlaylist(QUuid, int)));
+            connect(this,         SIGNAL(getOpenTracks(QUuid, QString)),                      pluginSource, SLOT(getOpenTracks(QUuid,
+                        QString)));
+            connect(this,         SIGNAL(search(QUuid, QString)),                             pluginSource, SLOT(search(QUuid, QString)));
+            connect(this,         SIGNAL(resolveOpenTracks(QUuid, QStringList)),              pluginSource, SLOT(resolveOpenTracks(QUuid,
+                        QStringList)));
         }
     }
 
@@ -509,98 +536,99 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
     // do what needs to be done
     switch (message) {
 
-    case IpcMessageUtils::CollectionList:
-        emit getCollectionList();
-        break;
+        case IpcMessageUtils::CollectionList:
+            emit getCollectionList();
+            break;
 
-    case IpcMessageUtils::CollectionMenuChange:
-        // settings handler will reply with collectionList
-        emit saveCollectionList(jsonDocument.object().toVariantHash().value("collection").toString());
-        break;
+        case IpcMessageUtils::CollectionMenuChange:
+            // settings handler will reply with collectionList
+            emit saveCollectionList(jsonDocument.object().toVariantHash().value("collection").toString());
+            break;
 
-    case IpcMessageUtils::CollectionsDialogResults:
-        handleCollectionsDialogResults(jsonDocument);
-        break;
+        case IpcMessageUtils::CollectionsDialogResults:
+            handleCollectionsDialogResults(jsonDocument);
+            break;
 
-    case IpcMessageUtils::Next:
-        if (currentTrack != NULL) {
-            currentTrack->setStatus(Track::Paused);
-            currentTrack->interrupt();
-            return;
-        }
-        startNextTrack();
-        break;
-
-    case IpcMessageUtils::OpenTracks:
-        handleOpenTracksRequest(jsonDocument);
-        break;
-
-    case IpcMessageUtils::OpenTracksSelected:
-        handleOpenTracksSelection(jsonDocument);
-        break;
-
-    case IpcMessageUtils::Pause:
-        if (currentTrack != NULL) {
-            // current track is always either playing or paused
-            currentTrack->setStatus(Track::Paused);
-            emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Pause));
-        }
-        break;
-
-    case IpcMessageUtils::Playlist:
-        sendPlaylistToClients();
-        break;
-
-    case IpcMessageUtils::PlayPauseState:
-        if (currentTrack != NULL) {
-            if (currentTrack->status() == Track::Paused) {
-                emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Pause));
-                break;
+        case IpcMessageUtils::Next:
+            if (currentTrack != NULL) {
+                currentTrack->setStatus(Track::Paused);
+                currentTrack->interrupt();
+                return;
             }
-        }
-        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Resume));
-        break;
+            startNextTrack();
+            break;
 
-    case IpcMessageUtils::PluginsWithUI:
-        sendPluginsWithUiToClients();
-        break;
+        case IpcMessageUtils::OpenTracks:
+            handleOpenTracksRequest(jsonDocument);
+            break;
 
-    case IpcMessageUtils::PluginUI:
-        handlePluginUIRequest(jsonDocument);
-        break;
+        case IpcMessageUtils::OpenTracksSelected:
+            handleOpenTracksSelection(jsonDocument);
+            break;
 
-    case IpcMessageUtils::PluginUIResults:
-        handlePluginUIResults(jsonDocument);
-        break;
+        case IpcMessageUtils::Pause:
+            if (currentTrack != NULL) {
+                // current track is always either playing or paused
+                currentTrack->setStatus(Track::Paused);
+                emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Pause));
+            }
+            break;
 
-    case IpcMessageUtils::Quit:
-        finish();
-        break;
+        case IpcMessageUtils::Playlist:
+            sendPlaylistToClients();
+            break;
 
-    case IpcMessageUtils::Resume:
-        if (currentTrack != NULL) {
-            // current track is always either playing or paused
-            currentTrack->setStatus(Track::Playing);
+        case IpcMessageUtils::PlayPauseState:
+            if (currentTrack != NULL) {
+                if (currentTrack->status() == Track::Paused) {
+                    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Pause));
+                    break;
+                }
+            }
             emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Resume));
-        }
-        break;
+            break;
 
-    case IpcMessageUtils::Search:
-        handleSearchRequest(jsonDocument);
-        break;
+        case IpcMessageUtils::PluginsWithUI:
+            sendPluginsWithUiToClients();
+            break;
 
-    case IpcMessageUtils::TrackAction:
-        handleTrackActionsRequest(jsonDocument);
-        break;
+        case IpcMessageUtils::PluginUI:
+            handlePluginUIRequest(jsonDocument);
+            break;
 
-    case IpcMessageUtils::TrackInfo:
-        if (currentTrack != NULL) {
-            emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfo, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
-        }
-        break;
+        case IpcMessageUtils::PluginUIResults:
+            handlePluginUIResults(jsonDocument);
+            break;
 
-    default:
-        break;
+        case IpcMessageUtils::Quit:
+            finish();
+            break;
+
+        case IpcMessageUtils::Resume:
+            if (currentTrack != NULL) {
+                // current track is always either playing or paused
+                currentTrack->setStatus(Track::Playing);
+                emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Resume));
+            }
+            break;
+
+        case IpcMessageUtils::Search:
+            handleSearchRequest(jsonDocument);
+            break;
+
+        case IpcMessageUtils::TrackAction:
+            handleTrackActionsRequest(jsonDocument);
+            break;
+
+        case IpcMessageUtils::TrackInfo:
+            if (currentTrack != NULL) {
+                emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfo,
+                        ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
+            }
+            break;
+
+        default:
+            break;
     }
 }
 
@@ -647,9 +675,9 @@ void WaverServer::collectionList(QStringList collections, QString currentCollect
         }
 
         // empty playlist
-        QVector<Track*> tracksToBeDeleted;
+        QVector<Track *> tracksToBeDeleted;
         tracksToBeDeleted.append(playlistTracks);
-        foreach(Track *track, tracksToBeDeleted) {
+        foreach (Track *track, tracksToBeDeleted) {
             playlistTracks.removeAll(track);
             delete track;
         }
@@ -671,7 +699,8 @@ void WaverServer::collectionList(QStringList collections, QString currentCollect
     QJsonArray collectionArray = QJsonArray::fromStringList(collections);
 
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::CollectionList, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::CollectionList,
+    QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
         {
             "collections", collectionArray
         },
@@ -694,7 +723,8 @@ void WaverServer::loadedPluginSettings(QUuid uniqueId, QJsonDocument settings)
 void WaverServer::pluginUi(QUuid uniqueId, QString qml)
 {
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::PluginUI, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::PluginUI,
+    QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
         {
             "plugin_id", uniqueId.toString()
         },
@@ -761,7 +791,8 @@ void WaverServer::pluginInfoMessage(QUuid uniqueId, QString message)
     QVariantHash messageHash;
     messageHash.insert("message", message);
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage,
+            QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
 }
 
 
@@ -789,24 +820,31 @@ void WaverServer::saveConfiguration(QUuid uniqueId, QJsonDocument configuration)
 // source plugin signal handler
 void WaverServer::playlist(QUuid uniqueId, PluginSource::TracksInfo tracksInfo)
 {
-    Globals::consoleOutput(QString("Received %1 tracks from %2").arg(tracksInfo.count()).arg(sourcePlugins.value(uniqueId).name), false);
+    Globals::consoleOutput(QString("Received %1 tracks from %2").arg(tracksInfo.count()).arg(sourcePlugins.value(uniqueId).name),
+        false);
 
-    foreach(PluginSource::TrackInfo trackInfo, tracksInfo) {
+    foreach (PluginSource::TrackInfo trackInfo, tracksInfo) {
         // create and set up track
 
         Track *track = new Track(&loadedLibs, trackInfo, uniqueId, this);
 
-        connect(this,  SIGNAL(loadedConfiguration(QUuid,QJsonDocument)),          track, SLOT(loadedPluginSettings(QUuid,QJsonDocument)));
-        connect(this,  SIGNAL(pluginUiResults(QUuid,QJsonDocument)),              track, SLOT(receivedPluginUiResults(QUuid,QJsonDocument)));
-        connect(track, SIGNAL(savePluginSettings(QUuid,QJsonDocument)),           this,  SLOT(saveConfiguration(QUuid,QJsonDocument)));
+        connect(this,  SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),          track, SLOT(loadedPluginSettings(QUuid,
+                    QJsonDocument)));
+        connect(this,  SIGNAL(pluginUiResults(QUuid, QJsonDocument)),              track, SLOT(receivedPluginUiResults(QUuid,
+                    QJsonDocument)));
+        connect(track, SIGNAL(savePluginSettings(QUuid, QJsonDocument)),           this,  SLOT(saveConfiguration(QUuid,
+                    QJsonDocument)));
         connect(track, SIGNAL(loadPluginSettings(QUuid)),                         this,  SLOT(loadConfiguration(QUuid)));
-        connect(track, SIGNAL(requestFadeInForNextTrack(QUrl,qint64)),            this,  SLOT(trackRequestFadeInForNextTrack(QUrl,qint64)));
-        connect(track, SIGNAL(playPosition(QUrl,bool,bool,long,long)),            this,  SLOT(trackPosition(QUrl,bool,bool,long,long)));
+        connect(track, SIGNAL(requestFadeInForNextTrack(QUrl, qint64)),            this,  SLOT(trackRequestFadeInForNextTrack(QUrl,
+                    qint64)));
+        connect(track, SIGNAL(playPosition(QUrl, bool, bool, long, long)),            this,  SLOT(trackPosition(QUrl, bool, bool, long,
+                    long)));
         connect(track, SIGNAL(aboutToFinish(QUrl)),                               this,  SLOT(trackAboutToFinish(QUrl)));
         connect(track, SIGNAL(finished(QUrl)),                                    this,  SLOT(trackFinished(QUrl)));
         connect(track, SIGNAL(trackInfoUpdated(QUrl)),                            this,  SLOT(trackInfoUpdated(QUrl)));
-        connect(track, SIGNAL(error(QUrl,bool,QString)),                          this,  SLOT(trackError(QUrl,bool,QString)));
-        connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginsWithUI)),         this,  SLOT(trackLoadedPluginsWithUI(Track::PluginsWithUI)));
+        connect(track, SIGNAL(error(QUrl, bool, QString)),                          this,  SLOT(trackError(QUrl, bool, QString)));
+        connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginsWithUI)),         this,
+            SLOT(trackLoadedPluginsWithUI(Track::PluginsWithUI)));
 
         // add to playlist
         playlistTracks.append(track);
@@ -844,13 +882,13 @@ void WaverServer::searchResults(QUuid uniqueId, PluginSource::OpenTracks openTra
 void WaverServer::requestedRemoveTracks(QUuid uniqueId)
 {
     // remove from playlist
-    QVector<Track*> tracksToBeDeleted;
-    foreach(Track *track, playlistTracks) {
+    QVector<Track *> tracksToBeDeleted;
+    foreach (Track *track, playlistTracks) {
         if (track->getSourcePluginId() == uniqueId) {
             tracksToBeDeleted.append(track);
         }
     }
-    foreach(Track *track, tracksToBeDeleted) {
+    foreach (Track *track, tracksToBeDeleted) {
         playlistTracks.removeAll(track);
         delete track;
     }
@@ -879,7 +917,8 @@ void WaverServer::trackRequestFadeInForNextTrack(QUrl url, qint64 lengthMillisec
 
 
 // track signal handler
-void WaverServer::trackPosition(QUrl url, bool cast, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds)
+void WaverServer::trackPosition(QUrl url, bool cast, bool decoderFinished, long knownDurationMilliseconds,
+    long positionMilliseconds)
 {
     // disregard this signal if comes from a track other than the current track
     if ((currentTrack == NULL) || (url != currentTrack->getTrackInfo().url)) {
@@ -893,7 +932,8 @@ void WaverServer::trackPosition(QUrl url, bool cast, bool decoderFinished, long 
     }
 
     // start buffering next track before current ends
-    if ((cast && (positionMilliseconds >= (currentCastPlaytimeMilliseconds - START_DECODE_PRE_MILLISECONDS))) || (decoderFinished && (positionMilliseconds >= (knownDurationMilliseconds - START_DECODE_PRE_MILLISECONDS)))) {
+    if ((cast && (positionMilliseconds >= (currentCastPlaytimeMilliseconds - START_DECODE_PRE_MILLISECONDS))) || (decoderFinished &&
+            (positionMilliseconds >= (knownDurationMilliseconds - START_DECODE_PRE_MILLISECONDS)))) {
         if ((playlistTracks.count() > 0) && (playlistTracks.at(0)->status() == Track::Idle)) {
             playlistTracks.at(0)->setStatus(Track::Decoding);
         }
@@ -908,7 +948,9 @@ void WaverServer::trackPosition(QUrl url, bool cast, bool decoderFinished, long 
         QVariantHash positionHash;
 
         QString elapsed   = QDateTime::fromMSecsSinceEpoch(positionMilliseconds).toUTC().toString("hh:mm:ss");
-        QString remaining = cast ? QDateTime::fromMSecsSinceEpoch(currentCastPlaytimeMilliseconds - positionMilliseconds).toUTC().toString("hh:mm:ss") : (decoderFinished ? QDateTime::fromMSecsSinceEpoch(knownDurationMilliseconds - positionMilliseconds).toUTC().toString("hh:mm:ss") : "");
+        QString remaining = cast ? QDateTime::fromMSecsSinceEpoch(currentCastPlaytimeMilliseconds -
+                positionMilliseconds).toUTC().toString("hh:mm:ss") : (decoderFinished ? QDateTime::fromMSecsSinceEpoch(
+                    knownDurationMilliseconds - positionMilliseconds).toUTC().toString("hh:mm:ss") : "");
 
         if (elapsed.startsWith("00:")) {
             elapsed = elapsed.mid(3);
@@ -921,7 +963,8 @@ void WaverServer::trackPosition(QUrl url, bool cast, bool decoderFinished, long 
         positionHash.insert("remaining", remaining);
 
         IpcMessageUtils ipcMessageUtils;
-        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Position, QJsonDocument(QJsonObject::fromVariantHash(positionHash))));
+        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Position,
+                QJsonDocument(QJsonObject::fromVariantHash(positionHash))));
     }
 }
 
@@ -936,7 +979,7 @@ void WaverServer::trackAboutToFinish(QUrl url)
 
     // these signals should be connected with the current track only
     disconnect(this,         SIGNAL(requestPluginUi(QUuid)),  currentTrack, SLOT(requestedPluginUi(QUuid)));
-    disconnect(currentTrack, SIGNAL(pluginUi(QUuid,QString)), this,         SLOT(pluginUi(QUuid,QString)));
+    disconnect(currentTrack, SIGNAL(pluginUi(QUuid, QString)), this,         SLOT(pluginUi(QUuid, QString)));
 
     // move current track to previous track
     if (previousTrack != NULL) {
@@ -980,13 +1023,13 @@ void WaverServer::trackFinished(QUrl url)
     }
 
     // let's see if this is a track in the playlist (for example if decoder gave up)
-    QVector<Track*> tracksToBeDeleted;
-    foreach(Track *track, playlistTracks) {
+    QVector<Track *> tracksToBeDeleted;
+    foreach (Track *track, playlistTracks) {
         if (track->getTrackInfo().url == url) {
             tracksToBeDeleted.append(track);
         }
     }
-    foreach(Track *track, tracksToBeDeleted) {
+    foreach (Track *track, tracksToBeDeleted) {
         emit unableToStart(track->getSourcePluginId(), track->getTrackInfo().url);
         playlistTracks.removeAll(track);
         delete track;
@@ -1014,7 +1057,8 @@ void WaverServer::trackInfoUpdated(QUrl url)
     // is this the current track?
     if ((currentTrack != NULL) && (url == currentTrack->getTrackInfo().url)) {
         IpcMessageUtils ipcMessageUtils;
-        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfo, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
+        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfo,
+                ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
         return;
     }
 
@@ -1027,13 +1071,15 @@ void WaverServer::trackInfoUpdated(QUrl url)
 void WaverServer::trackError(QUrl url, bool fatal, QString errorString)
 {
     // print to error output
-    Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(fatal ? "Fatal error" : "Error").arg(url.toString()).arg(errorString), true);
+    Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(fatal ? "Fatal error" : "Error").arg(url.toString()).arg(
+            errorString), true);
 
     // send message to UI
     QVariantHash messageHash;
     messageHash.insert("message", errorString);
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage,
+            QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
 
     // cancel the track if fatal
     if (fatal) {

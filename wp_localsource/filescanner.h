@@ -33,31 +33,30 @@
 #include <QThread>
 
 
-class FileScanner : public QThread
-{
-    Q_OBJECT
+class FileScanner : public QThread {
+        Q_OBJECT
 
-public:
+    public:
 
-    explicit FileScanner(QObject *parent, QString startDir, QStringList *results, QStringList *exclude, QMutex *mutex);
+        explicit FileScanner(QObject *parent, QString startDir, QStringList *results, QStringList *exclude, QMutex *mutex);
 
-    void run() override;
+        void run() override;
 
-private:
+    private:
 
-    QString      startDir;
-    QStringList *results;
-    QStringList *exclude;
-    QMutex      *mutex;
+        QString      startDir;
+        QStringList *results;
+        QStringList *exclude;
+        QMutex      *mutex;
 
-    QMimeDatabase mimeDatabase;
+        QMimeDatabase mimeDatabase;
 
-    void scan(QString startDir);
+        void scan(QString startDir);
 
 
-signals:
+    signals:
 
-    void foundFirst();
+        void foundFirst();
 
 };
 

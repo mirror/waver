@@ -28,7 +28,7 @@
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_OUTPUT) {
-        retVal->append((PluginBase*) new SoundOutput());
+        retVal->append((PluginBase *) new SoundOutput());
     }
 }
 
@@ -316,20 +316,20 @@ void SoundOutput::audioOutputStateChanged(QAudio::State state)
     if ((state == QAudio::StoppedState) && (audioOutput->error() != QAudio::NoError)) {
         QString errorString = "Unknown audio output error";
         switch (audioOutput->error()) {
-        case QAudio::OpenError:
-            errorString = "An error occurred opening the audio device";
-            break;
-        case QAudio::IOError:
-            errorString = "An error occurred during read/write of audio device";
-            break;
-        case QAudio::UnderrunError:
-            errorString = "Audio data is not being fed to the audio device at a fast enough rate";
-            break;
-        case QAudio::FatalError:
-            errorString = "A non-recoverable error has occurred, the audio device is not usable at this time.";
-            break;
-        default:
-            break;
+            case QAudio::OpenError:
+                errorString = "An error occurred opening the audio device";
+                break;
+            case QAudio::IOError:
+                errorString = "An error occurred during read/write of audio device";
+                break;
+            case QAudio::UnderrunError:
+                errorString = "Audio data is not being fed to the audio device at a fast enough rate";
+                break;
+            case QAudio::FatalError:
+                errorString = "A non-recoverable error has occurred, the audio device is not usable at this time.";
+                break;
+            default:
+                break;
         }
 
         wasError = true;
@@ -375,7 +375,7 @@ void SoundOutput::fillBytesToPlay()
 
         // append to temporary buffer
         bytesToPlayMutex.lock();
-        bytesToPlay.append((char*)buffer->constData(), buffer->byteCount());
+        bytesToPlay.append((char *)buffer->constData(), buffer->byteCount());
         bytesToPlayMutex.unlock();
 
         timerDelay += buffer->format().durationForBytes(buffer->byteCount()) / 1000;
@@ -391,7 +391,7 @@ void SoundOutput::fillBytesToPlay()
 
     // timer to write next chunk
     timerWaits = true;
-    QTimer::singleShot(timerDelay > 0 ? timerDelay / 4 * 3 : 50 , this, SLOT(timerTimeout()));
+    QTimer::singleShot(timerDelay > 0 ? timerDelay / 4 * 3 : 50, this, SLOT(timerTimeout()));
 }
 
 
@@ -444,50 +444,51 @@ void SoundOutput::applyFade()
     quint32 *uint32;
 
     // do the math sample by sample (simple linear fade)
-    char  *data      = (char*)buffer->data();
+    char  *data      = (char *)buffer->data();
     int    byteCount = 0;
     while (byteCount < buffer->byteCount()) {
         // not all formats supported, but most common ones are
         if (dataType != 0) {
             // calculation
             switch (dataType) {
-            case 1:
-                int8  = (qint8*)data;
-                *int8 = (fadePercent * *int8) / 100;
-                data      += 1;
-                byteCount += 1;
-                break;
-            case 2:
-                int16  = (qint16*)data;
-                *int16 = (fadePercent * *int16) / 100;
-                data      += 2;
-                byteCount += 2;
-                break;
-            case 3:
-                int32  = (qint32*)data;
-                *int32 = (fadePercent * *int32) / 100;
-                data      += 4;
-                byteCount += 4;
-                break;
-            case 4:
-                uint8  = (quint8*)data;
-                *uint8 = (fadePercent * *uint8) / 100;
-                data      += 1;
-                byteCount += 1;
-                break;
-            case 5:
-                uint16  = (quint16*)data;
-                *uint16 = (fadePercent * *uint16) / 100;
-                data      += 2;
-                byteCount += 2;
-                break;
-            case 6:
-                uint32  = (quint32*)data;
-                *uint32 = (fadePercent * *uint32) / 100;
-                data      += 4;
-                byteCount += 4;
+                case 1:
+                    int8  = (qint8 *)data;
+                    *int8 = (fadePercent * *int8) / 100;
+                    data      += 1;
+                    byteCount += 1;
+                    break;
+                case 2:
+                    int16  = (qint16 *)data;
+                    *int16 = (fadePercent * *int16) / 100;
+                    data      += 2;
+                    byteCount += 2;
+                    break;
+                case 3:
+                    int32  = (qint32 *)data;
+                    *int32 = (fadePercent * *int32) / 100;
+                    data      += 4;
+                    byteCount += 4;
+                    break;
+                case 4:
+                    uint8  = (quint8 *)data;
+                    *uint8 = (fadePercent * *uint8) / 100;
+                    data      += 1;
+                    byteCount += 1;
+                    break;
+                case 5:
+                    uint16  = (quint16 *)data;
+                    *uint16 = (fadePercent * *uint16) / 100;
+                    data      += 2;
+                    byteCount += 2;
+                    break;
+                case 6:
+                    uint32  = (quint32 *)data;
+                    *uint32 = (fadePercent * *uint32) / 100;
+                    data      += 4;
+                    byteCount += 4;
             }
-        } else {
+        }
+        else {
             byteCount += buffer->format().sampleSize() / 8;
         }
 

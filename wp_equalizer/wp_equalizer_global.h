@@ -27,9 +27,9 @@
 #include <QtCore/qglobal.h>
 
 #if defined(WP_EQUALIZER_LIBRARY)
-#  define WP_EQUALIZER_EXPORT Q_DECL_EXPORT
+    #define WP_EQUALIZER_EXPORT Q_DECL_EXPORT
 #else
-#  define WP_EQUALIZER_EXPORT Q_DECL_IMPORT
+    #define WP_EQUALIZER_EXPORT Q_DECL_IMPORT
 #endif
 
 #endif // WP_EQUALIZER_GLOBAL_H

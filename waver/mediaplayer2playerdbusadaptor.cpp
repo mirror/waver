@@ -1,7 +1,8 @@
 #include "mediaplayer2playerdbusadaptor.h"
 
 
-MediaPlayer2PlayerDBusAdaptor::MediaPlayer2PlayerDBusAdaptor(QObject *parent, WaverServer *waverServer) : QDBusAbstractAdaptor(parent)
+MediaPlayer2PlayerDBusAdaptor::MediaPlayer2PlayerDBusAdaptor(QObject *parent,
+    WaverServer *waverServer) : QDBusAbstractAdaptor(parent)
 {
     this->ipcMessageUtils = new IpcMessageUtils();
     this->waverServer     = waverServer;
@@ -224,24 +225,25 @@ void MediaPlayer2PlayerDBusAdaptor::waverServerIpcSend(QString data)
 
     for (int i = 0; i < this->ipcMessageUtils->processedCount(); i++) {
         switch (ipcMessageUtils->processedIpcMessage(i)) {
-        case IpcMessageUtils::Pause:
-        case IpcMessageUtils::Resume:
-            properties.insert("PlaybackStatus", playbackStatus());
-            break;
-        case IpcMessageUtils::TrackInfo:
-            properties.insert("Metadata", metadata());
-            if (firstTrack) {
-                firstTrack = false;
+            case IpcMessageUtils::Pause:
+            case IpcMessageUtils::Resume:
                 properties.insert("PlaybackStatus", playbackStatus());
-            }
-            break;
-        default:
-            break;
+                break;
+            case IpcMessageUtils::TrackInfo:
+                properties.insert("Metadata", metadata());
+                if (firstTrack) {
+                    firstTrack = false;
+                    properties.insert("PlaybackStatus", playbackStatus());
+                }
+                break;
+            default:
+                break;
         }
     }
 
     if (properties.count() > 0) {
-        QDBusMessage mprisMessage = QDBusMessage::createSignal("/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties", "PropertiesChanged");
+        QDBusMessage mprisMessage = QDBusMessage::createSignal("/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties",
+                "PropertiesChanged");
         mprisMessage << "org.mpris.MediaPlayer2.Player";
         mprisMessage << properties;
         mprisMessage << QStringList();
@@ -249,7 +251,8 @@ void MediaPlayer2PlayerDBusAdaptor::waverServerIpcSend(QString data)
         QDBusConnection::sessionBus().send(mprisMessage);
 
         if (properties.contains("Metadata")) {
-            QDBusMessage notificationMessage = QDBusMessage::createMethodCall("org.freedesktop.Notifications", "/org/freedesktop/Notifications", "org.freedesktop.Notifications", "Notify");
+            QDBusMessage notificationMessage = QDBusMessage::createMethodCall("org.freedesktop.Notifications",
+                    "/org/freedesktop/Notifications", "org.freedesktop.Notifications", "Notify");
             notificationMessage << "Waver";
             notificationMessage << notificationId;
             notificationMessage << "";

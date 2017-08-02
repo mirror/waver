@@ -120,7 +120,7 @@ void ServerTcpHandler::newConnection()
 void ServerTcpHandler::socketReadyRead()
 {
     // get the client that sent this signal
-    QTcpSocket *sender = (QTcpSocket*) QObject::sender();
+    QTcpSocket *sender = (QTcpSocket *) QObject::sender();
 
     // find it in our clients
     TcpClient thisClient;

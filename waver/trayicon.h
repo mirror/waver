@@ -12,38 +12,37 @@
 #include "server.h"
 
 
-class TrayIcon : public QObject
-{
-    Q_OBJECT
+class TrayIcon : public QObject {
+        Q_OBJECT
 
-public:
+    public:
 
-    explicit TrayIcon(QObject *parent, WaverServer *waverServer);
-    ~TrayIcon();
-
-
-private:
-
-    WaverServer     *waverServer;
-    IpcMessageUtils *ipcMessageUtils;
-    QAction         *playPauseAction;
-    QMenu           *systemTrayMenu;
-    QSystemTrayIcon *systemTrayIcon;
-
-    bool firstTrack;
-
-    void showMetadataMessage();
+        explicit TrayIcon(QObject *parent, WaverServer *waverServer);
+        ~TrayIcon();
 
 
-public slots:
+    private:
 
-    void menuPlayPause();
-    void menuNext();
-    void menuShowWaver();
+        WaverServer     *waverServer;
+        IpcMessageUtils *ipcMessageUtils;
+        QAction         *playPauseAction;
+        QMenu           *systemTrayMenu;
+        QSystemTrayIcon *systemTrayIcon;
 
-    void activated(QSystemTrayIcon::ActivationReason reason);
+        bool firstTrack;
 
-    void waverServerIpcSend(QString data);
+        void showMetadataMessage();
+
+
+    public slots:
+
+        void menuPlayPause();
+        void menuNext();
+        void menuShowWaver();
+
+        void activated(QSystemTrayIcon::ActivationReason reason);
+
+        void waverServerIpcSend(QString data);
 };
 
 #endif // TRAYICON_H

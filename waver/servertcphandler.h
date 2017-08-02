@@ -37,51 +37,50 @@
 #include "ipcmessageutils.h"
 
 
-class ServerTcpHandler : public QObject
-{
-    Q_OBJECT
+class ServerTcpHandler : public QObject {
+        Q_OBJECT
 
-public:
+    public:
 
-    explicit ServerTcpHandler(QObject *parent = 0);
-    ~ServerTcpHandler();
-
-
-private:
-
-    struct TcpClient {
-        QTcpSocket      *tcpSocket;
-        IpcMessageUtils *ipcMessageUtils;
-    };
-
-    QTcpServer         *tcpServer;
-    IpcMessageUtils     serverIpcMessageUtils;
-    QVector<TcpClient>  tcpClients;
+        explicit ServerTcpHandler(QObject *parent = 0);
+        ~ServerTcpHandler();
 
 
-signals:
+    private:
 
-    void message(IpcMessageUtils::IpcMessages message, QJsonDocument jsonDocument);
-    void url(QUrl url);
+        struct TcpClient {
+            QTcpSocket      *tcpSocket;
+            IpcMessageUtils *ipcMessageUtils;
+        };
 
-    void error(bool fatal, QString error);
-
-
-public slots:
-
-    void run();
-
-    void send(TcpClient tcpClient, QString ipcString);
-    void send(QString ipcString);
-    void send(QStringList ipcStrings);
+        QTcpServer         *tcpServer;
+        IpcMessageUtils     serverIpcMessageUtils;
+        QVector<TcpClient>  tcpClients;
 
 
-private slots:
+    signals:
 
-    void acceptError(QAbstractSocket::SocketError socketError);
-    void newConnection();
+        void message(IpcMessageUtils::IpcMessages message, QJsonDocument jsonDocument);
+        void url(QUrl url);
 
-    void socketReadyRead();
+        void error(bool fatal, QString error);
+
+
+    public slots:
+
+        void run();
+
+        void send(TcpClient tcpClient, QString ipcString);
+        void send(QString ipcString);
+        void send(QStringList ipcStrings);
+
+
+    private slots:
+
+        void acceptError(QAbstractSocket::SocketError socketError);
+        void newConnection();
+
+        void socketReadyRead();
 
 };
 

@@ -30,30 +30,29 @@
 #include "pluginbase.h"
 
 
-class PluginDecoder : public PluginBase
-{
-    Q_OBJECT
+class PluginDecoder : public PluginBase {
+        Q_OBJECT
 
 
-public:
+    public:
 
-    static const int PLUGIN_DECODER_VERSION = 1;
+        static const int PLUGIN_DECODER_VERSION = 1;
 
-    virtual void setUrl(QUrl url) = 0;
-
-
-signals:
-
-    void bufferAvailable(QUuid uniqueId, QAudioBuffer *buffer);
-    void finished(QUuid uniqueId);
-    void error(QUuid uniqueId, QString errorMessage);
+        virtual void setUrl(QUrl url) = 0;
 
 
-public slots:
+    signals:
 
-    virtual void start(QUuid uniqueId) = 0;
+        void bufferAvailable(QUuid uniqueId, QAudioBuffer *buffer);
+        void finished(QUuid uniqueId);
+        void error(QUuid uniqueId, QString errorMessage);
 
-    virtual void bufferDone(QUuid uniqueId, QAudioBuffer *buffer) = 0;
+
+    public slots:
+
+        virtual void start(QUuid uniqueId) = 0;
+
+        virtual void bufferDone(QUuid uniqueId, QAudioBuffer *buffer) = 0;
 
 };
 

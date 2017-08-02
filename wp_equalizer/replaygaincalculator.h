@@ -30,41 +30,40 @@
 #include "iirfiltercallback.h"
 
 
-class ReplayGainCalculator : IIRFilterCallback
-{
+class ReplayGainCalculator : IIRFilterCallback {
 
-public:
+    public:
 
-    ReplayGainCalculator(IIRFilter::SampleTypes sampleType, int sampleRate);
+        ReplayGainCalculator(IIRFilter::SampleTypes sampleType, int sampleRate);
 
-    void   filterCallback(double *sample, int channelIndex) override;
-    double calculateResult();
-    void   reset();
+        void   filterCallback(double *sample, int channelIndex) override;
+        double calculateResult();
+        void   reset();
 
 
-private:
+    private:
 
-    static constexpr double RMS_BLOCK_SECONDS    = 0.05;
-    static const     int    STATS_MAX_DB         = 120;
-    static const     int    STATS_STEPS_PER_DB   = 100;
-    static const     int    STATS_TABLE_MAX      = (STATS_MAX_DB * STATS_STEPS_PER_DB) - 1;
-    static constexpr double STATS_RMS_PERCEPTION = 0.95;
-    static constexpr double PINK_NOISE_REFERENCE = 64.82;
+        static constexpr double RMS_BLOCK_SECONDS    = 0.05;
+        static const     int    STATS_MAX_DB         = 120;
+        static const     int    STATS_STEPS_PER_DB   = 100;
+        static const     int    STATS_TABLE_MAX      = (STATS_MAX_DB *STATS_STEPS_PER_DB) - 1;
+        static constexpr double STATS_RMS_PERCEPTION = 0.95;
+        static constexpr double PINK_NOISE_REFERENCE = 64.82;
 
-    IIRFilter::SampleTypes sampleType;
+        IIRFilter::SampleTypes sampleType;
 
-    int  samplesPerRmsBlock;
+        int  samplesPerRmsBlock;
 
-    double int16Min;
-    double int16Max;
-    double int16Range;
-    double sampleMin;
-    double sampleRange;
+        double int16Min;
+        double int16Max;
+        double int16Range;
+        double sampleMin;
+        double sampleRange;
 
-    double stereoRmsSum;
-    int    countRmsSum;
+        double stereoRmsSum;
+        int    countRmsSum;
 
-    unsigned int statsTable[STATS_MAX_DB * STATS_STEPS_PER_DB];
+        unsigned int statsTable[STATS_MAX_DB * STATS_STEPS_PER_DB];
 
 };
 

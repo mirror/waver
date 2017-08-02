@@ -35,56 +35,55 @@
 
 // TODO retry download if interrupted
 
-class Feed : public QObject
-{
-    Q_OBJECT
+class Feed : public QObject {
+        Q_OBJECT
 
-public:
+    public:
 
-    explicit Feed(QUrl url);
-    ~Feed();
+        explicit Feed(QUrl url);
+        ~Feed();
 
-    size_t read(char *data, size_t maxlen);
-    bool   isFinished();
-
-
-private:
-
-    QUrl url;
-
-    QFile *file;
-
-    QNetworkAccessManager *networkAccessManager;
-    QNetworkReply         *networkReply;
-
-    QVector<QByteArray*> buffer;
-
-    QMutex mutex;
-
-    bool downloadStarted;
-    bool readyEmitted;
-    bool downloadFinished;
+        size_t read(char *data, size_t maxlen);
+        bool   isFinished();
 
 
-signals:
+    private:
 
-    void ready();
-    void error(QString errorString);
+        QUrl url;
+
+        QFile *file;
+
+        QNetworkAccessManager *networkAccessManager;
+        QNetworkReply         *networkReply;
+
+        QVector<QByteArray *> buffer;
+
+        QMutex mutex;
+
+        bool downloadStarted;
+        bool readyEmitted;
+        bool downloadFinished;
 
 
-public slots:
+    signals:
 
-    void run();
+        void ready();
+        void error(QString errorString);
 
 
-private slots:
+    public slots:
 
-    void networkDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
-    void networkError(QNetworkReply::NetworkError code);
+        void run();
 
-    void fileReadTimer();
-    void connectionTimeout();
-    void preCacheTimeout();
+
+    private slots:
+
+        void networkDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
+        void networkError(QNetworkReply::NetworkError code);
+
+        void fileReadTimer();
+        void connectionTimeout();
+        void preCacheTimeout();
 
 };
 

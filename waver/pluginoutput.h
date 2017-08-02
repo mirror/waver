@@ -30,38 +30,37 @@
 #include "pluginbase.h"
 
 
-class PluginOutput : public PluginBase
-{
-    Q_OBJECT
+class PluginOutput : public PluginBase {
+        Q_OBJECT
 
 
-public:
+    public:
 
-    static const int PLUGIN_OUTPUT_VERSION = 1;
-    static const int CACHE_BUFFER_COUNT    = 3;
+        static const int PLUGIN_OUTPUT_VERSION = 1;
+        static const int CACHE_BUFFER_COUNT    = 3;
 
-    virtual void setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
-    virtual bool isMainOutput()                                                     = 0;
-
-
-signals:
-
-    void positionChanged(QUuid uniqueId, qint64 posMilliseconds);
-    void bufferDone(QUuid uniqueId, QAudioBuffer *buffer);
-    void bufferUnderrun(QUuid uniqueId);
-    void fadeInComplete(QUuid uniqueId);
-    void fadeOutComplete(QUuid uniqueId);
-    void error(QUuid uniqueId, QString errorMessage);
+        virtual void setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
+        virtual bool isMainOutput()                                                     = 0;
 
 
-public slots:
+    signals:
 
-    virtual void bufferAvailable(QUuid uniqueId) = 0;
+        void positionChanged(QUuid uniqueId, qint64 posMilliseconds);
+        void bufferDone(QUuid uniqueId, QAudioBuffer *buffer);
+        void bufferUnderrun(QUuid uniqueId);
+        void fadeInComplete(QUuid uniqueId);
+        void fadeOutComplete(QUuid uniqueId);
+        void error(QUuid uniqueId, QString errorMessage);
 
-    virtual void pause(QUuid uniqueId)                = 0;
-    virtual void resume(QUuid uniqueId)               = 0;
-    virtual void fadeIn(QUuid uniqueId, int seconds)  = 0;
-    virtual void fadeOut(QUuid uniqueId, int seconds) = 0;
+
+    public slots:
+
+        virtual void bufferAvailable(QUuid uniqueId) = 0;
+
+        virtual void pause(QUuid uniqueId)                = 0;
+        virtual void resume(QUuid uniqueId)               = 0;
+        virtual void fadeIn(QUuid uniqueId, int seconds)  = 0;
+        virtual void fadeOut(QUuid uniqueId, int seconds) = 0;
 };
 
 #endif // PLUGINOUTPUT_H

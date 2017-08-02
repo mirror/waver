@@ -59,80 +59,79 @@
 extern "C" WP_LOCALSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource
-{
-    Q_OBJECT
+class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource {
+        Q_OBJECT
 
-public:
+    public:
 
-    int     pluginType()         override;
-    QString pluginName()         override;
-    int     pluginVersion()      override;
-    QUuid   persistentUniqueId() override;
-    bool    hasUI()              override;
-
-
-    explicit LocalSource();
-    ~LocalSource();
+        int     pluginType()         override;
+        QString pluginName()         override;
+        int     pluginVersion()      override;
+        QUuid   persistentUniqueId() override;
+        bool    hasUI()              override;
 
 
-private:
-
-    QUuid id;
-
-    QMutex                mutex;
-    QVector<FileScanner*> scanners;
-    bool                  readyEmitted;
-
-    QStringList directories;
-    QStringList trackFileNames;
-    QStringList alreadyPlayedTrackFileNames;
-
-    QString variationSetting;
-    int     variationCurrent;
-    int     variationRemaining;
-    QString variationDir;
-    int     variationSetCountSinceHigh;
-    int     variationSetCountSinceLow;
-
-    QMimeDatabase mimeDatabase;
-
-    void scanDir(QString dir);
-
-    QJsonDocument configToJson();
-    void          jsonToConfig(QJsonDocument jsonDocument);
-
-    bool      isTrackFile(QFileInfo fileInfo);
-    TrackInfo trackInfoFromFilePath(QString filePath);
-
-    int  variationSettingId();
-    void variationSetCurrentRemainingDir();
+        explicit LocalSource();
+        ~LocalSource();
 
 
-public slots:
+    private:
 
-    void run() override;
+        QUuid id;
 
-    void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        QMutex                mutex;
+        QVector<FileScanner *> scanners;
+        bool                  readyEmitted;
 
-    void getUiQml(QUuid uniqueId)                         override;
-    void uiResults(QUuid uniqueId, QJsonDocument results) override;
+        QStringList directories;
+        QStringList trackFileNames;
+        QStringList alreadyPlayedTrackFileNames;
 
-    void unableToStart(QUuid uniqueId, QUrl url)                       override;
-    void getPlaylist(QUuid uniqueId, int maxCount)                     override;
-    void getOpenTracks(QUuid uniqueId, QString parentId)               override;
-    void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks) override;
+        QString variationSetting;
+        int     variationCurrent;
+        int     variationRemaining;
+        QString variationDir;
+        int     variationSetCountSinceHigh;
+        int     variationSetCountSinceLow;
 
-    void search(QUuid uniqueId, QString criteria) override;
-    void action(QUuid uniqueId, int actionKey)    override;
+        QMimeDatabase mimeDatabase;
+
+        void scanDir(QString dir);
+
+        QJsonDocument configToJson();
+        void          jsonToConfig(QJsonDocument jsonDocument);
+
+        bool      isTrackFile(QFileInfo fileInfo);
+        TrackInfo trackInfoFromFilePath(QString filePath);
+
+        int  variationSettingId();
+        void variationSetCurrentRemainingDir();
 
 
-private slots:
+    public slots:
 
-    void scannerFoundFirst();
-    void scannerFinished();
+        void run() override;
 
-    void readyTimer();
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+
+        void getUiQml(QUuid uniqueId)                         override;
+        void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void unableToStart(QUuid uniqueId, QUrl url)                       override;
+        void getPlaylist(QUuid uniqueId, int maxCount)                     override;
+        void getOpenTracks(QUuid uniqueId, QString parentId)               override;
+        void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks) override;
+
+        void search(QUuid uniqueId, QString criteria) override;
+        void action(QUuid uniqueId, int actionKey)    override;
+
+
+    private slots:
+
+        void scannerFoundFirst();
+        void scannerFinished();
+
+        void readyTimer();
 
 };
 

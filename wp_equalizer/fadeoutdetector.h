@@ -36,49 +36,48 @@
 #endif
 
 
-class FadeOutDetector : public IIRFilterCallback
-{
+class FadeOutDetector : public IIRFilterCallback {
 
-public:
+    public:
 
-    FadeOutDetector(IIRFilter::SampleTypes sampleType, int sampleRate);
+        FadeOutDetector(IIRFilter::SampleTypes sampleType, int sampleRate);
 
-    void   filterCallback(double *sample, int channelIndex) override;
-    qint64 getFadeOutStartPoisitionMSec();
-    qint64 getFadeOutEndPoisitionMSec();
-    qint64 getFirstNonSilentMSec();
-    qint64 getLastNonSilentMSec();
+        void   filterCallback(double *sample, int channelIndex) override;
+        qint64 getFadeOutStartPoisitionMSec();
+        qint64 getFadeOutEndPoisitionMSec();
+        qint64 getFirstNonSilentMSec();
+        qint64 getLastNonSilentMSec();
 
 
-private:
+    private:
 
-    struct EnvelopePoint {
+        struct EnvelopePoint {
+            qint64 positionUSec;
+            double oneSecAverage;
+            double movingAverage;
+        };
+
+        IIRFilter::SampleTypes sampleType;
+        int                    sampleRate;
+
+        double int16Min;
+        double int16Max;
+        double int16Range;
+        double sampleMin;
+        double sampleRange;
+
+        qint64 frameCounter;
         qint64 positionUSec;
-        double oneSecAverage;
-        double movingAverage;
-    };
+        qint64 firstNonSilentUSec;
+        qint64 lastNonSilentUSec;
 
-    IIRFilter::SampleTypes sampleType;
-    int                    sampleRate;
+        double stereoToMono;
+        double sum;
+        double sumCounter;
 
-    double int16Min;
-    double int16Max;
-    double int16Range;
-    double sampleMin;
-    double sampleRange;
-
-    qint64 frameCounter;
-    qint64 positionUSec;
-    qint64 firstNonSilentUSec;
-    qint64 lastNonSilentUSec;
-
-    double stereoToMono;
-    double sum;
-    double sumCounter;
-
-    QVector<EnvelopePoint> envelope;
-    qint64                 envelopeLastPosition;
-    double                 firstAverage;
+        QVector<EnvelopePoint> envelope;
+        qint64                 envelopeLastPosition;
+        double                 firstAverage;
 };
 
 #endif // FADEOUTDETECTOR_H

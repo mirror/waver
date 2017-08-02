@@ -29,31 +29,30 @@
 #include <QVariant>
 
 
-class PluginDsp : public PluginBase
-{
-    Q_OBJECT
+class PluginDsp : public PluginBase {
+        Q_OBJECT
 
 
-public:
+    public:
 
-    static const int PLUGIN_DSP_VERSION = 1;
+        static const int PLUGIN_DSP_VERSION = 1;
 
-    // greater number means less priority
-    virtual int priority() = 0;
+        // greater number means less priority
+        virtual int priority() = 0;
 
-    virtual void setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
-
-
-signals:
-
-    void bufferDone(QUuid uniqueId, QAudioBuffer *buffer);
+        virtual void setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
 
 
-public slots:
+    signals:
 
-    virtual void bufferAvailable(QUuid uniqueId)                                                              = 0;
-    virtual void playBegin(QUuid uniqueId)                                                                    = 0;
-    virtual void messageFromDspPrePlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value) = 0;
+        void bufferDone(QUuid uniqueId, QAudioBuffer *buffer);
+
+
+    public slots:
+
+        virtual void bufferAvailable(QUuid uniqueId)                                                              = 0;
+        virtual void playBegin(QUuid uniqueId)                                                                    = 0;
+        virtual void messageFromDspPrePlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value) = 0;
 
 };
 

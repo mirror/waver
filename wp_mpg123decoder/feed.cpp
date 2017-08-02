@@ -82,10 +82,10 @@ void Feed::run()
     networkAccessManager = new QNetworkAccessManager();
     networkReply = networkAccessManager->get(QNetworkRequest(url));
 
-    connect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
+    connect(networkReply, SIGNAL(downloadProgress(qint64, qint64)),    this, SLOT(networkDownloadProgress(qint64, qint64)));
     connect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
 
-    QTimer::singleShot( 7500, this, SLOT(connectionTimeout()));
+    QTimer::singleShot(7500, this, SLOT(connectionTimeout()));
     QTimer::singleShot(15000, this, SLOT(preCacheTimeout()));
 }
 
@@ -139,7 +139,7 @@ void Feed::fileReadTimer()
     // get the total size of data already read into memory
     qint64 totalBufferBytes = 0;
     mutex.lock();
-    foreach(QByteArray *bufferElement, buffer) {
+    foreach (QByteArray *bufferElement, buffer) {
         totalBufferBytes += bufferElement->size();
     }
     mutex.unlock();

@@ -29,33 +29,32 @@
 #include "coefficientlist.h"
 
 
-class IIRFilterChain
-{
+class IIRFilterChain {
 
-public:
+    public:
 
-    static const int MAX_FILTERS = 25;
+        static const int MAX_FILTERS = 25;
 
-    // constructors and destructor
-    IIRFilterChain();
-    IIRFilterChain(QList<CoefficientList> coefficientLists);
-    ~IIRFilterChain();
+        // constructors and destructor
+        IIRFilterChain();
+        IIRFilterChain(QList<CoefficientList> coefficientLists);
+        ~IIRFilterChain();
 
-    // filter management
-    void       appendFilter(CoefficientList coefficientList);
-    IIRFilter* getFilter(int index);
-    int        getFilterCount();
+        // filter management
+        void       appendFilter(CoefficientList coefficientList);
+        IIRFilter *getFilter(int index);
+        int        getFilterCount();
 
-    // filtering
-    void processPCMData(void *data, int byteCount, IIRFilter::SampleTypes sampleType, int channelCount);
-    void reset();
+        // filtering
+        void processPCMData(void *data, int byteCount, IIRFilter::SampleTypes sampleType, int channelCount);
+        void reset();
 
 
-private:
+    private:
 
-    // filters
-    int        filterCount;
-    IIRFilter* filters[MAX_FILTERS];
+        // filters
+        int        filterCount;
+        IIRFilter *filters[MAX_FILTERS];
 
 };
 

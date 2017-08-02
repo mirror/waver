@@ -50,10 +50,9 @@ void initializeCommandLineParser(QCommandLineParser *commandLineParser)
 {
     commandLineParser->setApplicationDescription(Globals::appDesc());
     commandLineParser->addPositionalArgument("additional_arguments", "Track URLs and/or control commands");
-    commandLineParser->addOptions(
-        {
-            { {"s", "server" }, "Starts the server instead of the user interface" },
-        });
+    commandLineParser->addOptions({
+        { {"s", "server" }, "Starts the server instead of the user interface" },
+    });
     commandLineParser->addHelpOption();
     commandLineParser->addVersionOption();
 }
@@ -114,11 +113,11 @@ int main(int argc, char *argv[])
     if (serverRequested) {
         // create application object
         #ifdef Q_OS_WIN
-            // on Windows, GUI and Widgets stuff is needed for the system tray icon
-            QApplication coreApplication(argc, argv);
+        // on Windows, GUI and Widgets stuff is needed for the system tray icon
+        QApplication coreApplication(argc, argv);
         #else
-            // keep it light on other platforms
-            QCoreApplication coreApplication(argc, argv);
+        // keep it light on other platforms
+        QCoreApplication coreApplication(argc, argv);
         #endif
         coreApplication.setApplicationName(Globals::appName());
         coreApplication.setApplicationVersion(Globals::appVersion());
@@ -175,7 +174,7 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-#ifndef Q_OS_ANDROID
+    #ifndef Q_OS_ANDROID
 
     // start server in a separate process if not yet running (on Android, it is started by the activity, see WaverActivtity.java)
     if (!serverRunning) {
@@ -183,7 +182,7 @@ int main(int argc, char *argv[])
         QProcess::startDetached(QCoreApplication::applicationFilePath(), additionalArguments);
     }
 
-#endif
+    #endif
 
     // start user interface
     QQmlApplicationEngine engine;

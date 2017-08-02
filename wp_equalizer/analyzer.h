@@ -55,59 +55,58 @@
 #define REPLAYGAIN_44100_BUTTERWORTH_B { -1.96977855582618, 0.97022847566350 }
 
 
-class WP_EQUALIZER_EXPORT Analyzer : PluginDspPre
-{
-    Q_OBJECT
+class WP_EQUALIZER_EXPORT Analyzer : PluginDspPre {
+        Q_OBJECT
 
-public:
+    public:
 
-    static const int DSP_MESSAGE_REPLAYGAIN = 0;
+        static const int DSP_MESSAGE_REPLAYGAIN = 0;
 
-    int     pluginType()                                                       override;
-    QString pluginName()                                                       override;
-    int     pluginVersion()                                                    override;
-    QUuid   persistentUniqueId()                                               override;
-    bool    hasUI()                                                            override;
-    int     priority()                                                         override;
-    void    setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) override;
+        int     pluginType()                                                       override;
+        QString pluginName()                                                       override;
+        int     pluginVersion()                                                    override;
+        QUuid   persistentUniqueId()                                               override;
+        bool    hasUI()                                                            override;
+        int     priority()                                                         override;
+        void    setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) override;
 
-    Analyzer();
-    ~Analyzer();
-
-
-private:
-
-    QUuid id;
-
-    bool enableTransitions;
-
-    BufferQueue *bufferQueue;
-    QMutex      *bufferQueueMutex;
-
-    bool                    filtersSetup;
-    bool                    firstNonSilentPositionChecked;
-    qint64                  resultLastCalculated;
-    IIRFilter::SampleTypes  sampleType;
-    IIRFilterChain         *replayGainFilter;
-    ReplayGainCalculator   *replayGainCalculator;
-    FadeOutDetector        *fadeOutDetector;
-
-    bool decoderFinished;
-
-    void transition();
+        Analyzer();
+        ~Analyzer();
 
 
-public slots:
+    private:
 
-    void run() override;
+        QUuid id;
 
-    void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        bool enableTransitions;
 
-    void getUiQml(QUuid uniqueId)                         override;
-    void uiResults(QUuid uniqueId, QJsonDocument results) override;
+        BufferQueue *bufferQueue;
+        QMutex      *bufferQueueMutex;
 
-    void bufferAvailable(QUuid uniqueId)             override;
-    void decoderDone(QUuid uniqueId)                 override;
+        bool                    filtersSetup;
+        bool                    firstNonSilentPositionChecked;
+        qint64                  resultLastCalculated;
+        IIRFilter::SampleTypes  sampleType;
+        IIRFilterChain         *replayGainFilter;
+        ReplayGainCalculator   *replayGainCalculator;
+        FadeOutDetector        *fadeOutDetector;
+
+        bool decoderFinished;
+
+        void transition();
+
+
+    public slots:
+
+        void run() override;
+
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+
+        void getUiQml(QUuid uniqueId)                         override;
+        void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void bufferAvailable(QUuid uniqueId)             override;
+        void decoderDone(QUuid uniqueId)                 override;
 };
 
 #endif // ANALYZER_H

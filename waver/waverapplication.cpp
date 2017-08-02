@@ -49,13 +49,16 @@ WaverApplication::WaverApplication(int &argc, char **argv) : QGuiApplication(arg
 
     connect(this, SIGNAL(ipcConnect()),                                        tcpHandler, SLOT(open()));
     connect(this, SIGNAL(ipcDisconnect()),                                     tcpHandler, SLOT(close()));
-    connect(this, SIGNAL(ipcSend(IpcMessageUtils::IpcMessages)),               tcpHandler, SLOT(send(IpcMessageUtils::IpcMessages)));
-    connect(this, SIGNAL(ipcSend(IpcMessageUtils::IpcMessages,QJsonDocument)), tcpHandler, SLOT(send(IpcMessageUtils::IpcMessages,QJsonDocument)));
+    connect(this, SIGNAL(ipcSend(IpcMessageUtils::IpcMessages)),               tcpHandler,
+        SLOT(send(IpcMessageUtils::IpcMessages)));
+    connect(this, SIGNAL(ipcSend(IpcMessageUtils::IpcMessages, QJsonDocument)), tcpHandler, SLOT(send(IpcMessageUtils::IpcMessages,
+                QJsonDocument)));
 
     connect(tcpHandler, SIGNAL(opened()),                                             this, SLOT(ipcOpened()));
     connect(tcpHandler, SIGNAL(closed()),                                             this, SLOT(ipcClosed()));
-    connect(tcpHandler, SIGNAL(message(IpcMessageUtils::IpcMessages, QJsonDocument)), this, SLOT(ipcMessage(IpcMessageUtils::IpcMessages, QJsonDocument)));
-    connect(tcpHandler, SIGNAL(error(bool,QString)),                                  this, SLOT(ipcError(bool,QString)));
+    connect(tcpHandler, SIGNAL(message(IpcMessageUtils::IpcMessages, QJsonDocument)), this,
+        SLOT(ipcMessage(IpcMessageUtils::IpcMessages, QJsonDocument)));
+    connect(tcpHandler, SIGNAL(error(bool, QString)),                                  this, SLOT(ipcError(bool, QString)));
 
     // application signal connections
     connect(this, SIGNAL(applicationStateChanged(Qt::ApplicationState)), this, SLOT(stateChanged(Qt::ApplicationState)));
@@ -78,70 +81,128 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
 {
     // just in case
     if (uiMainWindow != NULL) {
-        disconnect(this,         SIGNAL(uiActivated()),                                                       uiMainWindow, SLOT(activated()));
-        disconnect(this,         SIGNAL(uiInactivated()),                                                     uiMainWindow, SLOT(inactivated()));
-        disconnect(this,         SIGNAL(uiUserMessage(QVariant)),                                             uiMainWindow, SLOT(displayUserMessage(QVariant)));
-        disconnect(this,         SIGNAL(uiCollections(QVariant,QVariant)),                                    uiMainWindow, SLOT(fillCollectionsList(QVariant,QVariant)));
-        disconnect(this,         SIGNAL(uiTrackInfo(QVariant,QVariant,QVariant,QVariant,QVariant)),           uiMainWindow, SLOT(updateTrackInfo(QVariant,QVariant,QVariant,QVariant,QVariant)));
-        disconnect(this,         SIGNAL(uiPicture(QVariant)),                                                 uiMainWindow, SLOT(updateArt(QVariant)));
-        disconnect(this,         SIGNAL(uiPosition(QVariant,QVariant)),                                       uiMainWindow, SLOT(updatePosition(QVariant, QVariant)));
-        disconnect(this,         SIGNAL(uiActions(QVariant)),                                                 uiMainWindow, SLOT(updateTrackActions(QVariant)));
-        disconnect(this,         SIGNAL(uiClearPlaylist()),                                                   uiMainWindow, SLOT(clearPlaylist()));
-        disconnect(this,         SIGNAL(uiAddToPlaylist(QVariant,QVariant,QVariant,QVariant,QVariant)),       uiMainWindow, SLOT(addToPlaylist(QVariant,QVariant,QVariant,QVariant,QVariant)));
-        disconnect(this,         SIGNAL(uiPaused()),                                                          uiMainWindow, SLOT(paused()));
-        disconnect(this,         SIGNAL(uiResumed()),                                                         uiMainWindow, SLOT(resumed()));
-        disconnect(this,         SIGNAL(uiClearPluginsList()),                                                uiMainWindow, SLOT(clearPluginsList()));
-        disconnect(this,         SIGNAL(uiAddToPluginsList(QVariant,QVariant)),                               uiMainWindow, SLOT(addToPluginsList(QVariant,QVariant)));
-        disconnect(this,         SIGNAL(uiDisplayPluginUI(QVariant,QVariant)),                                uiMainWindow, SLOT(displayPluginUI(QVariant id, QVariant qml)));
-        disconnect(this,         SIGNAL(uiAddToOpenTracksList(QVariant,QVariant,QVariant,QVariant,QVariant)), uiMainWindow, SLOT(addToOpenTracksList(QVariant,QVariant,QVariant,QVariant,QVariant)));
-        disconnect(uiMainWindow, SIGNAL(menuPause()),                                                         this,         SLOT(menuPause()));
-        disconnect(uiMainWindow, SIGNAL(menuResume()),                                                        this,         SLOT(menuResume()));
-        disconnect(uiMainWindow, SIGNAL(menuNext()),                                                          this,         SLOT(menuNext()));
-        disconnect(uiMainWindow, SIGNAL(menuCollection(QVariant)),                                            this,         SLOT(menuCollection(QVariant)));
-        disconnect(uiMainWindow, SIGNAL(menuAbout()),                                                         this,         SLOT(menuAbout()));
-        disconnect(uiMainWindow, SIGNAL(menuQuit()),                                                          this,         SLOT(menuQuit()));
-        disconnect(uiMainWindow, SIGNAL(collectionsDialogResults(QVariant)),                                  this,         SLOT(collectionsDialogResults(QVariant)));
-        disconnect(uiMainWindow, SIGNAL(pluginUIResults(QVariant,QVariant)),                                  this,         SLOT(pluginUIResults(QVariant,QVariant)));
-        disconnect(uiMainWindow, SIGNAL(getOpenTracks(QVariant,QVariant)),                                    this,         SLOT(getOpenTracks(QVariant,QVariant)));
-        disconnect(uiMainWindow, SIGNAL(resolveOpenTracks(QVariant)),                                         this,         SLOT(resolveOpenTracks(QVariant)));
-        disconnect(uiMainWindow, SIGNAL(trackAction(QVariant, QVariant)),                                     this,         SLOT(trackAction(QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiActivated()),                                                       uiMainWindow,
+            SLOT(activated()));
+        disconnect(this,         SIGNAL(uiInactivated()),                                                     uiMainWindow,
+            SLOT(inactivated()));
+        disconnect(this,         SIGNAL(uiUserMessage(QVariant)),                                             uiMainWindow,
+            SLOT(displayUserMessage(QVariant)));
+        disconnect(this,         SIGNAL(uiCollections(QVariant, QVariant)),                                    uiMainWindow,
+            SLOT(fillCollectionsList(QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant)),           uiMainWindow,
+            SLOT(updateTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiPicture(QVariant)),                                                 uiMainWindow,
+            SLOT(updateArt(QVariant)));
+        disconnect(this,         SIGNAL(uiPosition(QVariant, QVariant)),                                       uiMainWindow,
+            SLOT(updatePosition(QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiActions(QVariant)),                                                 uiMainWindow,
+            SLOT(updateTrackActions(QVariant)));
+        disconnect(this,         SIGNAL(uiClearPlaylist()),                                                   uiMainWindow,
+            SLOT(clearPlaylist()));
+        disconnect(this,         SIGNAL(uiAddToPlaylist(QVariant, QVariant, QVariant, QVariant, QVariant)),       uiMainWindow,
+            SLOT(addToPlaylist(QVariant, QVariant, QVariant, QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiPaused()),                                                          uiMainWindow,
+            SLOT(paused()));
+        disconnect(this,         SIGNAL(uiResumed()),                                                         uiMainWindow,
+            SLOT(resumed()));
+        disconnect(this,         SIGNAL(uiClearPluginsList()),                                                uiMainWindow,
+            SLOT(clearPluginsList()));
+        disconnect(this,         SIGNAL(uiAddToPluginsList(QVariant, QVariant)),                               uiMainWindow,
+            SLOT(addToPluginsList(QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiDisplayPluginUI(QVariant, QVariant)),                                uiMainWindow,
+            SLOT(displayPluginUI(QVariant id, QVariant qml)));
+        disconnect(this,         SIGNAL(uiAddToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)), uiMainWindow,
+            SLOT(addToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)));
+        disconnect(uiMainWindow, SIGNAL(menuPause()),                                                         this,
+            SLOT(menuPause()));
+        disconnect(uiMainWindow, SIGNAL(menuResume()),                                                        this,
+            SLOT(menuResume()));
+        disconnect(uiMainWindow, SIGNAL(menuNext()),                                                          this,
+            SLOT(menuNext()));
+        disconnect(uiMainWindow, SIGNAL(menuCollection(QVariant)),                                            this,
+            SLOT(menuCollection(QVariant)));
+        disconnect(uiMainWindow, SIGNAL(menuAbout()),                                                         this,
+            SLOT(menuAbout()));
+        disconnect(uiMainWindow, SIGNAL(menuQuit()),                                                          this,
+            SLOT(menuQuit()));
+        disconnect(uiMainWindow, SIGNAL(collectionsDialogResults(QVariant)),                                  this,
+            SLOT(collectionsDialogResults(QVariant)));
+        disconnect(uiMainWindow, SIGNAL(pluginUIResults(QVariant, QVariant)),                                  this,
+            SLOT(pluginUIResults(QVariant, QVariant)));
+        disconnect(uiMainWindow, SIGNAL(getOpenTracks(QVariant, QVariant)),                                    this,
+            SLOT(getOpenTracks(QVariant, QVariant)));
+        disconnect(uiMainWindow, SIGNAL(resolveOpenTracks(QVariant)),                                         this,
+            SLOT(resolveOpenTracks(QVariant)));
+        disconnect(uiMainWindow, SIGNAL(trackAction(QVariant, QVariant)),                                     this,
+            SLOT(trackAction(QVariant, QVariant)));
     }
 
     // what we're really interested in is the main application window
-    uiMainWindow = qobject_cast<QQuickWindow*>(qmlApplicationEngine->rootObjects().first());
+    uiMainWindow = qobject_cast<QQuickWindow *>(qmlApplicationEngine->rootObjects().first());
 
     // signal connections
-    connect(this,         SIGNAL(uiActivated()),                                                       uiMainWindow, SLOT(activated()));
-    connect(this,         SIGNAL(uiInactivated()),                                                     uiMainWindow, SLOT(inactivated()));
-    connect(this,         SIGNAL(uiUserMessage(QVariant)),                                             uiMainWindow, SLOT(displayUserMessage(QVariant)));
-    connect(this,         SIGNAL(uiCollections(QVariant,QVariant)),                                    uiMainWindow, SLOT(fillCollectionsList(QVariant,QVariant)));
-    connect(this,         SIGNAL(uiTrackInfo(QVariant,QVariant,QVariant,QVariant,QVariant)),           uiMainWindow, SLOT(updateTrackInfo(QVariant,QVariant,QVariant,QVariant,QVariant)));
-    connect(this,         SIGNAL(uiPicture(QVariant)),                                                 uiMainWindow, SLOT(updateArt(QVariant)));
-    connect(this,         SIGNAL(uiPosition(QVariant,QVariant)),                                       uiMainWindow, SLOT(updatePosition(QVariant, QVariant)));
-    connect(this,         SIGNAL(uiActions(QVariant)),                                                 uiMainWindow, SLOT(updateTrackActions(QVariant)));
-    connect(this,         SIGNAL(uiClearPlaylist()),                                                   uiMainWindow, SLOT(clearPlaylist()));
-    connect(this,         SIGNAL(uiAddToPlaylist(QVariant,QVariant,QVariant,QVariant,QVariant)),       uiMainWindow, SLOT(addToPlaylist(QVariant,QVariant,QVariant,QVariant,QVariant)));
-    connect(this,         SIGNAL(uiPaused()),                                                          uiMainWindow, SLOT(paused()));
-    connect(this,         SIGNAL(uiResumed()),                                                         uiMainWindow, SLOT(resumed()));
-    connect(this,         SIGNAL(uiClearPluginsList()),                                                uiMainWindow, SLOT(clearPluginsList()));
-    connect(this,         SIGNAL(uiAddToPluginsList(QVariant,QVariant)),                               uiMainWindow, SLOT(addToPluginsList(QVariant,QVariant)));
-    connect(this,         SIGNAL(uiDisplayPluginUI(QVariant,QVariant)),                                uiMainWindow, SLOT(displayPluginUI(QVariant,QVariant)));
-    connect(this,         SIGNAL(uiAddToOpenTracksList(QVariant,QVariant,QVariant,QVariant,QVariant)), uiMainWindow, SLOT(addToOpenTracksList(QVariant,QVariant,QVariant,QVariant,QVariant)));
-    connect(this,         SIGNAL(uiAddToSearchList(QVariant,QVariant,QVariant)),                       uiMainWindow, SLOT(addToSearchList(QVariant,QVariant,QVariant)));
-    connect(this,         SIGNAL(uiAbout(QVariant,QVariant,QVariant)),                                 uiMainWindow, SLOT(aboutDialog(QVariant,QVariant,QVariant)));
-    connect(uiMainWindow, SIGNAL(menuPause()),                                                         this,         SLOT(menuPause()));
-    connect(uiMainWindow, SIGNAL(menuResume()),                                                        this,         SLOT(menuResume()));
-    connect(uiMainWindow, SIGNAL(menuNext()),                                                          this,         SLOT(menuNext()));
-    connect(uiMainWindow, SIGNAL(menuCollection(QVariant)),                                            this,         SLOT(menuCollection(QVariant)));
-    connect(uiMainWindow, SIGNAL(menuPlugin(QVariant)),                                                this,         SLOT(menuPlugin(QVariant)));
-    connect(uiMainWindow, SIGNAL(menuAbout()),                                                         this,         SLOT(menuAbout()));
-    connect(uiMainWindow, SIGNAL(menuQuit()),                                                          this,         SLOT(menuQuit()));
-    connect(uiMainWindow, SIGNAL(collectionsDialogResults(QVariant)),                                  this,         SLOT(collectionsDialogResults(QVariant)));
-    connect(uiMainWindow, SIGNAL(pluginUIResults(QVariant,QVariant)),                                  this,         SLOT(pluginUIResults(QVariant,QVariant)));
-    connect(uiMainWindow, SIGNAL(getOpenTracks(QVariant,QVariant)),                                    this,         SLOT(getOpenTracks(QVariant,QVariant)));
-    connect(uiMainWindow, SIGNAL(startSearch(QVariant)),                                               this,         SLOT(startSearch(QVariant)));
-    connect(uiMainWindow, SIGNAL(resolveOpenTracks(QVariant)),                                         this,         SLOT(resolveOpenTracks(QVariant)));
-    connect(uiMainWindow, SIGNAL(trackAction(QVariant, QVariant)),                                     this,         SLOT(trackAction(QVariant, QVariant)));
+    connect(this,         SIGNAL(uiActivated()),                                                       uiMainWindow,
+        SLOT(activated()));
+    connect(this,         SIGNAL(uiInactivated()),                                                     uiMainWindow,
+        SLOT(inactivated()));
+    connect(this,         SIGNAL(uiUserMessage(QVariant)),                                             uiMainWindow,
+        SLOT(displayUserMessage(QVariant)));
+    connect(this,         SIGNAL(uiCollections(QVariant, QVariant)),                                    uiMainWindow,
+        SLOT(fillCollectionsList(QVariant, QVariant)));
+    connect(this,         SIGNAL(uiTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant)),           uiMainWindow,
+        SLOT(updateTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant)));
+    connect(this,         SIGNAL(uiPicture(QVariant)),                                                 uiMainWindow,
+        SLOT(updateArt(QVariant)));
+    connect(this,         SIGNAL(uiPosition(QVariant, QVariant)),                                       uiMainWindow,
+        SLOT(updatePosition(QVariant, QVariant)));
+    connect(this,         SIGNAL(uiActions(QVariant)),                                                 uiMainWindow,
+        SLOT(updateTrackActions(QVariant)));
+    connect(this,         SIGNAL(uiClearPlaylist()),                                                   uiMainWindow,
+        SLOT(clearPlaylist()));
+    connect(this,         SIGNAL(uiAddToPlaylist(QVariant, QVariant, QVariant, QVariant, QVariant)),       uiMainWindow,
+        SLOT(addToPlaylist(QVariant, QVariant, QVariant, QVariant, QVariant)));
+    connect(this,         SIGNAL(uiPaused()),                                                          uiMainWindow,
+        SLOT(paused()));
+    connect(this,         SIGNAL(uiResumed()),                                                         uiMainWindow,
+        SLOT(resumed()));
+    connect(this,         SIGNAL(uiClearPluginsList()),                                                uiMainWindow,
+        SLOT(clearPluginsList()));
+    connect(this,         SIGNAL(uiAddToPluginsList(QVariant, QVariant)),                               uiMainWindow,
+        SLOT(addToPluginsList(QVariant, QVariant)));
+    connect(this,         SIGNAL(uiDisplayPluginUI(QVariant, QVariant)),                                uiMainWindow,
+        SLOT(displayPluginUI(QVariant, QVariant)));
+    connect(this,         SIGNAL(uiAddToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)), uiMainWindow,
+        SLOT(addToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)));
+    connect(this,         SIGNAL(uiAddToSearchList(QVariant, QVariant, QVariant)),                       uiMainWindow,
+        SLOT(addToSearchList(QVariant, QVariant, QVariant)));
+    connect(this,         SIGNAL(uiAbout(QVariant, QVariant, QVariant)),                                 uiMainWindow,
+        SLOT(aboutDialog(QVariant, QVariant, QVariant)));
+    connect(uiMainWindow, SIGNAL(menuPause()),                                                         this,
+        SLOT(menuPause()));
+    connect(uiMainWindow, SIGNAL(menuResume()),                                                        this,
+        SLOT(menuResume()));
+    connect(uiMainWindow, SIGNAL(menuNext()),                                                          this,
+        SLOT(menuNext()));
+    connect(uiMainWindow, SIGNAL(menuCollection(QVariant)),                                            this,
+        SLOT(menuCollection(QVariant)));
+    connect(uiMainWindow, SIGNAL(menuPlugin(QVariant)),                                                this,
+        SLOT(menuPlugin(QVariant)));
+    connect(uiMainWindow, SIGNAL(menuAbout()),                                                         this,
+        SLOT(menuAbout()));
+    connect(uiMainWindow, SIGNAL(menuQuit()),                                                          this,
+        SLOT(menuQuit()));
+    connect(uiMainWindow, SIGNAL(collectionsDialogResults(QVariant)),                                  this,
+        SLOT(collectionsDialogResults(QVariant)));
+    connect(uiMainWindow, SIGNAL(pluginUIResults(QVariant, QVariant)),                                  this,
+        SLOT(pluginUIResults(QVariant, QVariant)));
+    connect(uiMainWindow, SIGNAL(getOpenTracks(QVariant, QVariant)),                                    this,
+        SLOT(getOpenTracks(QVariant, QVariant)));
+    connect(uiMainWindow, SIGNAL(startSearch(QVariant)),                                               this,
+        SLOT(startSearch(QVariant)));
+    connect(uiMainWindow, SIGNAL(resolveOpenTracks(QVariant)),                                         this,
+        SLOT(resolveOpenTracks(QVariant)));
+    connect(uiMainWindow, SIGNAL(trackAction(QVariant, QVariant)),                                     this,
+        SLOT(trackAction(QVariant, QVariant)));
 }
 
 
@@ -150,20 +211,20 @@ void WaverApplication::stateChanged(Qt::ApplicationState state)
 {
     // call the appropriate method
     switch (state) {
-    case Qt::ApplicationActive:
-        active();
-        break;
+        case Qt::ApplicationActive:
+            active();
+            break;
 
-    case Qt::ApplicationInactive:
-        inactive();
-        break;
+        case Qt::ApplicationInactive:
+            inactive();
+            break;
 
-    case Qt::ApplicationSuspended:
-        suspended();
-        break;
+        case Qt::ApplicationSuspended:
+            suspended();
+            break;
 
-    default:
-        break;
+        default:
+            break;
     }
 }
 
@@ -194,7 +255,7 @@ void WaverApplication::menuCollection(QVariant collection)
 {
     emit ipcSend(IpcMessageUtils::CollectionMenuChange, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
         {
-           "collection", collection.toString()
+            "collection", collection.toString()
         }
     }))));
 }
@@ -220,9 +281,9 @@ void WaverApplication::menuQuit()
     emit ipcSend(IpcMessageUtils::Quit);
 
     #ifdef Q_OS_ANDROID
-        // Android tries to keep the service alive unless it's explicitly stopped
-        QAndroidJniObject activity = QtAndroid::androidActivity();
-        activity.callMethod<void>("stopService");
+    // Android tries to keep the service alive unless it's explicitly stopped
+    QAndroidJniObject activity = QtAndroid::androidActivity();
+    activity.callMethod<void>("stopService");
     #endif
 
     quit();
@@ -232,7 +293,8 @@ void WaverApplication::menuQuit()
 // UI signal handler
 void WaverApplication::collectionsDialogResults(QVariant collectionsArray)
 {
-    emit ipcSend(IpcMessageUtils::CollectionsDialogResults, QJsonDocument(QJsonArray::fromStringList(collectionsArray.toStringList())));
+    emit ipcSend(IpcMessageUtils::CollectionsDialogResults,
+        QJsonDocument(QJsonArray::fromStringList(collectionsArray.toStringList())));
 }
 
 
@@ -246,10 +308,10 @@ void WaverApplication::pluginUIResults(QVariant id, QVariant results)
 
     emit ipcSend(IpcMessageUtils::PluginUIResults, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
         {
-           "plugin_id", id.toString()
+            "plugin_id", id.toString()
         },
         {
-           "ui_results", (resultsDocument.isArray() ? QVariant(resultsDocument.array()) : QVariant(resultsDocument.object()))
+            "ui_results", (resultsDocument.isArray() ? QVariant(resultsDocument.array()) : QVariant(resultsDocument.object()))
         }
     }))));
 }
@@ -274,7 +336,7 @@ void WaverApplication::startSearch(QVariant criteria)
 {
     emit ipcSend(IpcMessageUtils::Search, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
         {
-          "criteria", criteria.toString()
+            "criteria", criteria.toString()
         },
     }))));
 }
@@ -292,10 +354,10 @@ void WaverApplication::trackAction(QVariant index, QVariant action)
 {
     emit ipcSend(IpcMessageUtils::TrackAction, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
         {
-          "index", index.toString()
+            "index", index.toString()
         },
         {
-          "action", action.toString()
+            "action", action.toString()
         }
     }))));
 }
@@ -346,7 +408,8 @@ void WaverApplication::quitWithMessage(QString messageText)
     emit uiUserMessage(messageText);
 
     // wait a wile for user to have a chance to read the message, then quit
-    QTimer::singleShot(uiMainWindow->property("duration_visible_before_fadeout").toInt() + uiMainWindow->property("duration_fadeout").toInt(), this, SLOT(quit()));
+    QTimer::singleShot(uiMainWindow->property("duration_visible_before_fadeout").toInt() +
+        uiMainWindow->property("duration_fadeout").toInt(), this, SLOT(quit()));
 }
 
 
@@ -455,7 +518,8 @@ void WaverApplication::updateUIPlaylist(QJsonDocument jsonDocument)
             actions.append(QString("<a href=\"%1\">%2</a>").arg(actionKey).arg(trackInfo.actions.value(actionKey)));
         }
 
-        emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "images/waver.png"), trackInfo.title, trackInfo.performer, actions.join(" "), (i == contextShowTrackIndex));
+        emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "images/waver.png"),
+            trackInfo.title, trackInfo.performer, actions.join(" "), (i == contextShowTrackIndex));
     }
 }
 
@@ -470,7 +534,7 @@ void WaverApplication::updateUIPluginsList(QJsonDocument jsonDocument)
     QVariantList values  = plugins.values();
     qSort(values);
     foreach (QVariant value, values) {
-        foreach(QString id, plugins.keys(value)) {
+        foreach (QString id, plugins.keys(value)) {
             emit uiAddToPluginsList(id, plugins.value(id));
         }
     }
@@ -497,7 +561,8 @@ void WaverApplication::updateOpenTracksList(QJsonDocument jsonDocument)
 
     foreach (QVariant track, tracksJson) {
         QVariantHash trackHash = track.toHash();
-        emit uiAddToOpenTracksList(pluginId, trackHash.value("hasChildren"), trackHash.value("selectable"), trackHash.value("label"), trackHash.value("id"));
+        emit uiAddToOpenTracksList(pluginId, trackHash.value("hasChildren"), trackHash.value("selectable"), trackHash.value("label"),
+            trackHash.value("id"));
     }
 }
 
@@ -539,56 +604,56 @@ void WaverApplication::ipcMessage(IpcMessageUtils::IpcMessages message, QJsonDoc
 {
     switch (message) {
 
-    case IpcMessageUtils::CollectionList:
-        emit updateUICollections(jsonDocument);
-        break;
+        case IpcMessageUtils::CollectionList:
+            emit updateUICollections(jsonDocument);
+            break;
 
-    case IpcMessageUtils::InfoMessage:
-        emit uiUserMessage(jsonDocument.object().toVariantHash().value("message"));
-        break;
+        case IpcMessageUtils::InfoMessage:
+            emit uiUserMessage(jsonDocument.object().toVariantHash().value("message"));
+            break;
 
-    case IpcMessageUtils::OpenTracks:
-        updateOpenTracksList(jsonDocument);
-        break;
+        case IpcMessageUtils::OpenTracks:
+            updateOpenTracksList(jsonDocument);
+            break;
 
-    case IpcMessageUtils::Pause:
-        emit uiPaused();
-        break;
+        case IpcMessageUtils::Pause:
+            emit uiPaused();
+            break;
 
-    case IpcMessageUtils::Playlist:
-        updateUIPlaylist(jsonDocument);
-        break;
+        case IpcMessageUtils::Playlist:
+            updateUIPlaylist(jsonDocument);
+            break;
 
-    case IpcMessageUtils::PluginsWithUI:
-        updateUIPluginsList(jsonDocument);
-        break;
+        case IpcMessageUtils::PluginsWithUI:
+            updateUIPluginsList(jsonDocument);
+            break;
 
-    case IpcMessageUtils::PluginUI:
-        showPluginUI(jsonDocument);
-        break;
+        case IpcMessageUtils::PluginUI:
+            showPluginUI(jsonDocument);
+            break;
 
-    case IpcMessageUtils::Position:
-        updateUIPosition(jsonDocument);
-        break;
+        case IpcMessageUtils::Position:
+            updateUIPosition(jsonDocument);
+            break;
 
-    case IpcMessageUtils::QuitClients:
-        quit();
-        break;
+        case IpcMessageUtils::QuitClients:
+            quit();
+            break;
 
-    case IpcMessageUtils::Resume:
-        emit uiResumed();
-        break;
+        case IpcMessageUtils::Resume:
+            emit uiResumed();
+            break;
 
-    case IpcMessageUtils::Search:
-        updateSearchList(jsonDocument);
-        break;
+        case IpcMessageUtils::Search:
+            updateSearchList(jsonDocument);
+            break;
 
-    case IpcMessageUtils::TrackInfo:
-        updateUITrackInfo(jsonDocument);
-        break;
+        case IpcMessageUtils::TrackInfo:
+            updateUITrackInfo(jsonDocument);
+            break;
 
-    default:
-        break;
+        default:
+            break;
     }
 }
 

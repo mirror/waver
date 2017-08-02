@@ -28,7 +28,7 @@ void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_DECODER) {
         #ifndef Q_OS_ANDROID
-            retVal->append((PluginBase*) new Mpg123Decoder());
+        retVal->append((PluginBase *) new Mpg123Decoder());
         #endif
     }
 }
@@ -133,11 +133,21 @@ void Mpg123Decoder::run()
 
     // set up output formats
     mpg123_format_none(mpg123Handle);
-    mpg123_format(mpg123Handle, 8000,  MPG123_STEREO | MPG123_MONO, MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 | MPG123_ENC_UNSIGNED_32);
-    mpg123_format(mpg123Handle, 11025, MPG123_STEREO | MPG123_MONO, MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 | MPG123_ENC_UNSIGNED_32);
-    mpg123_format(mpg123Handle, 22050, MPG123_STEREO | MPG123_MONO, MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 | MPG123_ENC_UNSIGNED_32);
-    mpg123_format(mpg123Handle, 44100, MPG123_STEREO | MPG123_MONO, MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 | MPG123_ENC_UNSIGNED_32);
-    mpg123_format(mpg123Handle, 48000, MPG123_STEREO | MPG123_MONO, MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 | MPG123_ENC_UNSIGNED_32);
+    mpg123_format(mpg123Handle, 8000,  MPG123_STEREO | MPG123_MONO,
+        MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 |
+        MPG123_ENC_UNSIGNED_32);
+    mpg123_format(mpg123Handle, 11025, MPG123_STEREO | MPG123_MONO,
+        MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 |
+        MPG123_ENC_UNSIGNED_32);
+    mpg123_format(mpg123Handle, 22050, MPG123_STEREO | MPG123_MONO,
+        MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 |
+        MPG123_ENC_UNSIGNED_32);
+    mpg123_format(mpg123Handle, 44100, MPG123_STEREO | MPG123_MONO,
+        MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 |
+        MPG123_ENC_UNSIGNED_32);
+    mpg123_format(mpg123Handle, 48000, MPG123_STEREO | MPG123_MONO,
+        MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 |
+        MPG123_ENC_UNSIGNED_32);
 }
 
 
@@ -233,7 +243,8 @@ void Mpg123Decoder::feedReady()
         }
 
         // feed to the decoder
-        int mpg123Result = mpg123_decode(mpg123Handle, (unsigned char*)&input, input_size, (unsigned char*)&output, OUTPUT_SIZE, &output_size);
+        int mpg123Result = mpg123_decode(mpg123Handle, (unsigned char *)&input, input_size, (unsigned char *)&output, OUTPUT_SIZE,
+                &output_size);
         if (mpg123Result == MPG123_ERR) {
             emit error(id, QString(mpg123_plain_strerror(mpg123Result)));
             wasError = true;
@@ -261,29 +272,29 @@ void Mpg123Decoder::feedReady()
             audioFormat.setCodec("audio/pcm");
             audioFormat.setSampleRate(rate);
             switch (encoding) {
-            case MPG123_ENC_SIGNED_8:
-                audioFormat.setSampleSize(8);
-                audioFormat.setSampleType(QAudioFormat::SignedInt);
-                break;
-            case MPG123_ENC_UNSIGNED_8:
-                audioFormat.setSampleSize(8);
-                audioFormat.setSampleType(QAudioFormat::UnSignedInt);
-                break;
-            case MPG123_ENC_SIGNED_16:
-                audioFormat.setSampleSize(16);
-                audioFormat.setSampleType(QAudioFormat::SignedInt);
-                break;
-            case MPG123_ENC_UNSIGNED_16:
-                audioFormat.setSampleSize(16);
-                audioFormat.setSampleType(QAudioFormat::UnSignedInt);
-                break;
-            case MPG123_ENC_SIGNED_32:
-                audioFormat.setSampleSize(32);
-                audioFormat.setSampleType(QAudioFormat::SignedInt);
-                break;
-            case MPG123_ENC_UNSIGNED_32:
-                audioFormat.setSampleSize(32);
-                audioFormat.setSampleType(QAudioFormat::UnSignedInt);
+                case MPG123_ENC_SIGNED_8:
+                    audioFormat.setSampleSize(8);
+                    audioFormat.setSampleType(QAudioFormat::SignedInt);
+                    break;
+                case MPG123_ENC_UNSIGNED_8:
+                    audioFormat.setSampleSize(8);
+                    audioFormat.setSampleType(QAudioFormat::UnSignedInt);
+                    break;
+                case MPG123_ENC_SIGNED_16:
+                    audioFormat.setSampleSize(16);
+                    audioFormat.setSampleType(QAudioFormat::SignedInt);
+                    break;
+                case MPG123_ENC_UNSIGNED_16:
+                    audioFormat.setSampleSize(16);
+                    audioFormat.setSampleType(QAudioFormat::UnSignedInt);
+                    break;
+                case MPG123_ENC_SIGNED_32:
+                    audioFormat.setSampleSize(32);
+                    audioFormat.setSampleType(QAudioFormat::SignedInt);
+                    break;
+                case MPG123_ENC_UNSIGNED_32:
+                    audioFormat.setSampleSize(32);
+                    audioFormat.setSampleType(QAudioFormat::UnSignedInt);
             }
 
             // create audio buffer
@@ -310,7 +321,7 @@ void Mpg123Decoder::feedReady()
             QCoreApplication::processEvents();
 
             // get more decoded pcm data
-            int mpg123Result = mpg123_decode(mpg123Handle, NULL, 0, (unsigned char*)&output, OUTPUT_SIZE, &output_size);
+            int mpg123Result = mpg123_decode(mpg123Handle, NULL, 0, (unsigned char *)&output, OUTPUT_SIZE, &output_size);
             if (mpg123Result == MPG123_ERR) {
                 emit error(id, QString(mpg123_plain_strerror(mpg123Result)));
                 wasError    = true;

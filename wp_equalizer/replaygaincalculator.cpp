@@ -36,32 +36,32 @@ ReplayGainCalculator::ReplayGainCalculator(IIRFilter::SampleTypes sampleType, in
 
     double sampleMax;
     switch (sampleType) {
-    case IIRFilter::int8Sample:
-        sampleMin = std::numeric_limits<qint8>::min();
-        sampleMax = std::numeric_limits<qint8>::max();
-        break;
-    case IIRFilter::uint8Sample:
-        sampleMin = std::numeric_limits<quint8>::min();
-        sampleMax = std::numeric_limits<quint8>::max();
-        break;
-    case IIRFilter::uint16Sample:
-        sampleMin = std::numeric_limits<quint16>::min();
-        sampleMax = std::numeric_limits<quint16>::max();
-        break;
-    case IIRFilter::int32Sample:
-        sampleMin = std::numeric_limits<qint32>::min();
-        sampleMax = std::numeric_limits<qint32>::max();
-        break;
-    case IIRFilter::uint32Sample:
-        sampleMin = std::numeric_limits<quint32>::min();
-        sampleMax = std::numeric_limits<quint32>::max();
-        break;
-    case IIRFilter::floatSample:
-        sampleMin = std::numeric_limits<float>::min();
-        sampleMax = std::numeric_limits<float>::max();
-        break;
-    default:
-        break;
+        case IIRFilter::int8Sample:
+            sampleMin = std::numeric_limits<qint8>::min();
+            sampleMax = std::numeric_limits<qint8>::max();
+            break;
+        case IIRFilter::uint8Sample:
+            sampleMin = std::numeric_limits<quint8>::min();
+            sampleMax = std::numeric_limits<quint8>::max();
+            break;
+        case IIRFilter::uint16Sample:
+            sampleMin = std::numeric_limits<quint16>::min();
+            sampleMax = std::numeric_limits<quint16>::max();
+            break;
+        case IIRFilter::int32Sample:
+            sampleMin = std::numeric_limits<qint32>::min();
+            sampleMax = std::numeric_limits<qint32>::max();
+            break;
+        case IIRFilter::uint32Sample:
+            sampleMin = std::numeric_limits<quint32>::min();
+            sampleMax = std::numeric_limits<quint32>::max();
+            break;
+        case IIRFilter::floatSample:
+            sampleMin = std::numeric_limits<float>::min();
+            sampleMax = std::numeric_limits<float>::max();
+            break;
+        default:
+            break;
     }
     sampleRange = sampleMax - sampleMin;
 

@@ -27,9 +27,9 @@
 #include <QtCore/qglobal.h>
 
 #if defined(WP_TAGLIBINFO_LIBRARY)
-#  define WP_TAGLIBINFO_EXPORT Q_DECL_EXPORT
+    #define WP_TAGLIBINFO_EXPORT Q_DECL_EXPORT
 #else
-#  define WP_TAGLIBINFO_EXPORT Q_DECL_IMPORT
+    #define WP_TAGLIBINFO_EXPORT Q_DECL_IMPORT
 #endif
 
 #endif // WP_TAGLIBINFO_GLOBAL_H

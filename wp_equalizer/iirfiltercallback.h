@@ -25,19 +25,18 @@
 #define IIRFILTERCALLBACK_H
 
 
-class IIRFilterCallback
-{
+class IIRFilterCallback {
 
-public:
+    public:
 
-    // convenience pointer-to-callback type
-    typedef void (IIRFilterCallback::*FilterCallbackPointer) (double*, int);
+        // convenience pointer-to-callback type
+        typedef void (IIRFilterCallback::*FilterCallbackPointer)(double *, int);
 
-    // need a virtual destructor
-    virtual ~IIRFilterCallback();
+        // need a virtual destructor
+        virtual ~IIRFilterCallback();
 
-    // callback definition
-    virtual void filterCallback(double *sample, int channelIndex) = 0;
+        // callback definition
+        virtual void filterCallback(double *sample, int channelIndex) = 0;
 
 };
 

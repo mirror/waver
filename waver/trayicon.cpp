@@ -22,14 +22,15 @@ TrayIcon::TrayIcon(QObject *parent, WaverServer *waverServer) : QObject(parent)
     systemTrayMenu = new QMenu("Waver");
     systemTrayMenu->addAction(playPauseAction);
     systemTrayMenu->addAction(QIcon(":/images/next.png"),   "Next",       this, SLOT(menuNext()));
-    systemTrayMenu->addAction(                              "Show Waver", this, SLOT(menuShowWaver()));
+    systemTrayMenu->addAction("Show Waver", this, SLOT(menuShowWaver()));
 
     systemTrayIcon = new QSystemTrayIcon(QIcon(":/images/waver.png"));
     systemTrayIcon->setToolTip("Waver");
     systemTrayIcon->setContextMenu(systemTrayMenu);
     systemTrayIcon->show();
 
-    connect(systemTrayIcon,    SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this, SLOT(activated(QSystemTrayIcon::ActivationReason)));
+    connect(systemTrayIcon,    SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this,
+        SLOT(activated(QSystemTrayIcon::ActivationReason)));
     connect(this->waverServer, SIGNAL(ipcSend(QString)),                             this, SLOT(waverServerIpcSend(QString)));
 }
 
@@ -83,23 +84,23 @@ void TrayIcon::waverServerIpcSend(QString data)
 
     for (int i = 0; i < this->ipcMessageUtils->processedCount(); i++) {
         switch (ipcMessageUtils->processedIpcMessage(i)) {
-        case IpcMessageUtils::Pause:
-            playPauseAction->setIcon(QIcon(":/images/resume.png"));
-            playPauseAction->setText("Resume");
-            break;
-        case IpcMessageUtils::Resume:
-            playPauseAction->setIcon(QIcon(":/images/pause.png"));
-            playPauseAction->setText("Pause");
-            break;
-        case IpcMessageUtils::TrackInfo:
-            if (firstTrack) {
-                firstTrack = false;
+            case IpcMessageUtils::Pause:
+                playPauseAction->setIcon(QIcon(":/images/resume.png"));
+                playPauseAction->setText("Resume");
+                break;
+            case IpcMessageUtils::Resume:
                 playPauseAction->setIcon(QIcon(":/images/pause.png"));
                 playPauseAction->setText("Pause");
-            }
-            break;
-        default:
-            break;
+                break;
+            case IpcMessageUtils::TrackInfo:
+                if (firstTrack) {
+                    firstTrack = false;
+                    playPauseAction->setIcon(QIcon(":/images/pause.png"));
+                    playPauseAction->setText("Pause");
+                }
+                break;
+            default:
+                break;
         }
     }
 }

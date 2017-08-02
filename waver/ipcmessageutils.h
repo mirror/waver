@@ -43,62 +43,61 @@
 const int  TCP_TIMEOUT       = 2500;
 const char MESSAGE_SEPARATOR = 30;
 
-class IpcMessageUtils : public QObject
-{
-    Q_OBJECT
+class IpcMessageUtils : public QObject {
+        Q_OBJECT
 
-public:
+    public:
 
-    enum IpcMessages {
-        Unknown = 0,
-        AreYouAlive,
-        CollectionList,
-        CollectionMenuChange,
-        CollectionsDialogResults,
-        ImAlive,
-        InfoMessage,
-        Next,
-        OpenTracks,
-        OpenTracksSelected,
-        Pause,
-        Playlist,
-        PlayPauseState,
-        PluginsWithUI,
-        PluginUI,
-        PluginUIResults,
-        Position,
-        Quit,
-        QuitClients,
-        Resume,
-        Search,
-        TrackAction,
-        TrackInfo,
-    };
-
-
-    static int tcpPort();
-
-    explicit IpcMessageUtils(QObject *parent = 0);
-
-    QString constructIpcString(IpcMessages ipcMessage);
-    QString constructIpcString(IpcMessages ipcMessage, QJsonDocument ipcJsonData);
-
-    void          processIpcString(QString ipcString);
-    int           processedCount();
-    IpcMessages   processedIpcMessage(int index);
-    QJsonDocument processedIpcData(int index);
-    QString       processedRaw(int index);
-
-    QJsonDocument           trackInfoToJSONDocument(PluginSource::TrackInfo trackInfo);
-    PluginSource::TrackInfo jsonDocumentToTrackInfo(QJsonDocument jsonDocument);
+        enum IpcMessages {
+            Unknown = 0,
+            AreYouAlive,
+            CollectionList,
+            CollectionMenuChange,
+            CollectionsDialogResults,
+            ImAlive,
+            InfoMessage,
+            Next,
+            OpenTracks,
+            OpenTracksSelected,
+            Pause,
+            Playlist,
+            PlayPauseState,
+            PluginsWithUI,
+            PluginUI,
+            PluginUIResults,
+            Position,
+            Quit,
+            QuitClients,
+            Resume,
+            Search,
+            TrackAction,
+            TrackInfo,
+        };
 
 
-private:
+        static int tcpPort();
 
-    QHash<IpcMessages, QString> ipcMessagesToStrings;
+        explicit IpcMessageUtils(QObject *parent = 0);
 
-    QString     lastPartialIpcString;
-    QStringList lastCompleteIpcStrings;
+        QString constructIpcString(IpcMessages ipcMessage);
+        QString constructIpcString(IpcMessages ipcMessage, QJsonDocument ipcJsonData);
+
+        void          processIpcString(QString ipcString);
+        int           processedCount();
+        IpcMessages   processedIpcMessage(int index);
+        QJsonDocument processedIpcData(int index);
+        QString       processedRaw(int index);
+
+        QJsonDocument           trackInfoToJSONDocument(PluginSource::TrackInfo trackInfo);
+        PluginSource::TrackInfo jsonDocumentToTrackInfo(QJsonDocument jsonDocument);
+
+
+    private:
+
+        QHash<IpcMessages, QString> ipcMessagesToStrings;
+
+        QString     lastPartialIpcString;
+        QStringList lastCompleteIpcStrings;
 
 };
 

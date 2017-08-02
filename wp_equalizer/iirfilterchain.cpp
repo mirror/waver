@@ -75,7 +75,7 @@ void IIRFilterChain::appendFilter(CoefficientList coefficientList)
 
 
 // return pointer to a filter
-IIRFilter* IIRFilterChain::getFilter(int index)
+IIRFilter *IIRFilterChain::getFilter(int index)
 {
     if ((index < 0) || (index >= filterCount)) {
         return NULL;

@@ -28,29 +28,28 @@
 #include <initializer_list>
 
 
-class CoefficientList
-{
+class CoefficientList {
 
-public:
+    public:
 
-    CoefficientList();
-    CoefficientList(QList<double> a, QList<double> b);
-    CoefficientList(std::initializer_list<double> a, std::initializer_list<double> b);
+        CoefficientList();
+        CoefficientList(QList<double> a, QList<double> b);
+        CoefficientList(std::initializer_list<double> a, std::initializer_list<double> b);
 
-    void appendA(double aValue);
-    void appendB(double bValue);
+        void appendA(double aValue);
+        void appendB(double bValue);
 
-    int aSize();
-    int bSize();
+        int aSize();
+        int bSize();
 
-    double aValue(int index);
-    double bValue(int index);
+        double aValue(int index);
+        double bValue(int index);
 
 
-private:
+    private:
 
-    QList<double> a;
-    QList<double> b;
+        QList<double> a;
+        QList<double> b;
 
 };
 

@@ -74,7 +74,8 @@ QString IpcMessageUtils::constructIpcString(IpcMessages ipcMessage, QJsonDocumen
     if (ipcJsonData.isEmpty()) {
         return QString("%1%2").arg(ipcMessagesToStrings.value(ipcMessage)).arg(MESSAGE_SEPARATOR);
     }
-    return QString("%1:%2%3").arg(ipcMessagesToStrings.value(ipcMessage)).arg(QString(ipcJsonData.toJson(QJsonDocument::Compact))).arg(MESSAGE_SEPARATOR);
+    return QString("%1:%2%3").arg(ipcMessagesToStrings.value(ipcMessage)).arg(QString(ipcJsonData.toJson(
+                    QJsonDocument::Compact))).arg(MESSAGE_SEPARATOR);
 }
 
 
@@ -151,12 +152,12 @@ QString IpcMessageUtils::processedRaw(int index)
 QJsonDocument IpcMessageUtils::trackInfoToJSONDocument(PluginSource::TrackInfo trackInfo)
 {
     QStringList pictures;
-    foreach(QUrl url, trackInfo.pictures) {
+    foreach (QUrl url, trackInfo.pictures) {
         pictures.append(url.toString());
     }
 
     QVariantHash actions;
-    foreach(int key, trackInfo.actions.keys()) {
+    foreach (int key, trackInfo.actions.keys()) {
         actions.insert(QString("%1").arg(key), trackInfo.actions.value(key));
     }
 

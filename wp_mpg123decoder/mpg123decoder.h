@@ -44,61 +44,60 @@
 extern "C" WP_MPG123DECODER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder
-{
-    Q_OBJECT
+class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder {
+        Q_OBJECT
 
-public:
+    public:
 
-    int     pluginType()         override;
-    QString pluginName()         override;
-    int     pluginVersion()      override;
-    QUuid   persistentUniqueId() override;
-    bool    hasUI()              override;
-    void    setUrl(QUrl url)     override;
+        int     pluginType()         override;
+        QString pluginName()         override;
+        int     pluginVersion()      override;
+        QUuid   persistentUniqueId() override;
+        bool    hasUI()              override;
+        void    setUrl(QUrl url)     override;
 
-    explicit Mpg123Decoder();
-    ~Mpg123Decoder();
-
-
-private:
-
-    static const unsigned long MAX_MEMORY   = 50 * 1024 * 1024;
-    static const unsigned long USEC_PER_SEC = 1000000;
-    static const size_t        INPUT_SIZE   = 4 * 1024;
-    static const size_t        OUTPUT_SIZE  = 16 * 1024;
-
-    QUuid id;
-    QUrl  url;
-
-    mpg123_handle *mpg123Handle;
-
-    QVector<QAudioBuffer*> audioBuffers;
-
-    QThread  feedThread;
-    Feed    *feed;
-
-    int    memoryUsage;
-    qint64 decodedMicroSeconds;
+        explicit Mpg123Decoder();
+        ~Mpg123Decoder();
 
 
-public slots:
+    private:
 
-    void run()                 override;
-    void start(QUuid uniqueId) override;
+        static const unsigned long MAX_MEMORY   = 50 * 1024 * 1024;
+        static const unsigned long USEC_PER_SEC = 1000000;
+        static const size_t        INPUT_SIZE   = 4 * 1024;
+        static const size_t        OUTPUT_SIZE  = 16 * 1024;
 
-    void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        QUuid id;
+        QUrl  url;
 
-    void getUiQml(QUuid uniqueId)                         override;
-    void uiResults(QUuid uniqueId, QJsonDocument results) override;
+        mpg123_handle *mpg123Handle;
 
-    void bufferDone(QUuid uniqueId, QAudioBuffer *buffer) override;
+        QVector<QAudioBuffer *> audioBuffers;
+
+        QThread  feedThread;
+        Feed    *feed;
+
+        int    memoryUsage;
+        qint64 decodedMicroSeconds;
 
 
-private slots:
+    public slots:
 
-    void feedReady();
-    void feedError(QString errorString);
+        void run()                 override;
+        void start(QUuid uniqueId) override;
+
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+
+        void getUiQml(QUuid uniqueId)                         override;
+        void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void bufferDone(QUuid uniqueId, QAudioBuffer *buffer) override;
+
+
+    private slots:
+
+        void feedReady();
+        void feedError(QString errorString);
 
 };
 

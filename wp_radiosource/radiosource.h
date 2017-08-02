@@ -55,56 +55,55 @@ extern "C" WP_RADIOSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, Plu
 
 // TODO "Ban station" -> Ez rakja bele egy speckó <BANNED> kategóriába
 
-class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource
-{
-    Q_OBJECT
+class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource {
+        Q_OBJECT
 
-public:
+    public:
 
-    int     pluginType()         override;
-    QString pluginName()         override;
-    int     pluginVersion()      override;
-    QUuid   persistentUniqueId() override;
-    bool    hasUI()              override;
+        int     pluginType()         override;
+        QString pluginName()         override;
+        int     pluginVersion()      override;
+        QUuid   persistentUniqueId() override;
+        bool    hasUI()              override;
 
-    explicit RadioSource();
-    ~RadioSource();
-
-
-private:
-
-    struct Station {
-        QString name;
-        QString category;
-        QUrl    url;
-        int     unableToStartCount;
-    };
-
-    QUuid id;
-
-    QVector<Station> stations;
-    QVector<Station> selectedStations;
-
-    QJsonDocument configToJson();
-    void          jsonToConfig(QJsonDocument jsonDocument);
+        explicit RadioSource();
+        ~RadioSource();
 
 
-public slots:
+    private:
 
-    void run() override;
+        struct Station {
+            QString name;
+            QString category;
+            QUrl    url;
+            int     unableToStartCount;
+        };
 
-    void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        QUuid id;
 
-    void getUiQml(QUuid uniqueId)                         override;
-    void uiResults(QUuid uniqueId, QJsonDocument results) override;
+        QVector<Station> stations;
+        QVector<Station> selectedStations;
 
-    void unableToStart(QUuid uniqueId, QUrl url)                       override;
-    void getPlaylist(QUuid uniqueId, int maxCount)                     override;
-    void getOpenTracks(QUuid uniqueId, QString parentId)               override;
-    void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks) override;
+        QJsonDocument configToJson();
+        void          jsonToConfig(QJsonDocument jsonDocument);
 
-    void search(QUuid uniqueId, QString criteria) override;
-    void action(QUuid uniqueId, int actionKey)    override;
+
+    public slots:
+
+        void run() override;
+
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+
+        void getUiQml(QUuid uniqueId)                         override;
+        void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void unableToStart(QUuid uniqueId, QUrl url)                       override;
+        void getPlaylist(QUuid uniqueId, int maxCount)                     override;
+        void getOpenTracks(QUuid uniqueId, QString parentId)               override;
+        void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks) override;
+
+        void search(QUuid uniqueId, QString criteria) override;
+        void action(QUuid uniqueId, int actionKey)    override;
 
 };
 

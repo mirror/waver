@@ -41,62 +41,61 @@
 // TODO retry download if interrupted
 
 
-class NetworkDownloader : public QIODevice
-{
-    Q_OBJECT
+class NetworkDownloader : public QIODevice {
+        Q_OBJECT
 
-public:
+    public:
 
-    NetworkDownloader(QUrl url, QWaitCondition *waitCondition);
-    ~NetworkDownloader();
+        NetworkDownloader(QUrl url, QWaitCondition *waitCondition);
+        ~NetworkDownloader();
 
-    qint64 readData(char *data, qint64 maxlen)     override;
-    qint64 writeData(const char *data, qint64 len) override;
+        qint64 readData(char *data, qint64 maxlen)     override;
+        qint64 writeData(const char *data, qint64 len) override;
 
-    bool   isSequential() const override;
-    qint64 bytesAvailable() const override;
-    qint64 pos() const override;
+        bool   isSequential() const override;
+        qint64 bytesAvailable() const override;
+        qint64 pos() const override;
 
-    qint64 realBytesAvailable();
-    bool   isFinshed();
-
-
-private:
-
-    QUrl            url;
-    QWaitCondition *waitCondition;
-
-    QNetworkAccessManager *networkAccessManager;
-    QNetworkReply         *networkReply;
-
-    QVector<QByteArray*> buffer;
-    qint64               fakePosition;
-
-    QMutex mutex;
-
-    bool downloadStarted;
-    bool readyEmitted;
-    bool downloadFinished;
+        qint64 realBytesAvailable();
+        bool   isFinshed();
 
 
-signals:
+    private:
 
-    void ready();
-    void error(QString errorString);
+        QUrl            url;
+        QWaitCondition *waitCondition;
+
+        QNetworkAccessManager *networkAccessManager;
+        QNetworkReply         *networkReply;
+
+        QVector<QByteArray *> buffer;
+        qint64               fakePosition;
+
+        QMutex mutex;
+
+        bool downloadStarted;
+        bool readyEmitted;
+        bool downloadFinished;
 
 
-public slots:
+    signals:
 
-    void run();
+        void ready();
+        void error(QString errorString);
 
 
-private slots:
+    public slots:
 
-    void networkDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
-    void networkError(QNetworkReply::NetworkError code);
+        void run();
 
-    void connectionTimeout();
-    void preCacheTimeout();
+
+    private slots:
+
+        void networkDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
+        void networkError(QNetworkReply::NetworkError code);
+
+        void connectionTimeout();
+        void preCacheTimeout();
 
 };
 

@@ -34,53 +34,52 @@
 #include "globals.h"
 #include "ipcmessageutils.h"
 
-class ClientTcpHandler : public QObject
-{
-    Q_OBJECT
+class ClientTcpHandler : public QObject {
+        Q_OBJECT
 
-public:
+    public:
 
-    explicit ClientTcpHandler(QObject *parent = 0);
-    ~ClientTcpHandler();
+        explicit ClientTcpHandler(QObject *parent = 0);
+        ~ClientTcpHandler();
 
-    bool isOpen();
+        bool isOpen();
 
-private:
+    private:
 
-    IpcMessageUtils ipcMessageUtils;
+        IpcMessageUtils ipcMessageUtils;
 
-    QTcpSocket *tcpSocket;
-
-
-signals:
-
-    void opened();
-    void closed();
-    void message(IpcMessageUtils::IpcMessages message, QJsonDocument jsonDocument);
-    void error(bool fatal, QString error);
+        QTcpSocket *tcpSocket;
 
 
-public slots:
+    signals:
 
-    void run();
-
-    void open();
-    void close();
-
-    void send(QString ipcString);
-    void send(QStringList ipcStrings);
-    void send(IpcMessageUtils::IpcMessages ipcMessage);
-    void send(IpcMessageUtils::IpcMessages ipcMessage, QJsonDocument ipcJsonData);
+        void opened();
+        void closed();
+        void message(IpcMessageUtils::IpcMessages message, QJsonDocument jsonDocument);
+        void error(bool fatal, QString error);
 
 
-private slots:
+    public slots:
 
-    void connectTimerTimeout();
+        void run();
 
-    void socketConnected();
-    void socketDisconnected();
-    void socketReadyRead();
-    void socketError(QAbstractSocket::SocketError socketError);
+        void open();
+        void close();
+
+        void send(QString ipcString);
+        void send(QStringList ipcStrings);
+        void send(IpcMessageUtils::IpcMessages ipcMessage);
+        void send(IpcMessageUtils::IpcMessages ipcMessage, QJsonDocument ipcJsonData);
+
+
+    private slots:
+
+        void connectTimerTimeout();
+
+        void socketConnected();
+        void socketDisconnected();
+        void socketReadyRead();
+        void socketError(QAbstractSocket::SocketError socketError);
 
 };
 

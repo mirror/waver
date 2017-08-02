@@ -27,14 +27,13 @@
 #endif
 
 
-class NotificationsHandler : public QObject
-{
-    Q_OBJECT
+class NotificationsHandler : public QObject {
+        Q_OBJECT
 
-public:
+    public:
 
-    explicit NotificationsHandler(WaverServer *waverServer);
-    ~NotificationsHandler();
+        explicit NotificationsHandler(WaverServer *waverServer);
+        ~NotificationsHandler();
 
 };
 

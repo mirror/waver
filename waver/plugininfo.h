@@ -28,22 +28,21 @@
 #include "pluginsource.h"
 
 
-class PluginInfo : public PluginBase
-{
-    Q_OBJECT
+class PluginInfo : public PluginBase {
+        Q_OBJECT
 
 
-public:
+    public:
 
-    static const int PLUGIN_INFO_VERSION = 1;
+        static const int PLUGIN_INFO_VERSION = 1;
 
-    virtual void setUrl(QUrl url) = 0;
+        virtual void setUrl(QUrl url) = 0;
 
 
-signals:
+    signals:
 
-    void updateTrackInfo(QUuid uniqueId, PluginSource::TrackInfo trackInfo);
-    void addInfoHtml(QUuid uniqueId, QString info);
+        void updateTrackInfo(QUuid uniqueId, PluginSource::TrackInfo trackInfo);
+        void addInfoHtml(QUuid uniqueId, QString info);
 
 };
 

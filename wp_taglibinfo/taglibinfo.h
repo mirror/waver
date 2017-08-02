@@ -38,36 +38,35 @@
 extern "C" WP_TAGLIBINFO_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_TAGLIBINFO_EXPORT TagLibInfo : public PluginInfo
-{
-    Q_OBJECT
+class WP_TAGLIBINFO_EXPORT TagLibInfo : public PluginInfo {
+        Q_OBJECT
 
-public:
+    public:
 
-    explicit TagLibInfo();
+        explicit TagLibInfo();
 
-    int     pluginType()         override;
-    QString pluginName()         override;
-    int     pluginVersion()      override;
-    QUuid   persistentUniqueId() override;
-    bool    hasUI()              override;
-    void    setUrl(QUrl url)     override;
-
-
-private:
-
-    QUuid id;
-    QUrl  url;
+        int     pluginType()         override;
+        QString pluginName()         override;
+        int     pluginVersion()      override;
+        QUuid   persistentUniqueId() override;
+        bool    hasUI()              override;
+        void    setUrl(QUrl url)     override;
 
 
-public slots:
+    private:
 
-    void run() override;
+        QUuid id;
+        QUrl  url;
 
-    void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
 
-    void getUiQml(QUuid uniqueId)                         override;
-    void uiResults(QUuid uniqueId, QJsonDocument results) override;
+    public slots:
+
+        void run() override;
+
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+
+        void getUiQml(QUuid uniqueId)                         override;
+        void uiResults(QUuid uniqueId, QJsonDocument results) override;
 
 };
 

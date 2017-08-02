@@ -27,7 +27,7 @@
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_SOURCE) {
-        retVal->append((PluginBase*) new LocalSource());
+        retVal->append((PluginBase *) new LocalSource());
     }
 }
 
@@ -49,7 +49,7 @@ LocalSource::LocalSource()
 LocalSource::~LocalSource()
 {
     // interrupt running scanners (usually there will be none at this point, but just in case)
-    foreach(FileScanner *scanner, scanners) {
+    foreach (FileScanner *scanner, scanners) {
         scanner->requestInterruption();
     }
 
@@ -130,7 +130,7 @@ void LocalSource::loadedConfiguration(QUuid uniqueId, QJsonDocument configuratio
 
     if (doScan) {
         // just to be on the safe side
-        foreach(FileScanner *scanner, scanners) {
+        foreach (FileScanner *scanner, scanners) {
             scanner->requestInterruption();
         }
 
@@ -160,7 +160,7 @@ void LocalSource::getUiQml(QUuid uniqueId)
     settingsFile.close();
 
     QString modelElements;
-    foreach(QString directory, directories) {
+    foreach (QString directory, directories) {
         modelElements.append(QString("ListElement { dirpath: \"%1\" } ").arg(directory));
     }
 
@@ -357,7 +357,7 @@ void LocalSource::getOpenTracks(QUuid uniqueId, QString parentId)
 
     // top level
     if (parentId.length() < 1) {
-        foreach(QString directory, directories) {
+        foreach (QString directory, directories) {
             OpenTrack openTrack;
             openTrack.hasChildren = true;
             openTrack.id = directory;
@@ -431,7 +431,7 @@ void LocalSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
                 }
             }
             if (!fileFound) {
-                foreach(QDir dir, dirs) {
+                foreach (QDir dir, dirs) {
                     QFileInfoList subEntries = dir.entryInfoList();
                     foreach (QFileInfo entry, subEntries) {
                         if (isTrackFile(entry)) {
@@ -522,7 +522,7 @@ void LocalSource::action(QUuid uniqueId, int actionKey)
 // scan a dir
 void LocalSource::scanDir(QString dir)
 {
-    FileScanner *fileScanner = new FileScanner((QObject*)this, dir, &trackFileNames, &alreadyPlayedTrackFileNames, &mutex);
+    FileScanner *fileScanner = new FileScanner((QObject *)this, dir, &trackFileNames, &alreadyPlayedTrackFileNames, &mutex);
     connect(fileScanner, SIGNAL(foundFirst()), this, SLOT(scannerFoundFirst()));
     connect(fileScanner, SIGNAL(finished()),   this, SLOT(scannerFinished()));
     scanners.append(fileScanner);
@@ -552,7 +552,7 @@ void LocalSource::readyTimer()
 void LocalSource::scannerFinished()
 {
     // get the scanner that sent this signal
-    FileScanner *sender = (FileScanner*) QObject::sender();
+    FileScanner *sender = (FileScanner *) QObject::sender();
 
     // find it in our scanners
     int senderIndex = -1;
@@ -646,7 +646,9 @@ void LocalSource::jsonToConfig(QJsonDocument jsonDocument)
 // helper
 bool LocalSource::isTrackFile(QFileInfo fileInfo)
 {
-    return (fileInfo.exists() && fileInfo.isFile() && !fileInfo.isSymLink() && (fileInfo.fileName().endsWith(".mp3", Qt::CaseInsensitive) || mimeDatabase.mimeTypeForFile(fileInfo).name().startsWith("audio", Qt::CaseInsensitive)));
+    return (fileInfo.exists() && fileInfo.isFile() && !fileInfo.isSymLink() &&
+            (fileInfo.fileName().endsWith(".mp3", Qt::CaseInsensitive) ||
+                mimeDatabase.mimeTypeForFile(fileInfo).name().startsWith("audio", Qt::CaseInsensitive)));
 }
 
 
@@ -685,7 +687,8 @@ PluginSource::TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
     QVector<QUrl> pictures;
     QFileInfoList entries = QDir(filePath.left(filePath.lastIndexOf("/"))).entryInfoList();
     foreach (QFileInfo entry, entries) {
-        if (entry.exists() && entry.isFile() && !entry.isSymLink() && (entry.fileName().endsWith(".jpg", Qt::CaseInsensitive) || entry.fileName().endsWith(".png", Qt::CaseInsensitive))) {
+        if (entry.exists() && entry.isFile() && !entry.isSymLink() && (entry.fileName().endsWith(".jpg", Qt::CaseInsensitive) ||
+                entry.fileName().endsWith(".png", Qt::CaseInsensitive))) {
             pictures.append(QUrl::fromLocalFile(entry.absoluteFilePath()));
         }
     }
@@ -733,21 +736,21 @@ void LocalSource::variationSetCurrentRemainingDir()
     }
 
     switch (variationCurrent) {
-    case 0:
-        variationRemaining = (qrand() % 3) + 4;
-        variationSetCountSinceHigh++;
-        variationSetCountSinceLow = 0;
-        break;
-    case 1:
-        variationRemaining = (qrand() % 2) + 2;
-        variationSetCountSinceHigh++;
-        variationSetCountSinceLow++;
-        break;
-    case 2:
-        variationRemaining = -1;
-        variationSetCountSinceHigh = 0;
-        variationSetCountSinceLow++;
-     }
+        case 0:
+            variationRemaining = (qrand() % 3) + 4;
+            variationSetCountSinceHigh++;
+            variationSetCountSinceLow = 0;
+            break;
+        case 1:
+            variationRemaining = (qrand() % 2) + 2;
+            variationSetCountSinceHigh++;
+            variationSetCountSinceLow++;
+            break;
+        case 2:
+            variationRemaining = -1;
+            variationSetCountSinceHigh = 0;
+            variationSetCountSinceLow++;
+    }
 
     variationDir = "";
 }

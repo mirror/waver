@@ -28,7 +28,7 @@
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_SOURCE) {
-        retVal->append((PluginBase*) new RadioSource());
+        retVal->append((PluginBase *) new RadioSource());
     }
 }
 
@@ -145,9 +145,9 @@ void RadioSource::getUiQml(QUuid uniqueId)
         }
     }
     foreach (Station station, selectedStations) {
-       if (!selectedCategories.contains(station.category)) {
-           selectedCategories.append(station.category);
-       }
+        if (!selectedCategories.contains(station.category)) {
+            selectedCategories.append(station.category);
+        }
     }
     qSort(categories);
 
@@ -156,12 +156,13 @@ void RadioSource::getUiQml(QUuid uniqueId)
     QString checkboxes;
     QString checkboxesToAll;
     QString checkboxesToRetval;
-    for(int i = 0; i < categories.count(); i++) {
-        checkboxes.append(QString("CheckBox { id: %1; text: \"%2\"; tristate: false; checked: %3; anchors.top: %4; anchors.topMargin: 6; anchors.left: parent.left; anchors.leftMargin: 6 }")
-                .arg(QString("cb_%1").arg(i))
-                .arg(categories.at(i))
-                .arg(selectedCategories.contains(categories.at(i)) ? "true" : "false")
-                .arg(i > 0 ? QString("cb_%1.bottom").arg(i - 1) : "parent.top"));
+    for (int i = 0; i < categories.count(); i++) {
+        checkboxes.append(
+            QString("CheckBox { id: %1; text: \"%2\"; tristate: false; checked: %3; anchors.top: %4; anchors.topMargin: 6; anchors.left: parent.left; anchors.leftMargin: 6 }")
+            .arg(QString("cb_%1").arg(i))
+            .arg(categories.at(i))
+            .arg(selectedCategories.contains(categories.at(i)) ? "true" : "false")
+            .arg(i > 0 ? QString("cb_%1.bottom").arg(i - 1) : "parent.top"));
         checkboxesToAll.append(QString("%1.checked = allCheck.checked; ").arg(QString("cb_%1").arg(i)));
         checkboxesToRetval.append(QString("if (%1.checked) { retval.push(%1.text); } ").arg(QString("cb_%1").arg(i)));
     }
@@ -193,7 +194,7 @@ void RadioSource::uiResults(QUuid uniqueId, QJsonDocument results)
                 emit infoMessage(id, outputFile.errorString());
                 return;
             }
-            foreach(Station station, stations) {
+            foreach (Station station, stations) {
                 QString output = QString("%1;%2;%3\n").arg(station.category).arg(station.name).arg(station.url.toString());
                 outputFile.write(output.toUtf8());
             }
@@ -268,7 +269,8 @@ void RadioSource::uiResults(QUuid uniqueId, QJsonDocument results)
                 }
 
                 if (!insideRadio && (tokenType == QXmlStreamReader::StartElement)) {
-                    if (!xmlReader.attributes().hasAttribute("type") || (xmlReader.attributes().hasAttribute("type") && (xmlReader.attributes().value("type").toString().compare("iradio") != 0))) {
+                    if (!xmlReader.attributes().hasAttribute("type") || (xmlReader.attributes().hasAttribute("type") &&
+                            (xmlReader.attributes().value("type").toString().compare("iradio") != 0))) {
                         if (xmlReader.name().toString().compare("rhythmdb") != 0) {
                             xmlReader.skipCurrentElement();
                         }
@@ -349,7 +351,8 @@ void RadioSource::uiResults(QUuid uniqueId, QJsonDocument results)
                     int already = false;
                     while ((i < stations.count()) && !already) {
                         if (stations.at(i).url == realUrl) {
-                            if ((stations.at(i).category.compare(category) != 0) || (stations.at(i).name.compare(name) != 0) || (stations.at(i).unableToStartCount > 0)) {
+                            if ((stations.at(i).category.compare(category) != 0) || (stations.at(i).name.compare(name) != 0) ||
+                                (stations.at(i).unableToStartCount > 0)) {
                                 updated++;
 
                                 Station station;
@@ -445,7 +448,7 @@ void RadioSource::getPlaylist(QUuid uniqueId, int maxCount)
 
     // check if a station failed to download three or more times, also this helps to make sure no station is selected twice during this request
     QVector<Station> selectableStations;
-    foreach(Station station, selectedStations) {
+    foreach (Station station, selectedStations) {
         if (station.unableToStartCount < 3) {
             selectableStations.append(station);
         }
@@ -455,7 +458,7 @@ void RadioSource::getPlaylist(QUuid uniqueId, int maxCount)
     if ((selectableStations.count() < 1) || (selectableStations.count() < (selectedStations.count() / 10))) {
         // let's get the selected categories, because only these have to be reset
         QStringList selectedCategories;
-        foreach(Station station, selectedStations) {
+        foreach (Station station, selectedStations) {
             if (!selectedCategories.contains(station.category)) {
                 selectedCategories.append(station.category);
             }
@@ -488,7 +491,7 @@ void RadioSource::getPlaylist(QUuid uniqueId, int maxCount)
         // do it again
         selectableStations.clear();
         QVector<Station> selectableStations;
-        foreach(Station station, selectedStations) {
+        foreach (Station station, selectedStations) {
             if (station.unableToStartCount < 3) {
                 selectableStations.append(station);
             }
@@ -537,7 +540,7 @@ void RadioSource::getOpenTracks(QUuid uniqueId, QString parentId)
     // top level
     if (parentId.length() < 1) {
         QStringList allCategories;
-        foreach(Station station, stations) {
+        foreach (Station station, stations) {
             if (!allCategories.contains(station.category)) {
                 allCategories.append(station.category);
             }
@@ -545,7 +548,7 @@ void RadioSource::getOpenTracks(QUuid uniqueId, QString parentId)
 
         qSort(allCategories);
 
-        foreach(QString category, allCategories) {
+        foreach (QString category, allCategories) {
             OpenTrack openTrack;
             openTrack.hasChildren = true;
             openTrack.id          = category;
@@ -558,13 +561,15 @@ void RadioSource::getOpenTracks(QUuid uniqueId, QString parentId)
     }
 
     QVector<Station> categoryStations;
-    foreach(Station station, stations) {
+    foreach (Station station, stations) {
         if (station.category.compare(parentId) == 0) {
             categoryStations.append(station);
         }
     }
 
-    qSort(categoryStations.begin(), categoryStations.end(), [] (Station a, Station b) { return (a.name.compare(b.name) < 0); });
+    qSort(categoryStations.begin(), categoryStations.end(), [](Station a, Station b) {
+        return (a.name.compare(b.name) < 0);
+    });
 
     foreach (Station categoryStation, categoryStations) {
         OpenTrack openTrack;
@@ -588,7 +593,7 @@ void RadioSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
 
     // this doesn't keep the order, but that's a reasonable tradeoff for now
     TracksInfo returnValue;
-    foreach(Station station, stations) {
+    foreach (Station station, stations) {
         if (selectedTracks.contains(station.url.toString())) {
             TrackInfo trackInfo;
             trackInfo.album     = station.category;
@@ -627,7 +632,9 @@ void RadioSource::search(QUuid uniqueId, QString criteria)
         }
     }
 
-    qSort(matches.begin(), matches.end(), [] (Station a, Station b) { return (a.name.compare(b.name) < 0); });
+    qSort(matches.begin(), matches.end(), [](Station a, Station b) {
+        return (a.name.compare(b.name) < 0);
+    });
 
     OpenTracks openTracks;
     foreach (Station match, matches) {
@@ -657,7 +664,7 @@ void RadioSource::action(QUuid uniqueId, int actionKey)
 QJsonDocument RadioSource::configToJson()
 {
     QJsonArray jsonArray;
-    foreach(Station station, stations) {
+    foreach (Station station, stations) {
         QVariantHash data;
         data.insert("category",           station.category);
         data.insert("name",               station.name);
@@ -668,7 +675,7 @@ QJsonDocument RadioSource::configToJson()
     }
 
     QStringList selectedCategories;
-    foreach(Station station, selectedStations) {
+    foreach (Station station, selectedStations) {
         if (!selectedCategories.contains(station.category)) {
             selectedCategories.append(station.category);
         }

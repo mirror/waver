@@ -34,32 +34,32 @@ FadeOutDetector::FadeOutDetector(IIRFilter::SampleTypes sampleType, int sampleRa
 
     double sampleMax;
     switch (sampleType) {
-    case IIRFilter::int8Sample:
-        sampleMin = std::numeric_limits<qint8>::min();
-        sampleMax = std::numeric_limits<qint8>::max();
-        break;
-    case IIRFilter::uint8Sample:
-        sampleMin = std::numeric_limits<quint8>::min();
-        sampleMax = std::numeric_limits<quint8>::max();
-        break;
-    case IIRFilter::uint16Sample:
-        sampleMin = std::numeric_limits<quint16>::min();
-        sampleMax = std::numeric_limits<quint16>::max();
-        break;
-    case IIRFilter::int32Sample:
-        sampleMin = std::numeric_limits<qint32>::min();
-        sampleMax = std::numeric_limits<qint32>::max();
-        break;
-    case IIRFilter::uint32Sample:
-        sampleMin = std::numeric_limits<quint32>::min();
-        sampleMax = std::numeric_limits<quint32>::max();
-        break;
-    case IIRFilter::floatSample:
-        sampleMin = std::numeric_limits<float>::min();
-        sampleMax = std::numeric_limits<float>::max();
-        break;
-    default:
-        break;
+        case IIRFilter::int8Sample:
+            sampleMin = std::numeric_limits<qint8>::min();
+            sampleMax = std::numeric_limits<qint8>::max();
+            break;
+        case IIRFilter::uint8Sample:
+            sampleMin = std::numeric_limits<quint8>::min();
+            sampleMax = std::numeric_limits<quint8>::max();
+            break;
+        case IIRFilter::uint16Sample:
+            sampleMin = std::numeric_limits<quint16>::min();
+            sampleMax = std::numeric_limits<quint16>::max();
+            break;
+        case IIRFilter::int32Sample:
+            sampleMin = std::numeric_limits<qint32>::min();
+            sampleMax = std::numeric_limits<qint32>::max();
+            break;
+        case IIRFilter::uint32Sample:
+            sampleMin = std::numeric_limits<quint32>::min();
+            sampleMax = std::numeric_limits<quint32>::max();
+            break;
+        case IIRFilter::floatSample:
+            sampleMin = std::numeric_limits<float>::min();
+            sampleMax = std::numeric_limits<float>::max();
+            break;
+        default:
+            break;
     }
     sampleRange = sampleMax - sampleMin;
 
@@ -123,7 +123,8 @@ void FadeOutDetector::filterCallback(double *sample, int channelIndex)
         }
         else if (envelope.count() == 0) {
             envelope.append({ positionUSec, average, (average + firstAverage) / 2 });
-        } else {
+        }
+        else {
             envelope.append({ positionUSec, average, (average + envelope.last().oneSecAverage) / 2 });
         }
         sum                  = 0.0;

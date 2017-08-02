@@ -29,36 +29,35 @@
 #include <QVariant>
 
 
-class PluginDspPre : public PluginBase
-{
-    Q_OBJECT
+class PluginDspPre : public PluginBase {
+        Q_OBJECT
 
 
-public:
+    public:
 
-    static const int PLUGIN_DSP_PRE_VERSION = 1;
+        static const int PLUGIN_DSP_PRE_VERSION = 1;
 
-    // greater number means less priority
-    virtual int priority() = 0;
+        // greater number means less priority
+        virtual int priority() = 0;
 
-    virtual void setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
-
-
-signals:
-
-    void requestFadeIn(QUuid uniqueId, qint64 lengthMilliseconds);
-    void requestFadeInForNextTrack(QUuid uniqueId, qint64 lengthMilliseconds);
-    void requestInterrupt(QUuid uniqueId, qint64 posMilliseconds, bool withFadeOut);
-    void requestAboutToFinishSend(QUuid uniqueId, qint64 posMilliseconds);
-    void messageToDspPlugin(QUuid uniqueId, QUuid destinationUniqueId, int messageId, QVariant value);
-
-    void bufferDone(QUuid uniqueId, QAudioBuffer *buffer);
+        virtual void setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
 
 
-public slots:
+    signals:
 
-    virtual void bufferAvailable(QUuid uniqueId) = 0;
-    virtual void decoderDone(QUuid uniqueId)     = 0;
+        void requestFadeIn(QUuid uniqueId, qint64 lengthMilliseconds);
+        void requestFadeInForNextTrack(QUuid uniqueId, qint64 lengthMilliseconds);
+        void requestInterrupt(QUuid uniqueId, qint64 posMilliseconds, bool withFadeOut);
+        void requestAboutToFinishSend(QUuid uniqueId, qint64 posMilliseconds);
+        void messageToDspPlugin(QUuid uniqueId, QUuid destinationUniqueId, int messageId, QVariant value);
+
+        void bufferDone(QUuid uniqueId, QAudioBuffer *buffer);
+
+
+    public slots:
+
+        virtual void bufferAvailable(QUuid uniqueId) = 0;
+        virtual void decoderDone(QUuid uniqueId)     = 0;
 };
 
 #endif // PLUGINDSPPRE_H

@@ -37,64 +37,63 @@
 #include "../waver/pluginoutput.h"
 
 
-class WP_EQUALIZER_EXPORT Equalizer : public PluginDsp, IIRFilterCallback
-{
-    Q_OBJECT
+class WP_EQUALIZER_EXPORT Equalizer : public PluginDsp, IIRFilterCallback {
+        Q_OBJECT
 
-public:
+    public:
 
-    int     pluginType()                                                       override;
-    QString pluginName()                                                       override;
-    int     pluginVersion()                                                    override;
-    QUuid   persistentUniqueId()                                               override;
-    bool    hasUI()                                                            override;
-    int     priority()                                                         override;
-    void    setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) override;
+        int     pluginType()                                                       override;
+        QString pluginName()                                                       override;
+        int     pluginVersion()                                                    override;
+        QUuid   persistentUniqueId()                                               override;
+        bool    hasUI()                                                            override;
+        int     priority()                                                         override;
+        void    setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) override;
 
-    Equalizer();
-    ~Equalizer();
+        Equalizer();
+        ~Equalizer();
 
-    void filterCallback(double *sample, int channelIndex) override;
-
-
-private:
-
-    struct Band {
-        double centerFrequency;
-        double bandwidth;
-    };
-
-    QUuid id;
-
-    QVector<Band>   bands;
-    QVector<double> gains;
-    double          preAmp;
-
-    BufferQueue *bufferQueue;
-    QMutex      *bufferQueueMutex;
-
-    IIRFilter::SampleTypes sampleType;
-    int                    sampleRate;
-    double                 replayGain;
-    double                 currentReplayGain;
-
-    IIRFilterChain* equalizerFilters;
-
-    void createFilters();
+        void filterCallback(double *sample, int channelIndex) override;
 
 
-public slots:
+    private:
 
-    void run() override;
+        struct Band {
+            double centerFrequency;
+            double bandwidth;
+        };
 
-    void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        QUuid id;
 
-    void getUiQml(QUuid uniqueId)                         override;
-    void uiResults(QUuid uniqueId, QJsonDocument results) override;
+        QVector<Band>   bands;
+        QVector<double> gains;
+        double          preAmp;
 
-    void bufferAvailable(QUuid uniqueId)                                                              override;
-    void playBegin(QUuid uniqueId)                                                                    override;
-    void messageFromDspPrePlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value) override;
+        BufferQueue *bufferQueue;
+        QMutex      *bufferQueueMutex;
+
+        IIRFilter::SampleTypes sampleType;
+        int                    sampleRate;
+        double                 replayGain;
+        double                 currentReplayGain;
+
+        IIRFilterChain *equalizerFilters;
+
+        void createFilters();
+
+
+    public slots:
+
+        void run() override;
+
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+
+        void getUiQml(QUuid uniqueId)                         override;
+        void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void bufferAvailable(QUuid uniqueId)                                                              override;
+        void playBegin(QUuid uniqueId)                                                                    override;
+        void messageFromDspPrePlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value) override;
 };
 
 #endif // EQUALIZER_H

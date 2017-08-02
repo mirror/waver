@@ -34,17 +34,16 @@
 
 const int THREAD_TIMEOUT = 500;
 
-class Globals : public QObject
-{
-    Q_OBJECT
+class Globals : public QObject {
+        Q_OBJECT
 
-public:
+    public:
 
-    static QString appName();
-    static QString appVersion();
-    static QString appDesc();
+        static QString appName();
+        static QString appVersion();
+        static QString appDesc();
 
-    static void consoleOutput(QString text, bool error);
+        static void consoleOutput(QString text, bool error);
 
 };
 

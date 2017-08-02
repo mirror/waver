@@ -168,7 +168,8 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
 
     while (bufferQueue->count() > 0) {
         // Replay Gain analysis does change the signal, so let's make a copy of the buffer
-        QAudioBuffer buffer = QAudioBuffer(QByteArray((char*)bufferQueue->at(0)->constData(), bufferQueue->at(0)->byteCount()), bufferQueue->at(0)->format(), bufferQueue->at(0)->startTime());
+        QAudioBuffer buffer = QAudioBuffer(QByteArray((char *)bufferQueue->at(0)->constData(), bufferQueue->at(0)->byteCount()),
+                bufferQueue->at(0)->format(), bufferQueue->at(0)->startTime());
 
         // had to wait with filters setup for the first buffer because format needed
         if (!filtersSetup) {
@@ -186,12 +187,14 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
                 fadeOutDetector      = new FadeOutDetector(sampleType, buffer.format().sampleRate());
 
                 switch (buffer.format().sampleRate()) {
-                case 44100:
-                    replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_44100_YULEWALK_A, REPLAYGAIN_44100_YULEWALK_B));
-                    replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_44100_BUTTERWORTH_A, REPLAYGAIN_44100_BUTTERWORTH_B));
+                    case 44100:
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_44100_YULEWALK_A, REPLAYGAIN_44100_YULEWALK_B));
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_44100_BUTTERWORTH_A, REPLAYGAIN_44100_BUTTERWORTH_B));
                 }
-                replayGainFilter->getFilter(0)->setCallbackRaw((IIRFilterCallback*)fadeOutDetector, (IIRFilterCallback::FilterCallbackPointer)&FadeOutDetector::filterCallback);
-                replayGainFilter->getFilter(1)->setCallbackFiltered((IIRFilterCallback*)replayGainCalculator, (IIRFilterCallback::FilterCallbackPointer)&ReplayGainCalculator::filterCallback);
+                replayGainFilter->getFilter(0)->setCallbackRaw((IIRFilterCallback *)fadeOutDetector,
+                    (IIRFilterCallback::FilterCallbackPointer)&FadeOutDetector::filterCallback);
+                replayGainFilter->getFilter(1)->setCallbackFiltered((IIRFilterCallback *)replayGainCalculator,
+                    (IIRFilterCallback::FilterCallbackPointer)&ReplayGainCalculator::filterCallback);
             }
         }
 

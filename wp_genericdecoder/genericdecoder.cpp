@@ -28,7 +28,7 @@
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_DECODER) {
-        retVal->append((PluginBase*) new GenericDecoder());
+        retVal->append((PluginBase *) new GenericDecoder());
     }
 }
 
@@ -243,7 +243,8 @@ void GenericDecoder::decoderBufferReady()
     QAudioBuffer bufferReady = audioDecoder->read();
 
     // make a copy
-    QAudioBuffer *audioBuffer = new QAudioBuffer(QByteArray((char*)bufferReady.constData(), bufferReady.byteCount()), bufferReady.format(), decodedMicroSeconds);
+    QAudioBuffer *audioBuffer = new QAudioBuffer(QByteArray((char *)bufferReady.constData(), bufferReady.byteCount()),
+        bufferReady.format(), decodedMicroSeconds);
 
     // update counters
     memoryUsage         += bufferReady.byteCount();
@@ -265,7 +266,8 @@ void GenericDecoder::decoderBufferReady()
     // must prevent input underrun, appearently reading 0 bytes is show-stopper for the decoder
     if (networkDownloader != NULL) {
         waitMutex.lock();
-        while ((networkDownloader->realBytesAvailable() < 4048) && !networkDownloader->isFinshed() && !QThread::currentThread()->isInterruptionRequested()) {
+        while ((networkDownloader->realBytesAvailable() < 4048) && !networkDownloader->isFinshed() &&
+            !QThread::currentThread()->isInterruptionRequested()) {
             waitCondition.wait(&waitMutex, 1000);
         }
         waitMutex.unlock();
@@ -287,20 +289,20 @@ void GenericDecoder::decoderError(QAudioDecoder::Error error)
     QString errorStr = audioDecoder->errorString();
     if (errorStr.length() == 0) {
         switch (error) {
-        case QAudioDecoder::NoError:
-            errorStr = "No error has occurred.";
-            break;
-        case QAudioDecoder::ResourceError:
-            errorStr = "A media resource couldn't be resolved.";
-            break;
-        case QAudioDecoder::FormatError:
-            errorStr = "The format of a media resource isn't supported.";
-            break;
-        case QAudioDecoder::AccessDeniedError:
-            errorStr = "There are not the appropriate permissions to play a media resource.";
-            break;
-        case QAudioDecoder::ServiceMissingError:
-            errorStr = "A valid service was not found, decoding cannot proceed.";
+            case QAudioDecoder::NoError:
+                errorStr = "No error has occurred.";
+                break;
+            case QAudioDecoder::ResourceError:
+                errorStr = "A media resource couldn't be resolved.";
+                break;
+            case QAudioDecoder::FormatError:
+                errorStr = "The format of a media resource isn't supported.";
+                break;
+            case QAudioDecoder::AccessDeniedError:
+                errorStr = "There are not the appropriate permissions to play a media resource.";
+                break;
+            case QAudioDecoder::ServiceMissingError:
+                errorStr = "A valid service was not found, decoding cannot proceed.";
         }
     }
 

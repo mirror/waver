@@ -36,42 +36,41 @@
 #include <QUuid>
 
 
-class SettingsHandler : public QObject
-{
-    Q_OBJECT
+class SettingsHandler : public QObject {
+        Q_OBJECT
 
-public:
+    public:
 
-    static const QString DEFAULT_COLLECTION_NAME;
+        static const QString DEFAULT_COLLECTION_NAME;
 
-    explicit SettingsHandler(QObject *parent = 0);
-    ~SettingsHandler();
-
-
-private:
-
-    QDir *settingsDir;
-
-    QString pluginSettingsFileName(QUuid persistentUniqueId, QString collectionName);
+        explicit SettingsHandler(QObject *parent = 0);
+        ~SettingsHandler();
 
 
-signals:
+    private:
 
-    void collectionList(QStringList collections, QString currentCollection);
+        QDir *settingsDir;
 
-    void loadedPluginSettings(QUuid id, QJsonDocument settings);
+        QString pluginSettingsFileName(QUuid persistentUniqueId, QString collectionName);
 
 
-public slots:
+    signals:
 
-    void run();
+        void collectionList(QStringList collections, QString currentCollection);
 
-    void saveCollectionList(QStringList collections, QString currentCollection);
-    void saveCollectionList(QString currentCollection);
-    void getCollectionList();
+        void loadedPluginSettings(QUuid id, QJsonDocument settings);
 
-    void savePluginSettings(QUuid persistentUniqueId, QString collectionName, QJsonDocument settings);
-    void loadPluginSettings(QUuid persistentUniqueId, QString collectionName);
+
+    public slots:
+
+        void run();
+
+        void saveCollectionList(QStringList collections, QString currentCollection);
+        void saveCollectionList(QString currentCollection);
+        void getCollectionList();
+
+        void savePluginSettings(QUuid persistentUniqueId, QString collectionName, QJsonDocument settings);
+        void loadPluginSettings(QUuid persistentUniqueId, QString collectionName);
 
 };
 

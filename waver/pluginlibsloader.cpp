@@ -38,10 +38,10 @@ void PluginLibsLoader::run()
     QDir appDir(QCoreApplication::applicationDirPath());
 
     #ifdef QT_DEBUG
-        appDir.cdUp();
-        #ifdef Q_OS_WIN
-            appDir.cdUp();
-        #endif
+    appDir.cdUp();
+    #ifdef Q_OS_WIN
+    appDir.cdUp();
+    #endif
     #endif
 
     searchDirs.append(appDir.absolutePath());
@@ -56,11 +56,11 @@ void PluginLibsLoader::run()
     QString easyPluginInstallDirPath = QDir::homePath() + "/waver_plugins";
 
     #ifdef Q_OS_WIN
-        easyPluginInstallDirPath = QDir::fromNativeSeparators("C:\\waver_plugins");
+    easyPluginInstallDirPath = QDir::fromNativeSeparators("C:\\waver_plugins");
     #endif
 
     #ifdef Q_OS_ANDROID
-        easyPluginInstallDirPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/waver_plugins";
+    easyPluginInstallDirPath = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation) + "/waver_plugins";
     #endif
 
     QDir easyPluginInstallDir(easyPluginInstallDirPath);
@@ -130,7 +130,8 @@ void PluginLibsLoader::libSearch(QString startDir, QStringList *results)
             libSearch(entry.absoluteFilePath(), results);
         }
 
-        if (entry.isFile() && !entry.isSymLink() && (entry.fileName().count("wp_") == 1) && QLibrary::isLibrary(entry.absoluteFilePath())) {
+        if (entry.isFile() && !entry.isSymLink() && (entry.fileName().count("wp_") == 1) &&
+            QLibrary::isLibrary(entry.absoluteFilePath())) {
             results->append(entry.absoluteFilePath());
         }
     }

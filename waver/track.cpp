@@ -25,7 +25,8 @@
 
 
 // constructor
-Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, PluginSource::TrackInfo trackInfo, QUuid sourcePliginId, QObject *parent) : QObject(parent)
+Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, PluginSource::TrackInfo trackInfo, QUuid sourcePliginId,
+    QObject *parent) : QObject(parent)
 {
     // to make debugging easier
     decoderThread.setObjectName("decoder");
@@ -67,21 +68,21 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, PluginSource::TrackInfo t
         // process each plugin one by one
         foreach (PluginBase *plugin, plugins) {
             switch (plugin->pluginType()) {
-            case PluginBase::PLUGIN_TYPE_DECODER:
-                setupDecoderPlugin(plugin);
-                break;
-            case PluginBase::PLUGIN_TYPE_DSP_PRE:
-                setupDspPrePlugin(plugin, loadedLib.fromEasyPluginInstallDir, &dspPrePriorityMap);
-                break;
-            case PluginBase::PLUGIN_TYPE_DSP:
-                setupDspPlugin(plugin, loadedLib.fromEasyPluginInstallDir, &dspPriorityMap);
-                break;
-            case PluginBase::PLUGIN_TYPE_OUTPUT:
-                setupOutputPlugin(plugin);
-                break;
-            case PluginBase::PLUGIN_TYPE_INFO:
-                setupInfoPlugin(plugin);
-                break;
+                case PluginBase::PLUGIN_TYPE_DECODER:
+                    setupDecoderPlugin(plugin);
+                    break;
+                case PluginBase::PLUGIN_TYPE_DSP_PRE:
+                    setupDspPrePlugin(plugin, loadedLib.fromEasyPluginInstallDir, &dspPrePriorityMap);
+                    break;
+                case PluginBase::PLUGIN_TYPE_DSP:
+                    setupDspPlugin(plugin, loadedLib.fromEasyPluginInstallDir, &dspPriorityMap);
+                    break;
+                case PluginBase::PLUGIN_TYPE_OUTPUT:
+                    setupOutputPlugin(plugin);
+                    break;
+                case PluginBase::PLUGIN_TYPE_INFO:
+                    setupInfoPlugin(plugin);
+                    break;
             }
         }
     }
@@ -131,15 +132,15 @@ Track::~Track()
     decoderThread.wait();
 
     // housekeeping
-    foreach(PluginWithQueue pluginData, dspPrePlugins) {
+    foreach (PluginWithQueue pluginData, dspPrePlugins) {
         delete pluginData.bufferQueue;
         delete pluginData.bufferMutex;
     }
-    foreach(PluginWithQueue pluginData, dspPlugins) {
+    foreach (PluginWithQueue pluginData, dspPlugins) {
         delete pluginData.bufferQueue;
         delete pluginData.bufferMutex;
     }
-    foreach(PluginWithQueue pluginData, outputPlugins) {
+    foreach (PluginWithQueue pluginData, outputPlugins) {
         delete pluginData.bufferQueue;
         delete pluginData.bufferMutex;
     }
@@ -155,7 +156,7 @@ void Track::setupDecoderPlugin(PluginBase *plugin)
     }
 
     // cast the plugin
-    PluginDecoder *pluginDecoder = (PluginDecoder*) plugin;
+    PluginDecoder *pluginDecoder = (PluginDecoder *) plugin;
 
     // get some basic info
     PluginNoQueue pluginData;
@@ -180,18 +181,22 @@ void Track::setupDecoderPlugin(PluginBase *plugin)
     connect(&decoderThread, SIGNAL(finished()), pluginDecoder, SLOT(deleteLater()));
 
     // connect plugin signals
-    connect(pluginDecoder, SIGNAL(saveConfiguration(QUuid,QJsonDocument)),   this,          SLOT(saveConfiguration(QUuid,QJsonDocument)));
+    connect(pluginDecoder, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),   this,          SLOT(saveConfiguration(QUuid,
+                QJsonDocument)));
     connect(pluginDecoder, SIGNAL(loadConfiguration(QUuid)),                 this,          SLOT(loadConfiguration(QUuid)));
-    connect(pluginDecoder, SIGNAL(uiQml(QUuid,QString)),                     this,          SLOT(ui(QUuid,QString)));
-    connect(pluginDecoder, SIGNAL(bufferAvailable(QUuid,QAudioBuffer*)),     this,          SLOT(moveBufferInQueue(QUuid,QAudioBuffer*)));
+    connect(pluginDecoder, SIGNAL(uiQml(QUuid, QString)),                     this,          SLOT(ui(QUuid, QString)));
+    connect(pluginDecoder, SIGNAL(bufferAvailable(QUuid, QAudioBuffer *)),     this,          SLOT(moveBufferInQueue(QUuid,
+                QAudioBuffer *)));
     connect(pluginDecoder, SIGNAL(finished(QUuid)),                          this,          SLOT(decoderFinished(QUuid)));
-    connect(pluginDecoder, SIGNAL(error(QUuid,QString)),                     this,          SLOT(decoderError(QUuid,QString)));
-    connect(pluginDecoder, SIGNAL(infoMessage(QUuid,QString)),               this,          SLOT(infoMessage(QUuid,QString)));
-    connect(this,          SIGNAL(loadedConfiguration(QUuid,QJsonDocument)), pluginDecoder, SLOT(loadedConfiguration(QUuid,QJsonDocument)));
+    connect(pluginDecoder, SIGNAL(error(QUuid, QString)),                     this,          SLOT(decoderError(QUuid, QString)));
+    connect(pluginDecoder, SIGNAL(infoMessage(QUuid, QString)),               this,          SLOT(infoMessage(QUuid, QString)));
+    connect(this,          SIGNAL(loadedConfiguration(QUuid, QJsonDocument)), pluginDecoder, SLOT(loadedConfiguration(QUuid,
+                QJsonDocument)));
     connect(this,          SIGNAL(requestPluginUi(QUuid)),                   pluginDecoder, SLOT(getUiQml(QUuid)));
-    connect(this,          SIGNAL(pluginUiResults(QUuid,QJsonDocument)),     pluginDecoder, SLOT(uiResults(QUuid,QJsonDocument)));
+    connect(this,          SIGNAL(pluginUiResults(QUuid, QJsonDocument)),     pluginDecoder, SLOT(uiResults(QUuid, QJsonDocument)));
     connect(this,          SIGNAL(startDecode(QUuid)),                       pluginDecoder, SLOT(start(QUuid)));
-    connect(this,          SIGNAL(bufferDone(QUuid,QAudioBuffer*)),          pluginDecoder, SLOT(bufferDone(QUuid,QAudioBuffer*)));
+    connect(this,          SIGNAL(bufferDone(QUuid, QAudioBuffer *)),          pluginDecoder, SLOT(bufferDone(QUuid,
+                QAudioBuffer *)));
 }
 
 
@@ -204,7 +209,7 @@ void Track::setupDspPrePlugin(PluginBase *plugin, bool fromEasyPluginInstallDir,
     }
 
     // cast the plugin
-    PluginDspPre *pluginDspPre = (PluginDspPre*) plugin;
+    PluginDspPre *pluginDspPre = (PluginDspPre *) plugin;
 
     // get some basic info
     PluginWithQueue pluginData;
@@ -235,19 +240,28 @@ void Track::setupDspPrePlugin(PluginBase *plugin, bool fromEasyPluginInstallDir,
     connect(&dspPreThread, SIGNAL(finished()), pluginDspPre, SLOT(deleteLater()));
 
     // connect plugin signals
-    connect(pluginDspPre, SIGNAL(saveConfiguration(QUuid,QJsonDocument)),       this,         SLOT(saveConfiguration(QUuid,QJsonDocument)));
+    connect(pluginDspPre, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),       this,         SLOT(saveConfiguration(QUuid,
+                QJsonDocument)));
     connect(pluginDspPre, SIGNAL(loadConfiguration(QUuid)),                     this,         SLOT(loadConfiguration(QUuid)));
-    connect(pluginDspPre, SIGNAL(uiQml(QUuid,QString)),                         this,         SLOT(ui(QUuid,QString)));
-    connect(pluginDspPre, SIGNAL(infoMessage(QUuid,QString)),                   this,         SLOT(infoMessage(QUuid,QString)));
-    connect(pluginDspPre, SIGNAL(requestFadeIn(QUuid,qint64)),                  this,         SLOT(dspPreRequestFadeIn(QUuid,qint64)));
-    connect(pluginDspPre, SIGNAL(requestFadeInForNextTrack(QUuid,qint64)),      this,         SLOT(dspPreRequestFadeInForNextTrack(QUuid,qint64)));
-    connect(pluginDspPre, SIGNAL(requestInterrupt(QUuid,qint64,bool)),          this,         SLOT(dspPreRequestInterrupt(QUuid,qint64,bool)));
-    connect(pluginDspPre, SIGNAL(requestAboutToFinishSend(QUuid,qint64)),       this,         SLOT(dspPreRequestAboutToFinishSend(QUuid,qint64)));
-    connect(pluginDspPre, SIGNAL(messageToDspPlugin(QUuid,QUuid,int,QVariant)), this,         SLOT(dspPreMessageToDspPlugin(QUuid,QUuid,int,QVariant)));
-    connect(pluginDspPre, SIGNAL(bufferDone(QUuid,QAudioBuffer*)),              this,         SLOT(moveBufferInQueue(QUuid,QAudioBuffer*)));
-    connect(this,         SIGNAL(loadedConfiguration(QUuid,QJsonDocument)),     pluginDspPre, SLOT(loadedConfiguration(QUuid,QJsonDocument)));
+    connect(pluginDspPre, SIGNAL(uiQml(QUuid, QString)),                         this,         SLOT(ui(QUuid, QString)));
+    connect(pluginDspPre, SIGNAL(infoMessage(QUuid, QString)),                   this,         SLOT(infoMessage(QUuid, QString)));
+    connect(pluginDspPre, SIGNAL(requestFadeIn(QUuid, qint64)),                  this,         SLOT(dspPreRequestFadeIn(QUuid,
+                qint64)));
+    connect(pluginDspPre, SIGNAL(requestFadeInForNextTrack(QUuid, qint64)),      this,
+        SLOT(dspPreRequestFadeInForNextTrack(QUuid, qint64)));
+    connect(pluginDspPre, SIGNAL(requestInterrupt(QUuid, qint64, bool)),          this,         SLOT(dspPreRequestInterrupt(QUuid,
+                qint64, bool)));
+    connect(pluginDspPre, SIGNAL(requestAboutToFinishSend(QUuid, qint64)),       this,
+        SLOT(dspPreRequestAboutToFinishSend(QUuid, qint64)));
+    connect(pluginDspPre, SIGNAL(messageToDspPlugin(QUuid, QUuid, int, QVariant)), this,
+        SLOT(dspPreMessageToDspPlugin(QUuid, QUuid, int, QVariant)));
+    connect(pluginDspPre, SIGNAL(bufferDone(QUuid, QAudioBuffer *)),              this,         SLOT(moveBufferInQueue(QUuid,
+                QAudioBuffer *)));
+    connect(this,         SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),     pluginDspPre, SLOT(loadedConfiguration(QUuid,
+                QJsonDocument)));
     connect(this,         SIGNAL(requestPluginUi(QUuid)),                       pluginDspPre, SLOT(getUiQml(QUuid)));
-    connect(this,         SIGNAL(pluginUiResults(QUuid,QJsonDocument)),         pluginDspPre, SLOT(uiResults(QUuid,QJsonDocument)));
+    connect(this,         SIGNAL(pluginUiResults(QUuid, QJsonDocument)),         pluginDspPre, SLOT(uiResults(QUuid,
+                QJsonDocument)));
     connect(this,         SIGNAL(bufferAvailable(QUuid)),                       pluginDspPre, SLOT(bufferAvailable(QUuid)));
     connect(this,         SIGNAL(decoderDone(QUuid)),                           pluginDspPre, SLOT(decoderDone(QUuid)));
 }
@@ -262,7 +276,7 @@ void Track::setupDspPlugin(PluginBase *plugin, bool fromEasyPluginInstallDir, QM
     }
 
     // cast the plugin
-    PluginDsp *pluginDsp = (PluginDsp*) plugin;
+    PluginDsp *pluginDsp = (PluginDsp *) plugin;
 
     // need to keep these pointers, see messageFromDspPrePlugin
     dspPointers.append(pluginDsp);
@@ -296,17 +310,22 @@ void Track::setupDspPlugin(PluginBase *plugin, bool fromEasyPluginInstallDir, QM
     connect(&dspThread, SIGNAL(finished()), pluginDsp, SLOT(deleteLater()));
 
     // connect plugin signals
-    connect(pluginDsp, SIGNAL(saveConfiguration(QUuid,QJsonDocument)),            this,      SLOT(saveConfiguration(QUuid,QJsonDocument)));
+    connect(pluginDsp, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),            this,      SLOT(saveConfiguration(QUuid,
+                QJsonDocument)));
     connect(pluginDsp, SIGNAL(loadConfiguration(QUuid)),                          this,      SLOT(loadConfiguration(QUuid)));
-    connect(pluginDsp, SIGNAL(uiQml(QUuid,QString)),                              this,      SLOT(ui(QUuid,QString)));
-    connect(pluginDsp, SIGNAL(infoMessage(QUuid,QString)),                        this,      SLOT(infoMessage(QUuid,QString)));
-    connect(pluginDsp, SIGNAL(bufferDone(QUuid,QAudioBuffer*)),                   this,      SLOT(moveBufferInQueue(QUuid,QAudioBuffer*)));
-    connect(this,      SIGNAL(loadedConfiguration(QUuid,QJsonDocument)),          pluginDsp, SLOT(loadedConfiguration(QUuid,QJsonDocument)));
+    connect(pluginDsp, SIGNAL(uiQml(QUuid, QString)),                              this,      SLOT(ui(QUuid, QString)));
+    connect(pluginDsp, SIGNAL(infoMessage(QUuid, QString)),                        this,      SLOT(infoMessage(QUuid, QString)));
+    connect(pluginDsp, SIGNAL(bufferDone(QUuid, QAudioBuffer *)),                   this,      SLOT(moveBufferInQueue(QUuid,
+                QAudioBuffer *)));
+    connect(this,      SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),          pluginDsp, SLOT(loadedConfiguration(QUuid,
+                QJsonDocument)));
     connect(this,      SIGNAL(requestPluginUi(QUuid)),                            pluginDsp, SLOT(getUiQml(QUuid)));
-    connect(this,      SIGNAL(pluginUiResults(QUuid,QJsonDocument)),              pluginDsp, SLOT(uiResults(QUuid,QJsonDocument)));
+    connect(this,      SIGNAL(pluginUiResults(QUuid, QJsonDocument)),              pluginDsp, SLOT(uiResults(QUuid,
+                QJsonDocument)));
     connect(this,      SIGNAL(bufferAvailable(QUuid)),                            pluginDsp, SLOT(bufferAvailable(QUuid)));
     connect(this,      SIGNAL(playBegin(QUuid)),                                  pluginDsp, SLOT(playBegin(QUuid)));
-    connect(this,      SIGNAL(messageFromDspPrePlugin(QUuid,QUuid,int,QVariant)), pluginDsp, SLOT(messageFromDspPrePlugin(QUuid,QUuid,int,QVariant)));
+    connect(this,      SIGNAL(messageFromDspPrePlugin(QUuid, QUuid, int, QVariant)), pluginDsp, SLOT(messageFromDspPrePlugin(QUuid,
+                QUuid, int, QVariant)));
 }
 
 
@@ -319,7 +338,7 @@ void Track::setupOutputPlugin(PluginBase *plugin)
     }
 
     // cast the plugin
-    PluginOutput *pluginOutput = (PluginOutput*) plugin;
+    PluginOutput *pluginOutput = (PluginOutput *) plugin;
 
     // get some basic info
     PluginWithQueue pluginData;
@@ -348,24 +367,28 @@ void Track::setupOutputPlugin(PluginBase *plugin)
     connect(&outputThread, SIGNAL(finished()), pluginOutput, SLOT(deleteLater()));
 
     // connect plugin signals
-    connect(pluginOutput, SIGNAL(saveConfiguration(QUuid,QJsonDocument)),   this,         SLOT(saveConfiguration(QUuid,QJsonDocument)));
+    connect(pluginOutput, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),   this,         SLOT(saveConfiguration(QUuid,
+                QJsonDocument)));
     connect(pluginOutput, SIGNAL(loadConfiguration(QUuid)),                 this,         SLOT(loadConfiguration(QUuid)));
-    connect(pluginOutput, SIGNAL(uiQml(QUuid,QString)),                     this,         SLOT(ui(QUuid,QString)));
-    connect(pluginOutput, SIGNAL(infoMessage(QUuid,QString)),               this,         SLOT(infoMessage(QUuid,QString)));
-    connect(pluginOutput, SIGNAL(bufferDone(QUuid,QAudioBuffer*)),          this,         SLOT(moveBufferInQueue(QUuid,QAudioBuffer*)));
-    connect(pluginOutput, SIGNAL(positionChanged(QUuid,qint64)),            this,         SLOT(outputPositionChanged(QUuid,qint64)));
+    connect(pluginOutput, SIGNAL(uiQml(QUuid, QString)),                     this,         SLOT(ui(QUuid, QString)));
+    connect(pluginOutput, SIGNAL(infoMessage(QUuid, QString)),               this,         SLOT(infoMessage(QUuid, QString)));
+    connect(pluginOutput, SIGNAL(bufferDone(QUuid, QAudioBuffer *)),          this,         SLOT(moveBufferInQueue(QUuid,
+                QAudioBuffer *)));
+    connect(pluginOutput, SIGNAL(positionChanged(QUuid, qint64)),            this,         SLOT(outputPositionChanged(QUuid,
+                qint64)));
     connect(pluginOutput, SIGNAL(bufferUnderrun(QUuid)),                    this,         SLOT(outputBufferUnderrun(QUuid)));
     connect(pluginOutput, SIGNAL(fadeInComplete(QUuid)),                    this,         SLOT(outputFadeInComplete(QUuid)));
     connect(pluginOutput, SIGNAL(fadeOutComplete(QUuid)),                   this,         SLOT(outputFadeOutComplete(QUuid)));
-    connect(pluginOutput, SIGNAL(error(QUuid,QString)),                     this,         SLOT(outputError(QUuid,QString)));
-    connect(this,         SIGNAL(loadedConfiguration(QUuid,QJsonDocument)), pluginOutput, SLOT(loadedConfiguration(QUuid,QJsonDocument)));
+    connect(pluginOutput, SIGNAL(error(QUuid, QString)),                     this,         SLOT(outputError(QUuid, QString)));
+    connect(this,         SIGNAL(loadedConfiguration(QUuid, QJsonDocument)), pluginOutput, SLOT(loadedConfiguration(QUuid,
+                QJsonDocument)));
     connect(this,         SIGNAL(requestPluginUi(QUuid)),                   pluginOutput, SLOT(getUiQml(QUuid)));
-    connect(this,         SIGNAL(pluginUiResults(QUuid,QJsonDocument)),     pluginOutput, SLOT(uiResults(QUuid,QJsonDocument)));
+    connect(this,         SIGNAL(pluginUiResults(QUuid, QJsonDocument)),     pluginOutput, SLOT(uiResults(QUuid, QJsonDocument)));
     connect(this,         SIGNAL(bufferAvailable(QUuid)),                   pluginOutput, SLOT(bufferAvailable(QUuid)));
     connect(this,         SIGNAL(pause(QUuid)),                             pluginOutput, SLOT(pause(QUuid)));
     connect(this,         SIGNAL(resume(QUuid)),                            pluginOutput, SLOT(resume(QUuid)));
-    connect(this,         SIGNAL(fadeIn(QUuid,int)),                        pluginOutput, SLOT(fadeIn(QUuid,int)));
-    connect(this,         SIGNAL(fadeOut(QUuid,int)),                       pluginOutput, SLOT(fadeOut(QUuid,int)));
+    connect(this,         SIGNAL(fadeIn(QUuid, int)),                        pluginOutput, SLOT(fadeIn(QUuid, int)));
+    connect(this,         SIGNAL(fadeOut(QUuid, int)),                       pluginOutput, SLOT(fadeOut(QUuid, int)));
 }
 
 
@@ -378,7 +401,7 @@ void Track::setupInfoPlugin(PluginBase *plugin)
     }
 
     // cast the plugin
-    PluginInfo *pluginInfo = (PluginInfo*) plugin;
+    PluginInfo *pluginInfo = (PluginInfo *) plugin;
 
     // get some basic info
     PluginNoQueue pluginData;
@@ -400,15 +423,18 @@ void Track::setupInfoPlugin(PluginBase *plugin)
     connect(&infoThread, SIGNAL(finished()), pluginInfo, SLOT(deleteLater()));
 
     // connect plugin signals
-    connect(pluginInfo, SIGNAL(saveConfiguration(QUuid,QJsonDocument)),         this,       SLOT(saveConfiguration(QUuid,QJsonDocument)));
+    connect(pluginInfo, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),         this,       SLOT(saveConfiguration(QUuid,
+                QJsonDocument)));
     connect(pluginInfo, SIGNAL(loadConfiguration(QUuid)),                       this,       SLOT(loadConfiguration(QUuid)));
-    connect(pluginInfo, SIGNAL(uiQml(QUuid,QString)),                           this,       SLOT(ui(QUuid,QString)));
-    connect(pluginInfo, SIGNAL(infoMessage(QUuid,QString)),                     this,       SLOT(infoMessage(QUuid,QString)));
-    connect(pluginInfo, SIGNAL(updateTrackInfo(QUuid,PluginSource::TrackInfo)), this,       SLOT(infoUpdateTrackInfo(QUuid,PluginSource::TrackInfo)));
-    connect(pluginInfo, SIGNAL(addInfoHtml(QUuid,QString)),                     this,       SLOT(infoAddInfoHtml(QUuid,QString)));
-    connect(this,       SIGNAL(loadedConfiguration(QUuid,QJsonDocument)),       pluginInfo, SLOT(loadedConfiguration(QUuid,QJsonDocument)));
+    connect(pluginInfo, SIGNAL(uiQml(QUuid, QString)),                           this,       SLOT(ui(QUuid, QString)));
+    connect(pluginInfo, SIGNAL(infoMessage(QUuid, QString)),                     this,       SLOT(infoMessage(QUuid, QString)));
+    connect(pluginInfo, SIGNAL(updateTrackInfo(QUuid, PluginSource::TrackInfo)), this,       SLOT(infoUpdateTrackInfo(QUuid,
+                PluginSource::TrackInfo)));
+    connect(pluginInfo, SIGNAL(addInfoHtml(QUuid, QString)),                     this,       SLOT(infoAddInfoHtml(QUuid, QString)));
+    connect(this,       SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),       pluginInfo, SLOT(loadedConfiguration(QUuid,
+                QJsonDocument)));
     connect(this,       SIGNAL(requestPluginUi(QUuid)),                         pluginInfo, SLOT(getUiQml(QUuid)));
-    connect(this,       SIGNAL(pluginUiResults(QUuid,QJsonDocument)),           pluginInfo, SLOT(uiResults(QUuid,QJsonDocument)));
+    connect(this,       SIGNAL(pluginUiResults(QUuid, QJsonDocument)),           pluginInfo, SLOT(uiResults(QUuid, QJsonDocument)));
 }
 
 
@@ -454,12 +480,12 @@ void Track::setStatus(Status status)
             emit startDecode(currentDecoderId);
         }
 
-        foreach(QUuid dspPluginId, dspPlugins.keys()) {
+        foreach (QUuid dspPluginId, dspPlugins.keys()) {
             emit playBegin(dspPluginId);
         }
 
         if (trackInfo.cast || fadeInRequested) {
-            foreach(QUuid outputPluginId, outputPlugins.keys()) {
+            foreach (QUuid outputPluginId, outputPlugins.keys()) {
                 emit fadeIn(outputPluginId, (fadeInRequestedMilliseconds == 0 ? INTERRUPT_FADE_SECONDS : fadeInRequestedMilliseconds / 1000));
             }
         }
@@ -475,12 +501,12 @@ void Track::setStatus(Status status)
         dspThread.start();
         outputThread.start();
 
-        foreach(QUuid dspPluginId, dspPlugins.keys()) {
+        foreach (QUuid dspPluginId, dspPlugins.keys()) {
             emit playBegin(dspPluginId);
         }
 
         if (trackInfo.cast || fadeInRequested) {
-            foreach(QUuid outputPluginId, outputPlugins.keys()) {
+            foreach (QUuid outputPluginId, outputPlugins.keys()) {
                 emit fadeIn(outputPluginId, (fadeInRequestedMilliseconds == 0 ? INTERRUPT_FADE_SECONDS : fadeInRequestedMilliseconds / 1000));
             }
         }
@@ -492,7 +518,7 @@ void Track::setStatus(Status status)
             }
         }
 
-        foreach(QUuid outputPluginId, outputPlugins.keys()) {
+        foreach (QUuid outputPluginId, outputPlugins.keys()) {
             if ((outputPlugins.value(outputPluginId).bufferQueue->count() > 0)) {
                 emit bufferAvailable(outputPluginId);
             }
@@ -556,7 +582,7 @@ void Track::interrupt()
     if ((currentStatus == Playing) && (!interruptInProgress)) {
         interruptInProgress = true;
 
-        foreach(QUuid pluginId, outputPlugins.keys()) {
+        foreach (QUuid pluginId, outputPlugins.keys()) {
             emit fadeOut(pluginId, INTERRUPT_FADE_SECONDS);
         }
 
@@ -574,27 +600,27 @@ void Track::sendLoadedPluginsWithUI()
 {
     PluginsWithUI pluginsWithUI;
 
-    foreach(QUuid id, decoderPlugins.keys()) {
+    foreach (QUuid id, decoderPlugins.keys()) {
         if (decoderPlugins.value(id).hasUI) {
             pluginsWithUI.insert(id, formatPluginName(decoderPlugins.value(id)));
         }
     }
-    foreach(QUuid id, dspPrePlugins.keys()) {
+    foreach (QUuid id, dspPrePlugins.keys()) {
         if (dspPrePlugins.value(id).hasUI) {
             pluginsWithUI.insert(id, formatPluginName(dspPrePlugins.value(id)));
         }
     }
-    foreach(QUuid id, dspPlugins.keys()) {
+    foreach (QUuid id, dspPlugins.keys()) {
         if (dspPlugins.value(id).hasUI) {
             pluginsWithUI.insert(id, formatPluginName(dspPlugins.value(id)));
         }
     }
-    foreach(QUuid id, outputPlugins.keys()) {
+    foreach (QUuid id, outputPlugins.keys()) {
         if (outputPlugins.value(id).hasUI) {
             pluginsWithUI.insert(id, formatPluginName(outputPlugins.value(id)));
         }
     }
-    foreach(QUuid id, infoPlugins.keys()) {
+    foreach (QUuid id, infoPlugins.keys()) {
         if (infoPlugins.value(id).hasUI) {
             pluginsWithUI.insert(id, formatPluginName(infoPlugins.value(id)));
         }
@@ -731,7 +757,7 @@ void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
             bufferOuputDoneCounters[buffer] = 0;
 
             // queue buffer for every output
-            foreach(QUuid outputPluginId, outputPlugins.keys()) {
+            foreach (QUuid outputPluginId, outputPlugins.keys()) {
                 // update done counter for this buffer
                 bufferOuputDoneCounters[buffer]++;
 
@@ -800,7 +826,7 @@ void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
             bufferOuputDoneCounters[buffer] = 0;
 
             // queue buffer for every output
-            foreach(QUuid outputPluginId, outputPlugins.keys()) {
+            foreach (QUuid outputPluginId, outputPlugins.keys()) {
                 // update done counter for this buffer
                 bufferOuputDoneCounters[buffer]++;
 
@@ -849,7 +875,7 @@ void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
             bufferOuputDoneCounters[buffer] = 0;
 
             // queue buffer for every output
-            foreach(QUuid outputPluginId, outputPlugins.keys()) {
+            foreach (QUuid outputPluginId, outputPlugins.keys()) {
                 // update done counter for this buffer
                 bufferOuputDoneCounters[buffer]++;
 
@@ -921,7 +947,7 @@ void Track::decoderFinished(QUuid uniqueId)
 
     decodingDone = true;
 
-    foreach(QUuid pluginId, dspPrePlugins.keys()) {
+    foreach (QUuid pluginId, dspPrePlugins.keys()) {
         emit decoderDone(pluginId);
     }
 }
@@ -942,17 +968,17 @@ void Track::decoderError(QUuid uniqueId, QString errorMessage)
             // as far as the outside world goes, this is not an error, so let's just try the next decoder
 
             dspSynchronizerQueue.clear();
-            foreach(PluginWithQueue pluginData, dspPrePlugins) {
+            foreach (PluginWithQueue pluginData, dspPrePlugins) {
                 pluginData.bufferMutex->lock();
                 pluginData.bufferQueue->clear();
                 pluginData.bufferMutex->unlock();
             }
-            foreach(PluginWithQueue pluginData, dspPlugins) {
+            foreach (PluginWithQueue pluginData, dspPlugins) {
                 pluginData.bufferMutex->lock();
                 pluginData.bufferQueue->clear();
                 pluginData.bufferMutex->unlock();
             }
-            foreach(PluginWithQueue pluginData, outputPlugins) {
+            foreach (PluginWithQueue pluginData, outputPlugins) {
                 pluginData.bufferMutex->lock();
                 pluginData.bufferQueue->clear();
                 pluginData.bufferMutex->unlock();
@@ -1126,7 +1152,7 @@ void Track::dspPreMessageToDspPlugin(QUuid uniqueId, QUuid destinationUniqueId, 
     }
 
     // these can come long before dsp thread is fired up
-    foreach(PluginDsp *dspPointer, dspPointers) {
+    foreach (PluginDsp *dspPointer, dspPointers) {
         dspPointer->messageFromDspPrePlugin(destinationUniqueId, uniqueId, messageId, value);
     }
 }
@@ -1141,16 +1167,16 @@ void Track::infoUpdateTrackInfo(QUuid uniqueId, PluginSource::TrackInfo trackInf
         this->trackInfo.title = trackInfo.title;
     }
     if (trackInfo.performer.length() > 0) {
-        this->trackInfo.performer= trackInfo.performer;
+        this->trackInfo.performer = trackInfo.performer;
     }
     if (trackInfo.album.length() > 0) {
-        this->trackInfo.album= trackInfo.album;
+        this->trackInfo.album = trackInfo.album;
     }
     if (trackInfo.year > 0) {
-        this->trackInfo.year= trackInfo.year;
+        this->trackInfo.year = trackInfo.year;
     }
     if (trackInfo.track > 0) {
-        this->trackInfo.track= trackInfo.track;
+        this->trackInfo.track = trackInfo.track;
     }
 
     emit trackInfoUpdated(this->trackInfo.url);

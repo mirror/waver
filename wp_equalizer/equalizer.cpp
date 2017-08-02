@@ -289,16 +289,16 @@ void Equalizer::createFilters()
     // calculate coefficients for each filter
     for (int i = 0; i < bands.size(); i++) {
         IIRFilter::FilterTypes filterType =
-                i == 0               ? IIRFilter::LowShelf  :
-                i < bands.size() - 1 ? IIRFilter::BandShelf :
-                                       IIRFilter::HighShelf;
+            i == 0               ? IIRFilter::LowShelf  :
+            i < bands.size() - 1 ? IIRFilter::BandShelf :
+            IIRFilter::HighShelf;
 
         coefficientLists.append(IIRFilter::calculateBiquadCoefficients(
-            filterType,
-            bands.at(i).centerFrequency,
-            bands.at(i).bandwidth,
-            sampleRate,
-            gains.at(i)));
+                filterType,
+                bands.at(i).centerFrequency,
+                bands.at(i).bandwidth,
+                sampleRate,
+                gains.at(i)));
     }
 
     // housekeeping
@@ -310,5 +310,6 @@ void Equalizer::createFilters()
     equalizerFilters = new IIRFilterChain(coefficientLists);
 
     // install Replay Gain applier callback
-    equalizerFilters->getFilter(0)->setCallbackRaw((IIRFilterCallback*)this, (IIRFilterCallback::FilterCallbackPointer)&Equalizer::filterCallback);
+    equalizerFilters->getFilter(0)->setCallbackRaw((IIRFilterCallback *)this,
+        (IIRFilterCallback::FilterCallbackPointer)&Equalizer::filterCallback);
 }

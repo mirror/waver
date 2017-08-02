@@ -26,10 +26,10 @@
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_DSP_PRE) {
-        retVal->append((PluginBase*) new Analyzer());
+        retVal->append((PluginBase *) new Analyzer());
     }
 
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_DSP) {
-        retVal->append((PluginBase*) new Equalizer());
+        retVal->append((PluginBase *) new Equalizer());
     }
 }

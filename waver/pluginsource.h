@@ -34,55 +34,54 @@
 #include "pluginbase.h"
 
 
-class PluginSource : public PluginBase
-{
-    Q_OBJECT
+class PluginSource : public PluginBase {
+        Q_OBJECT
 
 
-public:
+    public:
 
-    struct TrackInfo {
-        QUrl                url;
-        bool                cast;
-        QVector<QUrl>       pictures;
-        QString             title;
-        QString             performer;
-        QString             album;
-        int                 year;
-        int                 track;
-        QHash<int, QString> actions;
-    };
-    typedef QVector<TrackInfo> TracksInfo;
+        struct TrackInfo {
+            QUrl                url;
+            bool                cast;
+            QVector<QUrl>       pictures;
+            QString             title;
+            QString             performer;
+            QString             album;
+            int                 year;
+            int                 track;
+            QHash<int, QString> actions;
+        };
+        typedef QVector<TrackInfo> TracksInfo;
 
-    struct OpenTrack {
-        QString id;
-        QString label;
-        bool    hasChildren;
-        bool    selectable;
-    };
-    typedef QVector<OpenTrack> OpenTracks;
+        struct OpenTrack {
+            QString id;
+            QString label;
+            bool    hasChildren;
+            bool    selectable;
+        };
+        typedef QVector<OpenTrack> OpenTracks;
 
-    static const int PLUGIN_SOURCE_VERSION = 1;
-
-
-signals:
-
-    void ready(QUuid uniqueId);
-    void unready(QUuid uniqueId);
-    void playlist(QUuid uniqueId, PluginSource::TracksInfo tracksInfo);
-    void openTracksResults(QUuid uniqueId, PluginSource::OpenTracks openTracks);
-    void searchResults(QUuid uniqueId, PluginSource::OpenTracks openTracks);
-    void requestRemoveTracks(QUuid uniqueId);
+        static const int PLUGIN_SOURCE_VERSION = 1;
 
 
-public slots:
+    signals:
 
-    virtual void unableToStart(QUuid uniqueId, QUrl url)                         = 0;
-    virtual void getPlaylist(QUuid uniqueId, int maxCount)                       = 0;
-    virtual void getOpenTracks(QUuid uniqueId, QString parentId)                 = 0;
-    virtual void resolveOpenTracks(QUuid uniqueId, QStringList selectedTrackIds) = 0;
-    virtual void search(QUuid uniqueId, QString criteria)                        = 0;
-    virtual void action(QUuid uniqueId, int actionKey)                           = 0;
+        void ready(QUuid uniqueId);
+        void unready(QUuid uniqueId);
+        void playlist(QUuid uniqueId, PluginSource::TracksInfo tracksInfo);
+        void openTracksResults(QUuid uniqueId, PluginSource::OpenTracks openTracks);
+        void searchResults(QUuid uniqueId, PluginSource::OpenTracks openTracks);
+        void requestRemoveTracks(QUuid uniqueId);
+
+
+    public slots:
+
+        virtual void unableToStart(QUuid uniqueId, QUrl url)                         = 0;
+        virtual void getPlaylist(QUuid uniqueId, int maxCount)                       = 0;
+        virtual void getOpenTracks(QUuid uniqueId, QString parentId)                 = 0;
+        virtual void resolveOpenTracks(QUuid uniqueId, QStringList selectedTrackIds) = 0;
+        virtual void search(QUuid uniqueId, QString criteria)                        = 0;
+        virtual void action(QUuid uniqueId, int actionKey)                           = 0;
 
 };
 

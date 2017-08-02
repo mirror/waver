@@ -47,67 +47,66 @@
 extern "C" WP_GENERICDECODER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder
-{
-    Q_OBJECT
+class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder {
+        Q_OBJECT
 
-public:
+    public:
 
-    int     pluginType()         override;
-    QString pluginName()         override;
-    int     pluginVersion()      override;
-    QUuid   persistentUniqueId() override;
-    bool    hasUI()              override;
-    void    setUrl(QUrl url)     override;
+        int     pluginType()         override;
+        QString pluginName()         override;
+        int     pluginVersion()      override;
+        QUuid   persistentUniqueId() override;
+        bool    hasUI()              override;
+        void    setUrl(QUrl url)     override;
 
-    explicit GenericDecoder();
-    ~GenericDecoder();
-
-
-private:
-
-    static const unsigned long MAX_MEMORY   = 50 * 1024 * 1024;
-    static const unsigned long USEC_PER_SEC = 1000000;
-
-    QUuid id;
-    QUrl  url;
-
-    QAudioDecoder          *audioDecoder;
-    QVector<QAudioBuffer*>  audioBuffers;
-
-    QFile             *file;
-    QThread            networkThread;
-    NetworkDownloader *networkDownloader;
-
-    QMutex         waitMutex;
-    QWaitCondition waitCondition;
-
-    bool          networkDeviceSet;
-    unsigned long memoryUsage;
-    qint64        decodedMicroSeconds;
+        explicit GenericDecoder();
+        ~GenericDecoder();
 
 
-private slots:
+    private:
 
-    void networkReady();
-    void networkError(QString errorString);
+        static const unsigned long MAX_MEMORY   = 50 * 1024 * 1024;
+        static const unsigned long USEC_PER_SEC = 1000000;
 
-    void decoderBufferReady();
-    void decoderFinished();
-    void decoderError(QAudioDecoder::Error error);
+        QUuid id;
+        QUrl  url;
+
+        QAudioDecoder          *audioDecoder;
+        QVector<QAudioBuffer *>  audioBuffers;
+
+        QFile             *file;
+        QThread            networkThread;
+        NetworkDownloader *networkDownloader;
+
+        QMutex         waitMutex;
+        QWaitCondition waitCondition;
+
+        bool          networkDeviceSet;
+        unsigned long memoryUsage;
+        qint64        decodedMicroSeconds;
 
 
-public slots:
+    private slots:
 
-    void run()                 override;
-    void start(QUuid uniqueId) override;
+        void networkReady();
+        void networkError(QString errorString);
 
-    void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        void decoderBufferReady();
+        void decoderFinished();
+        void decoderError(QAudioDecoder::Error error);
 
-    void getUiQml(QUuid uniqueId)                         override;
-    void uiResults(QUuid uniqueId, QJsonDocument results) override;
 
-    void bufferDone(QUuid uniqueId, QAudioBuffer *buffer) override;
+    public slots:
+
+        void run()                 override;
+        void start(QUuid uniqueId) override;
+
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+
+        void getUiQml(QUuid uniqueId)                         override;
+        void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void bufferDone(QUuid uniqueId, QAudioBuffer *buffer) override;
 
 };
 
