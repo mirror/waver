@@ -83,19 +83,20 @@ void WaverServer::run()
     connect(&settingsThread, SIGNAL(started()),  settingsHandler, SLOT(run()));
     connect(&settingsThread, SIGNAL(finished()), settingsHandler, SLOT(deleteLater()));
 
-    connect(this,            SIGNAL(saveCollectionList(QStringList, QString)),         settingsHandler,
-        SLOT(saveCollectionList(QStringList, QString)));
-    connect(this,            SIGNAL(saveCollectionList(QString)),                     settingsHandler,
-        SLOT(saveCollectionList(QString)));
-    connect(this,            SIGNAL(getCollectionList()),                             settingsHandler, SLOT(getCollectionList()));
-    connect(this,            SIGNAL(savePluginSettings(QUuid, QString, QJsonDocument)), settingsHandler,
-        SLOT(savePluginSettings(QUuid, QString, QJsonDocument)));
-    connect(this,            SIGNAL(loadPluginSettings(QUuid, QString)),               settingsHandler,
-        SLOT(loadPluginSettings(QUuid, QString)));
-    connect(settingsHandler, SIGNAL(collectionList(QStringList, QString)),             this,
-        SLOT(collectionList(QStringList, QString)));
-    connect(settingsHandler, SIGNAL(loadedPluginSettings(QUuid, QJsonDocument)),       this,
-        SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
+    connect(this, SIGNAL(saveCollectionList(QStringList, QString)),
+        settingsHandler, SLOT(saveCollectionList(QStringList, QString)));
+    connect(this, SIGNAL(saveCollectionList(QString)),
+        settingsHandler, SLOT(saveCollectionList(QString)));
+    connect(this, SIGNAL(getCollectionList()),
+        settingsHandler, SLOT(getCollectionList()));
+    connect(this, SIGNAL(savePluginSettings(QUuid, QString, QJsonDocument)),
+        settingsHandler, SLOT(savePluginSettings(QUuid, QString, QJsonDocument)));
+    connect(this, SIGNAL(loadPluginSettings(QUuid, QString)),
+        settingsHandler, SLOT(loadPluginSettings(QUuid, QString)));
+    connect(settingsHandler, SIGNAL(collectionList(QStringList, QString)),
+        this, SLOT(collectionList(QStringList, QString)));
+    connect(settingsHandler, SIGNAL(loadedPluginSettings(QUuid, QJsonDocument)),
+        this, SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
 
     settingsThread.start();
 }
@@ -484,35 +485,42 @@ void WaverServer::pluginLibsLoaded()
             connect(&sourcesThread, SIGNAL(finished()), pluginSource, SLOT(deleteLater()));
 
             // connect source plugin signals
-            connect(pluginSource, SIGNAL(ready(QUuid)),                                      this,         SLOT(pluginReady(QUuid)));
-            connect(pluginSource, SIGNAL(unready(QUuid)),                                    this,         SLOT(pluginUnready(QUuid)));
-            connect(pluginSource, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),            this,         SLOT(saveConfiguration(QUuid,
-                        QJsonDocument)));
-            connect(pluginSource, SIGNAL(loadConfiguration(QUuid)),                          this,         SLOT(loadConfiguration(QUuid)));
-            connect(pluginSource, SIGNAL(uiQml(QUuid, QString)),                              this,         SLOT(pluginUi(QUuid, QString)));
-            connect(pluginSource, SIGNAL(infoMessage(QUuid, QString)),                        this,         SLOT(pluginInfoMessage(QUuid,
-                        QString)));
-            connect(pluginSource, SIGNAL(playlist(QUuid, PluginSource::TracksInfo)),          this,         SLOT(playlist(QUuid,
-                        PluginSource::TracksInfo)));
-            connect(pluginSource, SIGNAL(requestRemoveTracks(QUuid)),                        this,
-                SLOT(requestedRemoveTracks(QUuid)));
-            connect(pluginSource, SIGNAL(openTracksResults(QUuid, PluginSource::OpenTracks)), this,         SLOT(openTracksResults(QUuid,
-                        PluginSource::OpenTracks)));
-            connect(pluginSource, SIGNAL(searchResults(QUuid, PluginSource::OpenTracks)),     this,         SLOT(searchResults(QUuid,
-                        PluginSource::OpenTracks)));
-            connect(this,         SIGNAL(unableToStart(QUuid, QUrl)),                         pluginSource, SLOT(unableToStart(QUuid,
-                        QUrl)));
-            connect(this,         SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),          pluginSource, SLOT(loadedConfiguration(QUuid,
-                        QJsonDocument)));
-            connect(this,         SIGNAL(requestPluginUi(QUuid)),                            pluginSource, SLOT(getUiQml(QUuid)));
-            connect(this,         SIGNAL(pluginUiResults(QUuid, QJsonDocument)),              pluginSource, SLOT(uiResults(QUuid,
-                        QJsonDocument)));
-            connect(this,         SIGNAL(getPlaylist(QUuid, int)),                            pluginSource, SLOT(getPlaylist(QUuid, int)));
-            connect(this,         SIGNAL(getOpenTracks(QUuid, QString)),                      pluginSource, SLOT(getOpenTracks(QUuid,
-                        QString)));
-            connect(this,         SIGNAL(search(QUuid, QString)),                             pluginSource, SLOT(search(QUuid, QString)));
-            connect(this,         SIGNAL(resolveOpenTracks(QUuid, QStringList)),              pluginSource, SLOT(resolveOpenTracks(QUuid,
-                        QStringList)));
+            connect(pluginSource, SIGNAL(ready(QUuid)),
+                this, SLOT(pluginReady(QUuid)));
+            connect(pluginSource, SIGNAL(unready(QUuid)),
+                this, SLOT(pluginUnready(QUuid)));
+            connect(pluginSource, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),
+                this, SLOT(saveConfiguration(QUuid, QJsonDocument)));
+            connect(pluginSource, SIGNAL(loadConfiguration(QUuid)),
+                this, SLOT(loadConfiguration(QUuid)));
+            connect(pluginSource, SIGNAL(uiQml(QUuid, QString)),
+                this, SLOT(pluginUi(QUuid, QString)));
+            connect(pluginSource, SIGNAL(infoMessage(QUuid, QString)),
+                this, SLOT(pluginInfoMessage(QUuid, QString)));
+            connect(pluginSource, SIGNAL(playlist(QUuid, PluginSource::TracksInfo)),
+                this, SLOT(playlist(QUuid, PluginSource::TracksInfo)));
+            connect(pluginSource, SIGNAL(requestRemoveTracks(QUuid)),
+                this, SLOT(requestedRemoveTracks(QUuid)));
+            connect(pluginSource, SIGNAL(openTracksResults(QUuid, PluginSource::OpenTracks)),
+                this, SLOT(openTracksResults(QUuid, PluginSource::OpenTracks)));
+            connect(pluginSource, SIGNAL(searchResults(QUuid, PluginSource::OpenTracks)),
+                this, SLOT(searchResults(QUuid, PluginSource::OpenTracks)));
+            connect(this, SIGNAL(unableToStart(QUuid, QUrl)),
+                pluginSource, SLOT(unableToStart(QUuid, QUrl)));
+            connect(this, SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),
+                pluginSource, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
+            connect(this, SIGNAL(requestPluginUi(QUuid)),
+                pluginSource, SLOT(getUiQml(QUuid)));
+            connect(this, SIGNAL(pluginUiResults(QUuid, QJsonDocument)),
+                pluginSource, SLOT(uiResults(QUuid, QJsonDocument)));
+            connect(this, SIGNAL(getPlaylist(QUuid, int)),
+                pluginSource, SLOT(getPlaylist(QUuid, int)));
+            connect(this, SIGNAL(getOpenTracks(QUuid, QString)),
+                pluginSource, SLOT(getOpenTracks(QUuid, QString)));
+            connect(this, SIGNAL(search(QUuid, QString)),
+                pluginSource, SLOT(search(QUuid, QString)));
+            connect(this, SIGNAL(resolveOpenTracks(QUuid, QStringList)),
+                pluginSource, SLOT(resolveOpenTracks(QUuid, QStringList)));
         }
     }
 
@@ -789,10 +797,10 @@ void WaverServer::pluginInfoMessage(QUuid uniqueId, QString message)
     Q_UNUSED(uniqueId);
 
     QVariantHash messageHash;
-    messageHash.insert("message", message);
+    messageHash.insert("message", sourcePlugins.value(uniqueId).name + "\n\n" + message);
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage,
-            QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
+    emit ipcSend(ipcMessageUtils.constructIpcString(
+            IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
 }
 
 
@@ -828,23 +836,28 @@ void WaverServer::playlist(QUuid uniqueId, PluginSource::TracksInfo tracksInfo)
 
         Track *track = new Track(&loadedLibs, trackInfo, uniqueId, this);
 
-        connect(this,  SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),          track, SLOT(loadedPluginSettings(QUuid,
-                    QJsonDocument)));
-        connect(this,  SIGNAL(pluginUiResults(QUuid, QJsonDocument)),              track, SLOT(receivedPluginUiResults(QUuid,
-                    QJsonDocument)));
-        connect(track, SIGNAL(savePluginSettings(QUuid, QJsonDocument)),           this,  SLOT(saveConfiguration(QUuid,
-                    QJsonDocument)));
-        connect(track, SIGNAL(loadPluginSettings(QUuid)),                         this,  SLOT(loadConfiguration(QUuid)));
-        connect(track, SIGNAL(requestFadeInForNextTrack(QUrl, qint64)),            this,  SLOT(trackRequestFadeInForNextTrack(QUrl,
-                    qint64)));
-        connect(track, SIGNAL(playPosition(QUrl, bool, bool, long, long)),            this,  SLOT(trackPosition(QUrl, bool, bool, long,
-                    long)));
-        connect(track, SIGNAL(aboutToFinish(QUrl)),                               this,  SLOT(trackAboutToFinish(QUrl)));
-        connect(track, SIGNAL(finished(QUrl)),                                    this,  SLOT(trackFinished(QUrl)));
-        connect(track, SIGNAL(trackInfoUpdated(QUrl)),                            this,  SLOT(trackInfoUpdated(QUrl)));
-        connect(track, SIGNAL(error(QUrl, bool, QString)),                          this,  SLOT(trackError(QUrl, bool, QString)));
-        connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginsWithUI)),         this,
-            SLOT(trackLoadedPluginsWithUI(Track::PluginsWithUI)));
+        connect(this, SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),
+            track, SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
+        connect(this,  SIGNAL(pluginUiResults(QUuid, QJsonDocument)),
+            track, SLOT(receivedPluginUiResults(QUuid, QJsonDocument)));
+        connect(track, SIGNAL(savePluginSettings(QUuid, QJsonDocument)),
+            this, SLOT(saveConfiguration(QUuid, QJsonDocument)));
+        connect(track, SIGNAL(loadPluginSettings(QUuid)),
+            this, SLOT(loadConfiguration(QUuid)));
+        connect(track, SIGNAL(requestFadeInForNextTrack(QUrl, qint64)),
+            this, SLOT(trackRequestFadeInForNextTrack(QUrl, qint64)));
+        connect(track, SIGNAL(playPosition(QUrl, bool, bool, long, long)),
+            this, SLOT(trackPosition(QUrl, bool, bool, long, long)));
+        connect(track, SIGNAL(aboutToFinish(QUrl)),
+            this, SLOT(trackAboutToFinish(QUrl)));
+        connect(track, SIGNAL(finished(QUrl)),
+            this, SLOT(trackFinished(QUrl)));
+        connect(track, SIGNAL(trackInfoUpdated(QUrl)),
+            this, SLOT(trackInfoUpdated(QUrl)));
+        connect(track, SIGNAL(error(QUrl, bool, QString)),
+            this, SLOT(trackError(QUrl, bool, QString)));
+        connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginsWithUI)),
+            this, SLOT(trackLoadedPluginsWithUI(Track::PluginsWithUI)));
 
         // add to playlist
         playlistTracks.append(track);
@@ -1070,16 +1083,29 @@ void WaverServer::trackInfoUpdated(QUrl url)
 // track signal handler
 void WaverServer::trackError(QUrl url, bool fatal, QString errorString)
 {
+    // find title
+    QString title;
+    if (currentTrack->getTrackInfo().url == url) {
+        title = currentTrack->getTrackInfo().title;
+    }
+    int i = 0;
+    while ((title.length() < 1) && (i < playlistTracks.count())) {
+        if (playlistTracks.at(i)->getTrackInfo().url == url) {
+            title = playlistTracks.at(i)->getTrackInfo().title;
+        }
+        i++;
+    }
+
     // print to error output
-    Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(fatal ? "Fatal error" : "Error").arg(url.toString()).arg(
-            errorString), true);
+    Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(fatal ? "Fatal error" : "Error")
+        .arg(title).arg(errorString), true);
 
     // send message to UI
     QVariantHash messageHash;
-    messageHash.insert("message", errorString);
+    messageHash.insert("message", title + "\n\n" + errorString);
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage,
-            QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
+    emit ipcSend(ipcMessageUtils.constructIpcString(
+            IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
 
     // cancel the track if fatal
     if (fatal) {

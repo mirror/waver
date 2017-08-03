@@ -123,12 +123,12 @@ class Track : public QObject {
         QVector<QUuid>          decoders;
         QVector<QUuid>          dspPrePriority;
         QVector<QUuid>          dspPriority;
-        QVector<PluginDsp *>     dspPointers;
+        QVector<PluginDsp *>    dspPointers;
         PluginBase::BufferQueue dspSynchronizerQueue;
         int                     dspInitialBufferCount;
 
-        QUuid                     currentDecoderId;
-        QUuid                     mainOutputId;
+        QUuid                      currentDecoderId;
+        QUuid                      mainOutputId;
         QHash<QAudioBuffer *, int> bufferOuputDoneCounters;
 
         Status currentStatus;

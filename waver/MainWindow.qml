@@ -35,7 +35,7 @@ ApplicationWindow {
     title: "Waver"
 
 
-    readonly property int  duration_visible_before_fadeout: 1500
+    readonly property int  duration_visible_before_fadeout: 5000
     readonly property int  duration_fadeout: 250
     readonly property int  duration_art_transition: 750
     readonly property int  duration_slideout: 150
@@ -1392,19 +1392,6 @@ ApplicationWindow {
                 }
             }
 
-            // error messages and warnings - in the center of the image, normally invisible
-            PlatformLabel {
-                id: userMessage
-                text: ""
-                horizontalAlignment: Text.AlignHCenter
-                font.bold: true
-                style: Text.Outline
-                color: "#800000"
-                styleColor: "#F2F2F2"
-                anchors.horizontalCenter: artArea.horizontalCenter
-                anchors.verticalCenter: artArea.verticalCenter
-            }
-
             // track actions - normally invisible
 
             MouseArea {
@@ -1641,6 +1628,22 @@ ApplicationWindow {
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
 
+    }
+
+
+    // error messages and warnings - in the center of the screen, normally invisible
+    PlatformLabel {
+        id: userMessage
+        text: ""
+        wrapMode: Text.Wrap
+        width: app.width
+        horizontalAlignment: Text.AlignHCenter
+        font.bold: true
+        style: Text.Outline
+        color: "#800000"
+        styleColor: "#F2F2F2"
+        anchors.horizontalCenter: app.contentItem.horizontalCenter
+        anchors.verticalCenter: app.contentItem.verticalCenter
     }
 
 

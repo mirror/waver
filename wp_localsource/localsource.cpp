@@ -218,6 +218,8 @@ void LocalSource::getPlaylist(QUuid uniqueId, int maxCount)
             // must save updated configuration
             emit saveConfiguration(id, configToJson());
 
+            // TODO send infoMessage
+
             // start new scans if none in progress
             if (scanners.count() == 0) {
                 foreach (QString directory, directories) {
