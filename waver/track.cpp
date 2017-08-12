@@ -66,7 +66,9 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, PluginSource::TrackInfo t
         loadedLib.pluginFactory(pluginTypesToLoad, &plugins);
 
         // process each plugin one by one
-        foreach (PluginBase *plugin, plugins) {
+        foreach (QObject *pluginObject, plugins) {
+            PluginBase *plugin = (PluginBase *) pluginObject;
+
             switch (plugin->pluginType()) {
                 case PluginBase::PLUGIN_TYPE_DECODER:
                     setupDecoderPlugin(plugin);

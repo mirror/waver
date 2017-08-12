@@ -49,6 +49,7 @@
 #include <QVector>
 
 #include "filescanner.h"
+#include "../waver/pluginfactory.h"
 #include "../waver/pluginsource.h"
 
 #ifdef QT_DEBUG

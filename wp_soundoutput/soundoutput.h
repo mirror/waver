@@ -41,6 +41,7 @@
 #include <QTimer>
 
 #include "feeder.h"
+#include "../waver/pluginfactory.h"
 #include "../waver/pluginoutput.h"
 
 

@@ -41,6 +41,7 @@
 #include <QWaitCondition>
 
 #include "networkdownloader.h"
+#include "../waver/pluginfactory.h"
 #include "../waver/plugindecoder.h"
 
 

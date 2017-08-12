@@ -38,7 +38,7 @@
 #include <QStringList>
 #include <QVector>
 
-#include "pluginbase.h"
+#include "pluginfactory.h"
 
 
 class PluginLibsLoader : public QObject {

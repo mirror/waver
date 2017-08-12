@@ -80,9 +80,5 @@ class PluginBase : public QObject {
 };
 
 
-typedef QVector<PluginBase *> PluginFactoryResults;
-typedef void (*WpPluginFactory)(int, PluginFactoryResults *);
-
-
 #endif // PLUGINBASE_H
 

@@ -53,7 +53,8 @@ HEADERS += \
     plugindsp.h \
     pluginoutput.h \
     plugininfo.h \
-    notificationshandler.h
+    notificationshandler.h \
+    pluginfactory.h
 
 SOURCES += \
     main.cpp \

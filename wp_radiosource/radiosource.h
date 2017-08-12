@@ -44,6 +44,7 @@
 #include <QXmlStreamAttributes>
 #include <QXmlStreamReader>
 
+#include "../waver/pluginfactory.h"
 #include "../waver/pluginsource.h"
 
 #ifdef QT_DEBUG

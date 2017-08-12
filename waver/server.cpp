@@ -457,7 +457,8 @@ void WaverServer::pluginLibsLoaded()
         loadedLib.pluginFactory(PluginBase::PLUGIN_TYPE_SOURCE, &plugins);
 
         // process each plugin one by one
-        foreach (PluginBase *plugin, plugins) {
+        foreach (QObject *pluginObject, plugins) {
+            PluginBase *plugin = (PluginBase *) pluginObject;
 
             // just to be on the safe side
             if (sourcePlugins.contains(plugin->persistentUniqueId())) {

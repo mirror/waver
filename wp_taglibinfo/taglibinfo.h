@@ -32,6 +32,7 @@
 #include <taglib/fileref.h>
 #include <taglib/tstring.h>
 
+#include "../waver/pluginfactory.h"
 #include "../waver/plugininfo.h"
 
 
