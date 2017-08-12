@@ -38,6 +38,7 @@ HEADERS += genericdecoder.h\
         wp_genericdecoder_global.h \
     ../waver/pluginbase.h \
     ../waver/plugindecoder.h \
+    ../waver/pluginfactory.h \
     networkdownloader.h
 
 unix:!android {

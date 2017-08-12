@@ -39,11 +39,12 @@ SOURCES += equalizer.cpp \
     fadeoutdetector.cpp
 
 HEADERS += equalizer.h\
-        wp_equalizer_global.h \
+    wp_equalizer_global.h \
     analyzer.h \
     ../waver/pluginbase.h \
     ../waver/plugindsppre.h \
     ../waver/plugindsp.h \
+    ../waver/pluginfactory.h \
     main.h \
     iirfilter.h \
     coefficientlist.h \

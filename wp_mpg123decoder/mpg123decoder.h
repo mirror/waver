@@ -39,6 +39,7 @@
 #include "feed.h"
 #include "mpg123lib/mpg123.h"
 #include "../waver/plugindecoder.h"
+#include "../waver/pluginfactory.h"
 
 
 extern "C" WP_MPG123DECODER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);

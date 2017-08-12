@@ -26,6 +26,7 @@
 
 #include "analyzer.h"
 #include "equalizer.h"
+#include "../waver/pluginfactory.h"
 
 extern "C" WP_EQUALIZER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 

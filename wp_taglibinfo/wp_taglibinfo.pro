@@ -35,7 +35,8 @@ HEADERS += taglibinfo.h\
         wp_taglibinfo_global.h \
     ../waver/pluginbase.h \
     ../waver/pluginsource.h \
-    ../waver/plugininfo.h
+    ../waver/plugininfo.h \
+    ../waver/pluginfactory.h \
 
 unix:!android {
     LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -ltag

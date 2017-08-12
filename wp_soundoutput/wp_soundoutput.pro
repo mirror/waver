@@ -35,7 +35,8 @@ HEADERS += soundoutput.h        \
         wp_soundoutput_global.h \
         ../waver/pluginbase.h   \
         ../waver/pluginoutput.h \
-    feeder.h
+        ../waver/pluginfactory.h \
+        feeder.h
 
 unix:!android {
     target.path = /opt/waver/bin

@@ -33,9 +33,10 @@ SOURCES += localsource.cpp \
     filescanner.cpp
 
 HEADERS += localsource.h \
-        wp_localsource_global.h \
+    wp_localsource_global.h \
     ../waver/pluginbase.h \
     ../waver/pluginsource.h \
+    ../waver/pluginfactory.h \
     filescanner.h
 
 unix:!android {
