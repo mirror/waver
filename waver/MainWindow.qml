@@ -1424,6 +1424,8 @@ ApplicationWindow {
                 padding: 3
                 visible: false
                 onLinkActivated: {
+                    nowPlayingActions.visible = false;
+                    nowPlayingActionsBackground.visible = false;
                     trackAction(-1, link);
                 }
             }
@@ -1441,7 +1443,7 @@ ApplicationWindow {
                 radius: 3
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: "#AAAAAA" }
-                    GradientStop { position: 0.28; color: "transparent" }
+                    GradientStop { position: 0.39; color: "transparent" }
                     GradientStop { position: 1.0; color: "#AAAAAA" }
                 }
             }
