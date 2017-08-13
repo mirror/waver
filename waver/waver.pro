@@ -42,19 +42,21 @@ HEADERS += \
     settingshandler.h \
     server.h \
     clienttcphandler.h \
-    pluginbase.h \
     pluginlibsloader.h \
     waverapplication.h \
     ipcmessageutils.h \
-    pluginsource.h \
     track.h \
-    plugindecoder.h \
-    plugindsppre.h \
-    plugindsp.h \
-    pluginoutput.h \
-    plugininfo.h \
     notificationshandler.h \
-    pluginfactory.h
+    pluginfactory.h \
+    API/0.0.1/pluginbase.h \
+    API/0.0.1/plugindecoder.h \
+    API/0.0.1/plugindsp.h \
+    API/0.0.1/plugindsppre.h \
+    API/0.0.1/plugininfo.h \
+    API/0.0.1/pluginoutput.h \
+    API/0.0.1/pluginsource.h \
+    API/0.0.3/pluginbase.h \
+    API/0.0.3/pluginsource.h
 
 SOURCES += \
     main.cpp \

@@ -66,10 +66,13 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, PluginSource::TrackInfo t
         loadedLib.pluginFactory(pluginTypesToLoad, &plugins);
 
         // process each plugin one by one
-        foreach (QObject *pluginObject, plugins) {
-            PluginBase *plugin = (PluginBase *) pluginObject;
+        foreach (QObject *plugin, plugins) {
+            int pluginType;
+            if (!plugin->metaObject()->invokeMethod(plugin, "pluginType", Qt::DirectConnection, Q_RETURN_ARG(int, pluginType))) {
+                error(trackInfo.url, true, "Failed to invoke method on plugin");
+            }
 
-            switch (plugin->pluginType()) {
+            switch (pluginType) {
                 case PluginBase::PLUGIN_TYPE_DECODER:
                     setupDecoderPlugin(plugin);
                     break;
@@ -150,293 +153,365 @@ Track::~Track()
 
 
 // helper
-void Track::setupDecoderPlugin(PluginBase *plugin)
+void Track::setupDecoderPlugin(QObject *plugin)
 {
+    // get the ID of the plugin
+    QUuid persistentUniqueId;
+    if (!plugin->metaObject()->invokeMethod(plugin, "persistentUniqueId", Qt::DirectConnection, Q_RETURN_ARG(QUuid, persistentUniqueId))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+
     // just to be on the safe side
-    if (decoderPlugins.contains(plugin->persistentUniqueId())) {
+    if (decoderPlugins.contains(persistentUniqueId)) {
         return;
     }
 
-    // cast the plugin
-    PluginDecoder *pluginDecoder = (PluginDecoder *) plugin;
-
     // get some basic info
     PluginNoQueue pluginData;
-    pluginData.name              = pluginDecoder->pluginName();
-    pluginData.version           = pluginDecoder->pluginVersion();
-    pluginData.baseVersion       = pluginDecoder->PLUGIN_BASE_VERSION;
-    pluginData.pluginTypeVersion = pluginDecoder->PLUGIN_DECODER_VERSION;
-    pluginData.hasUI             = pluginDecoder->hasUI();
-    decoderPlugins[pluginDecoder->persistentUniqueId()] = pluginData;
+    if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "pluginVersion", Qt::DirectConnection, Q_RETURN_ARG(int, pluginData.version))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "waverVersionAPICompatibility", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.waverVersionAPICompatibility))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    decoderPlugins[persistentUniqueId] = pluginData;
 
     // add to decoders' list, this makes it easier to look for decoders
-    decoders.append(pluginDecoder->persistentUniqueId());
+    decoders.append(persistentUniqueId);
 
     // initializations
-    pluginDecoder->setUrl(trackInfo.url);
+    if (!plugin->metaObject()->invokeMethod(plugin, "setUrl", Qt::DirectConnection, Q_ARG(QUrl, trackInfo.url))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
 
     // move to appropriate thread
-    pluginDecoder->moveToThread(&decoderThread);
+    plugin->moveToThread(&decoderThread);
 
     // connect thread signals
-    connect(&decoderThread, SIGNAL(started()),  pluginDecoder, SLOT(run()));
-    connect(&decoderThread, SIGNAL(finished()), pluginDecoder, SLOT(deleteLater()));
+    connect(&decoderThread, SIGNAL(started()),  plugin, SLOT(run()));
+    connect(&decoderThread, SIGNAL(finished()), plugin, SLOT(deleteLater()));
 
     // connect plugin signals
-    connect(pluginDecoder, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),   this,          SLOT(saveConfiguration(QUuid,
-                QJsonDocument)));
-    connect(pluginDecoder, SIGNAL(loadConfiguration(QUuid)),                 this,          SLOT(loadConfiguration(QUuid)));
-    connect(pluginDecoder, SIGNAL(uiQml(QUuid, QString)),                     this,          SLOT(ui(QUuid, QString)));
-    connect(pluginDecoder, SIGNAL(bufferAvailable(QUuid, QAudioBuffer *)),     this,          SLOT(moveBufferInQueue(QUuid,
-                QAudioBuffer *)));
-    connect(pluginDecoder, SIGNAL(finished(QUuid)),                          this,          SLOT(decoderFinished(QUuid)));
-    connect(pluginDecoder, SIGNAL(error(QUuid, QString)),                     this,          SLOT(decoderError(QUuid, QString)));
-    connect(pluginDecoder, SIGNAL(infoMessage(QUuid, QString)),               this,          SLOT(infoMessage(QUuid, QString)));
-    connect(this,          SIGNAL(loadedConfiguration(QUuid, QJsonDocument)), pluginDecoder, SLOT(loadedConfiguration(QUuid,
-                QJsonDocument)));
-    connect(this,          SIGNAL(requestPluginUi(QUuid)),                   pluginDecoder, SLOT(getUiQml(QUuid)));
-    connect(this,          SIGNAL(pluginUiResults(QUuid, QJsonDocument)),     pluginDecoder, SLOT(uiResults(QUuid, QJsonDocument)));
-    connect(this,          SIGNAL(startDecode(QUuid)),                       pluginDecoder, SLOT(start(QUuid)));
-    connect(this,          SIGNAL(bufferDone(QUuid, QAudioBuffer *)),          pluginDecoder, SLOT(bufferDone(QUuid,
-                QAudioBuffer *)));
+    connect(plugin, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveConfiguration(QUuid, QJsonDocument)));
+    connect(plugin, SIGNAL(loadConfiguration(QUuid)),                  this,   SLOT(loadConfiguration(QUuid)));
+    connect(plugin, SIGNAL(uiQml(QUuid, QString)),                     this,   SLOT(ui(QUuid, QString)));
+    connect(plugin, SIGNAL(bufferAvailable(QUuid, QAudioBuffer *)),    this,   SLOT(moveBufferInQueue(QUuid, QAudioBuffer *)));
+    connect(plugin, SIGNAL(finished(QUuid)),                           this,   SLOT(decoderFinished(QUuid)));
+    connect(plugin, SIGNAL(error(QUuid, QString)),                     this,   SLOT(decoderError(QUuid, QString)));
+    connect(plugin, SIGNAL(infoMessage(QUuid, QString)),               this,   SLOT(infoMessage(QUuid, QString)));
+    connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
+    connect(this,   SIGNAL(requestPluginUi(QUuid)),                    plugin, SLOT(getUiQml(QUuid)));
+    connect(this,   SIGNAL(pluginUiResults(QUuid, QJsonDocument)),     plugin, SLOT(uiResults(QUuid, QJsonDocument)));
+    connect(this,   SIGNAL(startDecode(QUuid)),                        plugin, SLOT(start(QUuid)));
+    connect(this,   SIGNAL(bufferDone(QUuid, QAudioBuffer *)),         plugin, SLOT(bufferDone(QUuid, QAudioBuffer *)));
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.3")) {
+        connect(plugin, SIGNAL(saveGlobalConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
+        connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
+        connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
+    }
 }
 
 
 // helper
-void Track::setupDspPrePlugin(PluginBase *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap)
+void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap)
 {
-    // just to be on the safe side
-    if (dspPrePlugins.contains(plugin->persistentUniqueId())) {
-        return;
+    // get the ID of the plugin
+    QUuid persistentUniqueId;
+    if (!plugin->metaObject()->invokeMethod(plugin, "persistentUniqueId", Qt::DirectConnection, Q_RETURN_ARG(QUuid, persistentUniqueId))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
-    // cast the plugin
-    PluginDspPre *pluginDspPre = (PluginDspPre *) plugin;
+    // just to be on the safe side
+    if (dspPrePlugins.contains(persistentUniqueId)) {
+        return;
+    }
 
     // get some basic info
     PluginWithQueue pluginData;
-    pluginData.name              = pluginDspPre->pluginName();
-    pluginData.version           = pluginDspPre->pluginVersion();
-    pluginData.baseVersion       = pluginDspPre->PLUGIN_BASE_VERSION;
-    pluginData.pluginTypeVersion = pluginDspPre->PLUGIN_DSP_PRE_VERSION;
-    pluginData.hasUI             = pluginDspPre->hasUI();
-    pluginData.bufferQueue       = new PluginBase::BufferQueue();
-    pluginData.bufferMutex       = new QMutex();
-    dspPrePlugins[pluginDspPre->persistentUniqueId()] = pluginData;
+    if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "pluginVersion", Qt::DirectConnection, Q_RETURN_ARG(int, pluginData.version))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "waverVersionAPICompatibility", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.waverVersionAPICompatibility))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    pluginData.bufferQueue = new PluginBase::BufferQueue();
+    pluginData.bufferMutex = new QMutex();
+    dspPrePlugins[persistentUniqueId] = pluginData;
 
     // set the queue
-    pluginDspPre->setBufferQueue(pluginData.bufferQueue, pluginData.bufferMutex);
+    if (!plugin->metaObject()->invokeMethod(plugin, "setBufferQueue", Qt::DirectConnection, Q_ARG(PluginBase::BufferQueue *, pluginData.bufferQueue), Q_ARG(QMutex *, pluginData.bufferMutex))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
 
     // add to priority map
-    int i = pluginDspPre->priority() + (fromEasyPluginInstallDir ? 25000 : 0);
-    while (priorityMap->contains(i)) {
-        i++;
+    int priorty;
+    if (!plugin->metaObject()->invokeMethod(plugin, "priority", Qt::DirectConnection, Q_RETURN_ARG(int, priorty))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
-    priorityMap->insert(i, pluginDspPre->persistentUniqueId());
+    priorty += (fromEasyPluginInstallDir ? 25000 : 0);
+    while (priorityMap->contains(priorty)) {
+        priorty++;
+    }
+    priorityMap->insert(priorty, persistentUniqueId);
 
     // move to appropriate thread
-    pluginDspPre->moveToThread(&dspPreThread);
+    plugin->moveToThread(&dspPreThread);
 
     // connect thread signals
-    connect(&dspPreThread, SIGNAL(started()),  pluginDspPre, SLOT(run()));
-    connect(&dspPreThread, SIGNAL(finished()), pluginDspPre, SLOT(deleteLater()));
+    connect(&dspPreThread, SIGNAL(started()),  plugin, SLOT(run()));
+    connect(&dspPreThread, SIGNAL(finished()), plugin, SLOT(deleteLater()));
 
     // connect plugin signals
-    connect(pluginDspPre, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),       this,         SLOT(saveConfiguration(QUuid,
-                QJsonDocument)));
-    connect(pluginDspPre, SIGNAL(loadConfiguration(QUuid)),                     this,         SLOT(loadConfiguration(QUuid)));
-    connect(pluginDspPre, SIGNAL(uiQml(QUuid, QString)),                         this,         SLOT(ui(QUuid, QString)));
-    connect(pluginDspPre, SIGNAL(infoMessage(QUuid, QString)),                   this,         SLOT(infoMessage(QUuid, QString)));
-    connect(pluginDspPre, SIGNAL(requestFadeIn(QUuid, qint64)),                  this,         SLOT(dspPreRequestFadeIn(QUuid,
-                qint64)));
-    connect(pluginDspPre, SIGNAL(requestFadeInForNextTrack(QUuid, qint64)),      this,
-        SLOT(dspPreRequestFadeInForNextTrack(QUuid, qint64)));
-    connect(pluginDspPre, SIGNAL(requestInterrupt(QUuid, qint64, bool)),          this,         SLOT(dspPreRequestInterrupt(QUuid,
-                qint64, bool)));
-    connect(pluginDspPre, SIGNAL(requestAboutToFinishSend(QUuid, qint64)),       this,
-        SLOT(dspPreRequestAboutToFinishSend(QUuid, qint64)));
-    connect(pluginDspPre, SIGNAL(messageToDspPlugin(QUuid, QUuid, int, QVariant)), this,
-        SLOT(dspPreMessageToDspPlugin(QUuid, QUuid, int, QVariant)));
-    connect(pluginDspPre, SIGNAL(bufferDone(QUuid, QAudioBuffer *)),              this,         SLOT(moveBufferInQueue(QUuid,
-                QAudioBuffer *)));
-    connect(this,         SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),     pluginDspPre, SLOT(loadedConfiguration(QUuid,
-                QJsonDocument)));
-    connect(this,         SIGNAL(requestPluginUi(QUuid)),                       pluginDspPre, SLOT(getUiQml(QUuid)));
-    connect(this,         SIGNAL(pluginUiResults(QUuid, QJsonDocument)),         pluginDspPre, SLOT(uiResults(QUuid,
-                QJsonDocument)));
-    connect(this,         SIGNAL(bufferAvailable(QUuid)),                       pluginDspPre, SLOT(bufferAvailable(QUuid)));
-    connect(this,         SIGNAL(decoderDone(QUuid)),                           pluginDspPre, SLOT(decoderDone(QUuid)));
+    connect(plugin, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),         this,   SLOT(saveConfiguration(QUuid, QJsonDocument)));
+    connect(plugin, SIGNAL(loadConfiguration(QUuid)),                        this,   SLOT(loadConfiguration(QUuid)));
+    connect(plugin, SIGNAL(uiQml(QUuid, QString)),                           this,   SLOT(ui(QUuid, QString)));
+    connect(plugin, SIGNAL(infoMessage(QUuid, QString)),                     this,   SLOT(infoMessage(QUuid, QString)));
+    connect(plugin, SIGNAL(requestFadeIn(QUuid, qint64)),                    this,   SLOT(dspPreRequestFadeIn(QUuid, qint64)));
+    connect(plugin, SIGNAL(requestFadeInForNextTrack(QUuid, qint64)),        this,   SLOT(dspPreRequestFadeInForNextTrack(QUuid, qint64)));
+    connect(plugin, SIGNAL(requestInterrupt(QUuid, qint64, bool)),           this,   SLOT(dspPreRequestInterrupt(QUuid, qint64, bool)));
+    connect(plugin, SIGNAL(requestAboutToFinishSend(QUuid, qint64)),         this,   SLOT(dspPreRequestAboutToFinishSend(QUuid, qint64)));
+    connect(plugin, SIGNAL(messageToDspPlugin(QUuid, QUuid, int, QVariant)), this,   SLOT(dspPreMessageToDspPlugin(QUuid, QUuid, int, QVariant)));
+    connect(plugin, SIGNAL(bufferDone(QUuid, QAudioBuffer *)),               this,   SLOT(moveBufferInQueue(QUuid, QAudioBuffer *)));
+    connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),       plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
+    connect(this,   SIGNAL(requestPluginUi(QUuid)),                          plugin, SLOT(getUiQml(QUuid)));
+    connect(this,   SIGNAL(pluginUiResults(QUuid, QJsonDocument)),           plugin, SLOT(uiResults(QUuid, QJsonDocument)));
+    connect(this,   SIGNAL(bufferAvailable(QUuid)),                          plugin, SLOT(bufferAvailable(QUuid)));
+    connect(this,   SIGNAL(decoderDone(QUuid)),                              plugin, SLOT(decoderDone(QUuid)));
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.3")) {
+        connect(plugin, SIGNAL(saveGlobalConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
+        connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
+        connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
+    }
 }
 
 
 // helper
-void Track::setupDspPlugin(PluginBase *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap)
+void Track::setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap)
 {
-    // just to be on the safe side
-    if (dspPlugins.contains(plugin->persistentUniqueId())) {
-        return;
+    // get the ID of the plugin
+    QUuid persistentUniqueId;
+    if (!plugin->metaObject()->invokeMethod(plugin, "persistentUniqueId", Qt::DirectConnection, Q_RETURN_ARG(QUuid, persistentUniqueId))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
-    // cast the plugin
-    PluginDsp *pluginDsp = (PluginDsp *) plugin;
+    // just to be on the safe side
+    if (dspPlugins.contains(persistentUniqueId)) {
+        return;
+    }
 
     // need to keep these pointers, see messageFromDspPrePlugin
-    dspPointers.append(pluginDsp);
+    dspPointers.append(plugin);
 
     // get some basic info
     PluginWithQueue pluginData;
-    pluginData.name              = pluginDsp->pluginName();
-    pluginData.version           = pluginDsp->pluginVersion();
-    pluginData.baseVersion       = pluginDsp->PLUGIN_BASE_VERSION;
-    pluginData.pluginTypeVersion = pluginDsp->PLUGIN_DSP_VERSION;
-    pluginData.hasUI             = pluginDsp->hasUI();
-    pluginData.bufferQueue       = new PluginBase::BufferQueue();
-    pluginData.bufferMutex       = new QMutex();
-    dspPlugins[pluginDsp->persistentUniqueId()] = pluginData;
+    if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "pluginVersion", Qt::DirectConnection, Q_RETURN_ARG(int, pluginData.version))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "waverVersionAPICompatibility", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.waverVersionAPICompatibility))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    pluginData.bufferQueue = new PluginBase::BufferQueue();
+    pluginData.bufferMutex = new QMutex();
+    dspPlugins[persistentUniqueId] = pluginData;
 
     // set the queue
-    pluginDsp->setBufferQueue(pluginData.bufferQueue, pluginData.bufferMutex);
+    if (!plugin->metaObject()->invokeMethod(plugin, "setBufferQueue", Qt::DirectConnection, Q_ARG(PluginBase::BufferQueue *, pluginData.bufferQueue), Q_ARG(QMutex *, pluginData.bufferMutex))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
 
     // add to priority map
-    int i = pluginDsp->priority() + (fromEasyPluginInstallDir ? 25000 : 0);
-    while (priorityMap->contains(i)) {
-        i++;
+    int priorty;
+    if (!plugin->metaObject()->invokeMethod(plugin, "priority", Qt::DirectConnection, Q_RETURN_ARG(int, priorty))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
-    priorityMap->insert(i, pluginDsp->persistentUniqueId());
+    priorty += (fromEasyPluginInstallDir ? 25000 : 0);
+    while (priorityMap->contains(priorty)) {
+        priorty++;
+    }
+    priorityMap->insert(priorty, persistentUniqueId);
 
     // move to appropriate thread
-    pluginDsp->moveToThread(&dspThread);
+    plugin->moveToThread(&dspThread);
 
     // connect thread signals
-    connect(&dspThread, SIGNAL(started()),  pluginDsp, SLOT(run()));
-    connect(&dspThread, SIGNAL(finished()), pluginDsp, SLOT(deleteLater()));
+    connect(&dspThread, SIGNAL(started()),  plugin, SLOT(run()));
+    connect(&dspThread, SIGNAL(finished()), plugin, SLOT(deleteLater()));
 
     // connect plugin signals
-    connect(pluginDsp, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),            this,      SLOT(saveConfiguration(QUuid,
-                QJsonDocument)));
-    connect(pluginDsp, SIGNAL(loadConfiguration(QUuid)),                          this,      SLOT(loadConfiguration(QUuid)));
-    connect(pluginDsp, SIGNAL(uiQml(QUuid, QString)),                              this,      SLOT(ui(QUuid, QString)));
-    connect(pluginDsp, SIGNAL(infoMessage(QUuid, QString)),                        this,      SLOT(infoMessage(QUuid, QString)));
-    connect(pluginDsp, SIGNAL(bufferDone(QUuid, QAudioBuffer *)),                   this,      SLOT(moveBufferInQueue(QUuid,
-                QAudioBuffer *)));
-    connect(this,      SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),          pluginDsp, SLOT(loadedConfiguration(QUuid,
-                QJsonDocument)));
-    connect(this,      SIGNAL(requestPluginUi(QUuid)),                            pluginDsp, SLOT(getUiQml(QUuid)));
-    connect(this,      SIGNAL(pluginUiResults(QUuid, QJsonDocument)),              pluginDsp, SLOT(uiResults(QUuid,
-                QJsonDocument)));
-    connect(this,      SIGNAL(bufferAvailable(QUuid)),                            pluginDsp, SLOT(bufferAvailable(QUuid)));
-    connect(this,      SIGNAL(playBegin(QUuid)),                                  pluginDsp, SLOT(playBegin(QUuid)));
-    connect(this,      SIGNAL(messageFromDspPrePlugin(QUuid, QUuid, int, QVariant)), pluginDsp, SLOT(messageFromDspPrePlugin(QUuid,
-                QUuid, int, QVariant)));
+    connect(plugin, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),              this,   SLOT(saveConfiguration(QUuid, QJsonDocument)));
+    connect(plugin, SIGNAL(loadConfiguration(QUuid)),                             this,   SLOT(loadConfiguration(QUuid)));
+    connect(plugin, SIGNAL(uiQml(QUuid, QString)),                                this,   SLOT(ui(QUuid, QString)));
+    connect(plugin, SIGNAL(infoMessage(QUuid, QString)),                          this,   SLOT(infoMessage(QUuid, QString)));
+    connect(plugin, SIGNAL(bufferDone(QUuid, QAudioBuffer *)),                    this,   SLOT(moveBufferInQueue(QUuid, QAudioBuffer *)));
+    connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),            plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
+    connect(this,   SIGNAL(requestPluginUi(QUuid)),                               plugin, SLOT(getUiQml(QUuid)));
+    connect(this,   SIGNAL(pluginUiResults(QUuid, QJsonDocument)),                plugin, SLOT(uiResults(QUuid, QJsonDocument)));
+    connect(this,   SIGNAL(bufferAvailable(QUuid)),                               plugin, SLOT(bufferAvailable(QUuid)));
+    connect(this,   SIGNAL(playBegin(QUuid)),                                     plugin, SLOT(playBegin(QUuid)));
+    connect(this,   SIGNAL(messageFromDspPrePlugin(QUuid, QUuid, int, QVariant)), plugin, SLOT(messageFromDspPrePlugin(QUuid, QUuid, int, QVariant)));
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.3")) {
+        connect(plugin, SIGNAL(saveGlobalConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
+        connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
+        connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
+    }
 }
 
 
 // helper
-void Track::setupOutputPlugin(PluginBase *plugin)
+void Track::setupOutputPlugin(QObject *plugin)
 {
-    // just to be on the safe side
-    if (outputPlugins.contains(plugin->persistentUniqueId())) {
-        return;
+    // get the ID of the plugin
+    QUuid persistentUniqueId;
+    if (!plugin->metaObject()->invokeMethod(plugin, "persistentUniqueId", Qt::DirectConnection, Q_RETURN_ARG(QUuid, persistentUniqueId))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
-    // cast the plugin
-    PluginOutput *pluginOutput = (PluginOutput *) plugin;
+    // just to be on the safe side
+    if (outputPlugins.contains(persistentUniqueId)) {
+        return;
+    }
 
     // get some basic info
     PluginWithQueue pluginData;
-    pluginData.name              = pluginOutput->pluginName();
-    pluginData.version           = pluginOutput->pluginVersion();
-    pluginData.baseVersion       = pluginOutput->PLUGIN_BASE_VERSION;
-    pluginData.pluginTypeVersion = pluginOutput->PLUGIN_OUTPUT_VERSION;
-    pluginData.hasUI             = pluginOutput->hasUI();
-    pluginData.bufferQueue       = new PluginBase::BufferQueue();
-    pluginData.bufferMutex       = new QMutex();
-    outputPlugins[pluginOutput->persistentUniqueId()] = pluginData;
+    if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "pluginVersion", Qt::DirectConnection, Q_RETURN_ARG(int, pluginData.version))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "waverVersionAPICompatibility", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.waverVersionAPICompatibility))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    pluginData.bufferQueue = new PluginBase::BufferQueue();
+    pluginData.bufferMutex = new QMutex();
+    outputPlugins[persistentUniqueId] = pluginData;
 
     // set the queue
-    pluginOutput->setBufferQueue(pluginData.bufferQueue, pluginData.bufferMutex);
+    if (!plugin->metaObject()->invokeMethod(plugin, "setBufferQueue", Qt::DirectConnection, Q_ARG(PluginBase::BufferQueue *, pluginData.bufferQueue), Q_ARG(QMutex *, pluginData.bufferMutex))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
 
     // set main output
-    if (pluginOutput->isMainOutput() && mainOutputId.isNull()) {
-        mainOutputId = pluginOutput->persistentUniqueId();
+    bool isMainOutput;
+    if (!plugin->metaObject()->invokeMethod(plugin, "isMainOutput", Qt::DirectConnection, Q_RETURN_ARG(bool, isMainOutput))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (isMainOutput && mainOutputId.isNull()) {
+        mainOutputId = persistentUniqueId;
     }
 
     // move to appropriate thread
-    pluginOutput->moveToThread(&outputThread);
+    plugin->moveToThread(&outputThread);
 
     // connect thread signals
-    connect(&outputThread, SIGNAL(started()),  pluginOutput, SLOT(run()));
-    connect(&outputThread, SIGNAL(finished()), pluginOutput, SLOT(deleteLater()));
+    connect(&outputThread, SIGNAL(started()),  plugin, SLOT(run()));
+    connect(&outputThread, SIGNAL(finished()), plugin, SLOT(deleteLater()));
 
     // connect plugin signals
-    connect(pluginOutput, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),   this,         SLOT(saveConfiguration(QUuid,
-                QJsonDocument)));
-    connect(pluginOutput, SIGNAL(loadConfiguration(QUuid)),                 this,         SLOT(loadConfiguration(QUuid)));
-    connect(pluginOutput, SIGNAL(uiQml(QUuid, QString)),                     this,         SLOT(ui(QUuid, QString)));
-    connect(pluginOutput, SIGNAL(infoMessage(QUuid, QString)),               this,         SLOT(infoMessage(QUuid, QString)));
-    connect(pluginOutput, SIGNAL(bufferDone(QUuid, QAudioBuffer *)),          this,         SLOT(moveBufferInQueue(QUuid,
-                QAudioBuffer *)));
-    connect(pluginOutput, SIGNAL(positionChanged(QUuid, qint64)),            this,         SLOT(outputPositionChanged(QUuid,
-                qint64)));
-    connect(pluginOutput, SIGNAL(bufferUnderrun(QUuid)),                    this,         SLOT(outputBufferUnderrun(QUuid)));
-    connect(pluginOutput, SIGNAL(fadeInComplete(QUuid)),                    this,         SLOT(outputFadeInComplete(QUuid)));
-    connect(pluginOutput, SIGNAL(fadeOutComplete(QUuid)),                   this,         SLOT(outputFadeOutComplete(QUuid)));
-    connect(pluginOutput, SIGNAL(error(QUuid, QString)),                     this,         SLOT(outputError(QUuid, QString)));
-    connect(this,         SIGNAL(loadedConfiguration(QUuid, QJsonDocument)), pluginOutput, SLOT(loadedConfiguration(QUuid,
-                QJsonDocument)));
-    connect(this,         SIGNAL(requestPluginUi(QUuid)),                   pluginOutput, SLOT(getUiQml(QUuid)));
-    connect(this,         SIGNAL(pluginUiResults(QUuid, QJsonDocument)),     pluginOutput, SLOT(uiResults(QUuid, QJsonDocument)));
-    connect(this,         SIGNAL(bufferAvailable(QUuid)),                   pluginOutput, SLOT(bufferAvailable(QUuid)));
-    connect(this,         SIGNAL(pause(QUuid)),                             pluginOutput, SLOT(pause(QUuid)));
-    connect(this,         SIGNAL(resume(QUuid)),                            pluginOutput, SLOT(resume(QUuid)));
-    connect(this,         SIGNAL(fadeIn(QUuid, int)),                        pluginOutput, SLOT(fadeIn(QUuid, int)));
-    connect(this,         SIGNAL(fadeOut(QUuid, int)),                       pluginOutput, SLOT(fadeOut(QUuid, int)));
+    connect(plugin, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveConfiguration(QUuid, QJsonDocument)));
+    connect(plugin, SIGNAL(loadConfiguration(QUuid)),                  this,   SLOT(loadConfiguration(QUuid)));
+    connect(plugin, SIGNAL(uiQml(QUuid, QString)),                     this,   SLOT(ui(QUuid, QString)));
+    connect(plugin, SIGNAL(infoMessage(QUuid, QString)),               this,   SLOT(infoMessage(QUuid, QString)));
+    connect(plugin, SIGNAL(bufferDone(QUuid, QAudioBuffer *)),         this,   SLOT(moveBufferInQueue(QUuid, QAudioBuffer *)));
+    connect(plugin, SIGNAL(positionChanged(QUuid, qint64)),            this,   SLOT(outputPositionChanged(QUuid, qint64)));
+    connect(plugin, SIGNAL(bufferUnderrun(QUuid)),                     this,   SLOT(outputBufferUnderrun(QUuid)));
+    connect(plugin, SIGNAL(fadeInComplete(QUuid)),                     this,   SLOT(outputFadeInComplete(QUuid)));
+    connect(plugin, SIGNAL(fadeOutComplete(QUuid)),                    this,   SLOT(outputFadeOutComplete(QUuid)));
+    connect(plugin, SIGNAL(error(QUuid, QString)),                     this,   SLOT(outputError(QUuid, QString)));
+    connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
+    connect(this,   SIGNAL(requestPluginUi(QUuid)),                    plugin, SLOT(getUiQml(QUuid)));
+    connect(this,   SIGNAL(pluginUiResults(QUuid, QJsonDocument)),     plugin, SLOT(uiResults(QUuid, QJsonDocument)));
+    connect(this,   SIGNAL(bufferAvailable(QUuid)),                    plugin, SLOT(bufferAvailable(QUuid)));
+    connect(this,   SIGNAL(pause(QUuid)),                              plugin, SLOT(pause(QUuid)));
+    connect(this,   SIGNAL(resume(QUuid)),                             plugin, SLOT(resume(QUuid)));
+    connect(this,   SIGNAL(fadeIn(QUuid, int)),                        plugin, SLOT(fadeIn(QUuid, int)));
+    connect(this,   SIGNAL(fadeOut(QUuid, int)),                       plugin, SLOT(fadeOut(QUuid, int)));
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.3")) {
+        connect(plugin, SIGNAL(saveGlobalConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
+        connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
+        connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
+    }
 }
 
 
 // helper
-void Track::setupInfoPlugin(PluginBase *plugin)
+void Track::setupInfoPlugin(QObject *plugin)
 {
-    // just to be on the safe side
-    if (infoPlugins.contains(plugin->persistentUniqueId())) {
-        return;
+    // get the ID of the plugin
+    QUuid persistentUniqueId;
+    if (!plugin->metaObject()->invokeMethod(plugin, "persistentUniqueId", Qt::DirectConnection, Q_RETURN_ARG(QUuid, persistentUniqueId))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
-    // cast the plugin
-    PluginInfo *pluginInfo = (PluginInfo *) plugin;
+    // just to be on the safe side
+    if (infoPlugins.contains(persistentUniqueId)) {
+        return;
+    }
 
     // get some basic info
     PluginNoQueue pluginData;
-    pluginData.name              = pluginInfo->pluginName();
-    pluginData.version           = pluginInfo->pluginVersion();
-    pluginData.baseVersion       = pluginInfo->PLUGIN_BASE_VERSION;
-    pluginData.pluginTypeVersion = pluginInfo->PLUGIN_INFO_VERSION;
-    pluginData.hasUI             = pluginInfo->hasUI();
-    infoPlugins[pluginInfo->persistentUniqueId()] = pluginData;
+    if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "pluginVersion", Qt::DirectConnection, Q_RETURN_ARG(int, pluginData.version))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "waverVersionAPICompatibility", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.waverVersionAPICompatibility))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    infoPlugins[persistentUniqueId] = pluginData;
 
     // initializations
-    pluginInfo->setUrl(trackInfo.url);
+    if (!plugin->metaObject()->invokeMethod(plugin, "setUrl", Qt::DirectConnection, Q_ARG(QUrl, trackInfo.url))) {
+        error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
 
     // move to appropriate thread
-    pluginInfo->moveToThread(&infoThread);
+    plugin->moveToThread(&infoThread);
 
     // connect thread signals
-    connect(&infoThread, SIGNAL(started()),  pluginInfo, SLOT(run()));
-    connect(&infoThread, SIGNAL(finished()), pluginInfo, SLOT(deleteLater()));
+    connect(&infoThread, SIGNAL(started()),  plugin, SLOT(run()));
+    connect(&infoThread, SIGNAL(finished()), plugin, SLOT(deleteLater()));
 
     // connect plugin signals
-    connect(pluginInfo, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),         this,       SLOT(saveConfiguration(QUuid,
-                QJsonDocument)));
-    connect(pluginInfo, SIGNAL(loadConfiguration(QUuid)),                       this,       SLOT(loadConfiguration(QUuid)));
-    connect(pluginInfo, SIGNAL(uiQml(QUuid, QString)),                           this,       SLOT(ui(QUuid, QString)));
-    connect(pluginInfo, SIGNAL(infoMessage(QUuid, QString)),                     this,       SLOT(infoMessage(QUuid, QString)));
-    connect(pluginInfo, SIGNAL(updateTrackInfo(QUuid, PluginSource::TrackInfo)), this,       SLOT(infoUpdateTrackInfo(QUuid,
-                PluginSource::TrackInfo)));
-    connect(pluginInfo, SIGNAL(addInfoHtml(QUuid, QString)),                     this,       SLOT(infoAddInfoHtml(QUuid, QString)));
-    connect(this,       SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),       pluginInfo, SLOT(loadedConfiguration(QUuid,
-                QJsonDocument)));
-    connect(this,       SIGNAL(requestPluginUi(QUuid)),                         pluginInfo, SLOT(getUiQml(QUuid)));
-    connect(this,       SIGNAL(pluginUiResults(QUuid, QJsonDocument)),           pluginInfo, SLOT(uiResults(QUuid, QJsonDocument)));
+    connect(plugin, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),         this,   SLOT(saveConfiguration(QUuid, QJsonDocument)));
+    connect(plugin, SIGNAL(loadConfiguration(QUuid)),                        this,   SLOT(loadConfiguration(QUuid)));
+    connect(plugin, SIGNAL(uiQml(QUuid, QString)),                           this,   SLOT(ui(QUuid, QString)));
+    connect(plugin, SIGNAL(infoMessage(QUuid, QString)),                     this,   SLOT(infoMessage(QUuid, QString)));
+    connect(plugin, SIGNAL(updateTrackInfo(QUuid, PluginSource::TrackInfo)), this,   SLOT(infoUpdateTrackInfo(QUuid, PluginSource::TrackInfo)));
+    connect(plugin, SIGNAL(addInfoHtml(QUuid, QString)),                     this,   SLOT(infoAddInfoHtml(QUuid, QString)));
+    connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),       plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
+    connect(this,   SIGNAL(requestPluginUi(QUuid)),                          plugin, SLOT(getUiQml(QUuid)));
+    connect(this,   SIGNAL(pluginUiResults(QUuid, QJsonDocument)),           plugin, SLOT(uiResults(QUuid, QJsonDocument)));
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.3")) {
+        connect(plugin, SIGNAL(saveGlobalConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
+        connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
+        connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
+    }
 }
 
 
@@ -649,6 +724,14 @@ void Track::loadedPluginSettings(QUuid id, QJsonDocument settings)
 {
     // re-emit for plugins
     emit loadedConfiguration(id, settings);
+}
+
+
+// server signal handler
+void Track::loadedPluginGlobalSettings(QUuid id, QJsonDocument settings)
+{
+    // re-emit for plugins
+    emit loadedGlobalConfiguration(id, settings);
 }
 
 
@@ -1154,8 +1237,8 @@ void Track::dspPreMessageToDspPlugin(QUuid uniqueId, QUuid destinationUniqueId, 
     }
 
     // these can come long before dsp thread is fired up
-    foreach (PluginDsp *dspPointer, dspPointers) {
-        dspPointer->messageFromDspPrePlugin(destinationUniqueId, uniqueId, messageId, value);
+    foreach (QObject *plugin, dspPointers) {
+        plugin->metaObject()->invokeMethod(plugin, "messageFromDspPrePlugin", Qt::DirectConnection, Q_ARG(QUuid, destinationUniqueId), Q_ARG(QUuid, uniqueId), Q_ARG(int, messageId), Q_ARG(QVariant, value));
     }
 }
 
@@ -1166,22 +1249,22 @@ void Track::infoUpdateTrackInfo(QUuid uniqueId, PluginSource::TrackInfo trackInf
     Q_UNUSED(uniqueId);
 
     if (trackInfo.title.length() > 0) {
-        this->trackInfo.title = trackInfo.title;
+        trackInfo.title = trackInfo.title;
     }
     if (trackInfo.performer.length() > 0) {
-        this->trackInfo.performer = trackInfo.performer;
+        trackInfo.performer = trackInfo.performer;
     }
     if (trackInfo.album.length() > 0) {
-        this->trackInfo.album = trackInfo.album;
+        trackInfo.album = trackInfo.album;
     }
     if (trackInfo.year > 0) {
-        this->trackInfo.year = trackInfo.year;
+        trackInfo.year = trackInfo.year;
     }
     if (trackInfo.track > 0) {
-        this->trackInfo.track = trackInfo.track;
+        trackInfo.track = trackInfo.track;
     }
 
-    emit trackInfoUpdated(this->trackInfo.url);
+    emit trackInfoUpdated(trackInfo.url);
 }
 
 

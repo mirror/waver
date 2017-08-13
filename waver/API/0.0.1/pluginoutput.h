@@ -36,11 +36,10 @@ class PluginOutput : public PluginBase {
 
     public:
 
-        static const int PLUGIN_OUTPUT_VERSION = 1;
-        static const int CACHE_BUFFER_COUNT    = 3;
+        static const int CACHE_BUFFER_COUNT = 3;
 
-        virtual void setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
-        virtual bool isMainOutput()                                                     = 0;
+        Q_INVOKABLE virtual void setBufferQueue(PluginBase::BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
+        Q_INVOKABLE virtual bool isMainOutput()                                                     = 0;
 
 
     signals:

@@ -28,7 +28,7 @@
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_OUTPUT) {
-        retVal->append((PluginBase *) new SoundOutput());
+        retVal->append((QObject *) new SoundOutput());
     }
 }
 
@@ -85,6 +85,13 @@ QString SoundOutput::pluginName()
 int SoundOutput::SoundOutput::pluginVersion()
 {
     return 1;
+}
+
+
+// overrided virtual function
+QString SoundOutput::waverVersionAPICompatibility()
+{
+    return "0.0.1";
 }
 
 

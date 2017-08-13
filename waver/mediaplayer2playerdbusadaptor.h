@@ -11,7 +11,7 @@
 #include <QVariantMap>
 
 #include "ipcmessageutils.h"
-#include "pluginsource.h"
+//#include "pluginsource.h"
 #include "server.h"
 #include "track.h"
 

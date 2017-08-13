@@ -28,7 +28,9 @@
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_DECODER) {
-        retVal->append((PluginBase *) new GenericDecoder());
+        #ifndef Q_OS_ANDROID
+        retVal->append((QObject *) new GenericDecoder());
+        #endif
     }
 }
 
@@ -51,6 +53,13 @@ QString GenericDecoder::pluginName()
 int GenericDecoder::pluginVersion()
 {
     return 1;
+}
+
+
+// global function
+QString GenericDecoder::waverVersionAPICompatibility()
+{
+    return "0.0.1";
 }
 
 

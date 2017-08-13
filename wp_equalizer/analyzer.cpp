@@ -44,6 +44,12 @@ int Analyzer::pluginVersion()
 }
 
 
+// overrided virtual function
+QString Analyzer::waverVersionAPICompatibility()
+{
+    return "0.0.1";
+}
+
 // overriden virtual function
 QUuid Analyzer::persistentUniqueId()
 {

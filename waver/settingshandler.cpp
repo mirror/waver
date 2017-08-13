@@ -53,8 +53,11 @@ SettingsHandler::~SettingsHandler()
 // helper
 QString SettingsHandler::pluginSettingsFileName(QUuid persistentUniqueId, QString collectionName)
 {
-    return QString("%1_%2.cfg").arg(persistentUniqueId.toString().replace(QRegExp("[{}]"),
-                "")).arg(collectionName.replace(QRegExp("\\W"), "_")).toLower();
+    if (collectionName.isEmpty()) {
+        return QString("%1.cfg").arg(persistentUniqueId.toString().replace(QRegExp("[{}]"), ""));
+    }
+
+    return QString("%1_%2.cfg").arg(persistentUniqueId.toString().replace(QRegExp("[{}]"), "")).arg(collectionName.replace(QRegExp("\\W"), "_")).toLower();
 }
 
 
@@ -172,6 +175,11 @@ void SettingsHandler::loadPluginSettings(QUuid persistentUniqueId, QString colle
     }
     returnValue = QJsonDocument::fromJson(file.readAll());
     file.close();
+
+    if (collectionName.isEmpty()) {
+        loadedPluginGlobalSettings(persistentUniqueId, returnValue);
+        return;
+    }
 
     emit loadedPluginSettings(persistentUniqueId, returnValue);
 }

@@ -40,7 +40,7 @@
 #include "replaygaincalculator.h"
 #include "fadeoutdetector.h"
 
-#include "../waver/plugindsppre.h"
+#include "../waver/API/0.0.1/plugindsppre.h"
 #include "../waver/track.h"
 
 #ifdef QT_DEBUG
@@ -65,6 +65,7 @@ class WP_EQUALIZER_EXPORT Analyzer : PluginDspPre {
         int     pluginType()                                                       override;
         QString pluginName()                                                       override;
         int     pluginVersion()                                                    override;
+        QString waverVersionAPICompatibility()                                     override;
         QUuid   persistentUniqueId()                                               override;
         bool    hasUI()                                                            override;
         int     priority()                                                         override;

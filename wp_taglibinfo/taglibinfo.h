@@ -33,7 +33,7 @@
 #include <taglib/tstring.h>
 
 #include "../waver/pluginfactory.h"
-#include "../waver/plugininfo.h"
+#include "../waver/API/0.0.1/plugininfo.h"
 
 
 extern "C" WP_TAGLIBINFO_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
@@ -46,12 +46,13 @@ class WP_TAGLIBINFO_EXPORT TagLibInfo : public PluginInfo {
 
         explicit TagLibInfo();
 
-        int     pluginType()         override;
-        QString pluginName()         override;
-        int     pluginVersion()      override;
-        QUuid   persistentUniqueId() override;
-        bool    hasUI()              override;
-        void    setUrl(QUrl url)     override;
+        int     pluginType()                   override;
+        QString pluginName()                   override;
+        int     pluginVersion()                override;
+        QString waverVersionAPICompatibility() override;
+        QUuid   persistentUniqueId()           override;
+        bool    hasUI()                        override;
+        void    setUrl(QUrl url)               override;
 
 
     private:

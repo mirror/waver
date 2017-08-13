@@ -42,7 +42,7 @@
 
 #include "networkdownloader.h"
 #include "../waver/pluginfactory.h"
-#include "../waver/plugindecoder.h"
+#include "../waver/API/0.0.1/plugindecoder.h"
 
 
 extern "C" WP_GENERICDECODER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
@@ -53,12 +53,13 @@ class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder {
 
     public:
 
-        int     pluginType()         override;
-        QString pluginName()         override;
-        int     pluginVersion()      override;
-        QUuid   persistentUniqueId() override;
-        bool    hasUI()              override;
-        void    setUrl(QUrl url)     override;
+        int     pluginType()                   override;
+        QString pluginName()                   override;
+        int     pluginVersion()                override;
+        QString waverVersionAPICompatibility() override;
+        QUuid   persistentUniqueId()           override;
+        bool    hasUI()                        override;
+        void    setUrl(QUrl url)               override;
 
         explicit GenericDecoder();
         ~GenericDecoder();

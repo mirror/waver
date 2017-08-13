@@ -23,6 +23,65 @@
 
 #include "pluginlibsloader.h"
 
+
+// helping hand
+bool PluginLibsLoader::isPluginCompatible(QString pluginWaverVersionAPICompatibility, QString waverVersionAPI)
+{
+    QStringList pluginVersion = pluginWaverVersionAPICompatibility.split('.');
+    QStringList waverVersion  = waverVersionAPI.split('.');
+
+    if ((pluginVersion.count() != 3) || (waverVersion.count() != 3)) {
+        return false;
+    }
+
+    bool OK;
+    int pMajor;
+    int pMinor;
+    int pRev;
+    int wMajor;
+    int wMinor;
+    int wRev;
+
+    pMajor = pluginVersion.at(0).toInt(&OK);
+    if (!OK) {
+        return false;
+    }
+    pMinor = pluginVersion.at(1).toInt(&OK);
+    if (!OK) {
+        return false;
+    }
+    pRev = pluginVersion.at(2).toInt(&OK);
+    if (!OK) {
+        return false;
+    }
+    wMajor = waverVersion.at(0).toInt(&OK);
+    if (!OK) {
+        return false;
+    }
+    wMinor = waverVersion.at(1).toInt(&OK);
+    if (!OK) {
+        return false;
+    }
+    wRev = waverVersion.at(2).toInt(&OK);
+    if (!OK) {
+        return false;
+    }
+
+    if (pMajor > wMajor) {
+        return false;
+    }
+    if ((pMajor == wMajor) && (pMinor > wMinor)) {
+        return false;
+    }
+    if ((pMajor == wMajor) && (pMinor == wMinor) && (pRev < wRev)) {
+        return false;
+    }
+
+    return true;
+}
+
+
+// constructor
 PluginLibsLoader::PluginLibsLoader(QObject *parent, LoadedLibs *loadedLibs) : QObject(parent)
 {
     this->loadedLibs = loadedLibs;

@@ -37,7 +37,7 @@
 #include <QVariantHash>
 #include <QVariantList>
 
-#include "pluginsource.h"
+#include "API/0.0.1/pluginsource.h"
 
 
 const int  TCP_TIMEOUT       = 2500;

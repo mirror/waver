@@ -47,7 +47,6 @@
 #include "clienttcphandler.h"
 #include "globals.h"
 #include "ipcmessageutils.h"
-#include "pluginsource.h"
 
 
 class WaverApplication : public QGuiApplication {

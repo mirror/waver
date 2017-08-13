@@ -35,12 +35,10 @@ class PluginDsp : public PluginBase {
 
     public:
 
-        static const int PLUGIN_DSP_VERSION = 1;
-
         // greater number means less priority
-        virtual int priority() = 0;
+        Q_INVOKABLE virtual int priority() = 0;
 
-        virtual void setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
+        Q_INVOKABLE virtual void setBufferQueue(PluginBase::BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
 
 
     signals:

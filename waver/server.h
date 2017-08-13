@@ -32,6 +32,8 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QLibrary>
+#include <QMetaObject>
+#include <QMetaMethod>
 #include <QNetworkAddressEntry>
 #include <QNetworkInterface>
 #include <QObject>
@@ -48,8 +50,7 @@
 #include "ipcmessageutils.h"
 #include "globals.h"
 #include "pluginlibsloader.h"
-#include "pluginbase.h"
-#include "pluginsource.h"
+#include "API/0.0.1/pluginsource.h"
 #include "servertcphandler.h"
 #include "settingshandler.h"
 #include "track.h"
@@ -89,8 +90,7 @@ class WaverServer : public QObject {
         struct SourcePlugin {
             QString name;
             int     version;
-            int     baseVersion;
-            int     pluginTypeVersion;
+            QString waverVersionAPICompatibility;
             bool    hasUI;
             bool    ready;
         };
@@ -121,6 +121,7 @@ class WaverServer : public QObject {
         long positionSeconds;
 
         void finish();
+        void finish(QString errorMessage);
 
         void requestPlaylist();
         void startNextTrack();
@@ -153,10 +154,12 @@ class WaverServer : public QObject {
 
         void unableToStart(QUuid uniqueId, QUrl url);
         void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration);
+        void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void getPlaylist(QUuid uniqueId, int maxCount);
         void getOpenTracks(QUuid uniqueId, QString parentId);
         void search(QUuid uniqueId, QString criteria);
         void resolveOpenTracks(QUuid uniqueId, QStringList selectedTrackIds);
+        void trackAction(QUuid uniqueId, int actionKey, QUrl url);
 
         void requestPluginUi(QUuid uniqueId);
         void pluginUiResults(QUuid uniqueId, QJsonDocument results);
@@ -179,6 +182,7 @@ class WaverServer : public QObject {
 
         void collectionList(QStringList collections, QString currentCollection);
         void loadedPluginSettings(QUuid uniqueId, QJsonDocument settings);
+        void loadedPluginGlobalSettings(QUuid uniqueId, QJsonDocument settings);
 
         void pluginUi(QUuid uniqueId, QString qml);
 
@@ -186,11 +190,14 @@ class WaverServer : public QObject {
         void pluginUnready(QUuid uniqueId);
         void pluginInfoMessage(QUuid uniqueId, QString message);
         void loadConfiguration(QUuid uniqueId);
+        void loadGlobalConfiguration(QUuid uniqueId);
         void saveConfiguration(QUuid uniqueId, QJsonDocument configuration);
+        void saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void playlist(QUuid uniqueId, PluginSource::TracksInfo tracksInfo);
         void openTracksResults(QUuid uniqueId, PluginSource::OpenTracks openTracks);
         void searchResults(QUuid uniqueId, PluginSource::OpenTracks openTracks);
         void requestedRemoveTracks(QUuid uniqueId);
+        void requestedRemoveTrack(QUuid uniqueId, QUrl url);
 
         void trackError(QUrl url, bool fatal, QString errorString);
         void trackLoadedPluginsWithUI(Track::PluginsWithUI pluginsWithUI);

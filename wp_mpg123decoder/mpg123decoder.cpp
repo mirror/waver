@@ -28,7 +28,7 @@ void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_DECODER) {
         #ifndef Q_OS_ANDROID
-        retVal->append((PluginBase *) new Mpg123Decoder());
+        retVal->append((QObject *) new Mpg123Decoder());
         #endif
     }
 }
@@ -52,6 +52,13 @@ QString Mpg123Decoder::pluginName()
 int Mpg123Decoder::pluginVersion()
 {
     return 1;
+}
+
+
+// overrided virtual function
+QString Mpg123Decoder::waverVersionAPICompatibility()
+{
+    return "0.0.1";
 }
 
 

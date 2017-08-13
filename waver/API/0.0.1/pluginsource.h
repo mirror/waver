@@ -61,8 +61,6 @@ class PluginSource : public PluginBase {
         };
         typedef QVector<OpenTrack> OpenTracks;
 
-        static const int PLUGIN_SOURCE_VERSION = 1;
-
 
     signals:
 
@@ -81,7 +79,7 @@ class PluginSource : public PluginBase {
         virtual void getOpenTracks(QUuid uniqueId, QString parentId)                 = 0;
         virtual void resolveOpenTracks(QUuid uniqueId, QStringList selectedTrackIds) = 0;
         virtual void search(QUuid uniqueId, QString criteria)                        = 0;
-        virtual void action(QUuid uniqueId, int actionKey)                           = 0;
+        virtual void action(QUuid uniqueId, int actionKey, QUrl url)                 = 0;
 
 };
 

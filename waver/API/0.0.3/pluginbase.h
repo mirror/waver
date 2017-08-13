@@ -40,28 +40,34 @@ class PluginBase : public QObject {
 
         typedef QVector<QAudioBuffer *> BufferQueue;
 
-        static const int PLUGIN_BASE_VERSION = 1;
-
         static const int PLUGIN_TYPE_SOURCE  = 1;
         static const int PLUGIN_TYPE_DECODER = 2;
         static const int PLUGIN_TYPE_DSP_PRE = 4;
         static const int PLUGIN_TYPE_DSP     = 8;
         static const int PLUGIN_TYPE_OUTPUT  = 16;
         static const int PLUGIN_TYPE_INFO    = 32;
-        static const int PLUGIN_TYPE_ALL     = PLUGIN_TYPE_SOURCE | PLUGIN_TYPE_DECODER | PLUGIN_TYPE_DSP_PRE | PLUGIN_TYPE_DSP |
-            PLUGIN_TYPE_OUTPUT | PLUGIN_TYPE_INFO;
+        static const int PLUGIN_TYPE_ALL     =
+            PLUGIN_TYPE_SOURCE  |
+            PLUGIN_TYPE_DECODER |
+            PLUGIN_TYPE_DSP_PRE |
+            PLUGIN_TYPE_DSP     |
+            PLUGIN_TYPE_OUTPUT  |
+            PLUGIN_TYPE_INFO;
 
-        virtual int     pluginType()         = 0;
-        virtual QString pluginName()         = 0;
-        virtual int     pluginVersion()      = 0;
-        virtual QUuid   persistentUniqueId() = 0;
-        virtual bool    hasUI()              = 0;
+        Q_INVOKABLE virtual int     pluginType()                   = 0;
+        Q_INVOKABLE virtual QString pluginName()                   = 0;
+        Q_INVOKABLE virtual int     pluginVersion()                = 0;
+        Q_INVOKABLE virtual QString waverVersionAPICompatibility() = 0;
+        Q_INVOKABLE virtual QUuid   persistentUniqueId()           = 0;
+        Q_INVOKABLE virtual bool    hasUI()                        = 0;
 
 
     signals:
 
         void loadConfiguration(QUuid uniqueId);
+        void loadGlobalConfiguration(QUuid uniqueId);
         void saveConfiguration(QUuid uniqueId, QJsonDocument configuration);
+        void saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
 
         void uiQml(QUuid uniqueId, QString qmlString);
 
@@ -73,6 +79,7 @@ class PluginBase : public QObject {
         virtual void run() = 0;
 
         virtual void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) = 0;
+        virtual void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) = 0;
 
         virtual void getUiQml(QUuid uniqueId)                         = 0;
         virtual void uiResults(QUuid uniqueId, QJsonDocument results) = 0;

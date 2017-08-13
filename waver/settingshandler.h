@@ -59,6 +59,7 @@ class SettingsHandler : public QObject {
         void collectionList(QStringList collections, QString currentCollection);
 
         void loadedPluginSettings(QUuid id, QJsonDocument settings);
+        void loadedPluginGlobalSettings(QUuid id, QJsonDocument settings);
 
 
     public slots:

@@ -38,7 +38,7 @@
 
 #include "feed.h"
 #include "mpg123lib/mpg123.h"
-#include "../waver/plugindecoder.h"
+#include "../waver/API/0.0.1/plugindecoder.h"
 #include "../waver/pluginfactory.h"
 
 
@@ -50,12 +50,13 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder {
 
     public:
 
-        int     pluginType()         override;
-        QString pluginName()         override;
-        int     pluginVersion()      override;
-        QUuid   persistentUniqueId() override;
-        bool    hasUI()              override;
-        void    setUrl(QUrl url)     override;
+        int     pluginType()                   override;
+        QString pluginName()                   override;
+        int     pluginVersion()                override;
+        QString waverVersionAPICompatibility() override;
+        QUuid   persistentUniqueId()           override;
+        bool    hasUI()                        override;
+        void    setUrl(QUrl url)               override;
 
         explicit Mpg123Decoder();
         ~Mpg123Decoder();

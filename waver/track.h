@@ -33,16 +33,12 @@
 #include <QTimer>
 #include <QUrl>
 #include <QUuid>
+#include <QVector>
 
 #include "globals.h"
-#include "pluginbase.h"
-#include "plugindecoder.h"
-#include "plugindsp.h"
-#include "plugindsppre.h"
-#include "plugininfo.h"
 #include "pluginlibsloader.h"
-#include "pluginoutput.h"
-#include "pluginsource.h"
+#include "API/0.0.1/pluginsource.h"
+#include "API/0.0.1/pluginoutput.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -66,8 +62,7 @@ class Track : public QObject {
 
         template <class T> static QString formatPluginName(T pluginInfo)
         {
-            return QString("%1 %2.%3.%4").arg(pluginInfo.name).arg(pluginInfo.baseVersion).arg(pluginInfo.pluginTypeVersion).arg(
-                    pluginInfo.version);
+            return QString("%1 v%2").arg(pluginInfo.name).arg(pluginInfo.version);
         }
 
         explicit Track(PluginLibsLoader::LoadedLibs *loadedLibs, PluginSource::TrackInfo trackInfo, QUuid sourcePliginId,
@@ -88,8 +83,7 @@ class Track : public QObject {
         struct PluginNoQueue {
             QString name;
             int     version;
-            int     baseVersion;
-            int     pluginTypeVersion;
+            QString waverVersionAPICompatibility;
             bool    hasUI;
         };
         typedef QHash<QUuid, PluginNoQueue> PluginsNoQueue;
@@ -97,8 +91,7 @@ class Track : public QObject {
         struct PluginWithQueue {
             QString                  name;
             int                      version;
-            int                      baseVersion;
-            int                      pluginTypeVersion;
+            QString                  waverVersionAPICompatibility;
             bool                     hasUI;
             PluginBase::BufferQueue *bufferQueue;
             QMutex                  *bufferMutex;
@@ -123,7 +116,7 @@ class Track : public QObject {
         QVector<QUuid>          decoders;
         QVector<QUuid>          dspPrePriority;
         QVector<QUuid>          dspPriority;
-        QVector<PluginDsp *>    dspPointers;
+        QVector<QObject *>      dspPointers;
         PluginBase::BufferQueue dspSynchronizerQueue;
         int                     dspInitialBufferCount;
 
@@ -144,11 +137,11 @@ class Track : public QObject {
         qint64 decodedMillisecondsAtUnderrun;
         qint64 playedMilliseconds;
 
-        void setupDecoderPlugin(PluginBase *plugin);
-        void setupDspPrePlugin(PluginBase *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);
-        void setupDspPlugin(PluginBase *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);
-        void setupOutputPlugin(PluginBase *plugin);
-        void setupInfoPlugin(PluginBase *plugin);
+        void setupDecoderPlugin(QObject *plugin);
+        void setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);
+        void setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);
+        void setupOutputPlugin(QObject *plugin);
+        void setupInfoPlugin(QObject *plugin);
         void sendLoadedPluginsWithUI();
         void sendFinished();
 
@@ -160,7 +153,9 @@ class Track : public QObject {
         void error(QUrl url, bool fatal, QString errorString);
 
         void savePluginSettings(QUuid uniqueId, QJsonDocument settings);
+        void savePluginGlobalSettings(QUuid uniqueId, QJsonDocument settings);
         void loadPluginSettings(QUuid uniqueId);
+        void loadPluginGlobalSettings(QUuid uniqueId);
         void loadedPluginsWithUI(Track::PluginsWithUI pluginsWithUI);
         void pluginUi(QUuid id, QString qml);
 
@@ -173,6 +168,7 @@ class Track : public QObject {
         // for internal receivers
 
         void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration);
+        void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void requestPluginUi(QUuid id);
         void pluginUiResults(QUuid uniqueId, QJsonDocument results);
 
@@ -195,6 +191,7 @@ class Track : public QObject {
     public slots:
 
         void loadedPluginSettings(QUuid id, QJsonDocument settings);
+        void loadedPluginGlobalSettings(QUuid id, QJsonDocument settings);
         void requestedPluginUi(QUuid id);
         void receivedPluginUiResults(QUuid uniqueId, QJsonDocument results);
 

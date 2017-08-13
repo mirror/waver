@@ -24,12 +24,12 @@
 #include "filescanner.h"
 
 // constructor
-FileScanner::FileScanner(QObject *parent, QString startDir, QStringList *results, QStringList *exclude,
-    QMutex *mutex) : QThread(parent)
+FileScanner::FileScanner(QObject *parent, QString startDir, QStringList *results, QStringList *exclude, QStringList *banned, QMutex *mutex) : QThread(parent)
 {
     this->startDir = startDir;
     this->results  = results;
     this->exclude  = exclude;
+    this->ban      = banned;
     this->mutex    = mutex;
 }
 
@@ -66,7 +66,7 @@ void FileScanner::scan(QString startDir)
         if (entry.isFile() && !entry.isSymLink() && (entry.fileName().endsWith(".mp3", Qt::CaseInsensitive) ||
                 mimeDatabase.mimeTypeForFile(entry).name().startsWith("audio", Qt::CaseInsensitive))) {
             mutex->lock();
-            if (!exclude->contains(entry.absoluteFilePath())) {
+            if (!exclude->contains(entry.absoluteFilePath()) && !ban->contains(entry.absoluteFilePath())) {
                 results->append(entry.absoluteFilePath());
                 if (results->count() == 1) {
                     emit foundFirst();

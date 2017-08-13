@@ -38,15 +38,17 @@ class FileScanner : public QThread {
 
     public:
 
-        explicit FileScanner(QObject *parent, QString startDir, QStringList *results, QStringList *exclude, QMutex *mutex);
+        explicit FileScanner(QObject *parent, QString startDir, QStringList *results, QStringList *exclude, QStringList *banned, QMutex *mutex);
 
         void run() override;
+
 
     private:
 
         QString      startDir;
         QStringList *results;
         QStringList *exclude;
+        QStringList *ban;
         QMutex      *mutex;
 
         QMimeDatabase mimeDatabase;

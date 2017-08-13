@@ -32,9 +32,9 @@ SOURCES += radiosource.cpp
 
 HEADERS += radiosource.h\
         wp_radiosource_global.h \
-    ../waver/pluginbase.h \
-    ../waver/pluginsource.h
-    ../waver/pluginfactory.h \
+    ../waver/API/0.0.1/pluginbase.h \
+    ../waver/API/0.0.1/pluginsource.h \
+    ../waver/pluginfactory.h
 
 unix:!android {
     target.path = /opt/waver/bin

@@ -52,6 +52,8 @@ class PluginLibsLoader : public QObject {
         };
         typedef QVector<LoadedLib> LoadedLibs;
 
+        static bool isPluginCompatible(QString pluginWaverVersionAPICompatibility, QString waverVersionAPI);
+
         explicit PluginLibsLoader(QObject *parent = 0, LoadedLibs *loadedLibs = NULL);
 
 

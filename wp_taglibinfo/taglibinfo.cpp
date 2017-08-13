@@ -29,7 +29,7 @@
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_INFO) {
-        retVal->append((PluginBase *) new TagLibInfo());
+        retVal->append((QObject *) new TagLibInfo());
     }
 }
 
@@ -52,6 +52,13 @@ QString TagLibInfo::pluginName()
 int TagLibInfo::pluginVersion()
 {
     return 1;
+}
+
+
+// overrided virtual function
+QString TagLibInfo::waverVersionAPICompatibility()
+{
+    return "0.0.1";
 }
 
 

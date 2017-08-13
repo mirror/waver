@@ -36,9 +36,7 @@ class PluginDecoder : public PluginBase {
 
     public:
 
-        static const int PLUGIN_DECODER_VERSION = 1;
-
-        virtual void setUrl(QUrl url) = 0;
+        Q_INVOKABLE virtual void setUrl(QUrl url) = 0;
 
 
     signals:

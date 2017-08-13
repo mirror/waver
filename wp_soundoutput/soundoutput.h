@@ -42,7 +42,7 @@
 
 #include "feeder.h"
 #include "../waver/pluginfactory.h"
-#include "../waver/pluginoutput.h"
+#include "../waver/API/0.0.1/pluginoutput.h"
 
 
 extern "C" WP_SOUNDOUTPUT_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
@@ -59,6 +59,7 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput {
         int     pluginType()                                                       override;
         QString pluginName()                                                       override;
         int     pluginVersion()                                                    override;
+        QString waverVersionAPICompatibility()                                     override;
         void    setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) override;
         bool    isMainOutput()                                                     override;
         QUuid   persistentUniqueId()                                               override;

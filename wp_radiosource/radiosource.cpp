@@ -28,7 +28,7 @@
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_SOURCE) {
-        retVal->append((PluginBase *) new RadioSource());
+        retVal->append((QObject *) new RadioSource());
     }
 }
 
@@ -65,6 +65,13 @@ QString RadioSource::pluginName()
 int RadioSource::pluginVersion()
 {
     return 2;
+}
+
+
+// overrided virtual function
+QString RadioSource::waverVersionAPICompatibility()
+{
+    return "0.0.1";
 }
 
 
@@ -603,7 +610,7 @@ void RadioSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
             trackInfo.track     = 0;
             trackInfo.url       = station.url;
             trackInfo.year      = 0;
-            trackInfo.actions.insert(0, "Ban");
+            //trackInfo.actions.insert(0, "Ban");
 
             returnValue.append(trackInfo);
         }
@@ -652,7 +659,7 @@ void RadioSource::search(QUuid uniqueId, QString criteria)
 
 
 // user clicked action that was included in track info
-void RadioSource::action(QUuid uniqueId, int actionKey)
+void RadioSource::action(QUuid uniqueId, int actionKey, QUrl url)
 {
     if (uniqueId != id) {
         return;

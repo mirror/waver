@@ -50,7 +50,7 @@
 
 #include "filescanner.h"
 #include "../waver/pluginfactory.h"
-#include "../waver/pluginsource.h"
+#include "../waver/API/0.0.3/pluginsource.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -65,11 +65,12 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource {
 
     public:
 
-        int     pluginType()         override;
-        QString pluginName()         override;
-        int     pluginVersion()      override;
-        QUuid   persistentUniqueId() override;
-        bool    hasUI()              override;
+        int     pluginType()                   override;
+        QString pluginName()                   override;
+        int     pluginVersion()                override;
+        QString waverVersionAPICompatibility() override;
+        QUuid   persistentUniqueId()           override;
+        bool    hasUI()                        override;
 
 
         explicit LocalSource();
@@ -80,13 +81,14 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource {
 
         QUuid id;
 
-        QMutex                mutex;
+        QMutex                 mutex;
         QVector<FileScanner *> scanners;
-        bool                  readyEmitted;
+        bool                   readyEmitted;
 
         QStringList directories;
         QStringList trackFileNames;
         QStringList alreadyPlayedTrackFileNames;
+        QStringList bannedFileNames;
 
         QString variationSetting;
         int     variationCurrent;
@@ -100,7 +102,9 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource {
         void scanDir(QString dir);
 
         QJsonDocument configToJson();
+        QJsonDocument configToJsonGlobal();
         void          jsonToConfig(QJsonDocument jsonDocument);
+        void          jsonToConfigGlobal(QJsonDocument jsonDocument);
 
         bool      isTrackFile(QFileInfo fileInfo);
         TrackInfo trackInfoFromFilePath(QString filePath);
@@ -113,7 +117,8 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource {
 
         void run() override;
 
-        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)       override;
+        void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
@@ -123,8 +128,8 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource {
         void getOpenTracks(QUuid uniqueId, QString parentId)               override;
         void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks) override;
 
-        void search(QUuid uniqueId, QString criteria) override;
-        void action(QUuid uniqueId, int actionKey)    override;
+        void search(QUuid uniqueId, QString criteria)        override;
+        void action(QUuid uniqueId, int actionKey, QUrl url) override;
 
 
     private slots:

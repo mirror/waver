@@ -45,7 +45,7 @@
 #include <QXmlStreamReader>
 
 #include "../waver/pluginfactory.h"
-#include "../waver/pluginsource.h"
+#include "../waver/API/0.0.1/pluginsource.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -61,11 +61,12 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource {
 
     public:
 
-        int     pluginType()         override;
-        QString pluginName()         override;
-        int     pluginVersion()      override;
-        QUuid   persistentUniqueId() override;
-        bool    hasUI()              override;
+        int     pluginType()                   override;
+        QString pluginName()                   override;
+        int     pluginVersion()                override;
+        QString waverVersionAPICompatibility() override;
+        QUuid   persistentUniqueId()           override;
+        bool    hasUI()                        override;
 
         explicit RadioSource();
         ~RadioSource();
@@ -103,8 +104,8 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource {
         void getOpenTracks(QUuid uniqueId, QString parentId)               override;
         void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks) override;
 
-        void search(QUuid uniqueId, QString criteria) override;
-        void action(QUuid uniqueId, int actionKey)    override;
+        void search(QUuid uniqueId, QString criteria)        override;
+        void action(QUuid uniqueId, int actionKey, QUrl url) override;
 
 };
 

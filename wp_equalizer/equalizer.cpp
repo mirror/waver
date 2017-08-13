@@ -44,6 +44,13 @@ int Equalizer::pluginVersion()
 }
 
 
+// overrided virtual function
+QString Equalizer::waverVersionAPICompatibility()
+{
+    return "0.0.1";
+}
+
+
 // overriden virtual function
 QUuid Equalizer::persistentUniqueId()
 {

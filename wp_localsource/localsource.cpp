@@ -27,7 +27,7 @@
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
     if (pluginTypesMask & PluginBase::PLUGIN_TYPE_SOURCE) {
-        retVal->append((PluginBase *) new LocalSource());
+        retVal->append((QObject *) new LocalSource());
     }
 }
 
@@ -83,6 +83,13 @@ int LocalSource::pluginVersion()
 
 
 // overrided virtual function
+QString LocalSource::waverVersionAPICompatibility()
+{
+    return "0.0.3";
+}
+
+
+// overrided virtual function
 bool LocalSource::hasUI()
 {
     return true;
@@ -102,6 +109,7 @@ void LocalSource::run()
     qsrand(QDateTime::currentDateTime().toTime_t());
 
     emit loadConfiguration(id);
+    emit loadGlobalConfiguration(id);
 }
 
 
@@ -144,6 +152,17 @@ void LocalSource::loadedConfiguration(QUuid uniqueId, QJsonDocument configuratio
             scanDir(directory);
         }
     }
+}
+
+
+// slot receiving configuration
+void LocalSource::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    jsonToConfigGlobal(configuration);
 }
 
 
@@ -190,7 +209,8 @@ void LocalSource::uiResults(QUuid uniqueId, QJsonDocument results)
 // must be a broken file
 void LocalSource::unableToStart(QUuid uniqueId, QUrl url)
 {
-    // TODO implement blacklist
+    // treat it like banned track
+    action(uniqueId, 0, url);
 }
 
 
@@ -513,9 +533,19 @@ void LocalSource::search(QUuid uniqueId, QString criteria)
 
 
 // user clicked action that was included in track info
-void LocalSource::action(QUuid uniqueId, int actionKey)
+void LocalSource::action(QUuid uniqueId, int actionKey, QUrl url)
 {
     if (uniqueId != id) {
+        return;
+    }
+
+    if (actionKey == 0) {
+        mutex.lock();
+        bannedFileNames.append(url.toLocalFile());
+        mutex.unlock();
+
+        emit saveGlobalConfiguration(id, configToJsonGlobal());
+        emit requestRemoveTrack(id, url);
         return;
     }
 }
@@ -524,7 +554,7 @@ void LocalSource::action(QUuid uniqueId, int actionKey)
 // scan a dir
 void LocalSource::scanDir(QString dir)
 {
-    FileScanner *fileScanner = new FileScanner((QObject *)this, dir, &trackFileNames, &alreadyPlayedTrackFileNames, &mutex);
+    FileScanner *fileScanner = new FileScanner((QObject *)this, dir, &trackFileNames, &alreadyPlayedTrackFileNames, &bannedFileNames, &mutex);
     connect(fileScanner, SIGNAL(foundFirst()), this, SLOT(scannerFoundFirst()));
     connect(fileScanner, SIGNAL(finished()),   this, SLOT(scannerFinished()));
     scanners.append(fileScanner);
@@ -617,6 +647,22 @@ QJsonDocument LocalSource::configToJson()
 
 
 // configuration conversion
+QJsonDocument LocalSource::configToJsonGlobal()
+{
+    QJsonObject jsonObject;
+
+    mutex.lock();
+    jsonObject.insert("bannedFileNames", QJsonValue(QJsonArray::fromStringList(bannedFileNames)));
+    mutex.unlock();
+
+    QJsonDocument returnValue;
+    returnValue.setObject(jsonObject);
+
+    return returnValue;
+}
+
+
+// configuration conversion
 void LocalSource::jsonToConfig(QJsonDocument jsonDocument)
 {
     mutex.lock();
@@ -642,6 +688,20 @@ void LocalSource::jsonToConfig(QJsonDocument jsonDocument)
     }
 
     mutex.unlock();
+}
+
+
+// configuration conversion
+void LocalSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
+{
+    if (jsonDocument.object().contains("bannedFileNames")) {
+        mutex.lock();
+        bannedFileNames.clear();
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("bannedFileNames").toArray()) {
+            bannedFileNames.append(jsonValue.toString());
+        }
+        mutex.unlock();
+    }
 }
 
 
