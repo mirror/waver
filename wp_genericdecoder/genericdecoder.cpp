@@ -121,8 +121,9 @@ GenericDecoder::~GenericDecoder()
         file->deleteLater();
     }
 
-    foreach (QAudioBuffer *audioBuffer, audioBuffers) {
-        delete audioBuffer;
+    while (audioBuffers.count() > 0) {
+        delete audioBuffers.at(0);
+        audioBuffers.remove(0);
     }
 }
 
@@ -275,8 +276,7 @@ void GenericDecoder::decoderBufferReady()
     // must prevent input underrun, appearently reading 0 bytes is show-stopper for the decoder
     if (networkDownloader != NULL) {
         waitMutex.lock();
-        while ((networkDownloader->realBytesAvailable() < 4048) && !networkDownloader->isFinshed() &&
-            !QThread::currentThread()->isInterruptionRequested()) {
+        while ((networkDownloader->realBytesAvailable() < 4048) && !networkDownloader->isFinshed() && !QThread::currentThread()->isInterruptionRequested()) {
             waitCondition.wait(&waitMutex, 1000);
         }
         waitMutex.unlock();

@@ -45,7 +45,7 @@
 #include <QXmlStreamReader>
 
 #include "../waver/pluginfactory.h"
-#include "../waver/API/pluginsource_001.h"
+#include "../waver/API/pluginsource_003.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -56,7 +56,7 @@ extern "C" WP_RADIOSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, Plu
 
 // TODO "Ban station" -> Ez rakja bele egy speckó <BANNED> kategóriába
 
-class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_001 {
+class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_003 {
         Q_OBJECT
 
     public:
@@ -85,9 +85,12 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_001 {
 
         QVector<Station> stations;
         QVector<Station> selectedStations;
+        QStringList      bannedUrls;
 
         QJsonDocument configToJson();
+        QJsonDocument configToJsonGlobal();
         void          jsonToConfig(QJsonDocument jsonDocument);
+        void          jsonToConfigGlobal(QJsonDocument jsonDocument);
 
 
     public slots:
@@ -95,6 +98,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_001 {
         void run() override;
 
         void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;

@@ -71,7 +71,7 @@ int RadioSource::pluginVersion()
 // overrided virtual function
 QString RadioSource::waverVersionAPICompatibility()
 {
-    return "0.0.1";
+    return "0.0.3";
 }
 
 
@@ -94,6 +94,7 @@ void RadioSource::run()
 {
     qsrand(QDateTime::currentDateTime().toTime_t());
 
+    emit loadGlobalConfiguration(id);
     emit loadConfiguration(id);
 }
 
@@ -130,6 +131,17 @@ void RadioSource::loadedConfiguration(QUuid uniqueId, QJsonDocument configuratio
         return;
     }
     emit ready(id);
+}
+
+
+// slot receiving configuration
+void RadioSource::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    jsonToConfigGlobal(configuration);
 }
 
 
@@ -611,7 +623,7 @@ void RadioSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
             trackInfo.track     = 0;
             trackInfo.url       = station.url;
             trackInfo.year      = 0;
-            //trackInfo.actions.insert(0, "Ban");
+            trackInfo.actions.insert(0, "Ban");
 
             returnValue.append(trackInfo);
         }
@@ -665,6 +677,13 @@ void RadioSource::action(QUuid uniqueId, int actionKey, QUrl url)
     if (uniqueId != id) {
         return;
     }
+
+    if (actionKey == 0) {
+        bannedUrls.append(url.toString());
+        emit saveGlobalConfiguration(id, configToJsonGlobal());
+        emit requestRemoveTrack(id, url);
+        return;
+    }
 }
 
 
@@ -701,6 +720,20 @@ QJsonDocument RadioSource::configToJson()
 
 
 // configuration conversion
+QJsonDocument RadioSource::configToJsonGlobal()
+{
+    QJsonObject jsonObject;
+
+    jsonObject.insert("bannedUrls", QJsonValue(QJsonArray::fromStringList(bannedUrls)));
+
+    QJsonDocument returnValue;
+    returnValue.setObject(jsonObject);
+
+    return returnValue;
+}
+
+
+// configuration conversion
 void RadioSource::jsonToConfig(QJsonDocument jsonDocument)
 {
     if (jsonDocument.object().contains("stations")) {
@@ -715,7 +748,7 @@ void RadioSource::jsonToConfig(QJsonDocument jsonDocument)
             station.url                = QUrl(data.value("url").toString());
             station.unableToStartCount = data.value("unableToStartCount").toInt();
 
-            if (station.url.isValid() && !station.url.isLocalFile()) {
+            if (station.url.isValid() && !station.url.isLocalFile() && !bannedUrls.contains(station.url.toString())) {
                 stations.append(station);
             }
         }
@@ -733,6 +766,18 @@ void RadioSource::jsonToConfig(QJsonDocument jsonDocument)
             if (selectedCategories.contains(station.category)) {
                 selectedStations.append(station);
             }
+        }
+    }
+}
+
+
+// configuration conversion
+void RadioSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
+{
+    if (jsonDocument.object().contains("bannedUrls")) {
+        bannedUrls.clear();
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("bannedUrls").toArray()) {
+            bannedUrls.append(jsonValue.toString());
         }
     }
 }

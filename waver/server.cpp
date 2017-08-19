@@ -199,20 +199,28 @@ void WaverServer::startNextTrack()
     currentTrack->setStatus(Track::Playing);
 
     // these signals should be connected with the current track only
-    connect(this,         SIGNAL(requestPluginUi(QUuid)),  currentTrack, SLOT(requestedPluginUi(QUuid)));
-    connect(currentTrack, SIGNAL(pluginUi(QUuid, QString)), this,        SLOT(pluginUi(QUuid, QString)));
+    connect(this,         SIGNAL(requestPluginUi(QUuid)),            currentTrack, SLOT(requestedPluginUi(QUuid)));
+    connect(currentTrack, SIGNAL(pluginUi(QUuid, QString, QString)), this,        SLOT(pluginUi(QUuid, QString, QString)));
 
     // info output
-    Globals::consoleOutput(QString("%1 - %2").arg(currentTrack->getTrackInfo().title).arg(currentTrack->getTrackInfo().performer),
-        false);
+    Globals::consoleOutput(QString("%1 - %2").arg(currentTrack->getTrackInfo().title).arg(currentTrack->getTrackInfo().performer), false);
 
     // UI signals
 
-    IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos,
-            ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
-
     sendPlaylistToClients();
+
+    if (!currentTrack->getFadeInRequested()) {
+        startNextTrackUISignal();
+        return;
+    }
+    QTimer::singleShot(currentTrack->getFadeInRequestedMilliseconds() > 0 ? currentTrack->getFadeInRequestedMilliseconds() / 2 : (Track::INTERRUPT_FADE_SECONDS * 1000) / 2, this, SLOT(startNextTrackUISignal()));
+}
+
+
+void WaverServer::startNextTrackUISignal()
+{
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
 }
 
 
@@ -347,25 +355,45 @@ void WaverServer::handleTrackActionsRequest(QJsonDocument jsonDocument)
     }
 
     // handle built-in actions
-    if (action.compare("down") == 0) {
-        playlistTracks.move(index, index + 1);
-        sendPlaylistToClients(index + 1);
+    if ((action.compare("down") == 0) || (action.compare("up") == 0) || (action.compare("remove") == 0)) {
+        if (action.compare("down") == 0) {
+            playlistTracks.move(index, index + 1);
+            sendPlaylistToClients(index + 1);
+        }
+        if (action.compare("up") == 0) {
+            playlistTracks.move(index, index - 1);
+            sendPlaylistToClients(index - 1);
+        }
+        if (action.compare("remove") == 0) {
+            Track *toBeRemoved = playlistTracks.at(index);
+            playlistTracks.remove(index);
+            delete toBeRemoved;
+            sendPlaylistToClients();
+        }
+
+        // order has changed, must reassign fade in times based on previous track's request
+        for (int i = 0; i < playlistTracks.count(); i++) {
+            if (i == 0) {
+                if (currentTrack->getNextTrackFadeInRequested()) {
+                    playlistTracks.at(i)->startWithFadeIn(currentTrack->getNextTrackFadeInRequestedMilliseconds());
+                }
+                else {
+                    playlistTracks.at(i)->startWithoutFadeIn();
+                }
+            }
+            else {
+                if (playlistTracks.at(i - 1)->getNextTrackFadeInRequested()) {
+                    playlistTracks.at(i)->startWithFadeIn(playlistTracks.at(i - 1)->getNextTrackFadeInRequestedMilliseconds());
+                }
+                else {
+                    playlistTracks.at(i)->startWithoutFadeIn();
+                }
+            }
+        }
+
         return;
     }
-    if (action.compare("up") == 0) {
-        playlistTracks.move(index, index - 1);
-        sendPlaylistToClients(index - 1);
-        return;
-    }
-    if (action.compare("remove") == 0) {
-        Track *toBeRemoved = playlistTracks.at(index);
-        playlistTracks.remove(index);
-        delete toBeRemoved;
-        sendPlaylistToClients();
-        return;
-    }
-    if ((action.compare("play_more") == 0) &&
-        (currentCastPlaytimeMilliseconds < ((24 * 60 * 60 * 1000) - CAST_PLAYTIME_MILLISECONDS))) {
+    if ((action.compare("play_more") == 0) && (currentCastPlaytimeMilliseconds < ((24 * 60 * 60 * 1000) - CAST_PLAYTIME_MILLISECONDS))) {
         currentCastPlaytimeMilliseconds += CAST_PLAYTIME_MILLISECONDS;
         return;
     }
@@ -736,8 +764,8 @@ void WaverServer::loadedPluginGlobalSettings(QUuid uniqueId, QJsonDocument setti
 }
 
 
-// source plugin and track signal handler
-void WaverServer::pluginUi(QUuid uniqueId, QString qml)
+// track signal handler
+void WaverServer::pluginUi(QUuid uniqueId, QString qml, QString header)
 {
     IpcMessageUtils ipcMessageUtils;
     emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::PluginUI,
@@ -747,9 +775,25 @@ void WaverServer::pluginUi(QUuid uniqueId, QString qml)
         },
         {
             "ui_qml", qml
+        },
+        {
+            "header", header
         }
     })))));
 }
+
+
+// source plugin signal handler
+void WaverServer::WaverServer::pluginUi(QUuid uniqueId, QString qml)
+{
+    QString header;
+    if (sourcePlugins.contains(uniqueId)) {
+        header = Track::formatPluginName(sourcePlugins.value(uniqueId), true);
+    }
+
+    pluginUi(uniqueId, qml, header);
+}
+
 
 
 // source plugin signal handler
@@ -1036,8 +1080,8 @@ void WaverServer::trackAboutToFinish(QUrl url)
     }
 
     // these signals should be connected with the current track only
-    disconnect(this,         SIGNAL(requestPluginUi(QUuid)),  currentTrack, SLOT(requestedPluginUi(QUuid)));
-    disconnect(currentTrack, SIGNAL(pluginUi(QUuid, QString)), this,         SLOT(pluginUi(QUuid, QString)));
+    disconnect(this,         SIGNAL(requestPluginUi(QUuid)),            currentTrack, SLOT(requestedPluginUi(QUuid)));
+    disconnect(currentTrack, SIGNAL(pluginUi(QUuid, QString, QString)), this,         SLOT(pluginUi(QUuid, QString, QString)));
 
     // move current track to previous track
     if (previousTrack != NULL) {

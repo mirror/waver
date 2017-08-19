@@ -1,8 +1,7 @@
 #include "mediaplayer2playerdbusadaptor.h"
 
 
-MediaPlayer2PlayerDBusAdaptor::MediaPlayer2PlayerDBusAdaptor(QObject *parent,
-    WaverServer *waverServer) : QDBusAbstractAdaptor(parent)
+MediaPlayer2PlayerDBusAdaptor::MediaPlayer2PlayerDBusAdaptor(QObject *parent, WaverServer *waverServer) : QDBusAbstractAdaptor(parent)
 {
     this->ipcMessageUtils = new IpcMessageUtils();
     this->waverServer     = waverServer;
@@ -242,8 +241,7 @@ void MediaPlayer2PlayerDBusAdaptor::waverServerIpcSend(QString data)
     }
 
     if (properties.count() > 0) {
-        QDBusMessage mprisMessage = QDBusMessage::createSignal("/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties",
-                "PropertiesChanged");
+        QDBusMessage mprisMessage = QDBusMessage::createSignal("/org/mpris/MediaPlayer2", "org.freedesktop.DBus.Properties", "PropertiesChanged");
         mprisMessage << "org.mpris.MediaPlayer2.Player";
         mprisMessage << properties;
         mprisMessage << QStringList();

@@ -108,8 +108,8 @@ void LocalSource::run()
 {
     qsrand(QDateTime::currentDateTime().toTime_t());
 
-    emit loadConfiguration(id);
     emit loadGlobalConfiguration(id);
+    emit loadConfiguration(id);
 }
 
 

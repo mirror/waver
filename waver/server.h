@@ -185,6 +185,7 @@ class WaverServer : public QObject {
         void loadedPluginSettings(QUuid uniqueId, QJsonDocument settings);
         void loadedPluginGlobalSettings(QUuid uniqueId, QJsonDocument settings);
 
+        void pluginUi(QUuid uniqueId, QString qml, QString header);
         void pluginUi(QUuid uniqueId, QString qml);
 
         void pluginReady(QUuid uniqueId);
@@ -208,6 +209,7 @@ class WaverServer : public QObject {
         void trackFinished(QUrl url);
         void trackInfoUpdated(QUrl url);
 
+        void startNextTrackUISignal();
 };
 
 

@@ -44,7 +44,4 @@ static const int PLUGIN_TYPE_ALL     =
 
 static const int CACHE_BUFFER_COUNT = 3;
 
-
-
-
 #endif // PLUGINGLOBALS_H

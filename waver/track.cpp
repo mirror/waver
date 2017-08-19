@@ -39,18 +39,22 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUui
     this->sourcePliginId = sourcePliginId;
 
     // initializations
-    currentStatus                      = Idle;
-    fadeInRequested                    = false;
-    fadeInRequestedMilliseconds        = 0;
-    interruptInProgress                = false;
-    interruptPosition                  = 0;
-    interruptPositionWithFadeOut       = true;
-    interruptAboutToFinishSendPosition = 0;
-    decodingDone                       = false;
-    finishedSent                       = false;
-    decodedMilliseconds                = 0;
-    playedMilliseconds                 = 0;
-    dspInitialBufferCount              = 0;
+    currentStatus                        = Idle;
+    fadeInRequested                      = false;
+    fadeInRequestedInternal              = false;
+    fadeInRequestedMilliseconds          = 0;
+    fadeInRequestedInternalMilliseconds  = 0;
+    interruptInProgress                  = false;
+    interruptPosition                    = 0;
+    interruptPositionWithFadeOut         = true;
+    interruptAboutToFinishSendPosition   = 0;
+    nextTrackFadeInRequested             = false;
+    nextTrackFadeInRequestedMilliseconds = 0;
+    decodingDone                         = false;
+    finishedSent                         = false;
+    decodedMilliseconds                  = 0;
+    playedMilliseconds                   = 0;
+    dspInitialBufferCount                = 0;
 
     // priority maps
     QMap<int, QUuid> dspPrePriorityMap;
@@ -642,6 +646,34 @@ QUuid Track::getSourcePluginId()
 
 
 // public method
+bool Track::getFadeInRequested()
+{
+    return fadeInRequested;
+}
+
+
+// public method
+qint64 Track::getFadeInRequestedMilliseconds()
+{
+    return fadeInRequestedMilliseconds;
+}
+
+
+// public method
+bool Track::getNextTrackFadeInRequested()
+{
+    return nextTrackFadeInRequested;
+}
+
+
+// public method
+qint64 Track::getNextTrackFadeInRequestedMilliseconds()
+{
+    return nextTrackFadeInRequestedMilliseconds;
+}
+
+
+// public method
 void Track::startWithFadeIn(qint64 lengthMilliseconds)
 {
     // this has effect only when the track starts to play
@@ -649,6 +681,19 @@ void Track::startWithFadeIn(qint64 lengthMilliseconds)
     if (fadeInRequestedMilliseconds < lengthMilliseconds) {
         fadeInRequestedMilliseconds = lengthMilliseconds;
     }
+}
+
+
+// public method
+void Track::startWithoutFadeIn()
+{
+    if (fadeInRequestedInternal) {
+        fadeInRequestedMilliseconds = fadeInRequestedInternalMilliseconds;
+        return;
+    }
+
+    fadeInRequested             = false;
+    fadeInRequestedMilliseconds = 0;
 }
 
 
@@ -769,8 +814,25 @@ void Track::saveConfiguration(QUuid uniqueId, QJsonDocument configuration)
 // plugin signal handler
 void Track::ui(QUuid uniqueId, QString qml)
 {
+    QString header;
+    if (decoderPlugins.contains(uniqueId)) {
+        header = formatPluginName(decoderPlugins.value(uniqueId), true);
+    }
+    else if (dspPrePlugins.contains(uniqueId)) {
+        header = formatPluginName(dspPrePlugins.value(uniqueId), true);
+    }
+    else if (dspPlugins.contains(uniqueId)) {
+        header = formatPluginName(dspPlugins.value(uniqueId), true);
+    }
+    else if (outputPlugins.contains(uniqueId)) {
+        header = formatPluginName(outputPlugins.value(uniqueId), true);
+    }
+    else if (infoPlugins.contains(uniqueId)) {
+        header = formatPluginName(infoPlugins.value(uniqueId), true);
+    }
+
     // re-emit for server
-    emit pluginUi(uniqueId, qml);
+    emit pluginUi(uniqueId, qml, header);
 }
 
 
@@ -1194,6 +1256,9 @@ void Track::dspPreRequestFadeIn(QUuid uniqueId, qint64 lengthMilliseconds)
     if (fadeInRequestedMilliseconds < lengthMilliseconds) {
         fadeInRequestedMilliseconds = lengthMilliseconds;
     }
+
+    fadeInRequestedInternal             = true;
+    fadeInRequestedInternalMilliseconds = lengthMilliseconds;
 }
 
 
@@ -1201,6 +1266,9 @@ void Track::dspPreRequestFadeIn(QUuid uniqueId, qint64 lengthMilliseconds)
 void Track::dspPreRequestFadeInForNextTrack(QUuid uniqueId, qint64 lengthMilliseconds)
 {
     Q_UNUSED(uniqueId);
+
+    nextTrackFadeInRequested             = true;
+    nextTrackFadeInRequestedMilliseconds = lengthMilliseconds;
 
     emit requestFadeInForNextTrack(trackInfo.url, lengthMilliseconds);
 }

@@ -110,8 +110,9 @@ Mpg123Decoder::~Mpg123Decoder()
         mpg123_exit();
     }
 
-    foreach (QAudioBuffer *audioBuffer, audioBuffers) {
-        delete audioBuffer;
+    while (audioBuffers.count() > 0) {
+        delete audioBuffers.at(0);
+        audioBuffers.remove(0);
     }
 }
 

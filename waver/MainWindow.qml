@@ -230,8 +230,10 @@ ApplicationWindow {
 
     // plugin user interface
 
-    function displayPluginUI(id, qml)
+    function displayPluginUI(id, qml, header)
     {
+        pluginUIHeader.text = header
+
         var pluginUIContent = Qt.createQmlObject(qml, pluginUI, "");
         pluginUIContent.done.connect(finishPluginUI);
         pluginUIContent.apply.connect(sendPluginUI);
@@ -239,7 +241,7 @@ ApplicationWindow {
         pluginUI.foreignId = id;
         pluginUI.uiObject  = pluginUIContent;
 
-        pluginUI.visible = true;
+        pluginUIOuter.visible = true;
         pluginUIin.start();
     }
 
@@ -627,7 +629,7 @@ ApplicationWindow {
 
     NumberAnimation {
         id: pluginUIin
-        target: pluginUI
+        target: pluginUIOuter
         property: "opacity"
         from: opacity_transparent
         to: opacity_opaque
@@ -636,7 +638,7 @@ ApplicationWindow {
 
     NumberAnimation {
         id: pluginUIout
-        target: pluginUI
+        target: pluginUIOuter
         property: "opacity"
         from: opacity_opaque
         to: opacity_transparent
@@ -647,7 +649,7 @@ ApplicationWindow {
         id: pluginUIoutVisibility
         interval: duration_fadeout + 25
         onTriggered: {
-            pluginUI.visible = false;
+            pluginUIOuter.visible = false;
         }
     }
 
@@ -1848,21 +1850,36 @@ ApplicationWindow {
     *****/
 
     Item {
-        id: pluginUI
+        id: pluginUIOuter
         anchors.fill: parent
         opacity: opacity_transparent
         visible: false;
 
-        property string   foreignId: "NA"
-        property QtObject uiObject
-
-        MouseArea {
-            anchors.fill: pluginUI
+        Rectangle {
+            anchors.fill: pluginUIOuter
         }
 
-        Rectangle {
-            id: pluginUIBackground
-            anchors.fill: pluginUI
+        PlatformLabel {
+            id: pluginUIHeader
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: parent.top
+            anchors.topMargin: 3
+            font.underline: true
+        }
+
+        Item {
+            id: pluginUI
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.top: pluginUIHeader.bottom
+            anchors.bottom: parent.bottom
+
+            property string   foreignId: "NA"
+            property QtObject uiObject
+
+            MouseArea {
+                anchors.fill: pluginUI
+            }
         }
     }
 

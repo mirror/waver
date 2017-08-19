@@ -54,6 +54,10 @@ class Track : public QObject {
 
         typedef QHash<QUuid, QString> PluginsWithUI;
 
+        struct transitionTimes {
+
+        };
+
         enum Status {
             Idle,
             Decoding,
@@ -61,22 +65,30 @@ class Track : public QObject {
             Paused
         };
 
-        template <class T> static QString formatPluginName(T pluginInfo)
+        template <class T> static QString formatPluginName(T pluginInfo, bool version = false)
         {
-            return QString("%1 v%2").arg(pluginInfo.name).arg(pluginInfo.version);
+            if (version) {
+                return QString("<b>%1</b> v%2 <i>API %3</i>").arg(pluginInfo.name).arg(pluginInfo.version).arg(pluginInfo.waverVersionAPICompatibility);
+            }
+
+            return pluginInfo.name;
         }
 
-        explicit Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUuid sourcePliginId,
-            QObject *parent = 0);
+        explicit Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUuid sourcePliginId, QObject *parent = 0);
         ~Track();
 
         Status status();
         void   setStatus(Status status);
         void   interrupt();
         void   startWithFadeIn(qint64 lengthMilliseconds);
+        void   startWithoutFadeIn();
 
         TrackInfo getTrackInfo();
         QUuid     getSourcePluginId();
+        bool      getFadeInRequested();
+        qint64    getFadeInRequestedMilliseconds();
+        bool      getNextTrackFadeInRequested();
+        qint64    getNextTrackFadeInRequestedMilliseconds();
 
 
     private:
@@ -127,11 +139,15 @@ class Track : public QObject {
 
         Status currentStatus;
         bool   fadeInRequested;
+        bool   fadeInRequestedInternal;
         qint64 fadeInRequestedMilliseconds;
+        qint64 fadeInRequestedInternalMilliseconds;
         bool   interruptInProgress;
         qint64 interruptPosition;
         bool   interruptPositionWithFadeOut;
         qint64 interruptAboutToFinishSendPosition;
+        bool   nextTrackFadeInRequested;
+        qint64 nextTrackFadeInRequestedMilliseconds;
         bool   decodingDone;
         bool   finishedSent;
         qint64 decodedMilliseconds;
@@ -158,7 +174,7 @@ class Track : public QObject {
         void loadPluginSettings(QUuid uniqueId);
         void loadPluginGlobalSettings(QUuid uniqueId);
         void loadedPluginsWithUI(Track::PluginsWithUI pluginsWithUI);
-        void pluginUi(QUuid id, QString qml);
+        void pluginUi(QUuid id, QString qml, QString header);
 
         void playPosition(QUrl url, bool cast, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
         void aboutToFinish(QUrl url);

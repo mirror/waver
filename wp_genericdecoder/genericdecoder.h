@@ -73,7 +73,7 @@ class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder_001 {
         QUuid id;
         QUrl  url;
 
-        QAudioDecoder          *audioDecoder;
+        QAudioDecoder           *audioDecoder;
         QVector<QAudioBuffer *>  audioBuffers;
 
         QFile             *file;
