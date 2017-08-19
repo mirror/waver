@@ -27,18 +27,17 @@
 #include <QAudioBuffer>
 #include <QMutex>
 
-#include "pluginbase.h"
+#include "../pluginglobals.h"
+#include "pluginbase_001.h"
 
 
-class PluginOutput : public PluginBase {
+class PluginOutput_001 : public PluginBase_001 {
         Q_OBJECT
 
 
     public:
 
-        static const int CACHE_BUFFER_COUNT = 3;
-
-        Q_INVOKABLE virtual void setBufferQueue(PluginBase::BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
+        Q_INVOKABLE virtual void setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
         Q_INVOKABLE virtual bool isMainOutput()                                                     = 0;
 
 

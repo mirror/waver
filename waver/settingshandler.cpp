@@ -147,7 +147,6 @@ void SettingsHandler::savePluginSettings(QUuid persistentUniqueId, QString colle
     if (settingsDir == NULL) {
         return;
     }
-
     QFile file(settingsDir->absoluteFilePath(pluginSettingsFileName(persistentUniqueId, collectionName)));
     if (!file.open(QFile::WriteOnly)) {
         return;

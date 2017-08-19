@@ -25,8 +25,7 @@
 
 
 // constructor
-Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, PluginSource::TrackInfo trackInfo, QUuid sourcePliginId,
-    QObject *parent) : QObject(parent)
+Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUuid sourcePliginId, QObject *parent) : QObject(parent)
 {
     // to make debugging easier
     decoderThread.setObjectName("decoder");
@@ -58,7 +57,7 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, PluginSource::TrackInfo t
     QMap<int, QUuid> dspPriorityMap;
 
     // load plugins
-    int pluginTypesToLoad = PluginBase::PLUGIN_TYPE_ALL ^ PluginBase::PLUGIN_TYPE_SOURCE;
+    int pluginTypesToLoad = PLUGIN_TYPE_ALL ^ PLUGIN_TYPE_SOURCE;
     foreach (PluginLibsLoader::LoadedLib loadedLib, *loadedLibs) {
 
         // call library's plugin factory
@@ -73,19 +72,19 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, PluginSource::TrackInfo t
             }
 
             switch (pluginType) {
-                case PluginBase::PLUGIN_TYPE_DECODER:
+                case PLUGIN_TYPE_DECODER:
                     setupDecoderPlugin(plugin);
                     break;
-                case PluginBase::PLUGIN_TYPE_DSP_PRE:
+                case PLUGIN_TYPE_DSP_PRE:
                     setupDspPrePlugin(plugin, loadedLib.fromEasyPluginInstallDir, &dspPrePriorityMap);
                     break;
-                case PluginBase::PLUGIN_TYPE_DSP:
+                case PLUGIN_TYPE_DSP:
                     setupDspPlugin(plugin, loadedLib.fromEasyPluginInstallDir, &dspPriorityMap);
                     break;
-                case PluginBase::PLUGIN_TYPE_OUTPUT:
+                case PLUGIN_TYPE_OUTPUT:
                     setupOutputPlugin(plugin);
                     break;
-                case PluginBase::PLUGIN_TYPE_INFO:
+                case PLUGIN_TYPE_INFO:
                     setupInfoPlugin(plugin);
                     break;
             }
@@ -246,12 +245,12 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
     if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
         error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
-    pluginData.bufferQueue = new PluginBase::BufferQueue();
+    pluginData.bufferQueue = new BufferQueue();
     pluginData.bufferMutex = new QMutex();
     dspPrePlugins[persistentUniqueId] = pluginData;
 
     // set the queue
-    if (!plugin->metaObject()->invokeMethod(plugin, "setBufferQueue", Qt::DirectConnection, Q_ARG(PluginBase::BufferQueue *, pluginData.bufferQueue), Q_ARG(QMutex *, pluginData.bufferMutex))) {
+    if (!plugin->metaObject()->invokeMethod(plugin, "setBufferQueue", Qt::DirectConnection, Q_ARG(BufferQueue *, pluginData.bufferQueue), Q_ARG(QMutex *, pluginData.bufferMutex))) {
         error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
@@ -328,12 +327,12 @@ void Track::setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<
     if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
         error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
-    pluginData.bufferQueue = new PluginBase::BufferQueue();
+    pluginData.bufferQueue = new BufferQueue();
     pluginData.bufferMutex = new QMutex();
     dspPlugins[persistentUniqueId] = pluginData;
 
     // set the queue
-    if (!plugin->metaObject()->invokeMethod(plugin, "setBufferQueue", Qt::DirectConnection, Q_ARG(PluginBase::BufferQueue *, pluginData.bufferQueue), Q_ARG(QMutex *, pluginData.bufferMutex))) {
+    if (!plugin->metaObject()->invokeMethod(plugin, "setBufferQueue", Qt::DirectConnection, Q_ARG(BufferQueue *, pluginData.bufferQueue), Q_ARG(QMutex *, pluginData.bufferMutex))) {
         error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
@@ -403,12 +402,12 @@ void Track::setupOutputPlugin(QObject *plugin)
     if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
         error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
-    pluginData.bufferQueue = new PluginBase::BufferQueue();
+    pluginData.bufferQueue = new BufferQueue();
     pluginData.bufferMutex = new QMutex();
     outputPlugins[persistentUniqueId] = pluginData;
 
     // set the queue
-    if (!plugin->metaObject()->invokeMethod(plugin, "setBufferQueue", Qt::DirectConnection, Q_ARG(PluginBase::BufferQueue *, pluginData.bufferQueue), Q_ARG(QMutex *, pluginData.bufferMutex))) {
+    if (!plugin->metaObject()->invokeMethod(plugin, "setBufferQueue", Qt::DirectConnection, Q_ARG(BufferQueue *, pluginData.bufferQueue), Q_ARG(QMutex *, pluginData.bufferMutex))) {
         error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
@@ -498,15 +497,15 @@ void Track::setupInfoPlugin(QObject *plugin)
     connect(&infoThread, SIGNAL(finished()), plugin, SLOT(deleteLater()));
 
     // connect plugin signals
-    connect(plugin, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),         this,   SLOT(saveConfiguration(QUuid, QJsonDocument)));
-    connect(plugin, SIGNAL(loadConfiguration(QUuid)),                        this,   SLOT(loadConfiguration(QUuid)));
-    connect(plugin, SIGNAL(uiQml(QUuid, QString)),                           this,   SLOT(ui(QUuid, QString)));
-    connect(plugin, SIGNAL(infoMessage(QUuid, QString)),                     this,   SLOT(infoMessage(QUuid, QString)));
-    connect(plugin, SIGNAL(updateTrackInfo(QUuid, PluginSource::TrackInfo)), this,   SLOT(infoUpdateTrackInfo(QUuid, PluginSource::TrackInfo)));
-    connect(plugin, SIGNAL(addInfoHtml(QUuid, QString)),                     this,   SLOT(infoAddInfoHtml(QUuid, QString)));
-    connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),       plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
-    connect(this,   SIGNAL(requestPluginUi(QUuid)),                          plugin, SLOT(getUiQml(QUuid)));
-    connect(this,   SIGNAL(pluginUiResults(QUuid, QJsonDocument)),           plugin, SLOT(uiResults(QUuid, QJsonDocument)));
+    connect(plugin, SIGNAL(saveConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveConfiguration(QUuid, QJsonDocument)));
+    connect(plugin, SIGNAL(loadConfiguration(QUuid)),                  this,   SLOT(loadConfiguration(QUuid)));
+    connect(plugin, SIGNAL(uiQml(QUuid, QString)),                     this,   SLOT(ui(QUuid, QString)));
+    connect(plugin, SIGNAL(infoMessage(QUuid, QString)),               this,   SLOT(infoMessage(QUuid, QString)));
+    connect(plugin, SIGNAL(updateTrackInfo(QUuid, TrackInfo)),         this,   SLOT(infoUpdateTrackInfo(QUuid, TrackInfo)));
+    connect(plugin, SIGNAL(addInfoHtml(QUuid, QString)),               this,   SLOT(infoAddInfoHtml(QUuid, QString)));
+    connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
+    connect(this,   SIGNAL(requestPluginUi(QUuid)),                    plugin, SLOT(getUiQml(QUuid)));
+    connect(this,   SIGNAL(pluginUiResults(QUuid, QJsonDocument)),     plugin, SLOT(uiResults(QUuid, QJsonDocument)));
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.3")) {
         connect(plugin, SIGNAL(saveGlobalConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
         connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
@@ -629,7 +628,7 @@ void Track::setStatus(Status status)
 
 
 // public method
-PluginSource::TrackInfo Track::getTrackInfo()
+TrackInfo Track::getTrackInfo()
 {
     return trackInfo;
 }
@@ -814,7 +813,7 @@ void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
         else if (dspPlugins.count() > 0) {
 
             // is this track just starting?
-            if (dspInitialBufferCount < PluginOutput::CACHE_BUFFER_COUNT) {
+            if (dspInitialBufferCount < CACHE_BUFFER_COUNT) {
                 // queue to first dsp plugin
                 QUuid firstDspPluginId = dspPriority.at(0);
                 dspPlugins.value(firstDspPluginId).bufferMutex->lock();
@@ -883,7 +882,7 @@ void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
         else if (dspPlugins.count() > 0) {
 
             // is this track just starting?
-            if (dspInitialBufferCount < PluginOutput::CACHE_BUFFER_COUNT) {
+            if (dspInitialBufferCount < CACHE_BUFFER_COUNT) {
                 // queue to first dsp plugin
                 QUuid firstDspPluginId = dspPriority.at(0);
                 dspPlugins.value(firstDspPluginId).bufferMutex->lock();
@@ -999,7 +998,7 @@ void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
         }
 
         // if this is the main output, and this track isn't just starting anymore, then queue the next buffer to the first dsp plugin
-        if ((pluginId == mainOutputId) && (dspInitialBufferCount >= PluginOutput::CACHE_BUFFER_COUNT)) {
+        if ((pluginId == mainOutputId) && (dspInitialBufferCount >= CACHE_BUFFER_COUNT)) {
             // make sure there's at least one buffer in the synchonizer queue
             if (dspSynchronizerQueue.count() > 0) {
                 // this should never be null, because dspSynchronizerQueue will not contain anything unless there's at least one ready dsp plugin
@@ -1244,7 +1243,7 @@ void Track::dspPreMessageToDspPlugin(QUuid uniqueId, QUuid destinationUniqueId, 
 
 
 // info plugin signal handler
-void Track::infoUpdateTrackInfo(QUuid uniqueId, PluginSource::TrackInfo trackInfo)
+void Track::infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo)
 {
     Q_UNUSED(uniqueId);
 

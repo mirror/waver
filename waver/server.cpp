@@ -47,9 +47,9 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
 
     // so they can be used in inter-thread signals
     qRegisterMetaType<IpcMessageUtils::IpcMessages>("IpcMessageUtils::IpcMessages");
-    qRegisterMetaType<PluginSource::TrackInfo>("PluginSource::TrackInfo");
-    qRegisterMetaType<PluginSource::TracksInfo>("PluginSource::TracksInfo");
-    qRegisterMetaType<PluginSource::OpenTracks>("PluginSource::OpenTracks");
+    qRegisterMetaType<TrackInfo>("TrackInfo");
+    qRegisterMetaType<TracksInfo>("TracksInfo");
+    qRegisterMetaType<OpenTracks>("OpenTracks");
     qRegisterMetaType<Track::PluginsWithUI>("Track::PluginsWithUI");
 }
 
@@ -58,7 +58,6 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
 void WaverServer::run()
 {
     qsrand(QDateTime::currentDateTime().toTime_t());
-
     // instantiate, set up, and start interprocess communication handler
 
     ServerTcpHandler *serverTcpHandler = new ServerTcpHandler();
@@ -72,7 +71,6 @@ void WaverServer::run()
     connect(serverTcpHandler, SIGNAL(url(QUrl)),                                            this,             SLOT(ipcReceivedUrl(QUrl)));
 
     serverTcpThread.start();
-
     // instantiate, set up, and start settings storage
 
     SettingsHandler *settingsHandler = new SettingsHandler();
@@ -211,7 +209,7 @@ void WaverServer::startNextTrack()
     // UI signals
 
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfo,
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos,
             ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
 
     sendPlaylistToClients();
@@ -261,13 +259,13 @@ void WaverServer::handleOpenTracksRequest(QJsonDocument jsonDocument)
     // if no plugin id is specified, then plugin list must be sent
     if (object.value("plugin_id").toString().length() < 1) {
         foreach (QUuid uuid, sourcePlugins.keys()) {
-            PluginSource::OpenTrack openTrack;
+            OpenTrack openTrack;
             openTrack.hasChildren = true;
             openTrack.selectable  = false;
             openTrack.label       = Track::formatPluginName(sourcePlugins.value(uuid));
             openTrack.id          = "";
 
-            PluginSource::OpenTracks openTracks;
+            OpenTracks openTracks;
             openTracks.append(openTrack);
 
             sendOpenTracksToClients(IpcMessageUtils::OpenTracks, uuid, openTracks);
@@ -424,11 +422,10 @@ void WaverServer::sendPluginsWithUiToClients()
 
 
 // private method
-void WaverServer::sendOpenTracksToClients(IpcMessageUtils::IpcMessages message, QUuid uniqueId,
-    PluginSource::OpenTracks openTracks)
+void WaverServer::sendOpenTracksToClients(IpcMessageUtils::IpcMessages message, QUuid uniqueId, OpenTracks openTracks)
 {
     QJsonArray tracksJson;
-    foreach (PluginSource::OpenTrack track, openTracks) {
+    foreach (OpenTrack track, openTracks) {
         QVariantHash trackHash;
         trackHash.insert("hasChildren", track.hasChildren);
         trackHash.insert("selectable",  track.selectable);
@@ -461,7 +458,7 @@ void WaverServer::pluginLibsLoaded()
 
         // call library's plugin factory (only want source plugins here)
         PluginFactoryResults plugins;
-        loadedLib.pluginFactory(PluginBase::PLUGIN_TYPE_SOURCE, &plugins);
+        loadedLib.pluginFactory(PLUGIN_TYPE_SOURCE, &plugins);
 
         // process each plugin one by one
         foreach (QObject *plugin, plugins) {
@@ -507,10 +504,10 @@ void WaverServer::pluginLibsLoaded()
             connect(plugin, SIGNAL(loadConfiguration(QUuid)),                           this,   SLOT(loadConfiguration(QUuid)));
             connect(plugin, SIGNAL(uiQml(QUuid, QString)),                              this,   SLOT(pluginUi(QUuid, QString)));
             connect(plugin, SIGNAL(infoMessage(QUuid, QString)),                        this,   SLOT(pluginInfoMessage(QUuid, QString)));
-            connect(plugin, SIGNAL(playlist(QUuid, PluginSource::TracksInfo)),          this,   SLOT(playlist(QUuid, PluginSource::TracksInfo)));
+            connect(plugin, SIGNAL(playlist(QUuid, TracksInfo)),                        this,   SLOT(playlist(QUuid, TracksInfo)));
             connect(plugin, SIGNAL(requestRemoveTracks(QUuid)),                         this,   SLOT(requestedRemoveTracks(QUuid)));
-            connect(plugin, SIGNAL(openTracksResults(QUuid, PluginSource::OpenTracks)), this,   SLOT(openTracksResults(QUuid, PluginSource::OpenTracks)));
-            connect(plugin, SIGNAL(searchResults(QUuid, PluginSource::OpenTracks)),     this,   SLOT(searchResults(QUuid, PluginSource::OpenTracks)));
+            connect(plugin, SIGNAL(openTracksResults(QUuid, OpenTracks)),               this,   SLOT(openTracksResults(QUuid, OpenTracks)));
+            connect(plugin, SIGNAL(searchResults(QUuid, OpenTracks)),                   this,   SLOT(searchResults(QUuid, OpenTracks)));
             connect(this,   SIGNAL(unableToStart(QUuid, QUrl)),                         plugin, SLOT(unableToStart(QUuid, QUrl)));
             connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),          plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
             connect(this,   SIGNAL(requestPluginUi(QUuid)),                             plugin, SLOT(getUiQml(QUuid)));
@@ -633,10 +630,9 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
             handleTrackActionsRequest(jsonDocument);
             break;
 
-        case IpcMessageUtils::TrackInfo:
+        case IpcMessageUtils::TrackInfos:
             if (currentTrack != NULL) {
-                emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfo,
-                        ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
+                emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
             }
             break;
 
@@ -841,7 +837,7 @@ void WaverServer::saveConfiguration(QUuid uniqueId, QJsonDocument configuration)
         return;
     }
 
-    // re-emit and re-emit for settings storage handler
+    // re-emit for settings storage handler
     emit savePluginSettings(uniqueId, currentCollection, configuration);
 }
 
@@ -860,12 +856,11 @@ void WaverServer::saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configur
 
 
 // source plugin signal handler
-void WaverServer::playlist(QUuid uniqueId, PluginSource::TracksInfo tracksInfo)
+void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo)
 {
-    Globals::consoleOutput(QString("Received %1 tracks from %2").arg(tracksInfo.count()).arg(sourcePlugins.value(uniqueId).name),
-        false);
+    Globals::consoleOutput(QString("Received %1 tracks from %2").arg(tracksInfo.count()).arg(sourcePlugins.value(uniqueId).name), false);
 
-    foreach (PluginSource::TrackInfo trackInfo, tracksInfo) {
+    foreach (TrackInfo trackInfo, tracksInfo) {
         // create and set up track
 
         Track *track = new Track(&loadedLibs, trackInfo, uniqueId, this);
@@ -904,14 +899,14 @@ void WaverServer::playlist(QUuid uniqueId, PluginSource::TracksInfo tracksInfo)
 
 
 // source plugin signal handler
-void WaverServer::openTracksResults(QUuid uniqueId, PluginSource::OpenTracks openTracks)
+void WaverServer::openTracksResults(QUuid uniqueId, OpenTracks openTracks)
 {
     sendOpenTracksToClients(IpcMessageUtils::OpenTracks, uniqueId, openTracks);
 }
 
 
 // source plugin signal handler
-void WaverServer::searchResults(QUuid uniqueId, PluginSource::OpenTracks openTracks)
+void WaverServer::searchResults(QUuid uniqueId, OpenTracks openTracks)
 {
     sendOpenTracksToClients(IpcMessageUtils::Search, uniqueId, openTracks);
 }
@@ -1120,8 +1115,7 @@ void WaverServer::trackInfoUpdated(QUrl url)
     // is this the current track?
     if ((currentTrack != NULL) && (url == currentTrack->getTrackInfo().url)) {
         IpcMessageUtils ipcMessageUtils;
-        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfo,
-                ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
+        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
         return;
     }
 
@@ -1186,9 +1180,9 @@ void WaverServer::trackLoadedPluginsWithUI(Track::PluginsWithUI pluginsWithUI)
 
 
 // public method
-PluginSource::TrackInfo WaverServer::notificationsHelper_Metadata()
+TrackInfo WaverServer::notificationsHelper_Metadata()
 {
-    PluginSource::TrackInfo returnValue;
+    TrackInfo returnValue;
 
     if (currentTrack != NULL) {
         returnValue = currentTrack->getTrackInfo();

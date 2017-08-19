@@ -8,7 +8,7 @@
 #include <QSystemTrayIcon>
 
 #include "ipcmessageutils.h"
-#include "pluginsource.h"
+#include "pluginglobals.h"
 #include "server.h"
 
 

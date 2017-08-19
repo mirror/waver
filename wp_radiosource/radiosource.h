@@ -45,7 +45,7 @@
 #include <QXmlStreamReader>
 
 #include "../waver/pluginfactory.h"
-#include "../waver/API/0.0.1/pluginsource.h"
+#include "../waver/API/pluginsource_001.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -56,7 +56,7 @@ extern "C" WP_RADIOSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, Plu
 
 // TODO "Ban station" -> Ez rakja bele egy speckó <BANNED> kategóriába
 
-class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource {
+class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_001 {
         Q_OBJECT
 
     public:

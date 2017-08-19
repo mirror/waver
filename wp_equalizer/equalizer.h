@@ -33,11 +33,10 @@
 #include "iirfilter.h"
 #include "iirfilterchain.h"
 #include "iirfiltercallback.h"
-#include "../waver/API/0.0.1/plugindsp.h"
-#include "../waver/API/0.0.1/pluginoutput.h"
+#include "../waver/API/plugindsp_001.h"
 
 
-class WP_EQUALIZER_EXPORT Equalizer : public PluginDsp, IIRFilterCallback {
+class WP_EQUALIZER_EXPORT Equalizer : public PluginDsp_001, IIRFilterCallback {
         Q_OBJECT
 
     public:

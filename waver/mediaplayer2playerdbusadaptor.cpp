@@ -70,7 +70,7 @@ double MediaPlayer2PlayerDBusAdaptor::maxRate()
 
 QVariantMap MediaPlayer2PlayerDBusAdaptor::metadata()
 {
-    PluginSource::TrackInfo trackInfo = waverServer->notificationsHelper_Metadata();
+    TrackInfo trackInfo = waverServer->notificationsHelper_Metadata();
 
     QString mprisId = QString("/org/mpris/MediaPlayer2/Waver/Track/%1").arg(trackInfo.url.fileName(QUrl::FullyEncoded));
 
@@ -229,7 +229,7 @@ void MediaPlayer2PlayerDBusAdaptor::waverServerIpcSend(QString data)
             case IpcMessageUtils::Resume:
                 properties.insert("PlaybackStatus", playbackStatus());
                 break;
-            case IpcMessageUtils::TrackInfo:
+            case IpcMessageUtils::TrackInfos:
                 properties.insert("Metadata", metadata());
                 if (firstTrack) {
                     firstTrack = false;

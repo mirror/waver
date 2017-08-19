@@ -40,7 +40,7 @@
 #include "replaygaincalculator.h"
 #include "fadeoutdetector.h"
 
-#include "../waver/API/0.0.1/plugindsppre.h"
+#include "../waver/API/plugindsppre_001.h"
 #include "../waver/track.h"
 
 #ifdef QT_DEBUG
@@ -55,7 +55,7 @@
 #define REPLAYGAIN_44100_BUTTERWORTH_B { -1.96977855582618, 0.97022847566350 }
 
 
-class WP_EQUALIZER_EXPORT Analyzer : PluginDspPre {
+class WP_EQUALIZER_EXPORT Analyzer : PluginDspPre_001 {
         Q_OBJECT
 
     public:

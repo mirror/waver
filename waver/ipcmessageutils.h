@@ -37,7 +37,7 @@
 #include <QVariantHash>
 #include <QVariantList>
 
-#include "API/0.0.1/pluginsource.h"
+#include "pluginglobals.h"
 
 
 const int  TCP_TIMEOUT       = 2500;
@@ -71,7 +71,7 @@ class IpcMessageUtils : public QObject {
             Resume,
             Search,
             TrackAction,
-            TrackInfo,
+            TrackInfos,
         };
 
 
@@ -88,8 +88,8 @@ class IpcMessageUtils : public QObject {
         QJsonDocument processedIpcData(int index);
         QString       processedRaw(int index);
 
-        QJsonDocument           trackInfoToJSONDocument(PluginSource::TrackInfo trackInfo);
-        PluginSource::TrackInfo jsonDocumentToTrackInfo(QJsonDocument jsonDocument);
+        QJsonDocument trackInfoToJSONDocument(TrackInfo trackInfo);
+        TrackInfo     jsonDocumentToTrackInfo(QJsonDocument jsonDocument);
 
 
     private:

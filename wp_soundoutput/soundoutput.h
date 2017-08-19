@@ -42,7 +42,7 @@
 
 #include "feeder.h"
 #include "../waver/pluginfactory.h"
-#include "../waver/API/0.0.1/pluginoutput.h"
+#include "../waver/API/pluginoutput_001.h"
 
 
 extern "C" WP_SOUNDOUTPUT_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
@@ -51,7 +51,7 @@ extern "C" WP_SOUNDOUTPUT_EXPORT void wp_plugin_factory(int pluginTypesMask, Plu
 // TODO: QAudioOutput->setVolume somehow kills the output, it must be investigated. For now, volume control is disabled.
 
 
-class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput {
+class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_001 {
         Q_OBJECT
 
     public:

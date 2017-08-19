@@ -27,7 +27,7 @@
 // plugin factory
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
-    if (pluginTypesMask & PluginBase::PLUGIN_TYPE_OUTPUT) {
+    if (pluginTypesMask & PLUGIN_TYPE_OUTPUT) {
         retVal->append((QObject *) new SoundOutput());
     }
 }

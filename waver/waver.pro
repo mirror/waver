@@ -48,15 +48,7 @@ HEADERS += \
     track.h \
     notificationshandler.h \
     pluginfactory.h \
-    API/0.0.1/pluginbase.h \
-    API/0.0.1/plugindecoder.h \
-    API/0.0.1/plugindsp.h \
-    API/0.0.1/plugindsppre.h \
-    API/0.0.1/plugininfo.h \
-    API/0.0.1/pluginoutput.h \
-    API/0.0.1/pluginsource.h \
-    API/0.0.3/pluginbase.h \
-    API/0.0.3/pluginsource.h
+    pluginglobals.h
 
 SOURCES += \
     main.cpp \

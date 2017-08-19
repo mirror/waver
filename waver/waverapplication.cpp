@@ -431,7 +431,7 @@ void WaverApplication::updateUITrackInfo(QJsonDocument jsonDocument)
     uiPictures.clear();
 
     IpcMessageUtils ipcMessageUtils;
-    PluginSource::TrackInfo trackInfo = ipcMessageUtils.jsonDocumentToTrackInfo(jsonDocument);
+    TrackInfo trackInfo = ipcMessageUtils.jsonDocumentToTrackInfo(jsonDocument);
 
     emit uiTrackInfo(trackInfo.title, trackInfo.performer, trackInfo.album, trackInfo.year, trackInfo.track);
 
@@ -500,7 +500,7 @@ void WaverApplication::updateUIPlaylist(QJsonDocument jsonDocument)
     QJsonArray   playlist              = QJsonArray::fromVariantList(data.value("playlist").toList());
 
     for (int i = 0; i < playlist.count(); i++) {
-        PluginSource::TrackInfo trackInfo = ipcMessageUtils.jsonDocumentToTrackInfo(QJsonDocument(playlist.at(i).toObject()));
+        TrackInfo trackInfo = ipcMessageUtils.jsonDocumentToTrackInfo(QJsonDocument(playlist.at(i).toObject()));
 
         QStringList actions;
 
@@ -585,7 +585,7 @@ void WaverApplication::updateSearchList(QJsonDocument jsonDocument)
 void WaverApplication::ipcOpened()
 {
     emit ipcSend(IpcMessageUtils::CollectionList);
-    emit ipcSend(IpcMessageUtils::TrackInfo);
+    emit ipcSend(IpcMessageUtils::TrackInfos);
     emit ipcSend(IpcMessageUtils::PlayPauseState);
     emit ipcSend(IpcMessageUtils::Playlist);
     emit ipcSend(IpcMessageUtils::PluginsWithUI);
@@ -648,7 +648,7 @@ void WaverApplication::ipcMessage(IpcMessageUtils::IpcMessages message, QJsonDoc
             updateSearchList(jsonDocument);
             break;
 
-        case IpcMessageUtils::TrackInfo:
+        case IpcMessageUtils::TrackInfos:
             updateUITrackInfo(jsonDocument);
             break;
 

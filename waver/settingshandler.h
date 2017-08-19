@@ -35,6 +35,9 @@
 #include <QStringList>
 #include <QUuid>
 
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
 
 class SettingsHandler : public QObject {
         Q_OBJECT

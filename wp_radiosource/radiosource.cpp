@@ -27,7 +27,7 @@
 // plugin factory
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
-    if (pluginTypesMask & PluginBase::PLUGIN_TYPE_SOURCE) {
+    if (pluginTypesMask & PLUGIN_TYPE_SOURCE) {
         retVal->append((QObject *) new RadioSource());
     }
 }
@@ -108,9 +108,10 @@ void RadioSource::loadedConfiguration(QUuid uniqueId, QJsonDocument configuratio
     if (configuration.isEmpty()) {
         if (stations.count() < 1) {
             Station station;
-            station.category = "Public";
-            station.name     = "C-SPAN";
-            station.url      = QUrl("http://15723.live.streamtheworld.com/CSPANRADIO.mp3");
+            station.category           = "Public";
+            station.name               = "C-SPAN";
+            station.url                = QUrl("http://15723.live.streamtheworld.com/CSPANRADIO.mp3");
+            station.unableToStartCount = 0;
             stations.append(station);
 
             selectedStations.clear();

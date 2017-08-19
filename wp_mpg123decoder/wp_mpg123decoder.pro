@@ -33,8 +33,8 @@ HEADERS += \
     mpg123lib/mpg123.h        \
     wp_mpg123decoder_global.h \
     mpg123decoder.h \
-    ../waver/API/0.0.1/pluginbase.h \
-    ../waver/API/0.0.1/plugindecoder.h \
+    ../waver/API/pluginbase_001.h \
+    ../waver/API/plugindecoder_001.h \
     ../waver/pluginfactory.h \
     feed.h
 

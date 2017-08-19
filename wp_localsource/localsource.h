@@ -50,7 +50,8 @@
 
 #include "filescanner.h"
 #include "../waver/pluginfactory.h"
-#include "../waver/API/0.0.3/pluginsource.h"
+#include "../waver/pluginglobals.h"
+#include "../waver/API/pluginsource_003.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -60,7 +61,7 @@
 extern "C" WP_LOCALSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource {
+class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_003 {
         Q_OBJECT
 
     public:

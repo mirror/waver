@@ -49,8 +49,9 @@
 
 #include "ipcmessageutils.h"
 #include "globals.h"
+#include "pluginfactory.h"
+#include "pluginglobals.h"
 #include "pluginlibsloader.h"
-#include "API/0.0.1/pluginsource.h"
 #include "servertcphandler.h"
 #include "settingshandler.h"
 #include "track.h"
@@ -67,18 +68,18 @@ class WaverServer : public QObject {
 
         explicit WaverServer(QObject *parent, QStringList arguments);
 
-        PluginSource::TrackInfo notificationsHelper_Metadata();
-        void                    notificationsHelper_Next();
-        void                    notificationsHelper_OpenUri(QString uri);
-        void                    notificationsHelper_Pause();
-        void                    notificationsHelper_Play();
-        Track::Status           notificationsHelper_PlaybackStatus();
-        void                    notificationsHelper_PlayPause();
-        long                    notificationsHelper_Position();
-        void                    notificationsHelper_Quit();
-        void                    notificationsHelper_Raise();
-        void                    notificationsHelper_Stop();
-        double                  notificationsHelper_Volume();
+        TrackInfo     notificationsHelper_Metadata();
+        void          notificationsHelper_Next();
+        void          notificationsHelper_OpenUri(QString uri);
+        void          notificationsHelper_Pause();
+        void          notificationsHelper_Play();
+        Track::Status notificationsHelper_PlaybackStatus();
+        void          notificationsHelper_PlayPause();
+        long          notificationsHelper_Position();
+        void          notificationsHelper_Quit();
+        void          notificationsHelper_Raise();
+        void          notificationsHelper_Stop();
+        double        notificationsHelper_Volume();
 
 
     private:
@@ -137,7 +138,7 @@ class WaverServer : public QObject {
         void sendPlaylistToClients(int contextShowTrackIndex);
         void sendPlaylistToClients();
         void sendPluginsWithUiToClients();
-        void sendOpenTracksToClients(IpcMessageUtils::IpcMessages message, QUuid uniqueId, PluginSource::OpenTracks openTracks);
+        void sendOpenTracksToClients(IpcMessageUtils::IpcMessages message, QUuid uniqueId, OpenTracks openTracks);
 
 
     signals:
@@ -193,9 +194,9 @@ class WaverServer : public QObject {
         void loadGlobalConfiguration(QUuid uniqueId);
         void saveConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
-        void playlist(QUuid uniqueId, PluginSource::TracksInfo tracksInfo);
-        void openTracksResults(QUuid uniqueId, PluginSource::OpenTracks openTracks);
-        void searchResults(QUuid uniqueId, PluginSource::OpenTracks openTracks);
+        void playlist(QUuid uniqueId, TracksInfo tracksInfo);
+        void openTracksResults(QUuid uniqueId, OpenTracks openTracks);
+        void searchResults(QUuid uniqueId, OpenTracks openTracks);
         void requestedRemoveTracks(QUuid uniqueId);
         void requestedRemoveTrack(QUuid uniqueId, QUrl url);
 

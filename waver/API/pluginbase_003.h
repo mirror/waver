@@ -31,28 +31,13 @@
 #include <QUuid>
 #include <QVector>
 
+#include "../pluginglobals.h"
 
-class PluginBase : public QObject {
+class PluginBase_003 : public QObject {
         Q_OBJECT
 
 
     public:
-
-        typedef QVector<QAudioBuffer *> BufferQueue;
-
-        static const int PLUGIN_TYPE_SOURCE  = 1;
-        static const int PLUGIN_TYPE_DECODER = 2;
-        static const int PLUGIN_TYPE_DSP_PRE = 4;
-        static const int PLUGIN_TYPE_DSP     = 8;
-        static const int PLUGIN_TYPE_OUTPUT  = 16;
-        static const int PLUGIN_TYPE_INFO    = 32;
-        static const int PLUGIN_TYPE_ALL     =
-            PLUGIN_TYPE_SOURCE  |
-            PLUGIN_TYPE_DECODER |
-            PLUGIN_TYPE_DSP_PRE |
-            PLUGIN_TYPE_DSP     |
-            PLUGIN_TYPE_OUTPUT  |
-            PLUGIN_TYPE_INFO;
 
         Q_INVOKABLE virtual int     pluginType()                   = 0;
         Q_INVOKABLE virtual QString pluginName()                   = 0;

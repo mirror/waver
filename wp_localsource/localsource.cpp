@@ -26,7 +26,7 @@
 // plugin factory
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
-    if (pluginTypesMask & PluginBase::PLUGIN_TYPE_SOURCE) {
+    if (pluginTypesMask & PLUGIN_TYPE_SOURCE) {
         retVal->append((QObject *) new LocalSource());
     }
 }
@@ -715,7 +715,7 @@ bool LocalSource::isTrackFile(QFileInfo fileInfo)
 
 
 // helper
-PluginSource::TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
+TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
 {
     // find track's base directory for track info discovery
     QString trackDirectory;

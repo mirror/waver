@@ -42,13 +42,13 @@
 
 #include "networkdownloader.h"
 #include "../waver/pluginfactory.h"
-#include "../waver/API/0.0.1/plugindecoder.h"
+#include "../waver/API/plugindecoder_001.h"
 
 
 extern "C" WP_GENERICDECODER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder {
+class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder_001 {
         Q_OBJECT
 
     public:

@@ -27,7 +27,9 @@
 #include <QtGlobal>
 
 #include <QHash>
+#include <QJsonDocument>
 #include <QMap>
+#include <QMutex>
 #include <QObject>
 #include <QThread>
 #include <QTimer>
@@ -37,8 +39,7 @@
 
 #include "globals.h"
 #include "pluginlibsloader.h"
-#include "API/0.0.1/pluginsource.h"
-#include "API/0.0.1/pluginoutput.h"
+#include "pluginglobals.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -65,7 +66,7 @@ class Track : public QObject {
             return QString("%1 v%2").arg(pluginInfo.name).arg(pluginInfo.version);
         }
 
-        explicit Track(PluginLibsLoader::LoadedLibs *loadedLibs, PluginSource::TrackInfo trackInfo, QUuid sourcePliginId,
+        explicit Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUuid sourcePliginId,
             QObject *parent = 0);
         ~Track();
 
@@ -74,8 +75,8 @@ class Track : public QObject {
         void   interrupt();
         void   startWithFadeIn(qint64 lengthMilliseconds);
 
-        PluginSource::TrackInfo getTrackInfo();
-        QUuid                   getSourcePluginId();
+        TrackInfo getTrackInfo();
+        QUuid     getSourcePluginId();
 
 
     private:
@@ -89,17 +90,17 @@ class Track : public QObject {
         typedef QHash<QUuid, PluginNoQueue> PluginsNoQueue;
 
         struct PluginWithQueue {
-            QString                  name;
-            int                      version;
-            QString                  waverVersionAPICompatibility;
-            bool                     hasUI;
-            PluginBase::BufferQueue *bufferQueue;
-            QMutex                  *bufferMutex;
+            QString      name;
+            int          version;
+            QString      waverVersionAPICompatibility;
+            bool         hasUI;
+            BufferQueue *bufferQueue;
+            QMutex      *bufferMutex;
         };
         typedef QHash<QUuid, PluginWithQueue> PluginsWithQueue;
 
-        PluginSource::TrackInfo trackInfo;
-        QUuid                   sourcePliginId;
+        TrackInfo trackInfo;
+        QUuid     sourcePliginId;
 
         QThread decoderThread;
         QThread dspPreThread;
@@ -113,12 +114,12 @@ class Track : public QObject {
         PluginsWithQueue outputPlugins;
         PluginsNoQueue   infoPlugins;
 
-        QVector<QUuid>          decoders;
-        QVector<QUuid>          dspPrePriority;
-        QVector<QUuid>          dspPriority;
-        QVector<QObject *>      dspPointers;
-        PluginBase::BufferQueue dspSynchronizerQueue;
-        int                     dspInitialBufferCount;
+        QVector<QUuid>     decoders;
+        QVector<QUuid>     dspPrePriority;
+        QVector<QUuid>     dspPriority;
+        QVector<QObject *> dspPointers;
+        BufferQueue        dspSynchronizerQueue;
+        int                dspInitialBufferCount;
 
         QUuid                      currentDecoderId;
         QUuid                      mainOutputId;
@@ -221,7 +222,7 @@ class Track : public QObject {
         void dspPreRequestAboutToFinishSend(QUuid uniqueId, qint64 posMilliseconds);
         void dspPreMessageToDspPlugin(QUuid uniqueId, QUuid destinationUniqueId, int messageId, QVariant value);
 
-        void infoUpdateTrackInfo(QUuid uniqueId, PluginSource::TrackInfo trackInfo);
+        void infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo);
         void infoAddInfoHtml(QUuid uniqueId, QString info);
 
 };

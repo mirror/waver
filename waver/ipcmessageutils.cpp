@@ -57,7 +57,7 @@ IpcMessageUtils::IpcMessageUtils(QObject *parent) : QObject(parent)
     ipcMessagesToStrings[Resume]                   = "resume";
     ipcMessagesToStrings[Search]                   = "search";
     ipcMessagesToStrings[TrackAction]              = "track_action";
-    ipcMessagesToStrings[TrackInfo]                = "track_info";
+    ipcMessagesToStrings[TrackInfos]               = "track_info";
 }
 
 
@@ -149,7 +149,7 @@ QString IpcMessageUtils::processedRaw(int index)
 
 
 // convenience method
-QJsonDocument IpcMessageUtils::trackInfoToJSONDocument(PluginSource::TrackInfo trackInfo)
+QJsonDocument IpcMessageUtils::trackInfoToJSONDocument(TrackInfo trackInfo)
 {
     QStringList pictures;
     foreach (QUrl url, trackInfo.pictures) {
@@ -177,11 +177,11 @@ QJsonDocument IpcMessageUtils::trackInfoToJSONDocument(PluginSource::TrackInfo t
 
 
 // convenience method
-PluginSource::TrackInfo IpcMessageUtils::jsonDocumentToTrackInfo(QJsonDocument jsonDocument)
+TrackInfo IpcMessageUtils::jsonDocumentToTrackInfo(QJsonDocument jsonDocument)
 {
     QJsonObject info = jsonDocument.object();
 
-    PluginSource::TrackInfo trackInfo;
+    TrackInfo trackInfo;
 
     trackInfo.url       = QUrl::fromUserInput(info.value("url").toString());
     trackInfo.cast      = info.value("cast").toBool();

@@ -24,12 +24,13 @@
 #ifndef PLUGINDSP_H
 #define PLUGINDSP_H
 
-#include "pluginbase.h"
+#include "../pluginglobals.h"
+#include "pluginbase_001.h"
 
 #include <QVariant>
 
 
-class PluginDsp : public PluginBase {
+class PluginDsp_001 : public PluginBase_001 {
         Q_OBJECT
 
 
@@ -38,7 +39,7 @@ class PluginDsp : public PluginBase {
         // greater number means less priority
         Q_INVOKABLE virtual int priority() = 0;
 
-        Q_INVOKABLE virtual void setBufferQueue(PluginBase::BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
+        Q_INVOKABLE virtual void setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex) = 0;
 
 
     signals:

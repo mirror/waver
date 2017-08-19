@@ -34,8 +34,8 @@ SOURCES += localsource.cpp \
 
 HEADERS += localsource.h \
     wp_localsource_global.h \
-    ../waver/API/0.0.3/pluginbase.h \
-    ../waver/API/0.0.3/pluginsource.h \
+    ../waver/API/pluginbase_003.h \
+    ../waver/API/pluginsource_003.h \
     ../waver/pluginfactory.h \
     filescanner.h
 

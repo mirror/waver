@@ -21,16 +21,15 @@
 */
 
 
-#ifndef PLUGINDECODER_H
-#define PLUGINDECODER_H
+#ifndef PLUGININFO_H
+#define PLUGININFO_H
 
-#include <QAudioBuffer>
-#include <QUrl>
+#include "../pluginglobals.h"
+#include "pluginbase_001.h"
+#include "pluginsource_001.h"
 
-#include "pluginbase.h"
 
-
-class PluginDecoder : public PluginBase {
+class PluginInfo_001 : public PluginBase_001 {
         Q_OBJECT
 
 
@@ -41,17 +40,9 @@ class PluginDecoder : public PluginBase {
 
     signals:
 
-        void bufferAvailable(QUuid uniqueId, QAudioBuffer *buffer);
-        void finished(QUuid uniqueId);
-        void error(QUuid uniqueId, QString errorMessage);
-
-
-    public slots:
-
-        virtual void start(QUuid uniqueId) = 0;
-
-        virtual void bufferDone(QUuid uniqueId, QAudioBuffer *buffer) = 0;
+        void updateTrackInfo(QUuid uniqueId, TrackInfo trackInfo);
+        void addInfoHtml(QUuid uniqueId, QString info);
 
 };
 
-#endif // PLUGINDECODER_H
+#endif // PLUGININFO_H

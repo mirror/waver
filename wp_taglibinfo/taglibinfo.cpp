@@ -28,7 +28,7 @@
 // plugin factory
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
-    if (pluginTypesMask & PluginBase::PLUGIN_TYPE_INFO) {
+    if (pluginTypesMask & PLUGIN_TYPE_INFO) {
         retVal->append((QObject *) new TagLibInfo());
     }
 }
@@ -106,7 +106,7 @@ void TagLibInfo::run()
         return;
     }
 
-    PluginSource::TrackInfo trackInfo;
+    TrackInfo trackInfo;
 
     TagLib::FileRef fileRef(QFile::encodeName(url.toLocalFile()).constData());
 

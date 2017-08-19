@@ -32,8 +32,8 @@ SOURCES += radiosource.cpp
 
 HEADERS += radiosource.h\
         wp_radiosource_global.h \
-    ../waver/API/0.0.1/pluginbase.h \
-    ../waver/API/0.0.1/pluginsource.h \
+    ../waver/API/pluginbase_001.h \
+    ../waver/API/pluginsource_001.h \
     ../waver/pluginfactory.h
 
 unix:!android {

@@ -26,7 +26,7 @@
 // plugin factory
 void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 {
-    if (pluginTypesMask & PluginBase::PLUGIN_TYPE_DECODER) {
+    if (pluginTypesMask & PLUGIN_TYPE_DECODER) {
         #ifndef Q_OS_ANDROID
         retVal->append((QObject *) new Mpg123Decoder());
         #endif

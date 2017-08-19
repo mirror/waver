@@ -36,8 +36,8 @@ SOURCES += genericdecoder.cpp \
 
 HEADERS += genericdecoder.h\
         wp_genericdecoder_global.h \
-    ../waver/API/0.0.1/pluginbase.h \
-    ../waver/API/0.0.1/plugindecoder.h \
+    ../waver/API/pluginbase_001.h \
+    ../waver/API/plugindecoder_001.h \
     ../waver/pluginfactory.h \
     networkdownloader.h
 

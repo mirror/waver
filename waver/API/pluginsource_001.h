@@ -31,46 +31,22 @@
 #include <QVector>
 #include <QUrl>
 
-#include "pluginbase.h"
+#include "../pluginglobals.h"
+#include "pluginbase_001.h"
 
 
-class PluginSource : public PluginBase {
+class PluginSource_001 : public PluginBase_001 {
         Q_OBJECT
-
-
-    public:
-
-        struct TrackInfo {
-            QUrl                url;
-            bool                cast;
-            QVector<QUrl>       pictures;
-            QString             title;
-            QString             performer;
-            QString             album;
-            int                 year;
-            int                 track;
-            QHash<int, QString> actions;
-        };
-        typedef QVector<TrackInfo> TracksInfo;
-
-        struct OpenTrack {
-            QString id;
-            QString label;
-            bool    hasChildren;
-            bool    selectable;
-        };
-        typedef QVector<OpenTrack> OpenTracks;
 
 
     signals:
 
         void ready(QUuid uniqueId);
         void unready(QUuid uniqueId);
-        void playlist(QUuid uniqueId, PluginSource::TracksInfo tracksInfo);
-        void openTracksResults(QUuid uniqueId, PluginSource::OpenTracks openTracks);
-        void searchResults(QUuid uniqueId, PluginSource::OpenTracks openTracks);
+        void playlist(QUuid uniqueId, TracksInfo tracksInfo);
+        void openTracksResults(QUuid uniqueId, OpenTracks openTracks);
+        void searchResults(QUuid uniqueId, OpenTracks openTracks);
         void requestRemoveTracks(QUuid uniqueId);
-        void requestRemoveTrack(QUuid uniqueId, QUrl url);
 
 
     public slots:
