@@ -35,6 +35,10 @@
 #include "../waver/pluginfactory.h"
 #include "../waver/API/plugininfo_001.h"
 
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
+
 
 extern "C" WP_TAGLIBINFO_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 

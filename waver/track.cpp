@@ -72,7 +72,7 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUui
         foreach (QObject *plugin, plugins) {
             int pluginType;
             if (!plugin->metaObject()->invokeMethod(plugin, "pluginType", Qt::DirectConnection, Q_RETURN_ARG(int, pluginType))) {
-                error(trackInfo.url, true, "Failed to invoke method on plugin");
+                emit error(trackInfo.url, true, "Failed to invoke method on plugin");
             }
 
             switch (pluginType) {
@@ -161,7 +161,7 @@ void Track::setupDecoderPlugin(QObject *plugin)
     // get the ID of the plugin
     QUuid persistentUniqueId;
     if (!plugin->metaObject()->invokeMethod(plugin, "persistentUniqueId", Qt::DirectConnection, Q_RETURN_ARG(QUuid, persistentUniqueId))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
     // just to be on the safe side
@@ -172,16 +172,16 @@ void Track::setupDecoderPlugin(QObject *plugin)
     // get some basic info
     PluginNoQueue pluginData;
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginVersion", Qt::DirectConnection, Q_RETURN_ARG(int, pluginData.version))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "waverVersionAPICompatibility", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.waverVersionAPICompatibility))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     decoderPlugins[persistentUniqueId] = pluginData;
 
@@ -190,7 +190,7 @@ void Track::setupDecoderPlugin(QObject *plugin)
 
     // initializations
     if (!plugin->metaObject()->invokeMethod(plugin, "setUrl", Qt::DirectConnection, Q_ARG(QUrl, trackInfo.url))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
     // move to appropriate thread
@@ -227,7 +227,7 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
     // get the ID of the plugin
     QUuid persistentUniqueId;
     if (!plugin->metaObject()->invokeMethod(plugin, "persistentUniqueId", Qt::DirectConnection, Q_RETURN_ARG(QUuid, persistentUniqueId))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
     // just to be on the safe side
@@ -238,16 +238,16 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
     // get some basic info
     PluginWithQueue pluginData;
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginVersion", Qt::DirectConnection, Q_RETURN_ARG(int, pluginData.version))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "waverVersionAPICompatibility", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.waverVersionAPICompatibility))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     pluginData.bufferQueue = new BufferQueue();
     pluginData.bufferMutex = new QMutex();
@@ -255,13 +255,13 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
 
     // set the queue
     if (!plugin->metaObject()->invokeMethod(plugin, "setBufferQueue", Qt::DirectConnection, Q_ARG(BufferQueue *, pluginData.bufferQueue), Q_ARG(QMutex *, pluginData.bufferMutex))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
     // add to priority map
     int priorty;
     if (!plugin->metaObject()->invokeMethod(plugin, "priority", Qt::DirectConnection, Q_RETURN_ARG(int, priorty))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     priorty += (fromEasyPluginInstallDir ? 25000 : 0);
     while (priorityMap->contains(priorty)) {
@@ -306,7 +306,7 @@ void Track::setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<
     // get the ID of the plugin
     QUuid persistentUniqueId;
     if (!plugin->metaObject()->invokeMethod(plugin, "persistentUniqueId", Qt::DirectConnection, Q_RETURN_ARG(QUuid, persistentUniqueId))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
     // just to be on the safe side
@@ -320,16 +320,16 @@ void Track::setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<
     // get some basic info
     PluginWithQueue pluginData;
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginVersion", Qt::DirectConnection, Q_RETURN_ARG(int, pluginData.version))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "waverVersionAPICompatibility", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.waverVersionAPICompatibility))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     pluginData.bufferQueue = new BufferQueue();
     pluginData.bufferMutex = new QMutex();
@@ -337,13 +337,13 @@ void Track::setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<
 
     // set the queue
     if (!plugin->metaObject()->invokeMethod(plugin, "setBufferQueue", Qt::DirectConnection, Q_ARG(BufferQueue *, pluginData.bufferQueue), Q_ARG(QMutex *, pluginData.bufferMutex))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
     // add to priority map
     int priorty;
     if (!plugin->metaObject()->invokeMethod(plugin, "priority", Qt::DirectConnection, Q_RETURN_ARG(int, priorty))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     priorty += (fromEasyPluginInstallDir ? 25000 : 0);
     while (priorityMap->contains(priorty)) {
@@ -384,7 +384,7 @@ void Track::setupOutputPlugin(QObject *plugin)
     // get the ID of the plugin
     QUuid persistentUniqueId;
     if (!plugin->metaObject()->invokeMethod(plugin, "persistentUniqueId", Qt::DirectConnection, Q_RETURN_ARG(QUuid, persistentUniqueId))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
     // just to be on the safe side
@@ -395,16 +395,16 @@ void Track::setupOutputPlugin(QObject *plugin)
     // get some basic info
     PluginWithQueue pluginData;
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginVersion", Qt::DirectConnection, Q_RETURN_ARG(int, pluginData.version))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "waverVersionAPICompatibility", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.waverVersionAPICompatibility))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     pluginData.bufferQueue = new BufferQueue();
     pluginData.bufferMutex = new QMutex();
@@ -412,13 +412,13 @@ void Track::setupOutputPlugin(QObject *plugin)
 
     // set the queue
     if (!plugin->metaObject()->invokeMethod(plugin, "setBufferQueue", Qt::DirectConnection, Q_ARG(BufferQueue *, pluginData.bufferQueue), Q_ARG(QMutex *, pluginData.bufferMutex))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
     // set main output
     bool isMainOutput;
     if (!plugin->metaObject()->invokeMethod(plugin, "isMainOutput", Qt::DirectConnection, Q_RETURN_ARG(bool, isMainOutput))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (isMainOutput && mainOutputId.isNull()) {
         mainOutputId = persistentUniqueId;
@@ -464,7 +464,7 @@ void Track::setupInfoPlugin(QObject *plugin)
     // get the ID of the plugin
     QUuid persistentUniqueId;
     if (!plugin->metaObject()->invokeMethod(plugin, "persistentUniqueId", Qt::DirectConnection, Q_RETURN_ARG(QUuid, persistentUniqueId))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
     // just to be on the safe side
@@ -475,22 +475,22 @@ void Track::setupInfoPlugin(QObject *plugin)
     // get some basic info
     PluginNoQueue pluginData;
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginVersion", Qt::DirectConnection, Q_RETURN_ARG(int, pluginData.version))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "waverVersionAPICompatibility", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.waverVersionAPICompatibility))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     infoPlugins[persistentUniqueId] = pluginData;
 
     // initializations
     if (!plugin->metaObject()->invokeMethod(plugin, "setUrl", Qt::DirectConnection, Q_ARG(QUrl, trackInfo.url))) {
-        error(trackInfo.url, true, "Failed to invoke method on plugin");
+        emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
 
     // move to appropriate thread
@@ -1316,19 +1316,19 @@ void Track::infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo)
     Q_UNUSED(uniqueId);
 
     if (trackInfo.title.length() > 0) {
-        trackInfo.title = trackInfo.title;
+        this->trackInfo.title = trackInfo.title;
     }
     if (trackInfo.performer.length() > 0) {
-        trackInfo.performer = trackInfo.performer;
+        this->trackInfo.performer = trackInfo.performer;
     }
     if (trackInfo.album.length() > 0) {
-        trackInfo.album = trackInfo.album;
+        this->trackInfo.album = trackInfo.album;
     }
     if (trackInfo.year > 0) {
-        trackInfo.year = trackInfo.year;
+        this->trackInfo.year = trackInfo.year;
     }
     if (trackInfo.track > 0) {
-        trackInfo.track = trackInfo.track;
+        this->trackInfo.track = trackInfo.track;
     }
 
     emit trackInfoUpdated(trackInfo.url);

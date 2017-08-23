@@ -107,6 +107,7 @@ void TagLibInfo::run()
     }
 
     TrackInfo trackInfo;
+    trackInfo.url = url;
 
     TagLib::FileRef fileRef(QFile::encodeName(url.toLocalFile()).constData());
 
