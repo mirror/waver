@@ -126,6 +126,7 @@ class WaverServer : public QObject {
 
         void requestPlaylist();
         void startNextTrack();
+        void reassignFadeIns();
 
         void handleCollectionsDialogResults(QJsonDocument jsonDocument);
         void handlePluginUIRequest(QJsonDocument jsonDocument);

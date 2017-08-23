@@ -217,10 +217,35 @@ void WaverServer::startNextTrack()
 }
 
 
+// private slot for timer in startNextTrack
 void WaverServer::startNextTrackUISignal()
 {
     IpcMessageUtils ipcMessageUtils;
     emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
+}
+
+
+// private method
+void WaverServer::reassignFadeIns()
+{
+    for (int i = 0; i < playlistTracks.count(); i++) {
+        if (i == 0) {
+            if ((currentTrack != NULL) && currentTrack->getNextTrackFadeInRequested()) {
+                playlistTracks.at(i)->startWithFadeIn(currentTrack->getNextTrackFadeInRequestedMilliseconds());
+            }
+            else {
+                playlistTracks.at(i)->startWithoutFadeIn();
+            }
+        }
+        else {
+            if (playlistTracks.at(i - 1)->getNextTrackFadeInRequested()) {
+                playlistTracks.at(i)->startWithFadeIn(playlistTracks.at(i - 1)->getNextTrackFadeInRequestedMilliseconds());
+            }
+            else {
+                playlistTracks.at(i)->startWithoutFadeIn();
+            }
+        }
+    }
 }
 
 
@@ -372,24 +397,7 @@ void WaverServer::handleTrackActionsRequest(QJsonDocument jsonDocument)
         }
 
         // order has changed, must reassign fade in times based on previous track's request
-        for (int i = 0; i < playlistTracks.count(); i++) {
-            if (i == 0) {
-                if (currentTrack->getNextTrackFadeInRequested()) {
-                    playlistTracks.at(i)->startWithFadeIn(currentTrack->getNextTrackFadeInRequestedMilliseconds());
-                }
-                else {
-                    playlistTracks.at(i)->startWithoutFadeIn();
-                }
-            }
-            else {
-                if (playlistTracks.at(i - 1)->getNextTrackFadeInRequested()) {
-                    playlistTracks.at(i)->startWithFadeIn(playlistTracks.at(i - 1)->getNextTrackFadeInRequestedMilliseconds());
-                }
-                else {
-                    playlistTracks.at(i)->startWithoutFadeIn();
-                }
-            }
-        }
+        reassignFadeIns();
 
         return;
     }
@@ -1111,7 +1119,12 @@ void WaverServer::trackFinished(QUrl url)
         // send message to source if could not even start
         if (positionSeconds < 1) {
             unableToStartCount++;
+
             emit unableToStart(currentTrack->getSourcePluginId(), url);
+
+            if (playlistTracks.count() > 0) {
+                playlistTracks.at(0)->startWithoutFadeIn();
+            }
         }
 
         // housekeeping
@@ -1136,6 +1149,7 @@ void WaverServer::trackFinished(QUrl url)
         playlistTracks.removeAll(track);
         delete track;
     }
+    reassignFadeIns();
 
     // UI signal
     sendPlaylistToClients();
