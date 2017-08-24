@@ -1083,22 +1083,23 @@ void WaverServer::trackPosition(QUrl url, bool cast, bool decoderFinished, long 
                 previousRemaining = previousRemaining.mid(3);
             }
 
-            if (previousElapsed.length() > 0) {
-                if (showPreviousTimeFirst) {
-                    elapsed.prepend(previousElapsed + " <i> → ");
-                    elapsed.append("</i>");
+            if (showPreviousTimeFirst) {
+                elapsed.prepend(previousElapsed + " <i> → ");
+                elapsed.append("</i>");
+
+                if (remaining.length() > 0) {
+                    remaining.prepend("<i>");
+                    remaining.append(previousRemaining.length() > 0 ? " ← </i>" : "</i>");
                 }
-                else {
-                    elapsed.append(" <i> ← " + previousElapsed + "</i>");
+                if (previousRemaining.length() > 0) {
+                    remaining.append(previousRemaining);
                 }
             }
-            if (previousRemaining.length() > 0) {
-                if (showPreviousTimeFirst) {
-                    elapsed.prepend("<i>");
-                    remaining.append(" ← </i>" + previousRemaining);
-                }
-                else {
-                    remaining.prepend("<i>" + previousElapsed + " → </i>");
+            else {
+                elapsed.append(" <i> ← " + previousElapsed + "</i>");
+
+                if (previousRemaining.length() > 0) {
+                    remaining.prepend("<i>" + previousRemaining + (remaining.length() > 0 ? " → </i>" : "</i>"));
                 }
             }
         }
