@@ -54,10 +54,6 @@ class Track : public QObject {
 
         typedef QHash<QUuid, QString> PluginsWithUI;
 
-        struct transitionTimes {
-
-        };
-
         enum Status {
             Idle,
             Decoding,
@@ -82,6 +78,10 @@ class Track : public QObject {
         void   interrupt();
         void   startWithFadeIn(qint64 lengthMilliseconds);
         void   startWithoutFadeIn();
+        bool   isDecodingDone();
+        qint64 getDecodedMilliseconds();
+        qint64 getPlayedMilliseconds();
+
 
         TrackInfo getTrackInfo();
         QUuid     getSourcePluginId();

@@ -120,6 +120,7 @@ class WaverServer : public QObject {
         bool waitingForLocalSourceTimerStarted;
         long currentCastPlaytimeMilliseconds;
         long positionSeconds;
+        bool showPreviousTimeFirst;
 
         void finish();
         void finish(QString errorMessage);

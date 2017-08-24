@@ -698,6 +698,27 @@ void Track::startWithoutFadeIn()
 
 
 // public method
+bool Track::isDecodingDone()
+{
+    return decodingDone;
+}
+
+
+// public method
+qint64 Track::getDecodedMilliseconds()
+{
+    return decodedMilliseconds;
+}
+
+
+// public method
+qint64 Track::getPlayedMilliseconds()
+{
+    return playedMilliseconds;
+}
+
+
+// public method
 void Track::interrupt()
 {
     if ((currentStatus == Playing) && (!interruptInProgress)) {
