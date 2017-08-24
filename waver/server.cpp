@@ -44,7 +44,8 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     waitingForLocalSource             = true;
     waitingForLocalSourceTimerStarted = false;
     positionSeconds                   = 0;
-    showPreviousTimeFirst             = false;
+    showPreviousTime                  = false;
+    previousPositionSeconds           = 0;
 
     // so they can be used in inter-thread signals
     qRegisterMetaType<IpcMessageUtils::IpcMessages>("IpcMessageUtils::IpcMessages");
@@ -195,7 +196,6 @@ void WaverServer::startNextTrack()
     // start next track
     currentTrack = playlistTracks.at(0);
     playlistTracks.remove(0);
-    currentCastPlaytimeMilliseconds = CAST_PLAYTIME_MILLISECONDS;
     positionSeconds = -1;
     currentTrack->setStatus(Track::Playing);
 
@@ -205,12 +205,12 @@ void WaverServer::startNextTrack()
 
     // UI singals
     if (!currentTrack->getFadeInRequested()) {
-        showPreviousTimeFirst = false;
+        showPreviousTime = false;
         startNextTrackUISignal();
         return;
     }
 
-    showPreviousTimeFirst = true;
+    showPreviousTime = true;
     QTimer::singleShot(currentTrack->getFadeInRequestedMilliseconds() > 0 ? currentTrack->getFadeInRequestedMilliseconds() / 2 : (Track::INTERRUPT_FADE_SECONDS * 1000) / 2, this, SLOT(startNextTrackUISignal()));
 }
 
@@ -218,7 +218,7 @@ void WaverServer::startNextTrack()
 // private slot for timer in startNextTrack
 void WaverServer::startNextTrackUISignal()
 {
-    showPreviousTimeFirst = false;
+    showPreviousTime = false;
 
     Globals::consoleOutput(QString("%1 - %2").arg(currentTrack->getTrackInfo().title).arg(currentTrack->getTrackInfo().performer), false);
 
@@ -250,6 +250,28 @@ void WaverServer::reassignFadeIns()
             }
         }
     }
+}
+
+
+// private method
+QVariantHash WaverServer::positionToElapsedRemaining(bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds)
+{
+    QString elapsed   = QDateTime::fromMSecsSinceEpoch(positionMilliseconds).toUTC().toString("hh:mm:ss");
+    QString remaining = decoderFinished ? QDateTime::fromMSecsSinceEpoch(knownDurationMilliseconds - positionMilliseconds).toUTC().toString("hh:mm:ss") : "Decoding in progress...";
+
+    if (elapsed.startsWith("00:")) {
+        elapsed = elapsed.mid(3);
+    }
+    if (remaining.startsWith("00:")) {
+        remaining = remaining.mid(3);
+    }
+
+    QVariantHash returnValue;
+
+    returnValue.insert("elapsed", elapsed);
+    returnValue.insert("remaining", remaining);
+
+    return returnValue;
 }
 
 
@@ -405,12 +427,12 @@ void WaverServer::handleTrackActionsRequest(QJsonDocument jsonDocument)
 
         return;
     }
-    if ((action.compare("play_more") == 0) && (currentCastPlaytimeMilliseconds < ((24 * 60 * 60 * 1000) - CAST_PLAYTIME_MILLISECONDS))) {
-        currentCastPlaytimeMilliseconds += CAST_PLAYTIME_MILLISECONDS;
+    if (action.compare("play_more") == 0) {
+        track->addMoreToCastPlaytime();
         return;
     }
     if (action.compare("play_forever") == 0) {
-        currentCastPlaytimeMilliseconds = 24 * 60 * 60 * 1000;
+        track->addALotToCastPlaytime();
         return;
     }
 }
@@ -621,6 +643,12 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
                 // current track is always either playing or paused
                 currentTrack->setStatus(Track::Paused);
                 emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Pause));
+            }
+            // shut down crossfade if in progress
+            if (previousTrack != NULL) {
+                showPreviousTime = false;
+                previousTrack->setStatus(Track::Paused);
+                previousTrack->interrupt();
             }
             break;
 
@@ -929,7 +957,7 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo)
         connect(track, SIGNAL(loadPluginSettings(QUuid)),                       this,  SLOT(loadConfiguration(QUuid)));
         connect(track, SIGNAL(loadPluginGlobalSettings(QUuid)),                 this,  SLOT(loadGlobalConfiguration(QUuid)));
         connect(track, SIGNAL(requestFadeInForNextTrack(QUrl, qint64)),         this,  SLOT(trackRequestFadeInForNextTrack(QUrl, qint64)));
-        connect(track, SIGNAL(playPosition(QUrl, bool, bool, long, long)),      this,  SLOT(trackPosition(QUrl, bool, bool, long, long)));
+        connect(track, SIGNAL(playPosition(QUrl, bool, long, long)),            this,  SLOT(trackPosition(QUrl, bool, long, long)));
         connect(track, SIGNAL(aboutToFinish(QUrl)),                             this,  SLOT(trackAboutToFinish(QUrl)));
         connect(track, SIGNAL(finished(QUrl)),                                  this,  SLOT(trackFinished(QUrl)));
         connect(track, SIGNAL(trackInfoUpdated(QUrl)),                          this,  SLOT(trackInfoUpdated(QUrl)));
@@ -1031,84 +1059,44 @@ void WaverServer::trackRequestFadeInForNextTrack(QUrl url, qint64 lengthMillisec
 
 
 // track signal handler
-void WaverServer::trackPosition(QUrl url, bool cast, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds)
+void WaverServer::trackPosition(QUrl url, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds)
 {
-    // disregard this signal if comes from a track other than the current track
+    // show previous track's time still? (during crossfade)
+    if (showPreviousTime && (previousTrack != NULL) && (url == previousTrack->getTrackInfo().url) && (previousPositionSeconds != (positionMilliseconds / 1000))) {
+        previousPositionSeconds = positionMilliseconds / 1000;
+
+        IpcMessageUtils ipcMessageUtils;
+        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Position, QJsonDocument(QJsonObject::fromVariantHash(positionToElapsedRemaining(decoderFinished, knownDurationMilliseconds, positionMilliseconds)))));
+
+        return;
+    }
+
+    // otherwise disregard this signal if comes from a track other than the current track
     if ((currentTrack == NULL) || (url != currentTrack->getTrackInfo().url)) {
         return;
     }
 
     // stop playing cast if reached time
-    if (cast && (positionMilliseconds >= currentCastPlaytimeMilliseconds)) {
+    if (decoderFinished && (positionMilliseconds >= knownDurationMilliseconds)) {
         currentTrack->interrupt();
         return;
     }
 
     // start buffering next track before current ends
-    if ((cast && (positionMilliseconds >= (currentCastPlaytimeMilliseconds - START_DECODE_PRE_MILLISECONDS))) || (decoderFinished &&
-            (positionMilliseconds >= (knownDurationMilliseconds - START_DECODE_PRE_MILLISECONDS)))) {
+    if (decoderFinished && (positionMilliseconds >= (knownDurationMilliseconds - START_DECODE_PRE_MILLISECONDS))) {
         if ((playlistTracks.count() > 0) && (playlistTracks.at(0)->status() == Track::Idle)) {
             playlistTracks.at(0)->setStatus(Track::Decoding);
         }
     }
 
-    // UI signal only once a second
-    if (positionSeconds != (positionMilliseconds / 1000)) {
+    // UI signal only once a second and if not showing previous still
+    if (!showPreviousTime && (positionSeconds != (positionMilliseconds / 1000))) {
         positionSeconds = (positionMilliseconds / 1000);
 
         unableToStartCount = 0;
 
-        QVariantHash positionHash;
-
-        QString elapsed   = QDateTime::fromMSecsSinceEpoch(positionMilliseconds).toUTC().toString("hh:mm:ss");
-        QString remaining = cast ? QDateTime::fromMSecsSinceEpoch(currentCastPlaytimeMilliseconds - positionMilliseconds).toUTC().toString("hh:mm:ss") : (decoderFinished ? QDateTime::fromMSecsSinceEpoch(knownDurationMilliseconds - positionMilliseconds).toUTC().toString("hh:mm:ss") : "");
-
-        if (elapsed.startsWith("00:")) {
-            elapsed = elapsed.mid(3);
-        }
-        if (remaining.startsWith("00:")) {
-            remaining = remaining.mid(3);
-        }
-
-        if ((previousTrack != NULL) && (previousTrack->status() == Track::Playing)) {
-            TrackInfo previousInfo = previousTrack->getTrackInfo();
-
-            QString previousElapsed   = QDateTime::fromMSecsSinceEpoch(previousTrack->getPlayedMilliseconds()).toUTC().toString("hh:mm:ss");
-            QString previousRemaining = previousInfo.cast ? "" : (previousTrack->isDecodingDone() ? QDateTime::fromMSecsSinceEpoch(previousTrack->getDecodedMilliseconds() - previousTrack->getPlayedMilliseconds()).toUTC().toString("hh:mm:ss") : "");
-
-            if (previousElapsed.startsWith("00:")) {
-                previousElapsed = previousElapsed.mid(3);
-            }
-            if (previousRemaining.startsWith("00:")) {
-                previousRemaining = previousRemaining.mid(3);
-            }
-
-            if (showPreviousTimeFirst) {
-                elapsed.prepend(previousElapsed + " <i> → ");
-                elapsed.append("</i>");
-
-                if (remaining.length() > 0) {
-                    remaining.prepend("<i>");
-                    remaining.append(previousRemaining.length() > 0 ? " ← </i>" : "</i>");
-                }
-                if (previousRemaining.length() > 0) {
-                    remaining.append(previousRemaining);
-                }
-            }
-            else {
-                elapsed.append(" <i> ← " + previousElapsed + "</i>");
-
-                if (previousRemaining.length() > 0) {
-                    remaining.prepend("<i>" + previousRemaining + (remaining.length() > 0 ? " → </i>" : "</i>"));
-                }
-            }
-        }
-
-        positionHash.insert("elapsed", elapsed);
-        positionHash.insert("remaining", remaining);
-
         IpcMessageUtils ipcMessageUtils;
-        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Position, QJsonDocument(QJsonObject::fromVariantHash(positionHash))));
+        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Position, QJsonDocument(QJsonObject::fromVariantHash(positionToElapsedRemaining(decoderFinished, knownDurationMilliseconds, positionMilliseconds)))));
     }
 }
 
@@ -1129,8 +1117,9 @@ void WaverServer::trackAboutToFinish(QUrl url)
     if (previousTrack != NULL) {
         delete previousTrack;
     }
-    previousTrack = currentTrack;
-    currentTrack = NULL;
+    previousTrack           = currentTrack;
+    previousPositionSeconds = positionSeconds;
+    currentTrack            = NULL;
 
     // start next track
     startNextTrack();
@@ -1145,6 +1134,7 @@ void WaverServer::trackFinished(QUrl url)
         // housekeeping
         delete previousTrack;
         previousTrack = NULL;
+        previousPositionSeconds = 0;
         return;
     }
 

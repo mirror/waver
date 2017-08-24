@@ -50,7 +50,8 @@ class Track : public QObject {
 
     public:
 
-        static const int INTERRUPT_FADE_SECONDS = 4;
+        static const long CAST_PLAYTIME_MILLISECONDS = 450 * 1000;
+        static const int INTERRUPT_FADE_SECONDS      = 4;
 
         typedef QHash<QUuid, QString> PluginsWithUI;
 
@@ -78,10 +79,8 @@ class Track : public QObject {
         void   interrupt();
         void   startWithFadeIn(qint64 lengthMilliseconds);
         void   startWithoutFadeIn();
-        bool   isDecodingDone();
-        qint64 getDecodedMilliseconds();
-        qint64 getPlayedMilliseconds();
-
+        void   addMoreToCastPlaytime();
+        void   addALotToCastPlaytime();
 
         TrackInfo getTrackInfo();
         QUuid     getSourcePluginId();
@@ -138,6 +137,7 @@ class Track : public QObject {
         QHash<QAudioBuffer *, int> bufferOuputDoneCounters;
 
         Status currentStatus;
+        long   currentCastPlaytimeMilliseconds;
         bool   fadeInRequested;
         bool   fadeInRequestedInternal;
         qint64 fadeInRequestedMilliseconds;
@@ -176,7 +176,7 @@ class Track : public QObject {
         void loadedPluginsWithUI(Track::PluginsWithUI pluginsWithUI);
         void pluginUi(QUuid id, QString qml, QString header);
 
-        void playPosition(QUrl url, bool cast, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
+        void playPosition(QUrl url, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
         void aboutToFinish(QUrl url);
         void finished(QUrl url);
         void requestFadeInForNextTrack(QUrl url, qint64 lengthMilliseconds);

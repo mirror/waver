@@ -40,6 +40,7 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUui
 
     // initializations
     currentStatus                        = Idle;
+    currentCastPlaytimeMilliseconds      = CAST_PLAYTIME_MILLISECONDS;
     fadeInRequested                      = false;
     fadeInRequestedInternal              = false;
     fadeInRequestedMilliseconds          = 0;
@@ -698,23 +699,18 @@ void Track::startWithoutFadeIn()
 
 
 // public method
-bool Track::isDecodingDone()
+void Track::addMoreToCastPlaytime()
 {
-    return decodingDone;
+    if (currentCastPlaytimeMilliseconds < ((24 * 60 * 60 * 1000) - CAST_PLAYTIME_MILLISECONDS)) {
+        currentCastPlaytimeMilliseconds += CAST_PLAYTIME_MILLISECONDS;
+    }
 }
 
 
 // public method
-qint64 Track::getDecodedMilliseconds()
+void Track::addALotToCastPlaytime()
 {
-    return decodedMilliseconds;
-}
-
-
-// public method
-qint64 Track::getPlayedMilliseconds()
-{
-    return playedMilliseconds;
+    currentCastPlaytimeMilliseconds = 24 * 60 * 60 * 1000;
 }
 
 
@@ -1203,7 +1199,7 @@ void Track::outputPositionChanged(QUuid uniqueId, qint64 posMilliseconds)
 
     playedMilliseconds = posMilliseconds;
 
-    emit playPosition(trackInfo.url, trackInfo.cast, decodingDone, decodedMilliseconds, posMilliseconds);
+    emit playPosition(trackInfo.url, trackInfo.cast ? true : decodingDone, trackInfo.cast ? currentCastPlaytimeMilliseconds : decodedMilliseconds, posMilliseconds);
 }
 
 

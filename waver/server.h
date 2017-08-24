@@ -85,7 +85,6 @@ class WaverServer : public QObject {
     private:
 
         static const int  MAX_TRACKS_AT_ONCE            = 4;
-        static const long CAST_PLAYTIME_MILLISECONDS    = 450 * 1000;
         static const long START_DECODE_PRE_MILLISECONDS = 45 * 1000;
 
         struct SourcePlugin {
@@ -118,16 +117,17 @@ class WaverServer : public QObject {
         int  unableToStartCount;
         bool waitingForLocalSource;
         bool waitingForLocalSourceTimerStarted;
-        long currentCastPlaytimeMilliseconds;
         long positionSeconds;
-        bool showPreviousTimeFirst;
+        bool showPreviousTime;
+        long previousPositionSeconds;
 
         void finish();
         void finish(QString errorMessage);
 
-        void requestPlaylist();
-        void startNextTrack();
-        void reassignFadeIns();
+        void         requestPlaylist();
+        void         startNextTrack();
+        void         reassignFadeIns();
+        QVariantHash positionToElapsedRemaining(bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
 
         void handleCollectionsDialogResults(QJsonDocument jsonDocument);
         void handlePluginUIRequest(QJsonDocument jsonDocument);
@@ -206,7 +206,7 @@ class WaverServer : public QObject {
         void trackError(QUrl url, bool fatal, QString errorString);
         void trackLoadedPluginsWithUI(Track::PluginsWithUI pluginsWithUI);
         void trackRequestFadeInForNextTrack(QUrl url, qint64 lengthMilliseconds);
-        void trackPosition(QUrl url, bool cast, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
+        void trackPosition(QUrl url, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
         void trackAboutToFinish(QUrl url);
         void trackFinished(QUrl url);
         void trackInfoUpdated(QUrl url);
