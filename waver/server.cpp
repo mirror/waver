@@ -1094,12 +1094,11 @@ void WaverServer::trackPosition(QUrl url, bool cast, bool decoderFinished, long 
             }
             if (previousRemaining.length() > 0) {
                 if (showPreviousTimeFirst) {
-                    remaining.prepend(previousElapsed + " <i> → ");
-                    remaining.append("</i>");
-
+                    elapsed.prepend("<i>");
+                    remaining.append(" ← </i>" + previousRemaining);
                 }
                 else {
-                    remaining.prepend("<i> ← " + previousRemaining + "</i> ");
+                    remaining.prepend("<i>" + previousElapsed + " → </i>");
                 }
             }
         }
