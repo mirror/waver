@@ -105,6 +105,7 @@ class WaverApplication : public QGuiApplication {
         void uiActions(QVariant linksText);
         void uiClearPlaylist();
         void uiAddToPlaylist(QVariant pictureUrl, QVariant title, QVariant performer, QVariant actions, QVariant showActions);
+        void uiSetPlaylistIndex(QVariant index);
         void uiClearPluginsList();
         void uiAddToPluginsList(QVariant id, QVariant label);
         void uiDisplayPluginUI(QVariant id, QVariant qml, QVariant Header);

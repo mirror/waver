@@ -622,6 +622,9 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
             break;
 
         case IpcMessageUtils::Next:
+            if (playlistTracks.count() > 0) {
+                playlistTracks.at(0)->startWithoutFadeIn();
+            }
             if (currentTrack != NULL) {
                 currentTrack->setStatus(Track::Paused);
                 currentTrack->interrupt();
@@ -1222,8 +1225,7 @@ void WaverServer::trackError(QUrl url, bool fatal, QString errorString)
     }
 
     // print to error output
-    Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(fatal ? "Fatal error" : "Error")
-        .arg(title).arg(errorString), true);
+    Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(fatal ? "Fatal error" : "Error").arg(title).arg(errorString), true);
 
     // send message to UI
     QVariantHash messageHash;

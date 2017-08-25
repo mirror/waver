@@ -1224,7 +1224,7 @@ void Track::outputBufferUnderrun(QUuid uniqueId)
 void Track::underrunTimeout()
 {
     if (!decodingDone && (decodedMillisecondsAtUnderrun >= decodedMilliseconds)) {
-        sendFinished();
+        emit error(trackInfo.url, true, "Buffer underrun. Possible download interruption due to a network error.");
     }
 }
 

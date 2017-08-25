@@ -91,6 +91,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(this,         SIGNAL(uiActions(QVariant)),                                                     uiMainWindow, SLOT(updateTrackActions(QVariant)));
         disconnect(this,         SIGNAL(uiClearPlaylist()),                                                       uiMainWindow, SLOT(clearPlaylist()));
         disconnect(this,         SIGNAL(uiAddToPlaylist(QVariant, QVariant, QVariant, QVariant, QVariant)),       uiMainWindow, SLOT(addToPlaylist(QVariant, QVariant, QVariant, QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiSetPlaylistIndex(QVariant)),                                            uiMainWindow, SLOT(setPlaylistIndex(QVariant)));
         disconnect(this,         SIGNAL(uiPaused()),                                                              uiMainWindow, SLOT(paused()));
         disconnect(this,         SIGNAL(uiResumed()),                                                             uiMainWindow, SLOT(resumed()));
         disconnect(this,         SIGNAL(uiClearPluginsList()),                                                    uiMainWindow, SLOT(clearPluginsList()));
@@ -124,6 +125,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(this,         SIGNAL(uiActions(QVariant)),                                                     uiMainWindow, SLOT(updateTrackActions(QVariant)));
     connect(this,         SIGNAL(uiClearPlaylist()),                                                       uiMainWindow, SLOT(clearPlaylist()));
     connect(this,         SIGNAL(uiAddToPlaylist(QVariant, QVariant, QVariant, QVariant, QVariant)),       uiMainWindow, SLOT(addToPlaylist(QVariant, QVariant, QVariant, QVariant, QVariant)));
+    connect(this,         SIGNAL(uiSetPlaylistIndex(QVariant)),                                            uiMainWindow, SLOT(setPlaylistIndex(QVariant)));
     connect(this,         SIGNAL(uiPaused()),                                                              uiMainWindow, SLOT(paused()));
     connect(this,         SIGNAL(uiResumed()),                                                             uiMainWindow, SLOT(resumed()));
     connect(this,         SIGNAL(uiClearPluginsList()),                                                    uiMainWindow, SLOT(clearPluginsList()));
@@ -460,8 +462,11 @@ void WaverApplication::updateUIPlaylist(QJsonDocument jsonDocument)
             actions.append(QString("<a href=\"%1\">%2</a>").arg(actionKey).arg(trackInfo.actions.value(actionKey)));
         }
 
-        emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "images/waver.png"),
-            trackInfo.title, trackInfo.performer, actions.join(" "), (i == contextShowTrackIndex));
+        emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "images/waver.png"), trackInfo.title, trackInfo.performer, actions.join(" "), (i == contextShowTrackIndex));
+    }
+
+    if (contextShowTrackIndex >= 0) {
+        emit uiSetPlaylistIndex(contextShowTrackIndex);
     }
 }
 

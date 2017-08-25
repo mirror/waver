@@ -189,6 +189,11 @@ ApplicationWindow {
         searchButton.enabled = ((searchText.text.length >= 3) && (playlistItems.count < 25));
     }
 
+    function setPlaylistIndex(index)
+    {
+        playlist.currentIndex = index;
+    }
+
 
     // plugin menu items
 
