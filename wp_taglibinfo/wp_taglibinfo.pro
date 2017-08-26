@@ -49,6 +49,6 @@ unix:!android {
 }
 
 windows {
-    INCLUDEPATH += $$PWD\taglib\win32\include
-    LIBS += -L$$PWD\taglib\win32\bin\ -ltag
+    INCLUDEPATH += $$PWD/taglib/win32/include
+    LIBS += -L$$PWD/taglib/win32/bin/ -ltag
 }

@@ -92,7 +92,7 @@ void TrayIcon::waverServerIpcSend(QString data)
                 playPauseAction->setIcon(QIcon(":/images/pause.png"));
                 playPauseAction->setText("Pause");
                 break;
-            case IpcMessageUtils::TrackInfo:
+            case IpcMessageUtils::TrackInfos:
                 if (firstTrack) {
                     firstTrack = false;
                     playPauseAction->setIcon(QIcon(":/images/pause.png"));
@@ -112,6 +112,6 @@ void TrayIcon::showMetadataMessage()
         return;
     }
 
-    PluginSource::TrackInfo trackInfo = waverServer->notificationsHelper_Metadata();
+    TrackInfo trackInfo = waverServer->notificationsHelper_Metadata();
     systemTrayIcon->showMessage(trackInfo.title, trackInfo.performer, QSystemTrayIcon::NoIcon, 4000);
 }
