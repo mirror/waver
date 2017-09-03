@@ -42,7 +42,7 @@
 
 #include "feeder.h"
 #include "../waver/pluginfactory.h"
-#include "../waver/API/pluginoutput_001.h"
+#include "../waver/API/pluginoutput_004.h"
 
 
 extern "C" WP_SOUNDOUTPUT_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
@@ -51,7 +51,7 @@ extern "C" WP_SOUNDOUTPUT_EXPORT void wp_plugin_factory(int pluginTypesMask, Plu
 // TODO: QAudioOutput->setVolume somehow kills the output, it must be investigated. For now, volume control is disabled.
 
 
-class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_001 {
+class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_004 {
         Q_OBJECT
 
     public:
@@ -90,6 +90,8 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_001 {
         QThread feederThread;
         Feeder *feeder;
 
+        QAudioFormat diagnosticsAudioFormat;
+
         bool   wasError;
         bool   timerWaits;
         qint64 notificationCounter;
@@ -99,6 +101,7 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_001 {
         int    fadeSeconds;
         double fadeFrameCount;
         bool   sendFadeComplete;
+        bool   sendDiagnostics;
 
         double volume;
 
@@ -106,15 +109,21 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_001 {
         void applyFade();
         void clearBuffers();
 
+        void sendDiagnosticsData();
+
 
     public slots:
 
         void run() override;
 
-        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)       override;
+        void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void startDiagnostics(QUuid uniqueId) override;
+        void stopDiagnostics(QUuid uniqueId)  override;
 
         void bufferAvailable(QUuid uniqueId) override;
 

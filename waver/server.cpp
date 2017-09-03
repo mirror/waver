@@ -46,13 +46,21 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     positionSeconds                   = 0;
     showPreviousTime                  = false;
     previousPositionSeconds           = 0;
+    sendErrorLogDiagnostics           = false;
+    diagnosticsChanged                = false;
+
+    diagnosticsTimer.setInterval(1000 / 20);
+    connect(&diagnosticsTimer, SIGNAL(timeout()), this, SLOT(diagnosticsRefreshUI()));
 
     // so they can be used in inter-thread signals
     qRegisterMetaType<IpcMessageUtils::IpcMessages>("IpcMessageUtils::IpcMessages");
     qRegisterMetaType<TrackInfo>("TrackInfo");
     qRegisterMetaType<TracksInfo>("TracksInfo");
+    qRegisterMetaType<OpenTrack>("OpenTrack");
     qRegisterMetaType<OpenTracks>("OpenTracks");
-    qRegisterMetaType<Track::PluginsWithUI>("Track::PluginsWithUI");
+    qRegisterMetaType<DiagnosticItem>("DiagnosticItem");
+    qRegisterMetaType<DiagnosticData>("DiagnosticData");
+    qRegisterMetaType<Track::PluginList>("Track::PluginList");
 }
 
 
@@ -71,6 +79,8 @@ void WaverServer::run()
     connect(this,             SIGNAL(ipcSend(QString)),                                     serverTcpHandler, SLOT(send(QString)));
     connect(serverTcpHandler, SIGNAL(message(IpcMessageUtils::IpcMessages, QJsonDocument)), this,             SLOT(ipcReceivedMessage(IpcMessageUtils::IpcMessages, QJsonDocument)));
     connect(serverTcpHandler, SIGNAL(url(QUrl)),                                            this,             SLOT(ipcReceivedUrl(QUrl)));
+    connect(serverTcpHandler, SIGNAL(error(bool, QString)),                                 this,             SLOT(ipcReceivedError(bool, QString)));
+    connect(serverTcpHandler, SIGNAL(noClient()),                                           this,             SLOT(ipcNoClient()));
 
     serverTcpThread.start();
     // instantiate, set up, and start settings storage
@@ -276,6 +286,45 @@ QVariantHash WaverServer::positionToElapsedRemaining(bool decoderFinished, long 
 
 
 // private method
+QString WaverServer::findTitleFromUrl(QUrl url)
+{
+    if ((previousTrack != NULL) && (previousTrack->getTrackInfo().url == url)) {
+        return previousTrack->getTrackInfo().title;
+    }
+
+    if ((currentTrack != NULL) && (currentTrack->getTrackInfo().url == url)) {
+        return currentTrack->getTrackInfo().title;
+    }
+
+    QString title = "";
+    int     i     = 0;
+    while ((title.length() < 1) && (i < playlistTracks.count())) {
+        if (playlistTracks.at(i)->getTrackInfo().url == url) {
+            title = playlistTracks.at(i)->getTrackInfo().title;
+        }
+        i++;
+    }
+
+    return title;
+}
+
+
+// private method
+void WaverServer::stopAllDiagnostics()
+{
+    sendErrorLogDiagnostics = false;
+
+    if (!lastDiagnosticsPluginId.isNull()) {
+        emit stopDiagnostics(lastDiagnosticsPluginId);
+        lastDiagnosticsPluginId = QUuid();
+    }
+    diagnosticsChanged = false;
+    diagnosticsAggregator.clear();
+    diagnosticsTimer.stop();
+}
+
+
+// private method
 void WaverServer::handleCollectionsDialogResults(QJsonDocument jsonDocument)
 {
     QStringList collections;
@@ -303,10 +352,14 @@ void WaverServer::handlePluginUIResults(QJsonDocument jsonDocument)
 {
     QVariantHash object = jsonDocument.object().toVariantHash();
 
+    // *INDENT-OFF*
     emit pluginUiResults(QUuid(object.value("plugin_id").toString()), (
             (QString(object.value("ui_results").typeName()).compare("QVariantList") == 0) ? QJsonDocument(QJsonArray::fromVariantList(object.value("ui_results").toList()))  :
             (QString(object.value("ui_results").typeName()).compare("QVariantHash") == 0) ? QJsonDocument(QJsonObject::fromVariantHash(object.value("ui_results").toHash())) :
-            (QString(object.value("ui_results").typeName()).compare("QVariantMap")  == 0) ? QJsonDocument(QJsonObject::fromVariantMap(object.value("ui_results").toMap()))   : QJsonDocument(object.value("ui_results").toJsonObject())));
+            (QString(object.value("ui_results").typeName()).compare("QVariantMap")  == 0) ? QJsonDocument(QJsonObject::fromVariantMap(object.value("ui_results").toMap()))   :
+                                                                                            QJsonDocument(object.value("ui_results").toJsonObject())
+    ));
+    // *INDENT-ON*
 }
 
 
@@ -439,6 +492,42 @@ void WaverServer::handleTrackActionsRequest(QJsonDocument jsonDocument)
 
 
 // private method
+void WaverServer::handleDiagnostics(QJsonDocument jsonDocument)
+{
+    // one client can override another client which is good because we don't want to clog the system with too many diagnostics
+
+    // get mode from JSON
+    QString mode = jsonDocument.object().toVariantHash().value("mode").toString();
+
+    // start sending diagnostics
+    if (mode.compare("get") == 0) {
+        // stop previous diagnostics
+        stopAllDiagnostics();
+
+        // get id from JSON
+        QString id = jsonDocument.object().toVariantHash().value("id").toString();
+
+        // error log is a special case
+        if (id.compare("error_log") == 0) {
+            sendErrorLogDiagnostics = true;
+            sendErrorLogDiagnosticsToClients();
+            return;
+        }
+
+        // start now
+        diagnosticsTimer.start();
+        lastDiagnosticsPluginId = QUuid(id);
+        emit startDiagnostics(lastDiagnosticsPluginId);
+    }
+
+    // stop diagnostics
+    if (mode.compare("done") == 0) {
+        stopAllDiagnostics();
+    }
+}
+
+
+// private method
 void WaverServer::sendPlaylistToClients(int contextShowTrackIndex)
 {
     IpcMessageUtils ipcMessageUtils;
@@ -469,6 +558,20 @@ void WaverServer::sendPlaylistToClients()
 
 
 // private method
+void WaverServer::sendPluginsToClients()
+{
+    QVariantHash plugins;
+    foreach (QUuid id, this->plugins.keys()) {
+        plugins.insert(id.toString(), this->plugins.value(id));
+    }
+
+    // TODO make this able to send to specific client only (when client requests it at startup)
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Plugins, QJsonDocument(QJsonObject::fromVariantHash(plugins))));
+}
+
+
+// private method
 void WaverServer::sendPluginsWithUiToClients()
 {
     QVariantHash plugins;
@@ -478,8 +581,7 @@ void WaverServer::sendPluginsWithUiToClients()
 
     // TODO make this able to send to specific client only (when client requests it at startup)
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::PluginsWithUI,
-            QJsonDocument(QJsonObject::fromVariantHash(plugins))));
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::PluginsWithUI, QJsonDocument(QJsonObject::fromVariantHash(plugins))));
 }
 
 
@@ -509,6 +611,45 @@ void WaverServer::sendOpenTracksToClients(IpcMessageUtils::IpcMessages message, 
     // TODO make this able to send to specific client only (when client requests it at startup)
     IpcMessageUtils ipcMessageUtils;
     emit ipcSend(ipcMessageUtils.constructIpcString(message, QJsonDocument(QJsonObject::fromVariantHash(data))));
+}
+
+
+// private method
+void WaverServer::sendErrorLogDiagnosticsToClients()
+{
+    QJsonArray errorLogJson;
+    foreach (ErrorLogItem errorLogItem, errorLog) {
+        QVariantHash errorLogItemHash;
+        errorLogItemHash.insert("fatal",     errorLogItem.fatal);
+        errorLogItemHash.insert("message",   errorLogItem.message);
+        errorLogItemHash.insert("timestamp", errorLogItem.timestamp.toString("hh:mm:ss.zzz"));
+        errorLogItemHash.insert("title",     errorLogItem.title);
+
+        errorLogJson.append(QJsonObject::fromVariantHash(errorLogItemHash));
+    }
+
+    if (errorLogJson.count() < 1) {
+        QVariantHash errorLogItemHash;
+        errorLogItemHash.insert("fatal",     false);
+        errorLogItemHash.insert("message",   "No errors");
+        errorLogItemHash.insert("timestamp", QDateTime::currentDateTime().toString("hh:mm:ss.zzz"));
+        errorLogItemHash.insert("title",     "");
+
+        errorLogJson.append(QJsonObject::fromVariantHash(errorLogItemHash));
+    }
+
+    QVariantHash data({
+        {
+            "id", "error_log"
+        },
+        {
+            "data", errorLogJson
+        }
+    });
+
+    // TODO make this able to send to specific client only
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Diagnostics, QJsonDocument(QJsonObject::fromVariantHash(data))));
 }
 
 
@@ -585,6 +726,11 @@ void WaverServer::pluginLibsLoaded()
                 connect(plugin, SIGNAL(requestRemoveTrack(QUuid, QUrl)),                 this,   SLOT(requestedRemoveTrack(QUuid, QUrl)));
                 connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
             }
+            if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
+                connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(pluginDiagnostics(QUuid, DiagnosticData)));
+                connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
+                connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
+            }
         }
     }
 
@@ -619,6 +765,10 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
 
         case IpcMessageUtils::CollectionsDialogResults:
             handleCollectionsDialogResults(jsonDocument);
+            break;
+
+        case IpcMessageUtils::Diagnostics:
+            handleDiagnostics(jsonDocument);
             break;
 
         case IpcMessageUtils::Next:
@@ -669,6 +819,10 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
             emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Resume));
             break;
 
+        case IpcMessageUtils::Plugins:
+            sendPluginsToClients();
+            break;
+
         case IpcMessageUtils::PluginsWithUI:
             sendPluginsWithUiToClients();
             break;
@@ -717,6 +871,43 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
 void WaverServer::ipcReceivedUrl(QUrl url)
 {
     // TODO implement this
+}
+
+
+// interprocess communication signal handler
+void WaverServer::ipcReceivedError(bool fatal, QString error)
+{
+    // print to error output
+    Globals::consoleOutput(QString("%1 reported from interprocess communications: %2").arg(fatal ? "Fatal error" : "Error").arg(error), true);
+
+    // send message to UI
+    QVariantHash messageHash;
+    messageHash.insert("message", error);
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
+
+    // add to error log
+    ErrorLogItem errorLogItem;
+    errorLogItem.fatal     = fatal;
+    errorLogItem.message   = error;
+    errorLogItem.timestamp = QDateTime::currentDateTime();
+    errorLogItem.title     = "Interprocess communications";
+    while (errorLog.count() >= 100) {
+        errorLog.remove(0);
+    }
+    errorLog.append(errorLogItem);
+
+    // send error log to UI
+    if (sendErrorLogDiagnostics) {
+        sendErrorLogDiagnosticsToClients();
+    }
+}
+
+
+// interprocess communication signal handler
+void WaverServer::ipcNoClient()
+{
+    stopAllDiagnostics();
 }
 
 
@@ -895,8 +1086,100 @@ void WaverServer::pluginInfoMessage(QUuid uniqueId, QString message)
     QVariantHash messageHash;
     messageHash.insert("message", sourcePlugins.value(uniqueId).name + "\n\n" + message);
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(
-            IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
+}
+
+
+// source plugin signal handler
+void WaverServer::pluginDiagnostics(QUuid uniqueId, DiagnosticData data)
+{
+    pluginDiagnostics(uniqueId, QUrl(), data);
+}
+
+
+// plugin signal handler (this comes from track)
+void WaverServer::pluginDiagnostics(QUuid uniqueId, QUrl url, DiagnosticData data)
+{
+    // don't accept from other then what we're looking at
+    if (uniqueId != lastDiagnosticsPluginId) {
+        return;
+    }
+
+    // aggregate diagnostics because
+    // 1. plugins aren't required to send all of their data items in every signal
+    // 2. to be able to limit client refreshes to 20 fps
+    foreach (DiagnosticItem diagnosticItem, data) {
+        bool found = false;
+        int  i     = 0;
+        while ((i < diagnosticsAggregator.value(url).count()) && !found) {
+            if (diagnosticsAggregator.value(url).at(i).label.compare(diagnosticItem.label) == 0) {
+                diagnosticsAggregator[url][i].message = diagnosticItem.message;
+                found = true;
+            }
+            i++;
+        }
+        if (!found) {
+            diagnosticsAggregator[url].append(diagnosticItem);
+        }
+    }
+
+    diagnosticsChanged = true;
+}
+
+
+// private slot for the diagnostics timer
+void WaverServer::diagnosticsRefreshUI()
+{
+    // see if anything changed
+    if (!diagnosticsChanged) {
+        return;
+    }
+    diagnosticsChanged = false;
+
+    // construct data
+    QVariantHash  urlsDataHash;
+    QVector<QUrl> toBeRemoved;
+    foreach (QUrl url, diagnosticsAggregator.keys()) {
+        QString title = url.isEmpty() ? "~" : findTitleFromUrl(url);
+
+        // previous track is finished
+        if (title.length() < 1) {
+            toBeRemoved.append(url);
+            continue;
+        }
+
+        // convert to JSON
+        QJsonArray dataJson;
+        foreach (DiagnosticItem diagnosticItem, diagnosticsAggregator.value(url)) {
+            QVariantHash diagnosticItemHash;
+            diagnosticItemHash.insert("label",     diagnosticItem.label);
+            diagnosticItemHash.insert("message",   diagnosticItem.message);
+
+            dataJson.append(QJsonObject::fromVariantHash(diagnosticItemHash));
+        }
+
+        urlsDataHash.insert(title, dataJson);
+    }
+
+    // remove tracks that are finished
+    foreach (QUrl url, toBeRemoved) {
+        diagnosticsAggregator.remove(url);
+    }
+
+    // construct message data
+    QVariantHash dataHash({
+        {
+            "id", lastDiagnosticsPluginId.toString()
+        },
+        {
+            "data", QJsonObject::fromVariantHash(urlsDataHash)
+        }
+    });
+
+    // TODO make this able to send to specific client only
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Diagnostics, QJsonDocument(QJsonObject::fromVariantHash(dataHash))));
+
 }
 
 
@@ -955,6 +1238,8 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo)
         connect(this,  SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),       track, SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
         connect(this,  SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), track, SLOT(loadedPluginGlobalSettings(QUuid, QJsonDocument)));
         connect(this,  SIGNAL(pluginUiResults(QUuid, QJsonDocument)),           track, SLOT(receivedPluginUiResults(QUuid, QJsonDocument)));
+        connect(this,  SIGNAL(startDiagnostics(QUuid)),                         track, SLOT(startPluginDiagnostics(QUuid)));
+        connect(this,  SIGNAL(stopDiagnostics(QUuid)),                          track, SLOT(stopPluginDiagnostics(QUuid)));
         connect(track, SIGNAL(savePluginSettings(QUuid, QJsonDocument)),        this,  SLOT(saveConfiguration(QUuid, QJsonDocument)));
         connect(track, SIGNAL(savePluginGlobalSettings(QUuid, QJsonDocument)),  this,  SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
         connect(track, SIGNAL(loadPluginSettings(QUuid)),                       this,  SLOT(loadConfiguration(QUuid)));
@@ -965,10 +1250,17 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo)
         connect(track, SIGNAL(finished(QUrl)),                                  this,  SLOT(trackFinished(QUrl)));
         connect(track, SIGNAL(trackInfoUpdated(QUrl)),                          this,  SLOT(trackInfoUpdated(QUrl)));
         connect(track, SIGNAL(error(QUrl, bool, QString)),                      this,  SLOT(trackError(QUrl, bool, QString)));
-        connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginsWithUI)),       this,  SLOT(trackLoadedPluginsWithUI(Track::PluginsWithUI)));
+        connect(track, SIGNAL(loadedPlugins(Track::PluginList)),                this,  SLOT(trackLoadedPlugins(Track::PluginList)));
+        connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginList)),          this,  SLOT(trackLoadedPluginsWithUI(Track::PluginList)));
+        connect(track, SIGNAL(pluginDiagnostics(QUuid, QUrl, DiagnosticData)),  this,  SLOT(pluginDiagnostics(QUuid, QUrl, DiagnosticData)));
 
         // add to playlist
         playlistTracks.append(track);
+    }
+
+    // diagnostics?
+    if (!lastDiagnosticsPluginId.isNull()) {
+        emit startDiagnostics(lastDiagnosticsPluginId);
     }
 
     // make sure there's at least one track waiting (source might returned an empty list in error)
@@ -1211,18 +1503,7 @@ void WaverServer::trackInfoUpdated(QUrl url)
 // track signal handler
 void WaverServer::trackError(QUrl url, bool fatal, QString errorString)
 {
-    // find title
-    QString title;
-    if (currentTrack->getTrackInfo().url == url) {
-        title = currentTrack->getTrackInfo().title;
-    }
-    int i = 0;
-    while ((title.length() < 1) && (i < playlistTracks.count())) {
-        if (playlistTracks.at(i)->getTrackInfo().url == url) {
-            title = playlistTracks.at(i)->getTrackInfo().title;
-        }
-        i++;
-    }
+    QString title = findTitleFromUrl(url);
 
     // print to error output
     Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(fatal ? "Fatal error" : "Error").arg(title).arg(errorString), true);
@@ -1231,8 +1512,23 @@ void WaverServer::trackError(QUrl url, bool fatal, QString errorString)
     QVariantHash messageHash;
     messageHash.insert("message", title + "\n\n" + errorString);
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(
-            IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
+
+    // add to error log
+    ErrorLogItem errorLogItem;
+    errorLogItem.fatal     = fatal;
+    errorLogItem.message   = errorString;
+    errorLogItem.timestamp = QDateTime::currentDateTime();
+    errorLogItem.title     = title;
+    while (errorLog.count() >= 100) {
+        errorLog.remove(0);
+    }
+    errorLog.append(errorLogItem);
+
+    // send error log to UI
+    if (sendErrorLogDiagnostics) {
+        sendErrorLogDiagnosticsToClients();
+    }
 
     // cancel the track if fatal
     if (fatal) {
@@ -1242,7 +1538,26 @@ void WaverServer::trackError(QUrl url, bool fatal, QString errorString)
 
 
 // track signal handler
-void WaverServer::trackLoadedPluginsWithUI(Track::PluginsWithUI pluginsWithUI)
+void WaverServer::trackLoadedPlugins(Track::PluginList plugins)
+{
+    // add source plugins
+    foreach (QUuid id, sourcePlugins.keys()) {
+        plugins.insert(id, Track::formatPluginName(sourcePlugins.value(id)));
+    }
+
+    // update UI if changed
+    if (plugins != this->plugins) {
+        this->plugins.clear();
+        foreach (QUuid id, plugins.keys()) {
+            this->plugins.insert(id, plugins.value(id));
+        }
+        sendPluginsToClients();
+    }
+}
+
+
+// track signal handler
+void WaverServer::trackLoadedPluginsWithUI(Track::PluginList pluginsWithUI)
 {
     // add source plugins with UI
     foreach (QUuid id, sourcePlugins.keys()) {

@@ -42,13 +42,13 @@
 
 #include "networkdownloader.h"
 #include "../waver/pluginfactory.h"
-#include "../waver/API/plugindecoder_001.h"
+#include "../waver/API/plugindecoder_004.h"
 
 
 extern "C" WP_GENERICDECODER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder_001 {
+class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder_004 {
         Q_OBJECT
 
     public:
@@ -86,6 +86,10 @@ class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder_001 {
         bool          networkDeviceSet;
         unsigned long memoryUsage;
         qint64        decodedMicroSeconds;
+        bool          sendDiagnostics;
+
+        void    sendDiagnosticsData();
+        QString formatBytes(double bytes);
 
 
     private slots:
@@ -103,10 +107,14 @@ class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder_001 {
         void run()                 override;
         void start(QUuid uniqueId) override;
 
-        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)       override;
+        void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void startDiagnostics(QUuid uniqueId) override;
+        void stopDiagnostics(QUuid uniqueId)  override;
 
         void bufferDone(QUuid uniqueId, QAudioBuffer *buffer) override;
 

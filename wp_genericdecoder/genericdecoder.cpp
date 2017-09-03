@@ -52,14 +52,14 @@ QString GenericDecoder::pluginName()
 // global method
 int GenericDecoder::pluginVersion()
 {
-    return 1;
+    return 2;
 }
 
 
 // global function
 QString GenericDecoder::waverVersionAPICompatibility()
 {
-    return "0.0.1";
+    return "0.0.4";
 }
 
 
@@ -202,6 +202,14 @@ void GenericDecoder::loadedConfiguration(QUuid uniqueId, QJsonDocument configura
 
 
 // this plugin has no configuration
+void GenericDecoder::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(configuration);
+}
+
+
+// this plugin has no configuration
 void GenericDecoder::getUiQml(QUuid uniqueId)
 {
     Q_UNUSED(uniqueId);
@@ -213,6 +221,29 @@ void GenericDecoder::uiResults(QUuid uniqueId, QJsonDocument results)
 {
     Q_UNUSED(uniqueId);
     Q_UNUSED(results);
+}
+
+
+// client wants to receive updates of this plugin's diagnostic information
+void GenericDecoder::startDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = true;
+    sendDiagnosticsData();
+}
+
+
+// client doesnt want to receive updates of this plugin's diagnostic information anymore
+void GenericDecoder::stopDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = false;
 }
 
 
@@ -253,8 +284,7 @@ void GenericDecoder::decoderBufferReady()
     QAudioBuffer bufferReady = audioDecoder->read();
 
     // make a copy
-    QAudioBuffer *audioBuffer = new QAudioBuffer(QByteArray((char *)bufferReady.constData(), bufferReady.byteCount()),
-        bufferReady.format(), decodedMicroSeconds);
+    QAudioBuffer *audioBuffer = new QAudioBuffer(QByteArray((char *)bufferReady.constData(), bufferReady.byteCount()), bufferReady.format(), decodedMicroSeconds);
 
     // update counters
     memoryUsage         += bufferReady.byteCount();
@@ -265,6 +295,11 @@ void GenericDecoder::decoderBufferReady()
 
     // emit signal
     emit bufferAvailable(id, audioBuffer);
+
+    // diagnostics
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
 
     // delay to limit memory usage and also to relieve the CPU (the exponential curve allows fast decoding in the beginning, then slows it down sharply as memory gets closer to limit)
     double        factor = qPow(memoryUsage, 12) / qPow(MAX_MEMORY, 12);
@@ -280,6 +315,12 @@ void GenericDecoder::decoderBufferReady()
             waitCondition.wait(&waitMutex, 1000);
         }
         waitMutex.unlock();
+
+        if (sendDiagnostics) {
+            DiagnosticData diagnosticData;
+            diagnosticData.append({ "Download buffer size", formatBytes((double) networkDownloader->realBytesAvailable()) });
+            emit diagnostics(id, diagnosticData);
+        }
     }
 }
 
@@ -339,4 +380,49 @@ void GenericDecoder::bufferDone(QUuid uniqueId, QAudioBuffer *buffer)
         memoryUsage -= buffer->byteCount();
         delete buffer;
     }
+
+    // diagnostics
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
+}
+
+
+// private method
+void GenericDecoder::sendDiagnosticsData()
+{
+    DiagnosticData diagnosticData;
+    diagnosticData.append({ "PCM buffer size", formatBytes((double) memoryUsage) });
+    if (audioBuffers.count() > 0) {
+        QString type;
+        switch (audioBuffers.last()->format().sampleType()) {
+            case QAudioFormat::SignedInt:
+                type = "signed";
+                break;
+            case QAudioFormat::UnSignedInt:
+                type = "unsigned";
+                break;
+            case QAudioFormat::Float:
+                type = "floating point";
+                break;
+            default:
+                type = "unknown";
+        }
+        diagnosticData.append({ "PCM format", QString("%1 Hz, %2 bit, %3").arg(audioBuffers.last()->format().sampleRate()).arg(audioBuffers.last()->format().sampleSize()).arg(type) });
+    }
+    emit diagnostics(id, diagnosticData);
+}
+
+
+// helper
+QString GenericDecoder::formatBytes(double bytes)
+{
+    if (bytes > (1024 * 1024)) {
+        return QString("%1 MB").arg(bytes / (1024 * 1024), 0, 'f', 2);
+    }
+    else if (bytes > 1024) {
+        return QString("%1 KB").arg(bytes / 1024, 0, 'f', 2);
+    }
+
+    return QString("%1 B").arg(bytes, 0, 'f', 0);
 }

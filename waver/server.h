@@ -96,6 +96,13 @@ class WaverServer : public QObject {
         };
         typedef QHash<QUuid, SourcePlugin> SourcePlugins;
 
+        struct ErrorLogItem {
+            QDateTime timestamp;
+            QString   title;
+            bool      fatal;
+            QString   message;
+        };
+
         QStringList arguments;
         QString     currentCollection;
 
@@ -110,9 +117,12 @@ class WaverServer : public QObject {
 
         Track           *previousTrack;
         Track           *currentTrack;
-        QVector<Track *>  playlistTracks;
+        QVector<Track *> playlistTracks;
 
-        Track::PluginsWithUI pluginsWithUI;
+        Track::PluginList plugins;
+        Track::PluginList pluginsWithUI;
+
+        QVector<ErrorLogItem> errorLog;
 
         int  unableToStartCount;
         bool waitingForLocalSource;
@@ -121,6 +131,12 @@ class WaverServer : public QObject {
         bool showPreviousTime;
         long previousPositionSeconds;
 
+        bool                        sendErrorLogDiagnostics;
+        bool                        diagnosticsChanged;
+        QUuid                       lastDiagnosticsPluginId;
+        QHash<QUrl, DiagnosticData> diagnosticsAggregator;
+        QTimer                      diagnosticsTimer;
+
         void finish();
         void finish(QString errorMessage);
 
@@ -128,6 +144,8 @@ class WaverServer : public QObject {
         void         startNextTrack();
         void         reassignFadeIns();
         QVariantHash positionToElapsedRemaining(bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
+        QString      findTitleFromUrl(QUrl url);
+        void         stopAllDiagnostics();
 
         void handleCollectionsDialogResults(QJsonDocument jsonDocument);
         void handlePluginUIRequest(QJsonDocument jsonDocument);
@@ -137,10 +155,13 @@ class WaverServer : public QObject {
         void handleSearchRequest(QJsonDocument jsonDocument);
         void handleSearchSelection(QJsonDocument jsonDocument);
         void handleTrackActionsRequest(QJsonDocument jsonDocument);
+        void handleDiagnostics(QJsonDocument jsonDocument);
         void sendPlaylistToClients(int contextShowTrackIndex);
         void sendPlaylistToClients();
+        void sendPluginsToClients();
         void sendPluginsWithUiToClients();
         void sendOpenTracksToClients(IpcMessageUtils::IpcMessages message, QUuid uniqueId, OpenTracks openTracks);
+        void sendErrorLogDiagnosticsToClients();
 
 
     signals:
@@ -154,6 +175,8 @@ class WaverServer : public QObject {
         void getCollectionList();
         void savePluginSettings(QUuid uniqueId, QString collectionName, QJsonDocument settings);
         void loadPluginSettings(QUuid uniqueId, QString collectionName);
+        void startDiagnostics(QUuid uniqueId);
+        void stopDiagnostics(QUuid uniqueId);
 
         void unableToStart(QUuid uniqueId, QUrl url);
         void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration);
@@ -182,6 +205,8 @@ class WaverServer : public QObject {
 
         void ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJsonDocument jsonDocument);
         void ipcReceivedUrl(QUrl url);
+        void ipcReceivedError(bool fatal, QString error);
+        void ipcNoClient();
 
         void collectionList(QStringList collections, QString currentCollection);
         void loadedPluginSettings(QUuid uniqueId, QJsonDocument settings);
@@ -193,6 +218,8 @@ class WaverServer : public QObject {
         void pluginReady(QUuid uniqueId);
         void pluginUnready(QUuid uniqueId);
         void pluginInfoMessage(QUuid uniqueId, QString message);
+        void pluginDiagnostics(QUuid uniqueId, DiagnosticData data);
+        void pluginDiagnostics(QUuid uniqueId, QUrl url, DiagnosticData data);
         void loadConfiguration(QUuid uniqueId);
         void loadGlobalConfiguration(QUuid uniqueId);
         void saveConfiguration(QUuid uniqueId, QJsonDocument configuration);
@@ -204,7 +231,8 @@ class WaverServer : public QObject {
         void requestedRemoveTrack(QUuid uniqueId, QUrl url);
 
         void trackError(QUrl url, bool fatal, QString errorString);
-        void trackLoadedPluginsWithUI(Track::PluginsWithUI pluginsWithUI);
+        void trackLoadedPlugins(Track::PluginList pluginsWithUI);
+        void trackLoadedPluginsWithUI(Track::PluginList pluginsWithUI);
         void trackRequestFadeInForNextTrack(QUrl url, qint64 lengthMilliseconds);
         void trackPosition(QUrl url, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
         void trackAboutToFinish(QUrl url);
@@ -212,6 +240,7 @@ class WaverServer : public QObject {
         void trackInfoUpdated(QUrl url);
 
         void startNextTrackUISignal();
+        void diagnosticsRefreshUI();
 };
 
 

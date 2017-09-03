@@ -53,7 +53,7 @@ class Track : public QObject {
         static const long CAST_PLAYTIME_MILLISECONDS = 450 * 1000;
         static const int INTERRUPT_FADE_SECONDS      = 4;
 
-        typedef QHash<QUuid, QString> PluginsWithUI;
+        typedef QHash<QUuid, QString> PluginList;
 
         enum Status {
             Idle,
@@ -159,6 +159,7 @@ class Track : public QObject {
         void setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);
         void setupOutputPlugin(QObject *plugin);
         void setupInfoPlugin(QObject *plugin);
+        void sendLoadedPlugins();
         void sendLoadedPluginsWithUI();
         void sendFinished();
 
@@ -173,8 +174,10 @@ class Track : public QObject {
         void savePluginGlobalSettings(QUuid uniqueId, QJsonDocument settings);
         void loadPluginSettings(QUuid uniqueId);
         void loadPluginGlobalSettings(QUuid uniqueId);
-        void loadedPluginsWithUI(Track::PluginsWithUI pluginsWithUI);
+        void loadedPlugins(Track::PluginList pluginsWithUI);
+        void loadedPluginsWithUI(Track::PluginList pluginsWithUI);
         void pluginUi(QUuid id, QString qml, QString header);
+        void pluginDiagnostics(QUuid id, QUrl url, DiagnosticData diagnosticData);
 
         void playPosition(QUrl url, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
         void aboutToFinish(QUrl url);
@@ -188,6 +191,8 @@ class Track : public QObject {
         void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void requestPluginUi(QUuid id);
         void pluginUiResults(QUuid uniqueId, QJsonDocument results);
+        void startDiagnostics(QUuid uniqueId);
+        void stopDiagnostics(QUuid uniqueId);
 
         void startDecode(QUuid uniqueId);
         void bufferDone(QUuid uniqueId, QAudioBuffer *buffer);
@@ -211,14 +216,19 @@ class Track : public QObject {
         void loadedPluginGlobalSettings(QUuid id, QJsonDocument settings);
         void requestedPluginUi(QUuid id);
         void receivedPluginUiResults(QUuid uniqueId, QJsonDocument results);
+        void startPluginDiagnostics(QUuid uniquedId);
+        void stopPluginDiagnostics(QUuid uniquedId);
 
 
     private slots:
 
         void loadConfiguration(QUuid uniqueId);
+        void loadGlobalConfiguration(QUuid uniqueId);
         void saveConfiguration(QUuid uniqueId, QJsonDocument configuration);
+        void saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void ui(QUuid uniqueId, QString qml);
         void infoMessage(QUuid uniqueId, QString message);
+        void diagnostics(QUuid id, DiagnosticData diagnosticData);
 
         void moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer);
 

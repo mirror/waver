@@ -33,10 +33,10 @@
 #include "iirfilter.h"
 #include "iirfilterchain.h"
 #include "iirfiltercallback.h"
-#include "../waver/API/plugindsp_001.h"
+#include "../waver/API/plugindsp_004.h"
 
 
-class WP_EQUALIZER_EXPORT Equalizer : public PluginDsp_001, IIRFilterCallback {
+class WP_EQUALIZER_EXPORT Equalizer : public PluginDsp_004, IIRFilterCallback {
         Q_OBJECT
 
     public:
@@ -76,20 +76,27 @@ class WP_EQUALIZER_EXPORT Equalizer : public PluginDsp_001, IIRFilterCallback {
         int                    sampleRate;
         double                 replayGain;
         double                 currentReplayGain;
+        bool                   playBegan;
+        bool                   sendDiagnostics;
 
         IIRFilterChain *equalizerFilters;
 
         void createFilters();
+        void sendDiagnosticsData();
 
 
     public slots:
 
         void run() override;
 
-        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)       override;
+        void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void startDiagnostics(QUuid uniqueId) override;
+        void stopDiagnostics(QUuid uniqueId)  override;
 
         void bufferAvailable(QUuid uniqueId)                                                              override;
         void playBegin(QUuid uniqueId)                                                                    override;

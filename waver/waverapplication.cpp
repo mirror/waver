@@ -47,18 +47,14 @@ WaverApplication::WaverApplication(int &argc, char **argv) : QGuiApplication(arg
     connect(&tcpThread, SIGNAL(started()),  tcpHandler, SLOT(run()));
     connect(&tcpThread, SIGNAL(finished()), tcpHandler, SLOT(deleteLater()));
 
-    connect(this, SIGNAL(ipcConnect()),                                        tcpHandler, SLOT(open()));
-    connect(this, SIGNAL(ipcDisconnect()),                                     tcpHandler, SLOT(close()));
-    connect(this, SIGNAL(ipcSend(IpcMessageUtils::IpcMessages)),               tcpHandler,
-        SLOT(send(IpcMessageUtils::IpcMessages)));
-    connect(this, SIGNAL(ipcSend(IpcMessageUtils::IpcMessages, QJsonDocument)), tcpHandler, SLOT(send(IpcMessageUtils::IpcMessages,
-                QJsonDocument)));
-
-    connect(tcpHandler, SIGNAL(opened()),                                             this, SLOT(ipcOpened()));
-    connect(tcpHandler, SIGNAL(closed()),                                             this, SLOT(ipcClosed()));
-    connect(tcpHandler, SIGNAL(message(IpcMessageUtils::IpcMessages, QJsonDocument)), this,
-        SLOT(ipcMessage(IpcMessageUtils::IpcMessages, QJsonDocument)));
-    connect(tcpHandler, SIGNAL(error(bool, QString)),                                  this, SLOT(ipcError(bool, QString)));
+    connect(this,       SIGNAL(ipcConnect()),                                         tcpHandler, SLOT(open()));
+    connect(this,       SIGNAL(ipcDisconnect()),                                      tcpHandler, SLOT(close()));
+    connect(this,       SIGNAL(ipcSend(IpcMessageUtils::IpcMessages)),                tcpHandler, SLOT(send(IpcMessageUtils::IpcMessages)));
+    connect(this,       SIGNAL(ipcSend(IpcMessageUtils::IpcMessages, QJsonDocument)), tcpHandler, SLOT(send(IpcMessageUtils::IpcMessages,  QJsonDocument)));
+    connect(tcpHandler, SIGNAL(opened()),                                             this,       SLOT(ipcOpened()));
+    connect(tcpHandler, SIGNAL(closed()),                                             this,       SLOT(ipcClosed()));
+    connect(tcpHandler, SIGNAL(message(IpcMessageUtils::IpcMessages, QJsonDocument)), this,       SLOT(ipcMessage(IpcMessageUtils::IpcMessages, QJsonDocument)));
+    connect(tcpHandler, SIGNAL(error(bool, QString)),                                 this,       SLOT(ipcError(bool, QString)));
 
     // application signal connections
     connect(this, SIGNAL(applicationStateChanged(Qt::ApplicationState)), this, SLOT(stateChanged(Qt::ApplicationState)));
@@ -94,10 +90,13 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(this,         SIGNAL(uiSetPlaylistIndex(QVariant)),                                            uiMainWindow, SLOT(setPlaylistIndex(QVariant)));
         disconnect(this,         SIGNAL(uiPaused()),                                                              uiMainWindow, SLOT(paused()));
         disconnect(this,         SIGNAL(uiResumed()),                                                             uiMainWindow, SLOT(resumed()));
+        disconnect(this,         SIGNAL(uiClearDiagnosticsSelectorListList()),                                    uiMainWindow, SLOT(clearDiagnosticsSelectorListList()));
+        disconnect(this,         SIGNAL(uiAddToDiagnosticsSelectorList(QVariant, QVariant)),                      uiMainWindow, SLOT(addToDiagnosticsSelectorList(QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiClearPluginsList()),                                                    uiMainWindow, SLOT(clearPluginsList()));
-        disconnect(this,         SIGNAL(uiAddToPluginsList(QVariant, QVariant)),                                  uiMainWindow, SLOT(addToPluginsList(QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiAddToPluginsWithUIList(QVariant, QVariant)),                            uiMainWindow, SLOT(addToPluginsWithUIList(QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiDisplayPluginUI(QVariant, QVariant, QVariant)),                         uiMainWindow, SLOT(displayPluginUI(QVariant, QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiAddToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)), uiMainWindow, SLOT(addToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiDisplayDiagnosticsMessage(QVariant, QVariant)),                         uiMainWindow, SLOT(displayDiagnosticsMessage(QVariant, QVariant)));
         disconnect(uiMainWindow, SIGNAL(menuPause()),                                                             this,         SLOT(menuPause()));
         disconnect(uiMainWindow, SIGNAL(menuResume()),                                                            this,         SLOT(menuResume()));
         disconnect(uiMainWindow, SIGNAL(menuNext()),                                                              this,         SLOT(menuNext()));
@@ -109,6 +108,8 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(uiMainWindow, SIGNAL(getOpenTracks(QVariant, QVariant)),                                       this,         SLOT(getOpenTracks(QVariant, QVariant)));
         disconnect(uiMainWindow, SIGNAL(resolveOpenTracks(QVariant)),                                             this,         SLOT(resolveOpenTracks(QVariant)));
         disconnect(uiMainWindow, SIGNAL(trackAction(QVariant, QVariant)),                                         this,         SLOT(trackAction(QVariant, QVariant)));
+        disconnect(uiMainWindow, SIGNAL(getDiagnostics(QVariant)),                                                this,         SLOT(getDiagnostics(QVariant)));
+        disconnect(uiMainWindow, SIGNAL(doneDiagnostics()),                                                       this,         SLOT(doneDiagnostics()));
     }
 
     // what we're really interested in is the main application window
@@ -128,12 +129,15 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(this,         SIGNAL(uiSetPlaylistIndex(QVariant)),                                            uiMainWindow, SLOT(setPlaylistIndex(QVariant)));
     connect(this,         SIGNAL(uiPaused()),                                                              uiMainWindow, SLOT(paused()));
     connect(this,         SIGNAL(uiResumed()),                                                             uiMainWindow, SLOT(resumed()));
+    connect(this,         SIGNAL(uiClearDiagnosticsSelectorList()),                                        uiMainWindow, SLOT(clearDiagnosticsSelectorList()));
+    connect(this,         SIGNAL(uiAddToDiagnosticsSelectorList(QVariant, QVariant)),                      uiMainWindow, SLOT(addToDiagnosticsSelectorList(QVariant, QVariant)));
     connect(this,         SIGNAL(uiClearPluginsList()),                                                    uiMainWindow, SLOT(clearPluginsList()));
-    connect(this,         SIGNAL(uiAddToPluginsList(QVariant, QVariant)),                                  uiMainWindow, SLOT(addToPluginsList(QVariant, QVariant)));
+    connect(this,         SIGNAL(uiAddToPluginsWithUIList(QVariant, QVariant)),                            uiMainWindow, SLOT(addToPluginsWithUIList(QVariant, QVariant)));
     connect(this,         SIGNAL(uiDisplayPluginUI(QVariant, QVariant, QVariant)),                         uiMainWindow, SLOT(displayPluginUI(QVariant, QVariant, QVariant)));
     connect(this,         SIGNAL(uiAddToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)), uiMainWindow, SLOT(addToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)));
     connect(this,         SIGNAL(uiAddToSearchList(QVariant, QVariant, QVariant)),                         uiMainWindow, SLOT(addToSearchList(QVariant, QVariant, QVariant)));
     connect(this,         SIGNAL(uiAbout(QVariant, QVariant, QVariant)),                                   uiMainWindow, SLOT(aboutDialog(QVariant, QVariant, QVariant)));
+    connect(this,         SIGNAL(uiDisplayDiagnosticsMessage(QVariant, QVariant)),                         uiMainWindow, SLOT(displayDiagnosticsMessage(QVariant, QVariant)));
     connect(uiMainWindow, SIGNAL(menuPause()),                                                             this,         SLOT(menuPause()));
     connect(uiMainWindow, SIGNAL(menuResume()),                                                            this,         SLOT(menuResume()));
     connect(uiMainWindow, SIGNAL(menuNext()),                                                              this,         SLOT(menuNext()));
@@ -147,6 +151,8 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(uiMainWindow, SIGNAL(startSearch(QVariant)),                                                   this,         SLOT(startSearch(QVariant)));
     connect(uiMainWindow, SIGNAL(resolveOpenTracks(QVariant)),                                             this,         SLOT(resolveOpenTracks(QVariant)));
     connect(uiMainWindow, SIGNAL(trackAction(QVariant, QVariant)),                                         this,         SLOT(trackAction(QVariant, QVariant)));
+    connect(uiMainWindow, SIGNAL(getDiagnostics(QVariant)),                                                this,         SLOT(getDiagnostics(QVariant)));
+    connect(uiMainWindow, SIGNAL(doneDiagnostics()),                                                       this,         SLOT(doneDiagnostics()));
 }
 
 
@@ -307,6 +313,31 @@ void WaverApplication::trackAction(QVariant index, QVariant action)
 }
 
 
+// UI signal handler
+void WaverApplication::getDiagnostics(QVariant id)
+{
+    emit ipcSend(IpcMessageUtils::Diagnostics, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
+        {
+            "mode", "get"
+        },
+        {
+            "id", id
+        }
+    }))));
+}
+
+
+// UI signal handler
+void WaverApplication::doneDiagnostics()
+{
+    emit ipcSend(IpcMessageUtils::Diagnostics, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
+        {
+            "mode", "done"
+        }
+    }))));
+}
+
+
 // application activated
 void WaverApplication::active()
 {
@@ -352,8 +383,7 @@ void WaverApplication::quitWithMessage(QString messageText)
     emit uiUserMessage(messageText);
 
     // wait a wile for user to have a chance to read the message, then quit
-    QTimer::singleShot(uiMainWindow->property("duration_visible_before_fadeout").toInt() +
-        uiMainWindow->property("duration_fadeout").toInt(), this, SLOT(quit()));
+    QTimer::singleShot(uiMainWindow->property("duration_visible_before_fadeout").toInt() + uiMainWindow->property("duration_fadeout").toInt(), this, SLOT(quit()));
 }
 
 
@@ -471,8 +501,27 @@ void WaverApplication::updateUIPlaylist(QJsonDocument jsonDocument)
 }
 
 
+// diagnostics selector list
+void WaverApplication::updateUIDiagnosticsSelector(QJsonDocument jsonDocument)
+{
+    emit uiClearDiagnosticsSelectorList();
+
+    // sort them by plugin name
+    QVariantHash plugins = jsonDocument.object().toVariantHash();
+    QVariantList values  = plugins.values();
+    qSort(values);
+
+    // send to UI
+    foreach (QVariant value, values) {
+        foreach (QString id, plugins.keys(value)) {
+            emit uiAddToDiagnosticsSelectorList(id, plugins.value(id));
+        }
+    }
+}
+
+
 // plugins list
-void WaverApplication::updateUIPluginsList(QJsonDocument jsonDocument)
+void WaverApplication::updateUIPluginsWithUIList(QJsonDocument jsonDocument)
 {
     emit uiClearPluginsList();
 
@@ -480,9 +529,11 @@ void WaverApplication::updateUIPluginsList(QJsonDocument jsonDocument)
     QVariantHash plugins = jsonDocument.object().toVariantHash();
     QVariantList values  = plugins.values();
     qSort(values);
+
+    // send to UI
     foreach (QVariant value, values) {
         foreach (QString id, plugins.keys(value)) {
-            emit uiAddToPluginsList(id, plugins.value(id));
+            emit uiAddToPluginsWithUIList(id, plugins.value(id));
         }
     }
 }
@@ -501,7 +552,7 @@ void WaverApplication::showPluginUI(QJsonDocument jsonDocument)
 
 
 // playlist add
-void WaverApplication::updateOpenTracksList(QJsonDocument jsonDocument)
+void WaverApplication::updateUIOpenTracksList(QJsonDocument jsonDocument)
 {
     QVariantHash data       = jsonDocument.object().toVariantHash();
     QString      pluginId   = data.value("plugin_id").toString();
@@ -516,7 +567,7 @@ void WaverApplication::updateOpenTracksList(QJsonDocument jsonDocument)
 
 
 // playlist add
-void WaverApplication::updateSearchList(QJsonDocument jsonDocument)
+void WaverApplication::updateUISearchList(QJsonDocument jsonDocument)
 {
     QVariantHash data       = jsonDocument.object().toVariantHash();
     QString      pluginId   = data.value("plugin_id").toString();
@@ -529,6 +580,86 @@ void WaverApplication::updateSearchList(QJsonDocument jsonDocument)
 }
 
 
+// diagnostic message
+void WaverApplication::updateUIDiagnosticsMessage(QJsonDocument jsonDocument)
+{
+    QVariantHash data      = jsonDocument.object().toVariantHash();
+    QString      id        = data.value("id").toString();
+
+    QStringList messages;
+
+    // error log is special case
+    if (id.compare("error_log") == 0) {
+        // get the error log items
+        QJsonArray dataItems = QJsonArray::fromVariantList(data.value("data").toList());
+
+        foreach (QVariant dataItem, dataItems) {
+            // get the error log item
+            QVariantHash dataItemHash = dataItem.toHash();
+            bool         fatal        = dataItemHash.value("fatal").toBool();
+
+            // format it
+            QString message = QString("<pre>%1 <b>%2</b><br>  %3%4%5</pre>")
+                .arg(dataItemHash.value("timestamp").toString())
+                .arg(dataItemHash.value("title").toString())
+                .arg(fatal ? "<font color=\"#880000\">" : "")
+                .arg(dataItemHash.value("message").toString())
+                .arg(fatal ? "</font>" : "");
+
+            // descending order
+            messages.prepend(message);
+        }
+
+        // send to UI
+        emit uiDisplayDiagnosticsMessage(id, QString(messages.join("<br>")));
+
+        return;
+    }
+
+    // diagnostics are groupped by track title (for some reason Qt turns QVariantHash to QVariantMap but not on the top level which is crazy)
+    QVariantMap dataTitles = data.value("data").toMap();
+    foreach (QString title, dataTitles.keys()) {
+        // some doesn't have a title (source plugins) indicated by tidle
+        bool hasTitle = !(title.compare("~") == 0);
+
+        if (hasTitle) {
+            messages.append(QString("<pre><b>%1</b></pre>").arg(title));
+        }
+
+        // get items for this title
+        QVariantList dataItems = dataTitles.value(title).toList();
+
+        // find longest label
+        int labelLength = 0;
+        foreach (QVariant dataItem, dataItems) {
+            int length = dataItem.toMap().value("label").toString().length();
+            if (length > labelLength) {
+                labelLength = length;
+            }
+        }
+
+        // format data
+        foreach (QVariant dataItem, dataItems) {
+            QVariantMap dataItemHash = dataItem.toMap();
+
+            QString message = QString("<pre>%1%2: %3</pre>")
+                .arg(hasTitle ? "  " : "")
+                .arg(dataItemHash.value("label").toString(), labelLength * -1)
+                .arg(dataItemHash.value("message").toString());
+
+            messages.append(message);
+        }
+
+        if (hasTitle) {
+            messages.append("<br>");
+        }
+    }
+
+    // send to UI
+    emit uiDisplayDiagnosticsMessage(id, QString(messages.join("")));
+}
+
+
 // interprocess communication signal handler
 void WaverApplication::ipcOpened()
 {
@@ -536,6 +667,7 @@ void WaverApplication::ipcOpened()
     emit ipcSend(IpcMessageUtils::TrackInfos);
     emit ipcSend(IpcMessageUtils::PlayPauseState);
     emit ipcSend(IpcMessageUtils::Playlist);
+    emit ipcSend(IpcMessageUtils::Plugins);
     emit ipcSend(IpcMessageUtils::PluginsWithUI);
 }
 
@@ -553,7 +685,11 @@ void WaverApplication::ipcMessage(IpcMessageUtils::IpcMessages message, QJsonDoc
     switch (message) {
 
         case IpcMessageUtils::CollectionList:
-            emit updateUICollections(jsonDocument);
+            updateUICollections(jsonDocument);
+            break;
+
+        case IpcMessageUtils::Diagnostics:
+            updateUIDiagnosticsMessage(jsonDocument);
             break;
 
         case IpcMessageUtils::InfoMessage:
@@ -561,7 +697,7 @@ void WaverApplication::ipcMessage(IpcMessageUtils::IpcMessages message, QJsonDoc
             break;
 
         case IpcMessageUtils::OpenTracks:
-            updateOpenTracksList(jsonDocument);
+            updateUIOpenTracksList(jsonDocument);
             break;
 
         case IpcMessageUtils::Pause:
@@ -572,8 +708,12 @@ void WaverApplication::ipcMessage(IpcMessageUtils::IpcMessages message, QJsonDoc
             updateUIPlaylist(jsonDocument);
             break;
 
+        case IpcMessageUtils::Plugins:
+            updateUIDiagnosticsSelector(jsonDocument);
+            break;
+
         case IpcMessageUtils::PluginsWithUI:
-            updateUIPluginsList(jsonDocument);
+            updateUIPluginsWithUIList(jsonDocument);
             break;
 
         case IpcMessageUtils::PluginUI:
@@ -593,7 +733,7 @@ void WaverApplication::ipcMessage(IpcMessageUtils::IpcMessages message, QJsonDoc
             break;
 
         case IpcMessageUtils::Search:
-            updateSearchList(jsonDocument);
+            updateUISearchList(jsonDocument);
             break;
 
         case IpcMessageUtils::TrackInfos:

@@ -51,14 +51,14 @@ QString TagLibInfo::pluginName()
 // global method
 int TagLibInfo::pluginVersion()
 {
-    return 1;
+    return 2;
 }
 
 
 // overrided virtual function
 QString TagLibInfo::waverVersionAPICompatibility()
 {
-    return "0.0.1";
+    return "0.0.4";
 }
 
 
@@ -96,6 +96,11 @@ TagLibInfo::TagLibInfo()
 // thread entry point
 void TagLibInfo::run()
 {
+    state = NotChecked;
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
+
     // checky-checky
     if (url.isEmpty()) {
         return;
@@ -111,18 +116,49 @@ void TagLibInfo::run()
 
     TagLib::FileRef fileRef(QFile::encodeName(url.toLocalFile()).constData());
 
-    trackInfo.title     = TStringToQString(fileRef.tag()->title());
-    trackInfo.performer = TStringToQString(fileRef.tag()->artist());
-    trackInfo.album     = TStringToQString(fileRef.tag()->album());
-    trackInfo.year      = fileRef.tag()->year();
-    trackInfo.track     = fileRef.tag()->track();
+    if (!fileRef.tag()->isEmpty()) {
+        trackInfo.title     = TStringToQString(fileRef.tag()->title());
+        trackInfo.performer = TStringToQString(fileRef.tag()->artist());
+        trackInfo.album     = TStringToQString(fileRef.tag()->album());
+        trackInfo.year      = fileRef.tag()->year();
+        trackInfo.track     = fileRef.tag()->track();
 
-    emit updateTrackInfo(id, trackInfo);
+        emit updateTrackInfo(id, trackInfo);
+
+        if (!trackInfo.title.isEmpty() && !trackInfo.performer.isEmpty() && !trackInfo.album.isEmpty() && (trackInfo.year > 0) && (trackInfo.track > 0)) {
+            state = Success;
+        }
+        else if (!trackInfo.title.isEmpty() || !trackInfo.performer.isEmpty() || !trackInfo.album.isEmpty() || (trackInfo.year > 0) || (trackInfo.track > 0)) {
+            state = SomeFound;
+        }
+        else {
+            state = NotFound;
+        }
+
+        if (sendDiagnostics) {
+            sendDiagnosticsData();
+        }
+
+        return;
+    }
+
+    state = NotFound;
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
 }
 
 
 // this plugin has no configuration
 void TagLibInfo::loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(configuration);
+}
+
+
+// this plugin has no configuration
+void TagLibInfo::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
 {
     Q_UNUSED(uniqueId);
     Q_UNUSED(configuration);
@@ -143,3 +179,49 @@ void TagLibInfo::uiResults(QUuid uniqueId, QJsonDocument results)
     Q_UNUSED(results);
 }
 
+
+// client wants to receive updates of this plugin's diagnostic information
+void TagLibInfo::startDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = true;
+    sendDiagnosticsData();
+}
+
+
+// client doesnt want to receive updates of this plugin's diagnostic information anymore
+void TagLibInfo::stopDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = false;
+}
+
+
+// helper
+void TagLibInfo::sendDiagnosticsData()
+{
+    DiagnosticData diagnosticData;
+
+    switch (state) {
+        case NotChecked:
+            diagnosticData.append({ "Status", "Not checked" });
+            break;
+        case Success:
+            diagnosticData.append({ "Status", "Success" });
+            break;
+        case SomeFound:
+            diagnosticData.append({ "Status", "Some but not all tags found" });
+            break;
+        case NotFound:
+            diagnosticData.append({ "Status", "Tags not found" });
+            break;
+    }
+
+    emit diagnostics(id, diagnosticData);
+}

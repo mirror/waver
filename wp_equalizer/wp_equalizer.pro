@@ -41,9 +41,9 @@ SOURCES += equalizer.cpp \
 HEADERS += equalizer.h\
     wp_equalizer_global.h \
     analyzer.h \
-    ../waver/API/pluginbase_001.h \
-    ../waver/API/plugindsppre_001.h \
-    ../waver/API/plugindsp_001.h \
+    ../waver/API/pluginbase_004.h \
+    ../waver/API/plugindsppre_004.h \
+    ../waver/API/plugindsp_004.h \
     ../waver/pluginfactory.h \
     main.h \
     iirfilter.h \

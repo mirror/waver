@@ -40,14 +40,14 @@ QString Equalizer::pluginName()
 // overrided virtual function
 int Equalizer::pluginVersion()
 {
-    return 1;
+    return 2;
 }
 
 
 // overrided virtual function
 QString Equalizer::waverVersionAPICompatibility()
 {
-    return "0.0.1";
+    return "0.0.4";
 }
 
 
@@ -101,6 +101,8 @@ Equalizer::Equalizer()
     currentReplayGain = replayGain;
     sampleRate        = 0;
     sampleType        = IIRFilter::Unknown;
+    playBegan         = false;
+    sendDiagnostics   = false;
 }
 
 
@@ -125,6 +127,10 @@ void Equalizer::filterCallback(double *sample, int channelIndex)
         else {
             double changePerSec = qMin(3.0, qAbs(difference));
             currentReplayGain = currentReplayGain + ((changePerSec / sampleRate) * (difference < 0 ? -1.0 : 1.0));
+        }
+
+        if (sendDiagnostics) {
+            sendDiagnosticsData();
         }
     }
 
@@ -185,6 +191,14 @@ void Equalizer::loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)
 
 
 // server event handler
+void Equalizer::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(configuration);
+}
+
+
+// server event handler
 void Equalizer::getUiQml(QUuid uniqueId)
 {
     if (uniqueId != id) {
@@ -221,6 +235,29 @@ void Equalizer::uiResults(QUuid uniqueId, QJsonDocument results)
 
     saveConfiguration(id, results);
     loadedConfiguration(id, results);
+}
+
+
+// server event handler
+void Equalizer::startDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = true;
+    sendDiagnosticsData();
+}
+
+
+// server event handler
+void Equalizer::stopDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = false;
 }
 
 
@@ -266,7 +303,12 @@ void Equalizer::playBegin(QUuid uniqueId)
         return;
     }
 
+    playBegan         = true;
     currentReplayGain = replayGain;
+
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
 }
 
 
@@ -282,6 +324,11 @@ void Equalizer::messageFromDspPrePlugin(QUuid uniqueId, QUuid sourceUniqueId, in
 
     if (messageId == Analyzer::DSP_MESSAGE_REPLAYGAIN) {
         replayGain = value.toDouble();
+
+        if (sendDiagnostics) {
+            sendDiagnosticsData();
+        }
+
         return;
     }
 }
@@ -305,7 +352,8 @@ void Equalizer::createFilters()
                 bands.at(i).centerFrequency,
                 bands.at(i).bandwidth,
                 sampleRate,
-                gains.at(i)));
+                gains.at(i)
+            ));
     }
 
     // housekeeping
@@ -317,6 +365,17 @@ void Equalizer::createFilters()
     equalizerFilters = new IIRFilterChain(coefficientLists);
 
     // install Replay Gain applier callback
-    equalizerFilters->getFilter(0)->setCallbackRaw((IIRFilterCallback *)this,
-        (IIRFilterCallback::FilterCallbackPointer)&Equalizer::filterCallback);
+    equalizerFilters->getFilter(0)->setCallbackRaw((IIRFilterCallback *)this, (IIRFilterCallback::FilterCallbackPointer)&Equalizer::filterCallback);
+}
+
+
+// private method
+void Equalizer::sendDiagnosticsData()
+{
+    DiagnosticData diagnosticData;
+    diagnosticData.append({"ReplayGain target", QString("%1 dB").arg(replayGain, 0, 'f', 2)});
+    if (playBegan) {
+        diagnosticData.append({"ReplayGain applying", QString("%1 dB").arg(currentReplayGain, 0, 'f', 2) });
+    }
+    emit diagnostics(id, diagnosticData);
 }

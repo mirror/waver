@@ -39,7 +39,7 @@ Feeder::Feeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, QAudioFormat
 void Feeder::setOutputDevice(QIODevice *outputDevice)
 {
     outputDeviceMutex.lock();
-    this->outputDevice  = outputDevice;
+    this->outputDevice = outputDevice;
     outputDeviceMutex.unlock();
 }
 

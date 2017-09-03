@@ -219,6 +219,11 @@ void Track::setupDecoderPlugin(QObject *plugin)
         connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
         connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
     }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
+        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(diagnostics(QUuid, DiagnosticData)));
+        connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
+        connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
+    }
 }
 
 
@@ -298,6 +303,11 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
         connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
         connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
     }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
+        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(diagnostics(QUuid, DiagnosticData)));
+        connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
+        connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
+    }
 }
 
 
@@ -375,6 +385,11 @@ void Track::setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<
         connect(plugin, SIGNAL(saveGlobalConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
         connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
         connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
+    }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
+        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(diagnostics(QUuid, DiagnosticData)));
+        connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
+        connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
     }
 }
 
@@ -456,6 +471,11 @@ void Track::setupOutputPlugin(QObject *plugin)
         connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
         connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
     }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
+        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(diagnostics(QUuid, DiagnosticData)));
+        connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
+        connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
+    }
 }
 
 
@@ -516,6 +536,11 @@ void Track::setupInfoPlugin(QObject *plugin)
         connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
         connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
     }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
+        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(diagnostics(QUuid, DiagnosticData)));
+        connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
+        connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
+    }
 }
 
 
@@ -573,6 +598,7 @@ void Track::setStatus(Status status)
 
         currentStatus = Playing;
 
+        sendLoadedPlugins();
         sendLoadedPluginsWithUI();
 
         return;
@@ -607,6 +633,7 @@ void Track::setStatus(Status status)
 
         currentStatus = Playing;
 
+        sendLoadedPlugins();
         sendLoadedPluginsWithUI();
 
         return;
@@ -734,9 +761,34 @@ void Track::interrupt()
 
 
 // private method
+void Track::sendLoadedPlugins()
+{
+    PluginList plugins;
+
+    foreach (QUuid id, decoderPlugins.keys()) {
+        plugins.insert(id, formatPluginName(decoderPlugins.value(id)));
+    }
+    foreach (QUuid id, dspPrePlugins.keys()) {
+        plugins.insert(id, formatPluginName(dspPrePlugins.value(id)));
+    }
+    foreach (QUuid id, dspPlugins.keys()) {
+        plugins.insert(id, formatPluginName(dspPlugins.value(id)));
+    }
+    foreach (QUuid id, outputPlugins.keys()) {
+        plugins.insert(id, formatPluginName(outputPlugins.value(id)));
+    }
+    foreach (QUuid id, infoPlugins.keys()) {
+        plugins.insert(id, formatPluginName(infoPlugins.value(id)));
+    }
+
+    emit loadedPlugins(plugins);
+}
+
+
+// private method
 void Track::sendLoadedPluginsWithUI()
 {
-    PluginsWithUI pluginsWithUI;
+    PluginList pluginsWithUI;
 
     foreach (QUuid id, decoderPlugins.keys()) {
         if (decoderPlugins.value(id).hasUI) {
@@ -812,6 +864,20 @@ void Track::receivedPluginUiResults(QUuid uniqueId, QJsonDocument results)
 }
 
 
+// server signal handler
+void Track::startPluginDiagnostics(QUuid uniquedId)
+{
+    emit startDiagnostics(uniquedId);
+}
+
+
+// server signal handler
+void Track::stopPluginDiagnostics(QUuid uniquedId)
+{
+    emit stopDiagnostics(uniquedId);
+}
+
+
 // plugin signal handler
 void Track::loadConfiguration(QUuid uniqueId)
 {
@@ -821,10 +887,26 @@ void Track::loadConfiguration(QUuid uniqueId)
 
 
 // plugin signal handler
+void Track::loadGlobalConfiguration(QUuid uniqueId)
+{
+    // re-emit for server
+    emit loadPluginGlobalSettings(uniqueId);
+}
+
+
+// plugin signal handler
 void Track::saveConfiguration(QUuid uniqueId, QJsonDocument configuration)
 {
     // re-emit for server
     emit savePluginSettings(uniqueId, configuration);
+}
+
+
+// plugin signal handler
+void Track::saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
+{
+    // re-emit for server
+    emit savePluginGlobalSettings(uniqueId, configuration);
 }
 
 
@@ -860,6 +942,13 @@ void Track::infoMessage(QUuid uniqueId, QString message)
 
     // this is not an error, but that's OK
     emit error(trackInfo.url, false, message);
+}
+
+
+// plugin signal handler
+void Track::diagnostics(QUuid id, DiagnosticData diagnosticData)
+{
+    emit pluginDiagnostics(id, trackInfo.url, diagnosticData);
 }
 
 

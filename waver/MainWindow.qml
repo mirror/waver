@@ -50,7 +50,6 @@ ApplicationWindow {
 
     property bool active: true
 
-
     // these signals are processed by C++ (WaverApplication class)
     signal menuPause()
     signal menuResume()
@@ -59,12 +58,14 @@ ApplicationWindow {
     signal menuPlugin(variant foreignId)
     signal menuAbout()
     signal menuQuit()
-    signal collectionsDialogResults(variant collectionsArray);
+    signal collectionsDialogResults(variant collectionsArray)
     signal pluginUIResults(variant foreignId, variant results)
     signal getOpenTracks(variant pluginId, variant parentId)
     signal startSearch(variant criteria)
     signal resolveOpenTracks(variant selected)
     signal trackAction(variant index, variant action)
+    signal getDiagnostics(variant id)
+    signal doneDiagnostics()
 
 
     /*****
@@ -210,7 +211,7 @@ ApplicationWindow {
         }
     }
 
-    function addToPluginsList(id, label)
+    function addToPluginsWithUIList(id, label)
     {
         var lastId = 0;
         for(var i = 0; i < menuItems.count; i++) {
@@ -310,7 +311,6 @@ ApplicationWindow {
 
 
     // search
-
     function addToSearchList(pluginId, label, id)
     {
         if (!search.visible) {
@@ -326,10 +326,53 @@ ApplicationWindow {
     }
 
 
+    // diagnostics
+
+    function clearDiagnosticsSelectorList()
+    {
+        var i = 0;
+        while (i < diagnosticsSelectorItems.count) {
+            if (diagnosticsSelectorItems.get(i).foreignId != "error_log") {
+                diagnosticsSelectorItems.remove(i);
+            }
+            else {
+                i++;
+            }
+        }
+    }
+
+    function addToDiagnosticsSelectorList(id, label)
+    {
+        diagnosticsSelectorItems.append({
+            modelData: label,
+            foreignId: id
+        });
+    }
+
+    function displayDiagnosticsMessage(id, text) {
+        if (diagnostics.visible) {
+            if (diagnosticsSelectorItems.get(diagnosticsSelector.currentIndex).foreignId == id) {
+                var x = diagnosticsFlickable.contentX
+                var y = diagnosticsFlickable.contentY
+                diagnosticsText.text = text
+                diagnosticsFlickable.contentX = x
+                diagnosticsFlickable.contentY = y
+            }
+            else {
+                var stoppedMsg = "Diagnostic updates have been stopped for this category"
+                if (diagnosticsText.text.search(stoppedMsg) < 0) {
+                    diagnosticsText.text = "<i><font color=\"#880000\">" + stoppedMsg + "</font></i><br><br>" + diagnosticsText.text
+                    diagnosticsFlickable.contentX = 0
+                    diagnosticsFlickable.contentY = 0
+                }
+            }
+        }
+    }
+
+
     // about dialog
     function aboutDialog(appName, AppVersion, appDescription)
     {
-
         aboutName.text        = appName
         aboutVersion.text     = AppVersion
         aboutDescription.text = appDescription
@@ -372,6 +415,12 @@ ApplicationWindow {
             break;
 
         case 2:
+            diagnostics.visible = true;
+            diagnosticsIn.start();
+            getDiagnostics(diagnosticsSelectorItems.get(diagnosticsSelector.currentIndex).foreignId);
+            break;
+
+        case 3:
             menuAbout();
             break;
         }
@@ -688,6 +737,35 @@ ApplicationWindow {
     }
 
 
+    // diagnostics dialog transitions
+
+    NumberAnimation {
+        id: diagnosticsIn
+        target: diagnostics
+        property: "opacity"
+        from: opacity_transparent
+        to: opacity_opaque
+        duration: duration_fadeout
+    }
+
+    NumberAnimation {
+        id: diagnosticsOut
+        target: diagnostics
+        property: "opacity"
+        from: opacity_opaque
+        to: opacity_transparent
+        duration: duration_fadeout
+    }
+
+    Timer {
+        id: diagnosticsOutVisibility
+        interval: duration_fadeout + 25
+        onTriggered: {
+            diagnostics.visible = false;
+        }
+    }
+
+
     // about dialog transitions
     // playlist add dialog transitions
 
@@ -740,9 +818,16 @@ ApplicationWindow {
         }
 
         ListElement {
+            labelText: "Diagnostics"
+            imageSource: "images/diagnostics.png"
+            clickId: 2
+            foreignId: "N/A"
+        }
+
+        ListElement {
             labelText: "About"
             imageSource: "images/about.png"
-            clickId: 2
+            clickId: 3
             foreignId: "N/A"
         }
     }
@@ -1153,6 +1238,26 @@ ApplicationWindow {
                 color: "transparent"
                 radius: 3
             }
+        }
+    }
+
+
+    // diagnostics
+
+    ListModel {
+        id: diagnosticsSelectorItems
+
+        ListElement {
+            modelData: "Error Log"
+            foreignId: "error_log"
+        }
+    }
+
+    Component {
+        id: diagnosticsSelectorElement
+
+        PlatformLabel {
+            text: labelText
         }
     }
 
@@ -1879,7 +1984,7 @@ ApplicationWindow {
             anchors.top: pluginUIHeader.bottom
             anchors.bottom: parent.bottom
 
-            property string   foreignId: "NA"
+            property string   foreignId: "N/A"
             property QtObject uiObject
 
             MouseArea {
@@ -1987,6 +2092,81 @@ ApplicationWindow {
             onClicked: {
                 collectionsOut.start();
                 collectionsOutVisibility.start();
+            }
+        }
+    }
+
+
+    /*****
+     diagnostics dialog
+    *****/
+
+    Item {
+        id: diagnostics
+        anchors.fill: parent
+        opacity: opacity_transparent
+        visible: false;
+
+        MouseArea {
+            anchors.fill: diagnostics
+        }
+
+        Rectangle {
+            id: diagnosticsBackground
+            anchors.fill: diagnostics
+        }
+
+        ComboBox {
+            id: diagnosticsSelector
+            anchors.left: diagnostics.left
+            anchors.leftMargin: 6
+            anchors.right: diagnostics.right
+            anchors.rightMargin: 4
+            anchors.top: parent.top
+            anchors.topMargin: 6
+            model: diagnosticsSelectorItems
+            onActivated: {
+                diagnosticsText.text = ""
+                diagnosticsFlickable.contentX = 0
+                diagnosticsFlickable.contentY = 0
+                getDiagnostics(diagnosticsSelectorItems.get(diagnosticsSelector.currentIndex).foreignId);
+            }
+        }
+
+        Flickable {
+            id: diagnosticsFlickable
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.top: diagnosticsSelector.bottom
+            anchors.topMargin: 6
+            anchors.bottom: diagnosticsClose.top
+            anchors.bottomMargin: 6
+            contentWidth: diagnosticsText.width
+            contentHeight: diagnosticsText.height
+            clip: true
+
+            PlatformLabel {
+                id: diagnosticsText
+                font.pointSize: userMessage.font.pointSize * smallMul
+            }
+        }
+
+        Button {
+            id: diagnosticsClose
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 6
+            text: "OK"
+            onClicked: {
+                diagnosticsOut.start();
+                diagnosticsOutVisibility.start();
+                doneDiagnostics();
+                diagnosticsText.text = ""
+                diagnosticsFlickable.contentX = 0
+                diagnosticsFlickable.contentY = 0
             }
         }
     }

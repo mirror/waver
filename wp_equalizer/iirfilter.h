@@ -46,10 +46,8 @@ class IIRFilter {
         enum SampleTypes { Unknown, int8Sample, uint8Sample, int16Sample, uint16Sample, int32Sample, uint32Sample, floatSample };
 
         // convenience
-        static CoefficientList calculateBiquadCoefficients(FilterTypes filterType, double centerFrequency, double bandwidth,
-            int sampleRate, double gainDecibel);
-        static CoefficientList calculateBiquadCoefficients(FilterTypes filterType, double centerFrequency, double bandwidth,
-            int sampleRate);
+        static CoefficientList calculateBiquadCoefficients(FilterTypes filterType, double centerFrequency, double bandwidth, int sampleRate, double gainDecibel);
+        static CoefficientList calculateBiquadCoefficients(FilterTypes filterType, double centerFrequency, double bandwidth, int sampleRate);
         static SampleTypes     getSampleTypeFromAudioFormat(QAudioFormat audioFormat);
 
         // constructor and destructor

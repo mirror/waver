@@ -51,7 +51,7 @@
 #include "filescanner.h"
 #include "../waver/pluginfactory.h"
 #include "../waver/pluginglobals.h"
-#include "../waver/API/pluginsource_003.h"
+#include "../waver/API/pluginsource_004.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -61,7 +61,7 @@
 extern "C" WP_LOCALSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_003 {
+class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_004 {
         Q_OBJECT
 
     public:
@@ -98,6 +98,8 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_003 {
         int     variationSetCountSinceHigh;
         int     variationSetCountSinceLow;
 
+        bool sendDiagnostics;
+
         QMimeDatabase mimeDatabase;
 
         void scanDir(QString dir);
@@ -113,6 +115,8 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_003 {
         int  variationSettingId();
         void variationSetCurrentRemainingDir();
 
+        void sendDiagnosticsData();
+
 
     public slots:
 
@@ -123,6 +127,9 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_003 {
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void startDiagnostics(QUuid uniqueId) override;
+        void stopDiagnostics(QUuid uniqueId)  override;
 
         void unableToStart(QUuid uniqueId, QUrl url)                       override;
         void getPlaylist(QUuid uniqueId, int maxCount)                     override;

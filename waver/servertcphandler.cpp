@@ -28,7 +28,8 @@
 ServerTcpHandler::ServerTcpHandler(QObject *parent) : QObject(parent)
 {
     // initialization
-    tcpServer = NULL;
+    tcpServer    = NULL;
+    noClientSent = false;
 }
 
 
@@ -36,12 +37,14 @@ ServerTcpHandler::ServerTcpHandler(QObject *parent) : QObject(parent)
 ServerTcpHandler::~ServerTcpHandler()
 {
     // close connections to all clients, and do housekeeping
+    mutex.lock();
     foreach (TcpClient tcpClient, tcpClients) {
         tcpClient.tcpSocket->abort();
         tcpClient.tcpSocket->deleteLater();
 
         delete tcpClient.ipcMessageUtils;
     }
+    mutex.unlock();
 
     // close the server socket and do housekeeping
     if (tcpServer != NULL) {
@@ -70,6 +73,7 @@ void ServerTcpHandler::send(TcpClient tcpClient, QString ipcString)
 {
     if (tcpClient.tcpSocket->state() == QTcpSocket::ConnectedState) {
         tcpClient.tcpSocket->write(ipcString.toUtf8());
+        sendCount++;
     }
 }
 
@@ -77,8 +81,22 @@ void ServerTcpHandler::send(TcpClient tcpClient, QString ipcString)
 // slot to send data to all clients
 void ServerTcpHandler::send(QString ipcString)
 {
+    sendCount = 0;
+
+    mutex.lock();
     foreach (TcpClient tcpClient, tcpClients) {
         send(tcpClient, ipcString);
+    }
+    mutex.unlock();
+
+    if (sendCount == 0) {
+        if (!noClientSent) {
+            emit noClient();
+            noClientSent = true;
+        }
+    }
+    else {
+        noClientSent = false;
     }
 }
 
@@ -112,7 +130,9 @@ void ServerTcpHandler::newConnection()
 
     connect(newClient.tcpSocket, SIGNAL(readyRead()), this, SLOT(socketReadyRead()));
 
+    mutex.lock();
     tcpClients.append(newClient);
+    mutex.unlock();
 }
 
 
@@ -127,12 +147,14 @@ void ServerTcpHandler::socketReadyRead()
     thisClient.ipcMessageUtils = NULL;
     thisClient.tcpSocket       = NULL;
     int i = 0;
+    mutex.lock();
     while ((i < tcpClients.count()) && (thisClient.tcpSocket == NULL)) {
         if (tcpClients.at(i).tcpSocket == sender) {
             thisClient = tcpClients.at(i);
         }
         i++;
     }
+    mutex.unlock();
     if (thisClient.tcpSocket == NULL) {
         // this should never happen
         return;

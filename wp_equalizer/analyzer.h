@@ -29,10 +29,13 @@
 #include <QtGlobal>
 
 #include <QByteArray>
+#include <QDateTime>
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QTimeZone>
 #include <QVariant>
+#include <QVariantHash>
 
 #include "coefficientlist.h"
 #include "iirfilter.h"
@@ -40,7 +43,7 @@
 #include "replaygaincalculator.h"
 #include "fadeoutdetector.h"
 
-#include "../waver/API/plugindsppre_001.h"
+#include "../waver/API/plugindsppre_004.h"
 #include "../waver/track.h"
 
 #ifdef QT_DEBUG
@@ -55,7 +58,7 @@
 #define REPLAYGAIN_44100_BUTTERWORTH_B { -1.96977855582618, 0.97022847566350 }
 
 
-class WP_EQUALIZER_EXPORT Analyzer : PluginDspPre_001 {
+class WP_EQUALIZER_EXPORT Analyzer : PluginDspPre_004 {
         Q_OBJECT
 
     public:
@@ -92,19 +95,26 @@ class WP_EQUALIZER_EXPORT Analyzer : PluginDspPre_001 {
         ReplayGainCalculator   *replayGainCalculator;
         FadeOutDetector        *fadeOutDetector;
 
-        bool decoderFinished;
+        bool         decoderFinished;
+        bool         sendDiagnostics;
+        QVariantHash diagnosticsHash;
 
         void transition();
+        void sendDiagnosticsData();
 
 
     public slots:
 
         void run() override;
 
-        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)       override;
+        void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void startDiagnostics(QUuid uniqueId) override;
+        void stopDiagnostics(QUuid uniqueId)  override;
 
         void bufferAvailable(QUuid uniqueId)             override;
         void decoderDone(QUuid uniqueId)                 override;

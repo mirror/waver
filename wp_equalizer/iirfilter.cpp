@@ -24,8 +24,7 @@
 #include "iirfilter.h"
 
 // calculate coefficients for biquad filters (gainDecibell is ignored for non-gaining filter types)
-CoefficientList IIRFilter::calculateBiquadCoefficients(FilterTypes filterType, double centerFrequency, double bandwidth,
-    int sampleRate, double gainDecibel)
+CoefficientList IIRFilter::calculateBiquadCoefficients(FilterTypes filterType, double centerFrequency, double bandwidth, int sampleRate, double gainDecibel)
 {
     CoefficientList returnValue;
 
@@ -155,8 +154,7 @@ CoefficientList IIRFilter::calculateBiquadCoefficients(FilterTypes filterType, d
 
 
 // calculate coefficients for biquad filters overload: no gain
-CoefficientList IIRFilter::calculateBiquadCoefficients(FilterTypes filterType, double centerFrequency, double bandwidth,
-    int sampleRate)
+CoefficientList IIRFilter::calculateBiquadCoefficients(FilterTypes filterType, double centerFrequency, double bandwidth, int sampleRate)
 {
     return calculateBiquadCoefficients(filterType, centerFrequency, bandwidth, sampleRate, 0);
 }

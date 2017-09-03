@@ -33,8 +33,8 @@ SOURCES += taglibinfo.cpp
 
 HEADERS += taglibinfo.h\
         wp_taglibinfo_global.h \
-    ../waver/API/pluginbase_001.h \
-    ../waver/API/plugininfo_001.h \
+    ../waver/API/pluginbase_004.h \
+    ../waver/API/plugininfo_004.h \
     ../waver/pluginfactory.h \
 
 unix:!android {

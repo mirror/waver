@@ -42,6 +42,8 @@ LocalSource::LocalSource()
     variationSetCountSinceHigh = 0;
     variationSetCountSinceLow  = 0;
     variationSetCurrentRemainingDir();
+
+    sendDiagnostics = false;
 }
 
 
@@ -78,14 +80,14 @@ QString LocalSource::pluginName()
 // overrided virtual function
 int LocalSource::pluginVersion()
 {
-    return 2;
+    return 3;
 }
 
 
 // overrided virtual function
 QString LocalSource::waverVersionAPICompatibility()
 {
-    return "0.0.3";
+    return "0.0.4";
 }
 
 
@@ -152,6 +154,11 @@ void LocalSource::loadedConfiguration(QUuid uniqueId, QJsonDocument configuratio
             scanDir(directory);
         }
     }
+
+    // diagnostics
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
 }
 
 
@@ -206,6 +213,29 @@ void LocalSource::uiResults(QUuid uniqueId, QJsonDocument results)
 }
 
 
+// client wants to receive updates of this plugin's diagnostic information
+void LocalSource::startDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = true;
+    sendDiagnosticsData();
+}
+
+
+// client doesnt want to receive updates of this plugin's diagnostic information anymore
+void LocalSource::stopDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = false;
+}
+
+
 // must be a broken file
 void LocalSource::unableToStart(QUuid uniqueId, QUrl url)
 {
@@ -238,14 +268,17 @@ void LocalSource::getPlaylist(QUuid uniqueId, int maxCount)
             // must save updated configuration
             emit saveConfiguration(id, configToJson());
 
-            // TODO send infoMessage
-
             // start new scans if none in progress
             if (scanners.count() == 0) {
                 foreach (QString directory, directories) {
                     scanDir(directory);
                 }
             }
+        }
+
+        // diagnostics
+        if (sendDiagnostics) {
+            sendDiagnosticsData();
         }
 
         return;
@@ -365,6 +398,11 @@ void LocalSource::getPlaylist(QUuid uniqueId, int maxCount)
 
     // must save updated configuration
     emit saveConfiguration(id, configToJson());
+
+    // diagnostics display
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
 }
 
 
@@ -548,6 +586,11 @@ void LocalSource::action(QUuid uniqueId, int actionKey, QUrl url)
         emit requestRemoveTrack(id, url);
         return;
     }
+
+    // diagnostics
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
 }
 
 
@@ -624,6 +667,11 @@ void LocalSource::scannerFinished()
         foreach (QString directory, directories) {
             scanDir(directory);
         }
+    }
+
+    // diagnostics
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
     }
 }
 
@@ -708,9 +756,11 @@ void LocalSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
 // helper
 bool LocalSource::isTrackFile(QFileInfo fileInfo)
 {
-    return (fileInfo.exists() && fileInfo.isFile() && !fileInfo.isSymLink() &&
-            (fileInfo.fileName().endsWith(".mp3", Qt::CaseInsensitive) ||
-                mimeDatabase.mimeTypeForFile(fileInfo).name().startsWith("audio", Qt::CaseInsensitive)));
+    return
+        (
+            fileInfo.exists() && fileInfo.isFile() && !fileInfo.isSymLink() &&
+            (fileInfo.fileName().endsWith(".mp3", Qt::CaseInsensitive) || mimeDatabase.mimeTypeForFile(fileInfo).name().startsWith("audio", Qt::CaseInsensitive))
+        );
 }
 
 
@@ -815,4 +865,17 @@ void LocalSource::variationSetCurrentRemainingDir()
     }
 
     variationDir = "";
+}
+
+
+// send diagnostics
+void LocalSource::sendDiagnosticsData()
+{
+    DiagnosticData diagnosticData;
+
+    diagnosticData.append({ "In queue",       QString("%1").arg(trackFileNames.count()) });
+    diagnosticData.append({ "Already played", QString("%1").arg(alreadyPlayedTrackFileNames.count()) });
+    diagnosticData.append({ "Banned",         QString("%1").arg(bannedFileNames.count()) });
+
+    emit diagnostics(id, diagnosticData);
 }

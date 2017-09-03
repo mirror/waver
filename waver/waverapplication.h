@@ -36,6 +36,7 @@
 #include <QUrl>
 #include <QVariant>
 #include <QVariantHash>
+#include <QVariantMap>
 #include <QVariantList>
 #include <QVector>
 
@@ -80,10 +81,12 @@ class WaverApplication : public QGuiApplication {
         void updateUITrackInfo(QJsonDocument jsonDocument);
         void updateUIPosition(QJsonDocument jsonDocument);
         void updateUIPlaylist(QJsonDocument jsonDocument);
-        void updateUIPluginsList(QJsonDocument jsonDocument);
+        void updateUIDiagnosticsSelector(QJsonDocument jsonDocument);
+        void updateUIPluginsWithUIList(QJsonDocument jsonDocument);
+        void updateUIOpenTracksList(QJsonDocument jsonDocument);
+        void updateUISearchList(QJsonDocument jsonDocument);
+        void updateUIDiagnosticsMessage(QJsonDocument jsonDocument);
         void showPluginUI(QJsonDocument jsonDocument);
-        void updateOpenTracksList(QJsonDocument jsonDocument);
-        void updateSearchList(QJsonDocument jsonDocument);
 
 
     signals:
@@ -106,12 +109,15 @@ class WaverApplication : public QGuiApplication {
         void uiClearPlaylist();
         void uiAddToPlaylist(QVariant pictureUrl, QVariant title, QVariant performer, QVariant actions, QVariant showActions);
         void uiSetPlaylistIndex(QVariant index);
+        void uiClearDiagnosticsSelectorList();
+        void uiAddToDiagnosticsSelectorList(QVariant id, QVariant label);
         void uiClearPluginsList();
-        void uiAddToPluginsList(QVariant id, QVariant label);
+        void uiAddToPluginsWithUIList(QVariant id, QVariant label);
         void uiDisplayPluginUI(QVariant id, QVariant qml, QVariant Header);
         void uiAddToOpenTracksList(QVariant pluginId, QVariant hasChildren, QVariant selectable, QVariant label, QVariant id);
         void uiAddToSearchList(QVariant pluginId, QVariant label, QVariant id);
         void uiAbout(QVariant appName, QVariant appVersion, QVariant appDescription);
+        void uiDisplayDiagnosticsMessage(QVariant pluginId, QVariant text);
 
 
     public slots:
@@ -129,6 +135,8 @@ class WaverApplication : public QGuiApplication {
         void startSearch(QVariant criteria);
         void resolveOpenTracks(QVariant results);
         void trackAction(QVariant index, QVariant action);
+        void getDiagnostics(QVariant id);
+        void doneDiagnostics();
 
 
     private slots:

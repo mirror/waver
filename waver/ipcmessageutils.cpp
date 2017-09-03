@@ -40,6 +40,7 @@ IpcMessageUtils::IpcMessageUtils(QObject *parent) : QObject(parent)
     ipcMessagesToStrings[CollectionList]           = "collection_list";
     ipcMessagesToStrings[CollectionMenuChange]     = "collection_menu_change";
     ipcMessagesToStrings[CollectionsDialogResults] = "collections_dialog_results";
+    ipcMessagesToStrings[Diagnostics]              = "diagnostics";
     ipcMessagesToStrings[ImAlive]                  = "im_alive";
     ipcMessagesToStrings[InfoMessage]              = "info_message";
     ipcMessagesToStrings[Next]                     = "next";
@@ -48,6 +49,7 @@ IpcMessageUtils::IpcMessageUtils(QObject *parent) : QObject(parent)
     ipcMessagesToStrings[Pause]                    = "pause";
     ipcMessagesToStrings[Playlist]                 = "playlist";
     ipcMessagesToStrings[PlayPauseState]           = "play_pause_state";
+    ipcMessagesToStrings[Plugins]                  = "plugins";
     ipcMessagesToStrings[PluginsWithUI]            = "plugins_with_ui";
     ipcMessagesToStrings[PluginUI]                 = "plugin_ui";
     ipcMessagesToStrings[PluginUIResults]          = "plugin_ui_results";

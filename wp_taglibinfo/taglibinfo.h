@@ -33,7 +33,7 @@
 #include <taglib/tstring.h>
 
 #include "../waver/pluginfactory.h"
-#include "../waver/API/plugininfo_001.h"
+#include "../waver/API/plugininfo_004.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -43,7 +43,7 @@
 extern "C" WP_TAGLIBINFO_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_TAGLIBINFO_EXPORT TagLibInfo : public PluginInfo_001 {
+class WP_TAGLIBINFO_EXPORT TagLibInfo : public PluginInfo_004 {
         Q_OBJECT
 
     public:
@@ -64,15 +64,31 @@ class WP_TAGLIBINFO_EXPORT TagLibInfo : public PluginInfo_001 {
         QUuid id;
         QUrl  url;
 
+        enum State {
+            NotChecked,
+            Success,
+            SomeFound,
+            NotFound
+        };
+
+        bool  sendDiagnostics;
+        State state;
+
+        void sendDiagnosticsData();
+
 
     public slots:
 
         void run() override;
 
-        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)       override;
+        void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void startDiagnostics(QUuid uniqueId) override;
+        void stopDiagnostics(QUuid uniqueId)  override;
 
 };
 

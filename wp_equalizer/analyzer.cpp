@@ -40,14 +40,14 @@ QString Analyzer::pluginName()
 // overrided virtual function
 int Analyzer::pluginVersion()
 {
-    return 2;
+    return 3;
 }
 
 
 // overrided virtual function
 QString Analyzer::waverVersionAPICompatibility()
 {
-    return "0.0.1";
+    return "0.0.4";
 }
 
 // overriden virtual function
@@ -94,6 +94,7 @@ Analyzer::Analyzer()
     fadeOutDetector               = NULL;
     resultLastCalculated          = 0;
     decoderFinished               = false;
+    sendDiagnostics               = false;
 }
 
 
@@ -133,6 +134,14 @@ void Analyzer::loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)
 
 
 // server event handler
+void Analyzer::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(configuration);
+}
+
+
+// server event handler
 void Analyzer::getUiQml(QUuid uniqueId)
 {
     if (uniqueId != id) {
@@ -166,6 +175,29 @@ void Analyzer::uiResults(QUuid uniqueId, QJsonDocument results)
 
 
 // server event handler
+void Analyzer::startDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = true;
+    sendDiagnosticsData();
+}
+
+
+// server event handler
+void Analyzer::stopDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = false;
+}
+
+
+// server event handler
 void Analyzer::bufferAvailable(QUuid uniqueId)
 {
     if (uniqueId != id) {
@@ -192,15 +224,18 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
                 replayGainCalculator = new ReplayGainCalculator(sampleType, buffer.format().sampleRate());
                 fadeOutDetector      = new FadeOutDetector(sampleType, buffer.format().sampleRate());
 
+                diagnosticsHash["format_supported"] = true;
                 switch (buffer.format().sampleRate()) {
                     case 44100:
                         replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_44100_YULEWALK_A, REPLAYGAIN_44100_YULEWALK_B));
                         replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_44100_BUTTERWORTH_A, REPLAYGAIN_44100_BUTTERWORTH_B));
+                        break;
+                    default:
+                        emit infoMessage(id, "PCM format not supported by ReplayGain Analyzer");
+                        diagnosticsHash["format_supported"] = false;
                 }
-                replayGainFilter->getFilter(0)->setCallbackRaw((IIRFilterCallback *)fadeOutDetector,
-                    (IIRFilterCallback::FilterCallbackPointer)&FadeOutDetector::filterCallback);
-                replayGainFilter->getFilter(1)->setCallbackFiltered((IIRFilterCallback *)replayGainCalculator,
-                    (IIRFilterCallback::FilterCallbackPointer)&ReplayGainCalculator::filterCallback);
+                replayGainFilter->getFilter(0)->setCallbackRaw((IIRFilterCallback *)fadeOutDetector, (IIRFilterCallback::FilterCallbackPointer)&FadeOutDetector::filterCallback);
+                replayGainFilter->getFilter(1)->setCallbackFiltered((IIRFilterCallback *)replayGainCalculator, (IIRFilterCallback::FilterCallbackPointer)&ReplayGainCalculator::filterCallback);
             }
         }
 
@@ -214,6 +249,11 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
 
                 double result = replayGainCalculator->calculateResult();
                 emit messageToDspPlugin(id, QUuid("{8D25249B-4D29-4279-80B5-4DCDD23A5809}"), DSP_MESSAGE_REPLAYGAIN, result);
+                diagnosticsHash["replay_gain"] = result;
+
+                if (sendDiagnostics) {
+                    sendDiagnosticsData();
+                }
             }
 
             // check some stuff that's needed for transitions
@@ -223,6 +263,7 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
                     firstNonSilentPositionChecked = true;
                     if (fadeOutDetector->getFirstNonSilentMSec() < 100) {
                         emit requestFadeIn(id, Track::INTERRUPT_FADE_SECONDS * 1000);
+                        diagnosticsHash["is_live"] = true;
                     }
                 }
 
@@ -267,18 +308,39 @@ void Analyzer::decoderDone(QUuid uniqueId)
 void Analyzer::transition()
 {
     qint64 fadeOutStart  = fadeOutDetector->getFadeOutStartPoisitionMSec();
-    qint64 fadeOutLength = (fadeOutDetector->getFadeOutEndPoisitionMSec() - fadeOutStart);
+    qint64 fadeOutLength = fadeOutDetector->getFadeOutEndPoisitionMSec() - fadeOutStart;
 
     // crossfade
     if ((fadeOutLength >= 8000) && (fadeOutLength < 25000)) {
+        qint64 transitionLength = qRound64((double)fadeOutLength * 0.75);
+
         emit requestAboutToFinishSend(id, fadeOutStart);
-        emit requestFadeInForNextTrack(id, qRound64((double)fadeOutLength * 0.75));
+        emit requestFadeInForNextTrack(id, transitionLength);
+
+        diagnosticsHash["transition_type"]   = "Crossfade";
+        diagnosticsHash["transition_start"]  = fadeOutStart;
+        diagnosticsHash["transition_length"] = transitionLength;
+
+        if (sendDiagnostics) {
+            sendDiagnosticsData();
+        }
         return;
     }
 
     // early start
     if (fadeOutLength >= 25000) {
-        emit requestAboutToFinishSend(id, fadeOutStart + (fadeOutLength / 3));
+        qint64 transitionStart  = fadeOutStart + (fadeOutLength / 3);
+        qint64 transitionLength = fadeOutDetector->getFadeOutEndPoisitionMSec() - transitionStart;
+
+        emit requestAboutToFinishSend(id, transitionStart);
+
+        diagnosticsHash["transition_type"]   = "Early start";
+        diagnosticsHash["transition_start"]  = transitionStart;
+        diagnosticsHash["transition_length"] = transitionLength;
+
+        if (sendDiagnostics) {
+            sendDiagnosticsData();
+        }
         return;
     }
 
@@ -288,5 +350,44 @@ void Analyzer::transition()
     }
 
     // gapless play
-    emit requestAboutToFinishSend(id, fadeOutDetector->getLastNonSilentMSec() - 250);
+
+    qint64 transitionStart = fadeOutDetector->getLastNonSilentMSec() - 250;
+
+    emit requestAboutToFinishSend(id, transitionStart);
+
+    diagnosticsHash["transition_type"]   = "Gapless play";
+    diagnosticsHash["transition_start"]  = transitionStart;
+    diagnosticsHash["transition_length"] = 250;
+
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
+}
+
+
+// private method
+void Analyzer::sendDiagnosticsData()
+{
+    DiagnosticData diagnosticData;
+
+    if (diagnosticsHash.contains("format_supported")) {
+        diagnosticData.append({ "PCM format supported", diagnosticsHash.value("format_supported").toBool() ? "Yes" : "No" });
+    }
+    if (diagnosticsHash.contains("replay_gain")) {
+        diagnosticData.append({ "ReplayGain", QString("%1 dB").arg(diagnosticsHash.value("replay_gain").toDouble(), 0, 'f', 2) });
+    }
+    if (diagnosticsHash.contains("is_live")) {
+        diagnosticData.append({ "Live or medley detected", diagnosticsHash.value("is_live").toBool() ? "Yes" : "No" });
+    }
+    if (diagnosticsHash.contains("transition_type")) {
+        diagnosticData.append({ "Transition type", diagnosticsHash.value("transition_type").toString() });
+    }
+    if (diagnosticsHash.contains("transition_start")) {
+        diagnosticData.append({ "Transition start", QDateTime::fromMSecsSinceEpoch(diagnosticsHash.value("transition_start").toLongLong(), QTimeZone::utc()).toString("hh:mm:ss.zzz") });
+    }
+    if (diagnosticsHash.contains("transition_length")) {
+        diagnosticData.append({ "Transition length", QDateTime::fromMSecsSinceEpoch(diagnosticsHash.value("transition_length").toLongLong(), QTimeZone::utc()).toString("hh:mm:ss.zzz") });
+    }
+
+    emit diagnostics(id, diagnosticData);
 }

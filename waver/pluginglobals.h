@@ -2,6 +2,7 @@
 #define PLUGINGLOBALS_H
 
 #include <QAudioBuffer>
+#include <QHash>
 #include <QUrl>
 #include <QVector>
 
@@ -27,6 +28,12 @@ struct OpenTrack {
     bool    selectable;
 };
 typedef QVector<OpenTrack> OpenTracks;
+
+struct DiagnosticItem {
+    QString label;
+    QString message;
+};
+typedef QVector<DiagnosticItem> DiagnosticData;
 
 static const int PLUGIN_TYPE_SOURCE  = 1;
 static const int PLUGIN_TYPE_DECODER = 2;

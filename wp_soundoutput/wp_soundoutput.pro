@@ -33,8 +33,8 @@ SOURCES += soundoutput.cpp \
 
 HEADERS += soundoutput.h        \
         wp_soundoutput_global.h \
-        ../waver/API/pluginbase_001.h   \
-        ../waver/API/pluginoutput_001.h \
+        ../waver/API/pluginbase_004.h   \
+        ../waver/API/pluginoutput_004.h \
         ../waver/pluginfactory.h \
         feeder.h
 

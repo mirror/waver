@@ -84,14 +84,14 @@ QString SoundOutput::pluginName()
 // overrided virtual function
 int SoundOutput::SoundOutput::pluginVersion()
 {
-    return 1;
+    return 2;
 }
 
 
 // overrided virtual function
 QString SoundOutput::waverVersionAPICompatibility()
 {
-    return "0.0.1";
+    return "0.0.4";
 }
 
 
@@ -161,6 +161,14 @@ void SoundOutput::loadedConfiguration(QUuid uniqueId, QJsonDocument configuratio
 
 
 // signal handler
+void SoundOutput::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(configuration);
+}
+
+
+// signal handler
 void SoundOutput::getUiQml(QUuid uniqueId)
 {
     if (uniqueId != id) {
@@ -190,6 +198,29 @@ void SoundOutput::uiResults(QUuid uniqueId, QJsonDocument results)
 }
 
 
+// client wants to receive updates of this plugin's diagnostic information
+void SoundOutput::startDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = true;
+    sendDiagnosticsData();
+}
+
+
+// client doesnt want to receive updates of this plugin's diagnostic information anymore
+void SoundOutput::stopDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = false;
+}
+
+
 // signal handler
 void SoundOutput::bufferAvailable(QUuid uniqueId)
 {
@@ -210,13 +241,14 @@ void SoundOutput::bufferAvailable(QUuid uniqueId)
             return;
         }
 
-        // create output and iodevice
+        // for diagnostics
+        diagnosticsAudioFormat = bufferQueue->at(0)->format();
 
+        // create output and iodevice
         audioOutput = new QAudioOutput(bufferQueue->at(0)->format());
         audioOutput->setNotifyInterval(NOTIFICATION_INTERVAL_MILLISECONDS);
         // TODO volume control disabled
         //audioOutput->setVolume((qreal)volume);
-
         connect(audioOutput, SIGNAL(notify()),                    this, SLOT(audioOutputNotification()));
         connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), this, SLOT(audioOutputStateChanged(QAudio::State)));
 
@@ -372,6 +404,11 @@ void SoundOutput::fillBytesToPlay()
 
     // fill in to the temporary buffer
     while ((bufferQueue->count() > 0) && (bytesToPlay.count() < (audioOutput->periodSize() * 3))) {
+        // diagonostics
+        if (sendDiagnostics) {
+            sendDiagnosticsData();
+        }
+
         // fade in / out
         if (fadeDirection != FADE_DIRECTION_NONE) {
             applyFade();
@@ -548,4 +585,34 @@ void SoundOutput::clearBuffers()
     bufferQueueMutex->lock();
     bufferQueue->clear();
     bufferQueueMutex->unlock();
+}
+
+
+// private method
+void SoundOutput::sendDiagnosticsData()
+{
+    DiagnosticData diagnosticData;
+
+    if (fadeDirection == FADE_DIRECTION_IN) {
+        diagnosticData.append({ "Fade direction", "In" });
+    }
+    else if (fadeDirection == FADE_DIRECTION_OUT) {
+        diagnosticData.append({ "Fade direction", "Out" });
+    }
+    else {
+        diagnosticData.append({ "Fade direction", "None" });
+    }
+
+    bytesToPlayMutex.lock();
+    double bufferSize = (double) bytesToPlay.count();
+    bytesToPlayMutex.unlock();
+
+    if (bufferSize > 1024) {
+        diagnosticData.append({ "Play buffer size", QString("%1 KB (%2 ms)").arg(bufferSize / 1024, 5, 'f', 2, '0').arg((double)diagnosticsAudioFormat.durationForBytes(bufferSize) / 1000, 7, 'f', 3, '0') });
+    }
+    else {
+        diagnosticData.append({ "Play buffer size", QString("%1 B (%2 ms)").arg(bufferSize, 4, 'f', 0, '0').arg((double)diagnosticsAudioFormat.durationForBytes(bufferSize) / 1000, 7, 'f', 3, '0') });
+    }
+
+    emit diagnostics(id, diagnosticData);
 }

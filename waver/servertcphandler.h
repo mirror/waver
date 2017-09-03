@@ -25,6 +25,7 @@
 #define SERVERTCPHANDLER_H
 
 #include <QJsonDocument>
+#include <QMutex>
 #include <QObject>
 #include <QString>
 #include <QStringList>
@@ -56,6 +57,9 @@ class ServerTcpHandler : public QObject {
         QTcpServer         *tcpServer;
         IpcMessageUtils     serverIpcMessageUtils;
         QVector<TcpClient>  tcpClients;
+        QMutex              mutex;
+        int                 sendCount;
+        bool                noClientSent;
 
 
     signals:
@@ -64,6 +68,7 @@ class ServerTcpHandler : public QObject {
         void url(QUrl url);
 
         void error(bool fatal, QString error);
+        void noClient();
 
 
     public slots:
