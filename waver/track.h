@@ -153,6 +153,7 @@ class Track : public QObject {
         qint64 decodedMilliseconds;
         qint64 decodedMillisecondsAtUnderrun;
         qint64 playedMilliseconds;
+        bool   tagsChecked;
 
         void setupDecoderPlugin(QObject *plugin);
         void setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);
@@ -208,6 +209,8 @@ class Track : public QObject {
 
         void playBegin(QUuid uniqueId);
         void messageFromDspPrePlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value);
+
+        void getInfo(QUuid uniqueId, TrackInfo trackInfo);
 
 
     public slots:

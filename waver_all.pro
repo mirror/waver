@@ -5,7 +5,8 @@ SUBDIRS +=                                 \
    wp_localsource/wp_localsource.pro       \
    wp_radiosource/wp_radiosource.pro       \
    wp_soundoutput/wp_soundoutput.pro       \
-   wp_taglibinfo/wp_taglibinfo.pro
+   wp_taglibinfo/wp_taglibinfo.pro         \
+   wp_albumart/wp_albumart.pro
 
 unix:!android {
    SUBDIRS += wp_genericdecoder/wp_genericdecoder.pro

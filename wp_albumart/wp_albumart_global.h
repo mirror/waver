@@ -21,33 +21,15 @@
 */
 
 
-#ifndef PLUGININFO_H
-#define PLUGININFO_H
+#ifndef WP_ALBUMART_GLOBAL_H
+#define WP_ALBUMART_GLOBAL_H
 
-#include "../pluginglobals.h"
-#include "pluginbase_004.h"
-#include "pluginsource_004.h"
+#include <QtCore/qglobal.h>
 
+#if defined(WP_ALBUMART_LIBRARY)
+    #define WP_ALBUMART_EXPORT Q_DECL_EXPORT
+#else
+    #define WP_ALBUMART_EXPORT Q_DECL_IMPORT
+#endif
 
-class PluginInfo_004 : public PluginBase_004 {
-        Q_OBJECT
-
-
-    public:
-
-        Q_INVOKABLE virtual void setUrl(QUrl url)                = 0;
-        Q_INVOKABLE virtual void setUserAgent(QString userAgent) = 0;
-
-
-    signals:
-
-        void updateTrackInfo(QUuid uniqueId, TrackInfo trackInfo);
-        void addInfoHtml(QUuid uniqueId, QString info);
-
-
-    public slots:
-
-        virtual void getInfo(QUuid uniqueId, TrackInfo trackinfo) = 0;
-};
-
-#endif // PLUGININFO_H
+#endif // WP_ALBUMART_GLOBAL_H

@@ -21,16 +21,23 @@
 */
 
 
-#ifndef TAGLIBINFO_H
-#define TAGLIBINFO_H
+#ifndef ALBUMART_H
+#define ALBUMART_H
 
-#include "wp_taglibinfo_global.h"
+#include "wp_albumart_global.h"
 
+#include <QImage>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QFile>
-#include <QUrl>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QRegExp>
+#include <QString>
 #include <QUuid>
-#include <taglib/fileref.h>
-#include <taglib/tstring.h>
+#include <QVector>
 
 #include "../waver/pluginfactory.h"
 #include "../waver/API/plugininfo_004.h"
@@ -40,15 +47,16 @@
 #endif
 
 
-extern "C" WP_TAGLIBINFO_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
+extern "C" WP_ALBUMART_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_TAGLIBINFO_EXPORT TagLibInfo : public PluginInfo_004 {
+class WP_ALBUMART_EXPORT AlbumArt : public PluginInfo_004 {
         Q_OBJECT
 
     public:
 
-        explicit TagLibInfo();
+        explicit AlbumArt();
+        ~AlbumArt();
 
         int     pluginType()                    override;
         QString pluginName()                    override;
@@ -62,20 +70,32 @@ class WP_TAGLIBINFO_EXPORT TagLibInfo : public PluginInfo_004 {
 
     private:
 
-        QUuid id;
-        QUrl  url;
+        struct PerformerAlbum {
+            QString performer;
+            QString album;
+        };
 
         enum State {
+            NotYetChecked,
             NotChecked,
+            InAlreadyFailed,
             Success,
-            SomeFound,
             NotFound
         };
+
+        QUuid                    id;
+        QString                  userAgent;
+        TrackInfo                trackInfo;
+        TrackInfo                requestedTrackInfo;
+        QVector<PerformerAlbum>  alreadyFailed;
+        QNetworkAccessManager   *networkAccessManager;
 
         bool  sendDiagnostics;
         State state;
 
-        void sendDiagnosticsData();
+        QJsonDocument configToJsonGlobal();
+        void          jsonToConfigGlobal(QJsonDocument jsonDocument);
+        void          sendDiagnosticsData();
 
 
     public slots:
@@ -91,7 +111,12 @@ class WP_TAGLIBINFO_EXPORT TagLibInfo : public PluginInfo_004 {
         void startDiagnostics(QUuid uniqueId) override;
         void stopDiagnostics(QUuid uniqueId)  override;
 
-        void getInfo(QUuid uniqueId, TrackInfo trackinfo) override;
+        void getInfo(QUuid uniqueId, TrackInfo trackInfo) override;
+
+
+    private slots:
+
+        void networkFinished(QNetworkReply *reply);
 };
 
-#endif // TAGLIBINFO_H
+#endif // ALBUMART_H

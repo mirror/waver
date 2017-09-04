@@ -1482,6 +1482,8 @@ void WaverServer::trackFinished(QUrl url)
 // track signal handler
 void WaverServer::trackInfoUpdated(QUrl url)
 {
+    // TODO share picture with same performer and album in playlist
+
     // is this the previous track?
     if ((previousTrack != NULL) && (url == previousTrack->getTrackInfo().url)) {
         // noting to do

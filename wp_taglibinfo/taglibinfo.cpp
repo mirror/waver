@@ -86,6 +86,13 @@ void TagLibInfo::setUrl(QUrl url)
 }
 
 
+// global method
+void TagLibInfo::setUserAgent(QString userAgent)
+{
+    Q_UNUSED(userAgent);
+}
+
+
 // constructor
 TagLibInfo::TagLibInfo()
 {
@@ -141,6 +148,9 @@ void TagLibInfo::run()
 
         return;
     }
+
+    // still return an empty trackinfo just to let them know we're done
+    emit updateTrackInfo(id, trackInfo);
 
     state = NotFound;
     if (sendDiagnostics) {
@@ -200,6 +210,14 @@ void TagLibInfo::stopDiagnostics(QUuid uniqueId)
     }
 
     sendDiagnostics = false;
+}
+
+
+// this is unused here
+void TagLibInfo::getInfo(QUuid uniqueId, TrackInfo trackinfo)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(trackinfo);
 }
 
 

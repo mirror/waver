@@ -56,6 +56,7 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUui
     decodedMilliseconds                  = 0;
     playedMilliseconds                   = 0;
     dspInitialBufferCount                = 0;
+    tagsChecked                          = false;
 
     // priority maps
     QMap<int, QUuid> dspPrePriorityMap;
@@ -513,6 +514,11 @@ void Track::setupInfoPlugin(QObject *plugin)
     if (!plugin->metaObject()->invokeMethod(plugin, "setUrl", Qt::DirectConnection, Q_ARG(QUrl, trackInfo.url))) {
         emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
+        if (!plugin->metaObject()->invokeMethod(plugin, "setUserAgent", Qt::DirectConnection, Q_ARG(QString, Globals::appName() + "/" + Globals::appVersion() + " ( https://launchpad.net/waver )"))) {
+            emit error(trackInfo.url, true, "Failed to invoke method on plugin");
+        }
+    }
 
     // move to appropriate thread
     plugin->moveToThread(&infoThread);
@@ -540,6 +546,7 @@ void Track::setupInfoPlugin(QObject *plugin)
         connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(diagnostics(QUuid, DiagnosticData)));
         connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
         connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
+        connect(this,   SIGNAL(getInfo(QUuid, TrackInfo)),          plugin, SLOT(getInfo(QUuid, TrackInfo)));
     }
 }
 
@@ -601,6 +608,13 @@ void Track::setStatus(Status status)
         sendLoadedPlugins();
         sendLoadedPluginsWithUI();
 
+        // not sure which happens first (see also in infoUpdateTrackInfo)
+        if (tagsChecked) {
+            foreach (QUuid uniqueId, infoPlugins.keys()) {
+                emit getInfo(uniqueId, this->trackInfo);
+            }
+        }
+
         return;
     }
 
@@ -635,6 +649,13 @@ void Track::setStatus(Status status)
 
         sendLoadedPlugins();
         sendLoadedPluginsWithUI();
+
+        // not sure which happens first (see also in infoUpdateTrackInfo)
+        if (tagsChecked) {
+            foreach (QUuid uniqueId, infoPlugins.keys()) {
+                emit getInfo(uniqueId, this->trackInfo);
+            }
+        }
 
         return;
     }
@@ -1436,8 +1457,21 @@ void Track::infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo)
     if (trackInfo.track > 0) {
         this->trackInfo.track = trackInfo.track;
     }
+    if ((trackInfo.pictures.count() > 0) && (this->trackInfo.pictures.count() < 1)) {
+        this->trackInfo.pictures.append(trackInfo.pictures);
+    }
 
     emit trackInfoUpdated(trackInfo.url);
+
+    // other information can be queried after tags are discovered, but do this only once when play begins (see also in setStatus)
+    if (uniqueId == QUuid("{51C91776-E385-4444-AF8D-A3A47E3FEFB8}")) {
+        tagsChecked = true;
+        if ((currentStatus == Playing) || (currentStatus == Paused)) {
+            foreach (QUuid uniqueId, infoPlugins.keys()) {
+                emit getInfo(uniqueId, this->trackInfo);
+            }
+        }
+    }
 }
 
 
