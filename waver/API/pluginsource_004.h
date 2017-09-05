@@ -39,6 +39,11 @@ class PluginSource_004 : public PluginBase_004 {
         Q_OBJECT
 
 
+    public:
+
+        Q_INVOKABLE virtual void setUserAgent(QString userAgent) = 0;
+
+
     signals:
 
         void ready(QUuid uniqueId);

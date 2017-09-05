@@ -32,8 +32,8 @@ SOURCES += radiosource.cpp
 
 HEADERS += radiosource.h\
         wp_radiosource_global.h \
-    ../waver/API/pluginbase_003.h \
-    ../waver/API/pluginsource_003.h \
+    ../waver/API/pluginbase_004.h \
+    ../waver/API/pluginsource_004.h \
     ../waver/pluginfactory.h
 
 unix:!android {
@@ -46,5 +46,8 @@ unix:!android {
 }
 
 RESOURCES += \
-    qml.qrc
+    qml.qrc \
+    misc.qrc
+
+DISTFILES +=
 

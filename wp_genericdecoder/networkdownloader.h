@@ -46,7 +46,7 @@ class NetworkDownloader : public QIODevice {
 
     public:
 
-        NetworkDownloader(QUrl url, QWaitCondition *waitCondition);
+        NetworkDownloader(QUrl url, QWaitCondition *waitCondition, QString userAgent);
         ~NetworkDownloader();
 
         qint64 readData(char *data, qint64 maxlen)     override;
@@ -63,6 +63,7 @@ class NetworkDownloader : public QIODevice {
     private:
 
         QUrl            url;
+        QString         userAgent;
         QWaitCondition *waitCondition;
 
         QNetworkAccessManager *networkAccessManager;

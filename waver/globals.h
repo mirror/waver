@@ -43,6 +43,14 @@ class Globals : public QObject {
         static QString appVersion();
         static QString appDesc();
 
+        static QString author();
+        static QString email();
+        static QString website();
+        static QString copyright();
+        static QString license();
+
+        static QString userAgent();
+
         static void consoleOutput(QString text, bool error);
 
 };

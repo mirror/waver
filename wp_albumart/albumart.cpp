@@ -147,7 +147,7 @@ void AlbumArt::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configura
     bool found = false;
     int  i     = 0;
     while (!found && (i < alreadyFailed.count())) {
-        if ((requestedTrackInfo.performer.compare(alreadyFailed.at(i).performer) == 0) && (requestedTrackInfo.album.compare(alreadyFailed.at(i).album) == 0)) {
+        if ((requestedTrackInfo.performer.compare(alreadyFailed.at(i).performer, Qt::CaseInsensitive) == 0) && (requestedTrackInfo.album.compare(alreadyFailed.at(i).album, Qt::CaseInsensitive) == 0)) {
             found = true;
         }
         i++;
@@ -216,7 +216,7 @@ void AlbumArt::getInfo(QUuid uniqueId, TrackInfo trackInfo)
     }
 
     // things that prevent checking
-    if (trackInfo.cast || !trackInfo.url.isLocalFile() || (trackInfo.pictures.count() > 0) || trackInfo.performer.isEmpty() || trackInfo.album.isEmpty()) {
+    if (!trackInfo.url.isLocalFile() || (trackInfo.pictures.count() > 0) || trackInfo.performer.isEmpty() || trackInfo.album.isEmpty()) {
         // diagnostics
         state = NotChecked;
         if (sendDiagnostics) {
@@ -353,10 +353,10 @@ void AlbumArt::sendDiagnosticsData()
 
     switch (state) {
         case NotYetChecked:
-            diagnosticData.append({ "Status", "Not started yet" });
+            diagnosticData.append({ "Status", "Not started yet"});
             break;
         case NotChecked:
-            diagnosticData.append({ "Status", "Not checked" });
+            diagnosticData.append({ "Status", "Not needed to be checked" });
             break;
         case Success:
             diagnosticData.append({ "Status", "Success" });

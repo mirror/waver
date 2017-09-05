@@ -108,6 +108,11 @@ void TagLibInfo::run()
         sendDiagnosticsData();
     }
 
+    TrackInfo trackInfo;
+    trackInfo.track = 0;
+    trackInfo.url   = url;
+    trackInfo.year  = 0;
+
     // checky-checky
     if (url.isEmpty()) {
         return;
@@ -115,11 +120,11 @@ void TagLibInfo::run()
 
     // operates on local files only
     if (!url.isLocalFile()) {
+        // still return an empty trackinfo just to let them know we're done
+        emit updateTrackInfo(id, trackInfo);
         return;
     }
 
-    TrackInfo trackInfo;
-    trackInfo.url = url;
 
     TagLib::FileRef fileRef(QFile::encodeName(url.toLocalFile()).constData());
 
@@ -228,7 +233,7 @@ void TagLibInfo::sendDiagnosticsData()
 
     switch (state) {
         case NotChecked:
-            diagnosticData.append({ "Status", "Not checked" });
+            diagnosticData.append({ "Status", "Not needed to be checked" });
             break;
         case Success:
             diagnosticData.append({ "Status", "Success" });

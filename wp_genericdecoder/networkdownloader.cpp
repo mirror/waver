@@ -24,10 +24,11 @@
 #include "networkdownloader.h"
 
 // constructor
-NetworkDownloader::NetworkDownloader(QUrl url, QWaitCondition *waitCondition)
+NetworkDownloader::NetworkDownloader(QUrl url, QWaitCondition *waitCondition, QString userAgent)
 {
     this->url           = url;
     this->waitCondition = waitCondition;
+    this->userAgent     = userAgent;
 
     fakePosition = 0;
 
@@ -63,7 +64,11 @@ NetworkDownloader::~NetworkDownloader()
 void NetworkDownloader::run()
 {
     networkAccessManager = new QNetworkAccessManager();
-    networkReply         = networkAccessManager->get(QNetworkRequest(url));
+
+    QNetworkRequest networkRequest = QNetworkRequest(url);
+    networkRequest.setRawHeader("User-Agent", userAgent.toUtf8());
+
+    networkReply = networkAccessManager->get(networkRequest);
 
     connect(networkReply, SIGNAL(downloadProgress(qint64, qint64)),    this, SLOT(networkDownloadProgress(qint64, qint64)));
     connect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));

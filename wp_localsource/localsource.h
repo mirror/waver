@@ -66,13 +66,13 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_004 {
 
     public:
 
-        int     pluginType()                   override;
-        QString pluginName()                   override;
-        int     pluginVersion()                override;
-        QString waverVersionAPICompatibility() override;
-        QUuid   persistentUniqueId()           override;
-        bool    hasUI()                        override;
-
+        int     pluginType()                    override;
+        QString pluginName()                    override;
+        int     pluginVersion()                 override;
+        QString waverVersionAPICompatibility()  override;
+        QUuid   persistentUniqueId()            override;
+        bool    hasUI()                         override;
+        void    setUserAgent(QString userAgent) override;
 
         explicit LocalSource();
         ~LocalSource();

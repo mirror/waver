@@ -36,7 +36,8 @@ class PluginDecoder_004 : public PluginBase_004 {
 
     public:
 
-        Q_INVOKABLE virtual void setUrl(QUrl url) = 0;
+        Q_INVOKABLE virtual void setUrl(QUrl url)                = 0;
+        Q_INVOKABLE virtual void setUserAgent(QString userAgent) = 0;
 
 
     signals:

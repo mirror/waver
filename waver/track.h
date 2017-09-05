@@ -83,6 +83,7 @@ class Track : public QObject {
         void   addALotToCastPlaytime();
 
         TrackInfo getTrackInfo();
+        void      addPictures(QVector<QUrl> pictures);
         QUuid     getSourcePluginId();
         bool      getFadeInRequested();
         qint64    getFadeInRequestedMilliseconds();

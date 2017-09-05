@@ -36,14 +36,23 @@ void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 // constructor
 RadioSource::RadioSource()
 {
-    id = QUuid("{3CDF6F84-3B1B-4807-8AA0-089509FD4751}");
+    id  = QUuid("{3CDF6F84-3B1B-4807-8AA0-089509FD4751}");
+    key = getKey();
+
+    networkAccessManager  = NULL;
+    playlistAccessManager = NULL;
 }
 
 
 // destructor
 RadioSource::~RadioSource()
 {
-    // nothing to do here
+    if (networkAccessManager != NULL) {
+        networkAccessManager->deleteLater();
+    }
+    if (playlistAccessManager != NULL) {
+        playlistAccessManager->deleteLater();
+    }
 }
 
 
@@ -64,14 +73,14 @@ QString RadioSource::pluginName()
 // overridden virtual function
 int RadioSource::pluginVersion()
 {
-    return 2;
+    return 3;
 }
 
 
 // overrided virtual function
 QString RadioSource::waverVersionAPICompatibility()
 {
-    return "0.0.3";
+    return "0.0.4";
 }
 
 
@@ -81,6 +90,12 @@ bool RadioSource::hasUI()
     return true;
 }
 
+
+// overridden virtual function
+void RadioSource::setUserAgent(QString userAgent)
+{
+    this->userAgent = userAgent;
+}
 
 // overridden virtual function
 QUuid RadioSource::persistentUniqueId()
@@ -94,6 +109,12 @@ void RadioSource::run()
 {
     qsrand(QDateTime::currentDateTime().toTime_t());
 
+    networkAccessManager = new QNetworkAccessManager();
+    connect(networkAccessManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(networkFinished(QNetworkReply *)));
+
+    playlistAccessManager = new QNetworkAccessManager();
+    connect(playlistAccessManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(playlistFinished(QNetworkReply *)));
+
     emit loadGlobalConfiguration(id);
     emit loadConfiguration(id);
 }
@@ -106,31 +127,16 @@ void RadioSource::loadedConfiguration(QUuid uniqueId, QJsonDocument configuratio
         return;
     }
 
-    if (configuration.isEmpty()) {
-        if (stations.count() < 1) {
-            Station station;
-            station.category           = "Public";
-            station.name               = "C-SPAN";
-            station.url                = QUrl("http://15723.live.streamtheworld.com/CSPANRADIO.mp3");
-            station.unableToStartCount = 0;
-            stations.append(station);
-
-            selectedStations.clear();
-            selectedStations.append(stations);
-
-            emit saveConfiguration(id, configToJson());
-            emit ready(id);
-        }
-        return;
-    }
-
     jsonToConfig(configuration);
 
-    if (selectedStations.count() < 1) {
+    if (selectedGenres.count() < 1) {
         emit unready(id);
         return;
     }
-    emit ready(id);
+
+    if ((genres.count() > 0) && (selectedGenres.count() > 0)) {
+        emit ready(id);
+    }
 }
 
 
@@ -142,6 +148,21 @@ void RadioSource::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument config
     }
 
     jsonToConfigGlobal(configuration);
+
+    // TODO clear genres list once a month
+    if (genres.count() < 1) {
+        emit unready(id);
+
+        QNetworkRequest request(QUrl("http://api.shoutcast.com/legacy/genrelist?k=" + key));
+        request.setRawHeader("User-Agent", userAgent.toUtf8());
+        networkAccessManager->get(request);
+
+        return;
+    }
+
+    if ((genres.count() > 0) && (selectedGenres.count() > 0)) {
+        emit ready(id);
+    }
 }
 
 
@@ -157,31 +178,17 @@ void RadioSource::getUiQml(QUuid uniqueId)
     QString settings = settingsFile.readAll();
     settingsFile.close();
 
-    QStringList categories;
-    QStringList selectedCategories;
-    foreach (Station station, stations) {
-        if (!categories.contains(station.category)) {
-            categories.append(station.category);
-        }
-    }
-    foreach (Station station, selectedStations) {
-        if (!selectedCategories.contains(station.category)) {
-            selectedCategories.append(station.category);
-        }
-    }
-    qSort(categories);
-
-    settings.replace("replace_content_height", QString("%1 * (cb_0.height + 6)").arg(categories.count()));
+    settings.replace("replace_content_height", QString("%1 * (cb_0.height + 6)").arg(genres.count()));
 
     QString checkboxes;
     QString checkboxesToAll;
     QString checkboxesToRetval;
-    for (int i = 0; i < categories.count(); i++) {
+    for (int i = 0; i < genres.count(); i++) {
         checkboxes.append(
             QString("CheckBox { id: %1; text: \"%2\"; tristate: false; checked: %3; anchors.top: %4; anchors.topMargin: 6; anchors.left: parent.left; anchors.leftMargin: 6 }")
             .arg(QString("cb_%1").arg(i))
-            .arg(categories.at(i))
-            .arg(selectedCategories.contains(categories.at(i)) ? "true" : "false")
+            .arg(genres.at(i))
+            .arg(selectedGenres.contains(genres.at(i)) ? "true" : "false")
             .arg(i > 0 ? QString("cb_%1.bottom").arg(i - 1) : "parent.top"));
         checkboxesToAll.append(QString("%1.checked = allCheck.checked; ").arg(QString("cb_%1").arg(i)));
         checkboxesToRetval.append(QString("if (%1.checked) { retval.push(%1.text); } ").arg(QString("cb_%1").arg(i)));
@@ -206,213 +213,6 @@ void RadioSource::uiResults(QUuid uniqueId, QJsonDocument results)
         variantHash = results.object().toVariantHash();
     }
 
-    if (variantHash.contains("command")) {
-        // export
-        if (variantHash.value("command").toString().compare("export") == 0) {
-            QFile outputFile(QUrl(variantHash.value("file").toString()).toLocalFile());
-            if (!outputFile.open(QFile::WriteOnly)) {
-                emit infoMessage(id, outputFile.errorString());
-                return;
-            }
-            foreach (Station station, stations) {
-                QString output = QString("%1;%2;%3\n").arg(station.category).arg(station.name).arg(station.url.toString());
-                outputFile.write(output.toUtf8());
-            }
-            outputFile.close();
-            emit infoMessage(id, "Export completed");
-        }
-
-        // return UI for import buttons
-        if (variantHash.value("command").toString().compare("import") == 0) {
-            QFile settingsFile("://RS_Import.qml");
-            settingsFile.open(QFile::ReadOnly);
-            QString settings = settingsFile.readAll();
-            settingsFile.close();
-
-            // must give time for the UI vusual transition to finish
-            QThread::currentThread()->msleep(500);
-            emit uiQml(id, settings);
-        }
-
-        // Rhythmbox import
-        if (variantHash.value("command").toString().compare("import_rhythmbox") == 0) {
-            QFile inputFile(QDir::homePath() + "/.local/share/rhythmbox/rhythmdb.xml");
-            if (!inputFile.exists()) {
-                emit infoMessage(id, "Cannot find Rhythmbox database");
-                return;
-            }
-            inputFile.open(QFile::ReadOnly);
-            QXmlStreamReader xmlReader(&inputFile);
-
-            bool    insideRadio       = false;
-            QString category          = "";
-            QString name              = "";
-            QString url               = "";
-            bool    expectingCategory = false;
-            bool    expectingName     = false;
-            bool    expectingUrl      = false;
-            int     found             = 0;
-            int     imported          = 0;
-            while (!xmlReader.atEnd()) {
-                QXmlStreamReader::TokenType tokenType = xmlReader.readNext();
-
-                if (insideRadio && (tokenType == QXmlStreamReader::EndElement) && (xmlReader.name().toString().compare("entry") == 0)) {
-                    found++;
-                    if ((category.length() > 0) && (name.length() > 0) && (url.length() > 0)) {
-                        QUrl realUrl(url);
-                        if (realUrl.isValid()) {
-                            int i       = 0;
-                            int already = false;
-                            while ((i < stations.count()) && !already) {
-                                if (stations.at(i).url == realUrl) {
-                                    already = true;
-                                }
-                                i++;
-                            }
-                            if (!already) {
-                                imported++;
-
-                                Station station;
-                                station.category           = category;
-                                station.name               = name;
-                                station.url                = realUrl;
-                                station.unableToStartCount = 0;
-
-                                stations.append(station);
-                                selectedStations.append(station);
-                            }
-                        }
-                    }
-
-                    insideRadio = false;
-                    continue;
-                }
-
-                if (!insideRadio && (tokenType == QXmlStreamReader::StartElement)) {
-                    if (!xmlReader.attributes().hasAttribute("type") || (xmlReader.attributes().hasAttribute("type") &&
-                            (xmlReader.attributes().value("type").toString().compare("iradio") != 0))) {
-                        if (xmlReader.name().toString().compare("rhythmdb") != 0) {
-                            xmlReader.skipCurrentElement();
-                        }
-                    }
-                    else {
-                        insideRadio = true;
-                    }
-                    continue;
-                }
-
-                if (tokenType == QXmlStreamReader::StartElement) {
-                    if (xmlReader.name().toString().compare("genre") == 0) {
-                        expectingCategory = true;
-                        expectingName     = false;
-                        expectingUrl      = false;
-                    }
-                    else if (xmlReader.name().toString().compare("title") == 0) {
-                        expectingCategory = false;
-                        expectingName     = true;
-                        expectingUrl      = false;
-                    }
-                    else if (xmlReader.name().toString().compare("location") == 0) {
-                        expectingCategory = false;
-                        expectingName     = false;
-                        expectingUrl      = true;
-                    }
-                    else {
-                        expectingCategory = false;
-                        expectingName     = false;
-                        expectingUrl      = false;
-                    }
-                }
-
-                if ((tokenType == QXmlStreamReader::Characters) && !xmlReader.isWhitespace()) {
-                    if (expectingCategory) {
-                        category = xmlReader.text().toString();
-                    }
-                    else if (expectingName) {
-                        name = xmlReader.text().toString();
-                    }
-                    else if (expectingUrl) {
-                        url = xmlReader.text().toString();
-                    }
-                }
-            }
-            inputFile.close();
-
-            if (imported > 0) {
-                emit saveConfiguration(id, configToJson());
-            }
-            emit infoMessage(id, QString("Import completed\nFound %1, imported %2").arg(found).arg(imported));
-        }
-
-        // semicolon separated values import
-        if (variantHash.value("command").toString().compare("import_scsv") == 0) {
-            QFile inputFile(QUrl(variantHash.value("file").toString()).toLocalFile());
-            if (!inputFile.open(QFile::ReadOnly)) {
-                emit infoMessage(id, inputFile.errorString());
-                return;
-            }
-            int found    = 0;
-            int imported = 0;
-            int updated  = 0;
-            while (!inputFile.atEnd()) {
-                QStringList input = QString(inputFile.readLine(16384)).split(";");
-                if (input.count() >= 3) {
-                    found++;
-
-                    QString category = input.at(0);
-                    input.removeFirst();
-
-                    QString name = input.at(0);
-                    input.removeFirst();
-
-                    QUrl realUrl(QString(input.join(";")).simplified());
-
-                    int i       = 0;
-                    int already = false;
-                    while ((i < stations.count()) && !already) {
-                        if (stations.at(i).url == realUrl) {
-                            if ((stations.at(i).category.compare(category) != 0) || (stations.at(i).name.compare(name) != 0) ||
-                                (stations.at(i).unableToStartCount > 0)) {
-                                updated++;
-
-                                Station station;
-                                station.category           = category;
-                                station.name               = name;
-                                station.url                = realUrl;
-                                station.unableToStartCount = 0;
-
-                                stations.replace(i, station);
-                            }
-                            already = true;
-                        }
-                        i++;
-                    }
-
-                    if (!already) {
-                        imported++;
-
-                        Station station;
-                        station.category           = category;
-                        station.name               = name;
-                        station.url                = realUrl;
-                        station.unableToStartCount = 0;
-
-                        stations.append(station);
-                        selectedStations.append(station);
-                    }
-                }
-            }
-            inputFile.close();
-
-            if ((imported > 0) || (updated > 0)) {
-                emit saveConfiguration(id, configToJson());
-            }
-            emit infoMessage(id, QString("Import completed\nFound %1, imported %2, updated %3").arg(found).arg(imported).arg(updated));
-        }
-
-        return;
-    }
-
     // not a command, same as loaded configuration (because that's how the UI returns it)
     loadedConfiguration(id, results);
 
@@ -424,6 +224,28 @@ void RadioSource::uiResults(QUuid uniqueId, QJsonDocument results)
 }
 
 
+// client wants to receive updates of this plugin's diagnostic information
+void RadioSource::startDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = true;
+}
+
+
+// client doesnt want to receive updates of this plugin's diagnostic information anymore
+void RadioSource::stopDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = false;
+}
+
+
 // server says unable to start a station
 void RadioSource::unableToStart(QUuid uniqueId, QUrl url)
 {
@@ -432,21 +254,22 @@ void RadioSource::unableToStart(QUuid uniqueId, QUrl url)
     }
 
     // increase counter
-    int i = 0;
-    while (i < stations.count()) {
+    /*  int i = 0;
+        while (i < stations.count()) {
         Station station = stations.at(i);
         if (station.url == url) {
             station.unableToStartCount++;
             stations.replace(i, station);
         }
         i++;
-    }
+        }
 
-    // this updates selected stations
-    jsonToConfig(configToJson());
+        // this updates selected stations
+        jsonToConfig(configToJson());
 
-    // save configuration
-    emit saveConfiguration(id, configToJson());
+        // save configuration
+        emit saveConfiguration(id, configToJson());
+    */
 }
 
 
@@ -457,25 +280,23 @@ void RadioSource::getPlaylist(QUuid uniqueId, int maxCount)
         return;
     }
 
-    TracksInfo returnValue;
-
-    // can't do anything if there aren't any stations
-    if (selectedStations.count() < 1) {
-        // let everybody know
+    // this should never happen, but just to be on the safe side
+    if (selectedGenres.count() < 1) {
         emit unready(id);
         return;
     }
 
-    // check if a station failed to download three or more times, also this helps to make sure no station is selected twice during this request
-    QVector<Station> selectableStations;
-    foreach (Station station, selectedStations) {
+    /*
+        // check if a station failed to download three or more times, also this helps to make sure no station is selected twice during this request
+        QVector<Station> selectableStations;
+        foreach (Station station, selectedStations) {
         if (station.unableToStartCount < 3) {
             selectableStations.append(station);
         }
-    }
+        }
 
-    // maybe too many stations got banned due to network errors
-    if ((selectableStations.count() < 1) || (selectableStations.count() < (selectedStations.count() / 10))) {
+        // maybe too many stations got banned due to network errors
+        if ((selectableStations.count() < 1) || (selectableStations.count() < (selectedStations.count() / 10))) {
         // let's get the selected categories, because only these have to be reset
         QStringList selectedCategories;
         foreach (Station station, selectedStations) {
@@ -516,34 +337,16 @@ void RadioSource::getPlaylist(QUuid uniqueId, int maxCount)
                 selectableStations.append(station);
             }
         }
-    }
+        }
+    */
 
     // random select some stations
-    int count = (qrand() % maxCount) + 1;
-    for (int i = 1; i <= count; i++) {
-        if (selectableStations.count() < 1) {
-            break;
-        }
+    int     count = (qrand() % maxCount) + 1;
+    QString genre = selectedGenres.at(qrand() % selectedGenres.count());
 
-        int trackIndex = qrand() % selectableStations.count();
-
-        TrackInfo trackInfo;
-        trackInfo.album     = selectableStations.at(trackIndex).category;
-        trackInfo.cast      = true;
-        trackInfo.performer = "Online Radio";
-        trackInfo.title     = selectableStations.at(trackIndex).name;
-        trackInfo.track     = 0;
-        trackInfo.url       = selectableStations.at(trackIndex).url;
-        trackInfo.year      = 0;
-        trackInfo.actions.insert(0, "Ban");
-
-        returnValue.append(trackInfo);
-
-        selectableStations.remove(trackIndex);
-    }
-
-    // send them back to the server
-    emit playlist(id, returnValue);
+    QNetworkRequest request(QUrl("http://api.shoutcast.com/station/randomstations?k=" + key + "&f=xml&genre=" + genre + "&limit=" + QString("%1").arg(count)));
+    request.setRawHeader("User-Agent", userAgent.toUtf8());
+    networkAccessManager->get(request);
 }
 
 
@@ -556,80 +359,82 @@ void RadioSource::getOpenTracks(QUuid uniqueId, QString parentId)
 
 
     OpenTracks openTracks;
+    /*
+        // top level
+        if (parentId.length() < 1) {
+            QStringList allCategories;
+            foreach (Station station, stations) {
+                if (!allCategories.contains(station.category)) {
+                    allCategories.append(station.category);
+                }
+            }
 
-    // top level
-    if (parentId.length() < 1) {
-        QStringList allCategories;
+            qSort(allCategories);
+
+            foreach (QString category, allCategories) {
+                OpenTrack openTrack;
+                openTrack.hasChildren = true;
+                openTrack.id          = category;
+                openTrack.label       = category;
+                openTrack.selectable = false;
+                openTracks.append(openTrack);
+            }
+            emit openTracksResults(id, openTracks);
+            return;
+        }
+
+        QVector<Station> categoryStations;
         foreach (Station station, stations) {
-            if (!allCategories.contains(station.category)) {
-                allCategories.append(station.category);
+            if (station.category.compare(parentId) == 0) {
+                categoryStations.append(station);
             }
         }
 
-        qSort(allCategories);
+        qSort(categoryStations.begin(), categoryStations.end(), [](Station a, Station b) {
+            return (a.name.compare(b.name) < 0);
+        });
 
-        foreach (QString category, allCategories) {
+        foreach (Station categoryStation, categoryStations) {
             OpenTrack openTrack;
-            openTrack.hasChildren = true;
-            openTrack.id          = category;
-            openTrack.label       = category;
-            openTrack.selectable = false;
+
+            openTrack.hasChildren = false;
+            openTrack.id          = categoryStation.url.toString();
+            openTrack.label       = categoryStation.name;
+            openTrack.selectable  = true;
             openTracks.append(openTrack);
         }
-        emit openTracksResults(id, openTracks);
-        return;
-    }
-
-    QVector<Station> categoryStations;
-    foreach (Station station, stations) {
-        if (station.category.compare(parentId) == 0) {
-            categoryStations.append(station);
-        }
-    }
-
-    qSort(categoryStations.begin(), categoryStations.end(), [](Station a, Station b) {
-        return (a.name.compare(b.name) < 0);
-    });
-
-    foreach (Station categoryStation, categoryStations) {
-        OpenTrack openTrack;
-
-        openTrack.hasChildren = false;
-        openTrack.id          = categoryStation.url.toString();
-        openTrack.label       = categoryStation.name;
-        openTrack.selectable  = true;
-        openTracks.append(openTrack);
-    }
-    emit openTracksResults(id, openTracks);
+        emit openTracksResults(id, openTracks); */
 }
 
 
 // turn open dialog selections to playlist entries
 void RadioSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
 {
-    if (uniqueId != id) {
+    /*
+        if (uniqueId != id) {
         return;
-    }
-
-    // this doesn't keep the order, but that's a reasonable tradeoff for now
-    TracksInfo returnValue;
-    foreach (Station station, stations) {
-        if (selectedTracks.contains(station.url.toString())) {
-            TrackInfo trackInfo;
-            trackInfo.album     = station.category;
-            trackInfo.cast      = true;
-            trackInfo.performer = "Online Radio";
-            trackInfo.title     = station.name;
-            trackInfo.track     = 0;
-            trackInfo.url       = station.url;
-            trackInfo.year      = 0;
-            trackInfo.actions.insert(0, "Ban");
-
-            returnValue.append(trackInfo);
         }
-    }
 
-    emit playlist(id, returnValue);
+        // this doesn't keep the order, but that's a reasonable tradeoff for now
+        TracksInfo returnValue;
+        foreach (Station station, stations) {
+        if (selectedTracks.contains(station.url.toString())) {
+          TrackInfo trackInfo;
+          trackInfo.album     = station.category;
+          trackInfo.cast      = true;
+          trackInfo.performer = "Online Radio";
+          trackInfo.title     = station.name;
+          trackInfo.track     = 0;
+          trackInfo.url       = station.url;
+          trackInfo.year      = 0;
+          trackInfo.actions.insert(0, "Ban");
+
+          returnValue.append(trackInfo);
+        }
+        }
+
+        emit playlist(id, returnValue);
+    */
 }
 
 
@@ -639,35 +444,36 @@ void RadioSource::search(QUuid uniqueId, QString criteria)
     if (uniqueId != id) {
         return;
     }
+    /*
+        criteria.replace("_", " ").replace(" ", "");
 
-    criteria.replace("_", " ").replace(" ", "");
+        QVector<Station> matches;
+        foreach (Station station, stations) {
+            QString modifying(station.name);
+            modifying.replace("_", " ").replace(" ", "");
 
-    QVector<Station> matches;
-    foreach (Station station, stations) {
-        QString modifying(station.name);
-        modifying.replace("_", " ").replace(" ", "");
-
-        if (modifying.contains(criteria, Qt::CaseInsensitive)) {
-            matches.append(station);
+            if (modifying.contains(criteria, Qt::CaseInsensitive)) {
+                matches.append(station);
+            }
         }
-    }
 
-    qSort(matches.begin(), matches.end(), [](Station a, Station b) {
-        return (a.name.compare(b.name) < 0);
-    });
+        qSort(matches.begin(), matches.end(), [](Station a, Station b) {
+            return (a.name.compare(b.name) < 0);
+        });
 
-    OpenTracks openTracks;
-    foreach (Station match, matches) {
-        OpenTrack openTrack;
+        OpenTracks openTracks;
+        foreach (Station match, matches) {
+            OpenTrack openTrack;
 
-        openTrack.hasChildren = false;
-        openTrack.id          = match.url.toString();
-        openTrack.label       = match.name;
-        openTrack.selectable  = true;
-        openTracks.append(openTrack);
-    }
+            openTrack.hasChildren = false;
+            openTrack.id          = match.url.toString();
+            openTrack.label       = match.name;
+            openTrack.selectable  = true;
+            openTracks.append(openTrack);
+        }
 
-    emit searchResults(id, openTracks);
+        emit searchResults(id, openTracks);
+    */
 }
 
 
@@ -690,27 +496,9 @@ void RadioSource::action(QUuid uniqueId, int actionKey, QUrl url)
 // configuration conversion
 QJsonDocument RadioSource::configToJson()
 {
-    QJsonArray jsonArray;
-    foreach (Station station, stations) {
-        QVariantHash data;
-        data.insert("category",           station.category);
-        data.insert("name",               station.name);
-        data.insert("url",                station.url.toString());
-        data.insert("unableToStartCount", station.unableToStartCount);
-
-        jsonArray.append(QJsonValue(QJsonObject::fromVariantHash(data)));
-    }
-
-    QStringList selectedCategories;
-    foreach (Station station, selectedStations) {
-        if (!selectedCategories.contains(station.category)) {
-            selectedCategories.append(station.category);
-        }
-    }
 
     QJsonObject jsonObject;
-    jsonObject.insert("stations", QJsonValue(jsonArray));
-    jsonObject.insert("selected_categories", QJsonValue(QJsonArray::fromStringList(selectedCategories)));
+    jsonObject.insert("selected_genres", QJsonValue(QJsonArray::fromStringList(selectedGenres)));
 
     QJsonDocument returnValue;
     returnValue.setObject(jsonObject);
@@ -724,7 +512,8 @@ QJsonDocument RadioSource::configToJsonGlobal()
 {
     QJsonObject jsonObject;
 
-    jsonObject.insert("bannedUrls", QJsonValue(QJsonArray::fromStringList(bannedUrls)));
+    jsonObject.insert("genres", QJsonValue(QJsonArray::fromStringList(genres)));
+    jsonObject.insert("banned_urls", QJsonValue(QJsonArray::fromStringList(bannedUrls)));
 
     QJsonDocument returnValue;
     returnValue.setObject(jsonObject);
@@ -736,36 +525,11 @@ QJsonDocument RadioSource::configToJsonGlobal()
 // configuration conversion
 void RadioSource::jsonToConfig(QJsonDocument jsonDocument)
 {
-    if (jsonDocument.object().contains("stations")) {
-        stations.clear();
+    if (jsonDocument.object().contains("selected_genres")) {
+        selectedGenres.clear();
 
-        foreach (QJsonValue jsonValue, jsonDocument.object().value("stations").toArray()) {
-            QVariantHash data = jsonValue.toObject().toVariantHash();
-
-            Station station;
-            station.category           = data.value("category").toString();
-            station.name               = data.value("name").toString();
-            station.url                = QUrl(data.value("url").toString());
-            station.unableToStartCount = data.value("unableToStartCount").toInt();
-
-            if (station.url.isValid() && !station.url.isLocalFile() && !bannedUrls.contains(station.url.toString())) {
-                stations.append(station);
-            }
-        }
-    }
-
-    if (jsonDocument.object().contains("selected_categories")) {
-        selectedStations.clear();
-
-        QStringList selectedCategories;
-        foreach (QJsonValue jsonValue, jsonDocument.object().value("selected_categories").toArray()) {
-            selectedCategories.append(jsonValue.toString());
-        }
-
-        foreach (Station station, stations) {
-            if (selectedCategories.contains(station.category)) {
-                selectedStations.append(station);
-            }
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("selected_genres").toArray()) {
+            selectedGenres.append(jsonValue.toString());
         }
     }
 }
@@ -774,10 +538,202 @@ void RadioSource::jsonToConfig(QJsonDocument jsonDocument)
 // configuration conversion
 void RadioSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
 {
-    if (jsonDocument.object().contains("bannedUrls")) {
+    if (jsonDocument.object().contains("genres")) {
+        genres.clear();
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("genres").toArray()) {
+            genres.append(jsonValue.toString());
+        }
+    }
+
+    if (jsonDocument.object().contains("banned_urls")) {
         bannedUrls.clear();
-        foreach (QJsonValue jsonValue, jsonDocument.object().value("bannedUrls").toArray()) {
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("banned_urls").toArray()) {
             bannedUrls.append(jsonValue.toString());
         }
+    }
+}
+
+
+// get the key (this simple little "decryption" is here just so that the key is not included in the source code in plain text format)
+//
+// WARNING! The key is exempt from the terms of the GNU General Public License. Usage of the key is resticted to the developers of Waver.
+//          Please get your own key if you need one, it's free. Check 'https://www.shoutcast.com/Developer' for details.
+//
+QString RadioSource::getKey()
+{
+    QFile keyFile("://key");
+    keyFile.open(QFile::ReadOnly);
+    QString keyEncrypted = keyFile.readAll();
+    keyFile.close();
+
+    if (!keyEncrypted.contains(QChar(30))) {
+        return "";
+    }
+    keyEncrypted = keyEncrypted.mid(keyEncrypted.indexOf(QChar(30)) + 1);
+
+    QString key;
+    int     pos = 0;
+    while (pos < keyEncrypted.length()) {
+        QString temp = keyEncrypted.mid(pos, 2);
+        pos = pos + 2;
+
+        bool OK = false;
+        int  number = temp.toInt(&OK, 16);
+        if (!OK) {
+            return "";
+        }
+        key.append(QChar(number));
+
+        pos = pos + (number * 2);
+    }
+
+    return key;
+}
+
+
+// network signal handler
+void RadioSource::networkFinished(QNetworkReply *reply)
+{
+    if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) != 200) {
+        return;
+    }
+
+    bool genresChanged   = false;
+    bool stationsChanged = false;
+
+    QXmlStreamReader xmlStreamReader(reply);
+    while (!xmlStreamReader.atEnd()) {
+        QXmlStreamReader::TokenType tokenType = xmlStreamReader.readNext();
+
+        if (tokenType == QXmlStreamReader::StartElement) {
+            if (xmlStreamReader.name().toString().compare("genrelist") == 0) {
+                genres.clear();
+                genresChanged = true;
+            }
+            if (xmlStreamReader.name().toString().compare("genre") == 0) {
+                QXmlStreamAttributes attributes = xmlStreamReader.attributes();
+                if (attributes.hasAttribute("name")) {
+                    genres.append(attributes.value("name").toString());
+                }
+            }
+
+            if (xmlStreamReader.name().toString().compare("stationlist") == 0) {
+                base         = "";
+                stationIndex = 0;
+                stations.clear();
+                tracksInfo.clear();
+                stationsChanged = true;
+            }
+            if (xmlStreamReader.name().toString().compare("tunein") == 0) {
+                QXmlStreamAttributes attributes = xmlStreamReader.attributes();
+                if (attributes.hasAttribute("base")) {
+                    base = attributes.value("base").toString();
+                }
+            }
+            if (xmlStreamReader.name().toString().compare("station") == 0) {
+                Station station;
+                QXmlStreamAttributes attributes = xmlStreamReader.attributes();
+                if (attributes.hasAttribute("id")) {
+                    station.id = attributes.value("id").toString();
+                }
+                if (attributes.hasAttribute("name")) {
+                    station.name = attributes.value("name").toString();
+                }
+                if (attributes.hasAttribute("genre")) {
+                    station.genre = attributes.value("genre").toString();
+                }
+                if (!station.genre.isEmpty() && !station.id.isEmpty() && !station.name.isEmpty()) {
+                    stations.append(station);
+                }
+            }
+        }
+    }
+    if (xmlStreamReader.hasError()) {
+        emit infoMessage(id, "Error while parsing XML response from SHOUTcast Radio Directory service");
+        return;
+    }
+
+    if (genresChanged) {
+        emit saveGlobalConfiguration(id, configToJsonGlobal());
+        if ((genres.count() > 0) && (selectedGenres.count() > 0)) {
+            emit ready(id);
+        }
+    }
+
+    if (stationsChanged) {
+        tuneIn();
+    }
+}
+
+
+// timer signal handler
+void RadioSource::tuneIn()
+{
+    if ((stationIndex >= stations.count()) || base.isEmpty()) {
+        if (tracksInfo.count() > 0) {
+            // TODO check banned, unable_to_start
+            emit playlist(id, tracksInfo);
+        }
+        return;
+    }
+
+    QNetworkRequest request(QUrl("http://yp.shoutcast.com" + base + "?id=" + stations.at(stationIndex).id));
+    request.setRawHeader("User-Agent", userAgent.toUtf8());
+    playlistAccessManager->get(request);
+
+    stationIndex++;
+}
+
+
+// network signal handler
+void RadioSource::playlistFinished(QNetworkReply *reply)
+{
+    QTimer::singleShot(250, this, SLOT(tuneIn()));
+
+    if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) != 200) {
+        return;
+    }
+
+    // get the id of the station
+    QString stationId;
+    QString query = reply->url().query();
+    if (query.contains("id=")) {
+        stationId = query.mid(query.indexOf("id=") + 3);
+    }
+    if (stationId.isEmpty()) {
+        return;
+    }
+
+    // find it in the stations
+    Station station;
+    int i = 0;
+    while ((i < stations.count()) && (station.id.isEmpty())) {
+        if (stations.at(i).id.compare(stationId) == 0) {
+            station = stations.at(i);
+        }
+        i++;
+    }
+    if (station.id.isEmpty()) {
+        return;
+    }
+
+    // get the station's playlist
+    QString stationPlaylist(reply->readAll());
+
+    // see if there's an address in it
+    QRegExp regExp("File1=(.+)\n");
+    regExp.setMinimal(true);
+    if (stationPlaylist.contains(regExp)) {
+        // gotcha!
+        TrackInfo trackInfo;
+        trackInfo.album      = station.genre;
+        trackInfo.cast       = true;
+        trackInfo.performer = "Online Radio";
+        trackInfo.title     = station.name;
+        trackInfo.track     = 0;
+        trackInfo.url       = regExp.capturedTexts().at(1);
+        trackInfo.year      = 0;
+
+        tracksInfo.append(trackInfo);
     }
 }

@@ -64,6 +64,13 @@ LocalSource::~LocalSource()
 
 
 // overrided virtual function
+void LocalSource::setUserAgent(QString userAgent)
+{
+    Q_UNUSED(userAgent);
+}
+
+
+// overrided virtual function
 int LocalSource::pluginType()
 {
     return PLUGIN_TYPE_SOURCE;

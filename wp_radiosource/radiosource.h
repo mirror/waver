@@ -27,15 +27,19 @@
 #include "wp_radiosource_global.h"
 
 #include <QDateTime>
-#include <QDir>
 #include <QFile>
 #include <QIODevice>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QNetworkAccessManager>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QRegExp>
 #include <QString>
 #include <QStringList>
 #include <QThread>
+#include <QTimer>
 #include <QUrl>
 #include <QUuid>
 #include <QVariantHash>
@@ -45,7 +49,7 @@
 #include <QXmlStreamReader>
 
 #include "../waver/pluginfactory.h"
-#include "../waver/API/pluginsource_003.h"
+#include "../waver/API/pluginsource_004.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -54,19 +58,19 @@
 
 extern "C" WP_RADIOSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
-// TODO "Ban station" -> Ez rakja bele egy speckó <BANNED> kategóriába
 
-class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_003 {
+class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         Q_OBJECT
 
     public:
 
-        int     pluginType()                   override;
-        QString pluginName()                   override;
-        int     pluginVersion()                override;
-        QString waverVersionAPICompatibility() override;
-        QUuid   persistentUniqueId()           override;
-        bool    hasUI()                        override;
+        int     pluginType()                    override;
+        QString pluginName()                    override;
+        int     pluginVersion()                 override;
+        QString waverVersionAPICompatibility()  override;
+        QUuid   persistentUniqueId()            override;
+        bool    hasUI()                         override;
+        void    setUserAgent(QString userAgent) override;
 
         explicit RadioSource();
         ~RadioSource();
@@ -75,22 +79,34 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_003 {
     private:
 
         struct Station {
+            QString id;
             QString name;
-            QString category;
-            QUrl    url;
-            int     unableToStartCount;
+            QString genre;
         };
 
-        QUuid id;
+        QUuid   id;
+        QString userAgent;
+        QString key;
+        bool    sendDiagnostics;
 
+        QStringList genres;
+        QStringList selectedGenres;
+        QStringList bannedUrls;
+
+        QString          base;
         QVector<Station> stations;
-        QVector<Station> selectedStations;
-        QStringList      bannedUrls;
+        int              stationIndex;
+        TracksInfo       tracksInfo;
+
+        QNetworkAccessManager *networkAccessManager;
+        QNetworkAccessManager *playlistAccessManager;
 
         QJsonDocument configToJson();
         QJsonDocument configToJsonGlobal();
         void          jsonToConfig(QJsonDocument jsonDocument);
         void          jsonToConfigGlobal(QJsonDocument jsonDocument);
+
+        QString getKey();
 
 
     public slots:
@@ -103,6 +119,9 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_003 {
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
 
+        void startDiagnostics(QUuid uniqueId) override;
+        void stopDiagnostics(QUuid uniqueId)  override;
+
         void unableToStart(QUuid uniqueId, QUrl url)                       override;
         void getPlaylist(QUuid uniqueId, int maxCount)                     override;
         void getOpenTracks(QUuid uniqueId, QString parentId)               override;
@@ -110,6 +129,13 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_003 {
 
         void search(QUuid uniqueId, QString criteria)        override;
         void action(QUuid uniqueId, int actionKey, QUrl url) override;
+
+
+    private slots:
+
+        void networkFinished(QNetworkReply *reply);
+        void playlistFinished(QNetworkReply *reply);
+        void tuneIn();
 
 };
 

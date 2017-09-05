@@ -693,6 +693,13 @@ void WaverServer::pluginLibsLoaded()
             }
             sourcePlugins[persistentUniqueId] = pluginData;
 
+            // initializations
+            if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
+                if (!plugin->metaObject()->invokeMethod(plugin, "setUserAgent", Qt::DirectConnection, Q_ARG(QString, Globals::userAgent()))) {
+                    finish("Failed to invoke method on plugin");
+                }
+            }
+
             // move to sources thread
             plugin->moveToThread(&sourcesThread);
 
@@ -1482,18 +1489,40 @@ void WaverServer::trackFinished(QUrl url)
 // track signal handler
 void WaverServer::trackInfoUpdated(QUrl url)
 {
-    // TODO share picture with same performer and album in playlist
-
     // is this the previous track?
     if ((previousTrack != NULL) && (url == previousTrack->getTrackInfo().url)) {
-        // noting to do
+        // see if picture must be shared with other tracks
+        TrackInfo previousTrackInfo = previousTrack->getTrackInfo();
+        if (previousTrackInfo.pictures.count() > 0) {
+            foreach (Track *track, playlistTracks) {
+                TrackInfo trackInfo = track->getTrackInfo();
+                if ((trackInfo.pictures.count() < 1) && (trackInfo.performer.compare(previousTrackInfo.performer, Qt::CaseInsensitive) == 0) && (trackInfo.album.compare(previousTrackInfo.album, Qt::CaseInsensitive) == 0)) {
+                    track->addPictures(previousTrackInfo.pictures);
+                }
+            }
+        }
+        sendPlaylistToClients();
         return;
     }
 
     // is this the current track?
     if ((currentTrack != NULL) && (url == currentTrack->getTrackInfo().url)) {
+        // update current track UI
         IpcMessageUtils ipcMessageUtils;
         emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
+
+        // see if picture must be shared with other tracks
+        TrackInfo currentTrackInfo = currentTrack->getTrackInfo();
+        if (currentTrackInfo.pictures.count() > 0) {
+            foreach (Track *track, playlistTracks) {
+                TrackInfo trackInfo = track->getTrackInfo();
+                if ((trackInfo.pictures.count() < 1) && (trackInfo.performer.compare(currentTrackInfo.performer, Qt::CaseInsensitive) == 0) && (trackInfo.album.compare(currentTrackInfo.album, Qt::CaseInsensitive) == 0)) {
+                    track->addPictures(currentTrackInfo.pictures);
+                }
+            }
+        }
+        sendPlaylistToClients();
+
         return;
     }
 

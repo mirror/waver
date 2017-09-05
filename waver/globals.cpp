@@ -44,6 +44,42 @@ QString Globals::appDesc()
 }
 
 
+QString Globals::author()
+{
+    return "Peter Papp";
+}
+
+
+QString Globals::email()
+{
+    return "peter.papp.p@gmail.com";
+}
+
+
+QString Globals::website()
+{
+    return "https://launchpad.net/waver";
+}
+
+
+QString Globals::copyright()
+{
+    return "Copyright (C) 2017 Peter Papp";
+}
+
+
+QString Globals::license()
+{
+    return "This is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.\n\nThis software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License (GPL.TXT) along with this software. If not, see http://www.gnu.org/licenses/";
+}
+
+
+QString Globals::userAgent()
+{
+    return appName() + "/" + appVersion() + " ( " + website() + " )";
+}
+
+
 // simple helper console output
 void Globals::consoleOutput(QString text, bool error)
 {

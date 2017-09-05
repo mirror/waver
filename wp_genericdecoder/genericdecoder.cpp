@@ -63,22 +63,6 @@ QString GenericDecoder::waverVersionAPICompatibility()
 }
 
 
-// constructor
-GenericDecoder::GenericDecoder()
-{
-    id = QUuid("{2958F1AD-9042-48DC-8652-CFC96378E063}");
-
-    audioDecoder       = NULL;
-    file               = NULL;
-    networkDownloader  = NULL;
-
-    networkDeviceSet = false;
-
-    memoryUsage         = 0;
-    decodedMicroSeconds = 0;
-}
-
-
 // global method
 QUuid GenericDecoder::persistentUniqueId()
 {
@@ -100,6 +84,29 @@ void GenericDecoder::setUrl(QUrl url)
     if (this->url.isEmpty()) {
         this->url = url;
     }
+}
+
+
+// global method
+void GenericDecoder::setUserAgent(QString userAgent)
+{
+    this->userAgent = userAgent;
+}
+
+
+// constructor
+GenericDecoder::GenericDecoder()
+{
+    id = QUuid("{2958F1AD-9042-48DC-8652-CFC96378E063}");
+
+    audioDecoder       = NULL;
+    file               = NULL;
+    networkDownloader  = NULL;
+
+    networkDeviceSet = false;
+
+    memoryUsage         = 0;
+    decodedMicroSeconds = 0;
 }
 
 
@@ -179,7 +186,7 @@ void GenericDecoder::start(QUuid uniqueId)
         audioDecoder->start();
     }
     else {
-        networkDownloader = new NetworkDownloader(url, &waitCondition);
+        networkDownloader = new NetworkDownloader(url, &waitCondition, userAgent);
         networkDownloader->moveToThread(&networkThread);
 
         connect(&networkThread, SIGNAL(started()),  networkDownloader, SLOT(run()));

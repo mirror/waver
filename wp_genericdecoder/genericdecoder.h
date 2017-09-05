@@ -53,13 +53,14 @@ class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder_004 {
 
     public:
 
-        int     pluginType()                   override;
-        QString pluginName()                   override;
-        int     pluginVersion()                override;
-        QString waverVersionAPICompatibility() override;
-        QUuid   persistentUniqueId()           override;
-        bool    hasUI()                        override;
-        void    setUrl(QUrl url)               override;
+        int     pluginType()                    override;
+        QString pluginName()                    override;
+        int     pluginVersion()                 override;
+        QString waverVersionAPICompatibility()  override;
+        QUuid   persistentUniqueId()            override;
+        bool    hasUI()                         override;
+        void    setUrl(QUrl url)                override;
+        void    setUserAgent(QString userAgent) override;
 
         explicit GenericDecoder();
         ~GenericDecoder();
@@ -70,8 +71,9 @@ class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder_004 {
         static const unsigned long MAX_MEMORY   = 50 * 1024 * 1024;
         static const unsigned long USEC_PER_SEC = 1000000;
 
-        QUuid id;
-        QUrl  url;
+        QUuid   id;
+        QUrl    url;
+        QString userAgent;
 
         QAudioDecoder           *audioDecoder;
         QVector<QAudioBuffer *>  audioBuffers;

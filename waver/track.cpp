@@ -194,6 +194,11 @@ void Track::setupDecoderPlugin(QObject *plugin)
     if (!plugin->metaObject()->invokeMethod(plugin, "setUrl", Qt::DirectConnection, Q_ARG(QUrl, trackInfo.url))) {
         emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
+        if (!plugin->metaObject()->invokeMethod(plugin, "setUserAgent", Qt::DirectConnection, Q_ARG(QString, Globals::userAgent()))) {
+            emit error(trackInfo.url, true, "Failed to invoke method on plugin");
+        }
+    }
 
     // move to appropriate thread
     plugin->moveToThread(&decoderThread);
@@ -515,7 +520,7 @@ void Track::setupInfoPlugin(QObject *plugin)
         emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
-        if (!plugin->metaObject()->invokeMethod(plugin, "setUserAgent", Qt::DirectConnection, Q_ARG(QString, Globals::appName() + "/" + Globals::appVersion() + " ( https://launchpad.net/waver )"))) {
+        if (!plugin->metaObject()->invokeMethod(plugin, "setUserAgent", Qt::DirectConnection, Q_ARG(QString, Globals::userAgent()))) {
             emit error(trackInfo.url, true, "Failed to invoke method on plugin");
         }
     }
@@ -684,6 +689,13 @@ void Track::setStatus(Status status)
 TrackInfo Track::getTrackInfo()
 {
     return trackInfo;
+}
+
+
+// public method
+void Track::addPictures(QVector<QUrl> pictures)
+{
+    trackInfo.pictures.append(pictures);
 }
 
 
