@@ -57,7 +57,7 @@ QString SettingsHandler::pluginSettingsFileName(QUuid persistentUniqueId, QStrin
         return QString("%1.cfg").arg(persistentUniqueId.toString().replace(QRegExp("[{}]"), ""));
     }
 
-    return QString("%1_%2.cfg").arg(persistentUniqueId.toString().replace(QRegExp("[{}]"), "")).arg(collectionName.replace(QRegExp("\\W"), "_")).toLower();
+    return QString("%1_%2.cfg").arg(persistentUniqueId.toString().replace(QRegExp("[{}]"), "")).arg(collectionName.replace(QRegExp("\\W"), "_").toLower());
 }
 
 
@@ -162,18 +162,13 @@ void SettingsHandler::loadPluginSettings(QUuid persistentUniqueId, QString colle
 {
     QJsonDocument returnValue;
 
-    if (settingsDir == NULL) {
-        emit loadedPluginSettings(persistentUniqueId, returnValue);
-        return;
+    if (settingsDir != NULL) {
+        QFile file(settingsDir->absoluteFilePath(pluginSettingsFileName(persistentUniqueId, collectionName)));
+        if (file.open(QFile::ReadOnly)) {
+            returnValue = QJsonDocument::fromJson(file.readAll());
+            file.close();
+        }
     }
-
-    QFile file(settingsDir->absoluteFilePath(pluginSettingsFileName(persistentUniqueId, collectionName)));
-    if (!file.open(QFile::ReadOnly)) {
-        emit loadedPluginSettings(persistentUniqueId, returnValue);
-        return;
-    }
-    returnValue = QJsonDocument::fromJson(file.readAll());
-    file.close();
 
     if (collectionName.isEmpty()) {
         loadedPluginGlobalSettings(persistentUniqueId, returnValue);

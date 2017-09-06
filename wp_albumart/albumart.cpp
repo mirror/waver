@@ -141,6 +141,8 @@ void AlbumArt::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configura
     // prevent repeated runs
     requestedTrackInfo = trackInfo;
     TrackInfo eraser;
+    eraser.track = 0;
+    eraser.year  = 0;
     trackInfo = eraser;
 
     // check against already failed to limit queries
@@ -291,7 +293,9 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
 
         // let the world know
         TrackInfo resultsTrackInfo;
-        resultsTrackInfo.url = requestedTrackInfo.url;
+        resultsTrackInfo.track = 0;
+        resultsTrackInfo.url   = requestedTrackInfo.url;
+        resultsTrackInfo.year  = 0;
         resultsTrackInfo.pictures.append(QUrl::fromLocalFile(saveLocation));
         emit updateTrackInfo(id, resultsTrackInfo);
 
