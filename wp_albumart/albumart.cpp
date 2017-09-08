@@ -95,7 +95,10 @@ AlbumArt::AlbumArt()
     id = QUuid("{1AEC5C13-454B-48BB-AA2A-93246243EC87}");
 
     networkAccessManager = NULL;
-    state                = NotYetChecked;
+    state                = NotStartedYet;
+    sendDiagnostics      = false;
+    checkAlways          = true;
+    allowLooseMatch      = true;
 }
 
 
@@ -133,7 +136,7 @@ void AlbumArt::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configura
 
     jsonToConfigGlobal(configuration);
 
-    // have to check again if tackInfo was set (the emitting of this signal might have been initiated by some other stuff)
+    // have to check again if tackInfo was set (signal might came from another track)
     if (trackInfo.performer.isEmpty() || trackInfo.album.isEmpty()) {
         return;
     }
@@ -163,11 +166,15 @@ void AlbumArt::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configura
         return;
     }
 
-    // construct request
-    QNetworkRequest request(QUrl("http://musicbrainz.org/ws/2/release-group/?query=artist:\"" + requestedTrackInfo.performer + "\"release:\"" + requestedTrackInfo.album + "\"&limit=1"));
-    request.setRawHeader("User-Agent", userAgent.toUtf8());
+    // diagnostics
+    state = CheckStarted;
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
 
     // send request
+    QNetworkRequest request(QUrl("http://musicbrainz.org/ws/2/release-group/?query=artist:\"" + requestedTrackInfo.performer + "\"release:\"" + requestedTrackInfo.album + "\""));
+    request.setRawHeader("User-Agent", userAgent.toUtf8());
     networkAccessManager->get(request);
 }
 
@@ -217,10 +224,30 @@ void AlbumArt::getInfo(QUuid uniqueId, TrackInfo trackInfo)
         return;
     }
 
+    // check if picture saved by this plugin exists
+    bool foundOurPicture = false;
+    if (checkAlways) {
+        QUrl lookingFor = QUrl::fromLocalFile(pictureFileName(trackInfo));
+        foreach (QUrl url, trackInfo.pictures) {
+            if (url == lookingFor) {
+                foundOurPicture = true;
+                break;
+            }
+        }
+    }
+
     // things that prevent checking
-    if (!trackInfo.url.isLocalFile() || (trackInfo.pictures.count() > 0) || trackInfo.performer.isEmpty() || trackInfo.album.isEmpty()) {
+    if (!trackInfo.url.isLocalFile() || (checkAlways && foundOurPicture) || (!checkAlways && (trackInfo.pictures.count() > 0))) {
         // diagnostics
-        state = NotChecked;
+        state = NotToBeChecked;
+        if (sendDiagnostics) {
+            sendDiagnosticsData();
+        }
+        return;
+    }
+    if (trackInfo.performer.isEmpty() || trackInfo.album.isEmpty()) {
+        // diagnostics
+        state = CanNotCheck;
         if (sendDiagnostics) {
             sendDiagnosticsData();
         }
@@ -230,10 +257,8 @@ void AlbumArt::getInfo(QUuid uniqueId, TrackInfo trackInfo)
     // technically it's possible to overwrite trackInfo while another request is being processed, but the idea is that each track has its own set of info plugins
     this->trackInfo = trackInfo;
 
-    // actual work takes place after global config is loaded so not trying to query the same thing many times
+    // actual work takes place after global config is loaded to prevent querying the same thing many times
     emit loadGlobalConfiguration(id);
-
-    // TODO delete alreadyFailed from configuration once each month (not on a fixed date but after interval) to have a chance to pick up stuff that's newly added to musicbrainz
 }
 
 
@@ -242,31 +267,7 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
 {
     // got reply from musicbrains
     if (reply->url().host().compare("musicbrainz.org") == 0) {
-        if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) == 200) {
-            QString replyData = reply->readAll();
-
-            // get the id (could parse the XML but simple regular expression is satisfactory here because it was called with limit 1 anyways)
-            QRegExp regExp("release-group id=\"(.+)\"");
-            regExp.setMinimal(true);
-            if (replyData.contains(regExp)) {
-                // construct request for image, this must follow redirections because that's how cover art archive answers
-                QNetworkRequest request(QUrl("http://coverartarchive.org//release-group/" + regExp.capturedTexts().at(1) + "/front"));
-                request.setRawHeader("User-Agent", userAgent.toUtf8());
-                request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
-                request.setMaximumRedirectsAllowed(12);
-
-                // send request
-                networkAccessManager->get(request);
-            }
-            else {
-                // diagnostics
-                state = NotFound;
-                if (sendDiagnostics) {
-                    sendDiagnosticsData();
-                }
-            }
-        }
-        else if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) == 404) {
+        if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) != 200) {
             // update configuration
             alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album });
             emit saveGlobalConfiguration(id, configToJsonGlobal());
@@ -276,36 +277,96 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
             if (sendDiagnostics) {
                 sendDiagnosticsData();
             }
+            return;
         }
-        return;
+
+        // parse and process the xml
+
+        QString releaseGroupId;
+        QString currentReleaseGroupId;
+        bool    titleMatch;
+        bool    found               = false;
+        bool    inReleaseGroup      = false;
+        bool    inReleaseGroupTitle = false;
+        bool    inArtist            = false;
+        bool    inArtistName        = false;
+
+        QXmlStreamReader xmlStreamReader(reply);
+        while (!xmlStreamReader.atEnd() && !found) {
+            QXmlStreamReader::TokenType tokenType = xmlStreamReader.readNext();
+
+            if (tokenType == QXmlStreamReader::StartElement) {
+                if (xmlStreamReader.name().toString().compare("release-group") == 0) {
+                    QXmlStreamAttributes attributes = xmlStreamReader.attributes();
+                    if (attributes.hasAttribute("id")) {
+                        currentReleaseGroupId = attributes.value("id").toString();
+                        if (releaseGroupId.isEmpty() && allowLooseMatch) {
+                            releaseGroupId = currentReleaseGroupId;
+                        }
+                        inReleaseGroup = true;
+                    }
+                }
+                if (inReleaseGroup && (xmlStreamReader.name().toString().compare("title") == 0)) {
+                    inReleaseGroupTitle = true;
+                }
+                if (inReleaseGroup && (xmlStreamReader.name().toString().compare("artist") == 0)) {
+                    inArtist = true;
+                }
+                if (inArtist && (xmlStreamReader.name().toString().compare("name") == 0)) {
+                    inArtistName = true;
+                }
+            }
+
+            if (tokenType == QXmlStreamReader::Characters) {
+                if (inReleaseGroupTitle) {
+                    titleMatch = (xmlStreamReader.text().toString().compare(requestedTrackInfo.album, Qt::CaseInsensitive) == 0);
+                }
+                if (inArtistName) {
+                    if (titleMatch && (xmlStreamReader.text().toString().compare(requestedTrackInfo.performer, Qt::CaseInsensitive) == 0)) {
+                        releaseGroupId = currentReleaseGroupId;
+                        found          = true;
+                    }
+                }
+            }
+
+            if (tokenType == QXmlStreamReader::EndElement) {
+                if (xmlStreamReader.name().toString().compare("release-group") == 0) {
+                    inReleaseGroup = false;
+                }
+                if (xmlStreamReader.name().toString().compare("title") == 0) {
+                    inReleaseGroupTitle = false;
+                }
+                if (xmlStreamReader.name().toString().compare("artist") == 0) {
+                    inArtist = false;
+                }
+                if (xmlStreamReader.name().toString().compare("name") == 0) {
+                    inArtistName = false;
+                }
+            }
+        }
+
+        // this can happen is loose match isn't allowed but musicbrainz replied with loose mathces only, so do not put into alreadyChecked for later check (this scenario is kinda unlikely)
+        if (releaseGroupId.isEmpty()) {
+            // diagnostics
+            state = NotFound;
+            if (sendDiagnostics) {
+                sendDiagnosticsData();
+            }
+            return;
+        }
+
+        // construct request for image, this must follow redirections because that's how cover art archive answers
+        QNetworkRequest request(QUrl("http://coverartarchive.org//release-group/" + releaseGroupId + "/front"));
+        request.setRawHeader("User-Agent", userAgent.toUtf8());
+        request.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+        request.setMaximumRedirectsAllowed(12);
+
+        // send request
+        networkAccessManager->get(request);
     }
 
     // can not check the host because of the redirection, but must check the status
-    if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) == 200) {
-        // load the image from the data received (this takes care of different formats)
-        QImage picture = QImage::fromData(reply->readAll());
-
-        // only checking local files anyways
-        QString saveLocation = requestedTrackInfo.url.adjusted(QUrl::RemoveFilename).toLocalFile() + "coverartarchive_waver.jpg";
-
-        // save
-        picture.save(saveLocation);
-
-        // let the world know
-        TrackInfo resultsTrackInfo;
-        resultsTrackInfo.track = 0;
-        resultsTrackInfo.url   = requestedTrackInfo.url;
-        resultsTrackInfo.year  = 0;
-        resultsTrackInfo.pictures.append(QUrl::fromLocalFile(saveLocation));
-        emit updateTrackInfo(id, resultsTrackInfo);
-
-        // diagnostics
-        state = Success;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
-    }
-    else if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) == 404) {
+    if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) != 200) {
         // update configuration
         alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album });
         emit saveGlobalConfiguration(id, configToJsonGlobal());
@@ -315,7 +376,40 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
         if (sendDiagnostics) {
             sendDiagnosticsData();
         }
+        return;
     }
+
+    // load the image from the data received (this takes care of different formats)
+    QImage picture = QImage::fromData(reply->readAll());
+
+    // let's just be on the safe side, some crazy stuff can appear
+    if (picture.format() == QImage::Format_Invalid) {
+        return;
+    }
+
+    // save
+    picture.save(pictureFileName(requestedTrackInfo));
+
+    // let the world know after a bit of a delay, experienced problems with being too quick here
+    QTimer::singleShot(500, this, SLOT(signalTimer()));
+
+    // diagnostics
+    state = Success;
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
+}
+
+
+// slot for timer
+void AlbumArt::signalTimer()
+{
+    TrackInfo resultsTrackInfo;
+    resultsTrackInfo.track = 0;
+    resultsTrackInfo.url   = requestedTrackInfo.url;
+    resultsTrackInfo.year  = 0;
+    resultsTrackInfo.pictures.append(QUrl::fromLocalFile(pictureFileName(requestedTrackInfo)));
+    emit updateTrackInfo(id, resultsTrackInfo);
 }
 
 
@@ -356,17 +450,23 @@ void AlbumArt::sendDiagnosticsData()
     DiagnosticData diagnosticData;
 
     switch (state) {
-        case NotYetChecked:
+        case NotStartedYet:
             diagnosticData.append({ "Status", "Not started yet"});
             break;
-        case NotChecked:
+        case NotToBeChecked:
             diagnosticData.append({ "Status", "Not needed to be checked" });
             break;
-        case Success:
-            diagnosticData.append({ "Status", "Success" });
+        case CanNotCheck:
+            diagnosticData.append({ "Status", "Not enough info, can not check" });
             break;
         case InAlreadyFailed:
             diagnosticData.append({ "Status", "Already checked and not found" });
+            break;
+        case CheckStarted:
+            diagnosticData.append({ "Status", "Checking..." });
+            break;
+        case Success:
+            diagnosticData.append({ "Status", "Success" });
             break;
         case NotFound:
             diagnosticData.append({ "Status", "Not found" });
@@ -374,4 +474,22 @@ void AlbumArt::sendDiagnosticsData()
     }
 
     emit diagnostics(id, diagnosticData);
+}
+
+
+// helper
+QString AlbumArt::pictureFileName(TrackInfo pictureTrackInfo)
+{
+    QString performer = pictureTrackInfo.performer;
+    QString album     = pictureTrackInfo.album;
+
+    performer.replace(QRegExp("\\W"), "");
+    performer.replace(QRegExp("_"), "");
+    album.replace(QRegExp("\\W"), "");
+    album.replace(QRegExp("_"), "");
+
+    performer = performer.toLower();
+    album     = album.toLower();
+
+    return pictureTrackInfo.url.adjusted(QUrl::RemoveFilename).toLocalFile() + performer + "_" + album + "_caa_waver.jpg";
 }

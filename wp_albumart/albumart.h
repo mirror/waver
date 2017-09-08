@@ -36,8 +36,13 @@
 #include <QNetworkRequest>
 #include <QRegExp>
 #include <QString>
+#include <QTimer>
+#include <QUrl>
 #include <QUuid>
 #include <QVector>
+#include <QXmlStreamAttribute>
+#include <QXmlStreamAttributes>
+#include <QXmlStreamReader>
 
 #include "../waver/pluginfactory.h"
 #include "../waver/API/plugininfo_004.h"
@@ -76,9 +81,11 @@ class WP_ALBUMART_EXPORT AlbumArt : public PluginInfo_004 {
         };
 
         enum State {
-            NotYetChecked,
-            NotChecked,
+            NotStartedYet,
+            NotToBeChecked,
+            CanNotCheck,
             InAlreadyFailed,
+            CheckStarted,
             Success,
             NotFound
         };
@@ -90,12 +97,17 @@ class WP_ALBUMART_EXPORT AlbumArt : public PluginInfo_004 {
         QVector<PerformerAlbum>  alreadyFailed;
         QNetworkAccessManager   *networkAccessManager;
 
+        // TODO these two should be user configurable + allow user to empty alreadyFailed
+        bool checkAlways;
+        bool allowLooseMatch;
+
         bool  sendDiagnostics;
         State state;
 
         QJsonDocument configToJsonGlobal();
         void          jsonToConfigGlobal(QJsonDocument jsonDocument);
         void          sendDiagnosticsData();
+        QString       pictureFileName(TrackInfo pictureTrackInfo);
 
 
     public slots:
@@ -117,6 +129,7 @@ class WP_ALBUMART_EXPORT AlbumArt : public PluginInfo_004 {
     private slots:
 
         void networkFinished(QNetworkReply *reply);
+        void signalTimer();
 };
 
 #endif // ALBUMART_H

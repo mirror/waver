@@ -695,7 +695,11 @@ TrackInfo Track::getTrackInfo()
 // public method
 void Track::addPictures(QVector<QUrl> pictures)
 {
-    trackInfo.pictures.append(pictures);
+    foreach (QUrl url, pictures) {
+        if (!trackInfo.pictures.contains(url)) {
+            trackInfo.pictures.append(url);
+        }
+    }
 }
 
 
@@ -1469,8 +1473,11 @@ void Track::infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo)
     if (trackInfo.track > 0) {
         this->trackInfo.track = trackInfo.track;
     }
-    if ((trackInfo.pictures.count() > 0) && (this->trackInfo.pictures.count() < 1)) {
-        this->trackInfo.pictures.append(trackInfo.pictures);
+
+    foreach (QUrl url, trackInfo.pictures) {
+        if (!this->trackInfo.pictures.contains(url)) {
+            this->trackInfo.pictures.append(url);
+        }
     }
 
     emit trackInfoUpdated(trackInfo.url);

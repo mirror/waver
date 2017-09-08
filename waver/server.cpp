@@ -1496,7 +1496,7 @@ void WaverServer::trackInfoUpdated(QUrl url)
         if (previousTrackInfo.pictures.count() > 0) {
             foreach (Track *track, playlistTracks) {
                 TrackInfo trackInfo = track->getTrackInfo();
-                if ((trackInfo.pictures.count() < 1) && (trackInfo.performer.compare(previousTrackInfo.performer, Qt::CaseInsensitive) == 0) && (trackInfo.album.compare(previousTrackInfo.album, Qt::CaseInsensitive) == 0)) {
+                if ((trackInfo.performer.compare(previousTrackInfo.performer, Qt::CaseInsensitive) == 0) && (trackInfo.album.compare(previousTrackInfo.album, Qt::CaseInsensitive) == 0)) {
                     track->addPictures(previousTrackInfo.pictures);
                 }
             }
@@ -1516,7 +1516,7 @@ void WaverServer::trackInfoUpdated(QUrl url)
         if (currentTrackInfo.pictures.count() > 0) {
             foreach (Track *track, playlistTracks) {
                 TrackInfo trackInfo = track->getTrackInfo();
-                if ((trackInfo.pictures.count() < 1) && (trackInfo.performer.compare(currentTrackInfo.performer, Qt::CaseInsensitive) == 0) && (trackInfo.album.compare(currentTrackInfo.album, Qt::CaseInsensitive) == 0)) {
+                if ((trackInfo.performer.compare(currentTrackInfo.performer, Qt::CaseInsensitive) == 0) && (trackInfo.album.compare(currentTrackInfo.album, Qt::CaseInsensitive) == 0)) {
                     track->addPictures(currentTrackInfo.pictures);
                 }
             }
