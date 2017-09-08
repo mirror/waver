@@ -210,8 +210,9 @@ void WaverServer::startNextTrack()
     currentTrack->setStatus(Track::Playing);
 
     // these signals should be connected with the current track only
-    connect(this,         SIGNAL(requestPluginUi(QUuid)),            currentTrack, SLOT(requestedPluginUi(QUuid)));
-    connect(currentTrack, SIGNAL(pluginUi(QUuid, QString, QString)), this,        SLOT(pluginUi(QUuid, QString, QString)));
+    connect(this,         SIGNAL(requestPluginUi(QUuid)),                currentTrack, SLOT(requestedPluginUi(QUuid)));
+    connect(this,         SIGNAL(pluginUiResults(QUuid, QJsonDocument)), currentTrack, SLOT(receivedPluginUiResults(QUuid, QJsonDocument)));
+    connect(currentTrack, SIGNAL(pluginUi(QUuid, QString, QString)),     this,         SLOT(pluginUi(QUuid, QString, QString)));
 
     // UI singals
     if (!currentTrack->getFadeInRequested()) {
@@ -1244,7 +1245,6 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo)
 
         connect(this,  SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),       track, SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
         connect(this,  SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), track, SLOT(loadedPluginGlobalSettings(QUuid, QJsonDocument)));
-        connect(this,  SIGNAL(pluginUiResults(QUuid, QJsonDocument)),           track, SLOT(receivedPluginUiResults(QUuid, QJsonDocument)));
         connect(this,  SIGNAL(startDiagnostics(QUuid)),                         track, SLOT(startPluginDiagnostics(QUuid)));
         connect(this,  SIGNAL(stopDiagnostics(QUuid)),                          track, SLOT(stopPluginDiagnostics(QUuid)));
         connect(track, SIGNAL(savePluginSettings(QUuid, QJsonDocument)),        this,  SLOT(saveConfiguration(QUuid, QJsonDocument)));
@@ -1412,8 +1412,9 @@ void WaverServer::trackAboutToFinish(QUrl url)
     }
 
     // these signals should be connected with the current track only
-    disconnect(this,         SIGNAL(requestPluginUi(QUuid)),            currentTrack, SLOT(requestedPluginUi(QUuid)));
-    disconnect(currentTrack, SIGNAL(pluginUi(QUuid, QString, QString)), this,         SLOT(pluginUi(QUuid, QString, QString)));
+    disconnect(this,         SIGNAL(requestPluginUi(QUuid)),                currentTrack, SLOT(requestedPluginUi(QUuid)));
+    disconnect(this,         SIGNAL(pluginUiResults(QUuid, QJsonDocument)), currentTrack, SLOT(receivedPluginUiResults(QUuid, QJsonDocument)));
+    disconnect(currentTrack, SIGNAL(pluginUi(QUuid, QString, QString)),     this,         SLOT(pluginUi(QUuid, QString, QString)));
 
     // move current track to previous track
     if (previousTrack != NULL) {

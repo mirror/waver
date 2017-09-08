@@ -47,3 +47,8 @@ unix:!android {
     install.depends = translatedestdir
     QMAKE_EXTRA_TARGETS += install translatedestdir
 }
+
+DISTFILES +=
+
+RESOURCES += \
+    qml.qrc

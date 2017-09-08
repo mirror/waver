@@ -97,6 +97,8 @@ void TagLibInfo::setUserAgent(QString userAgent)
 TagLibInfo::TagLibInfo()
 {
     id = QUuid("{51C91776-E385-4444-AF8D-A3A47E3FEFB8}");
+
+    sendDiagnostics = false;
 }
 
 

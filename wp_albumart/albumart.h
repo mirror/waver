@@ -97,9 +97,9 @@ class WP_ALBUMART_EXPORT AlbumArt : public PluginInfo_004 {
         QVector<PerformerAlbum>  alreadyFailed;
         QNetworkAccessManager   *networkAccessManager;
 
-        // TODO these two should be user configurable + allow user to empty alreadyFailed
         bool checkAlways;
         bool allowLooseMatch;
+        bool allowLooseMatchOnlyIfNoOtherExist;
 
         bool  sendDiagnostics;
         State state;

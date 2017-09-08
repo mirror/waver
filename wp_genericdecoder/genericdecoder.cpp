@@ -99,14 +99,13 @@ GenericDecoder::GenericDecoder()
 {
     id = QUuid("{2958F1AD-9042-48DC-8652-CFC96378E063}");
 
-    audioDecoder       = NULL;
-    file               = NULL;
-    networkDownloader  = NULL;
-
-    networkDeviceSet = false;
-
+    audioDecoder        = NULL;
+    file                = NULL;
+    networkDownloader   = NULL;
+    networkDeviceSet    = false;
     memoryUsage         = 0;
     decodedMicroSeconds = 0;
+    sendDiagnostics     = false;
 }
 
 

@@ -41,6 +41,7 @@ RadioSource::RadioSource()
 
     networkAccessManager  = NULL;
     playlistAccessManager = NULL;
+    sendDiagnostics      = false;
 }
 
 

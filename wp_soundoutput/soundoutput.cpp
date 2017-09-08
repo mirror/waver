@@ -45,6 +45,7 @@ SoundOutput::SoundOutput()
     fadeDirection       = FADE_DIRECTION_NONE;
     sendFadeComplete    = true;
     volume              = 1.0;
+    sendDiagnostics     = false;
 }
 
 

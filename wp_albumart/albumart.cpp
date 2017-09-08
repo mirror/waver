@@ -64,7 +64,7 @@ QString AlbumArt::waverVersionAPICompatibility()
 // global method
 bool AlbumArt::hasUI()
 {
-    return false;
+    return true;
 }
 
 
@@ -94,11 +94,12 @@ AlbumArt::AlbumArt()
 {
     id = QUuid("{1AEC5C13-454B-48BB-AA2A-93246243EC87}");
 
-    networkAccessManager = NULL;
-    state                = NotStartedYet;
-    sendDiagnostics      = false;
-    checkAlways          = true;
-    allowLooseMatch      = true;
+    networkAccessManager              = NULL;
+    state                             = NotStartedYet;
+    sendDiagnostics                   = false;
+    checkAlways                       = true;
+    allowLooseMatch                   = true;
+    allowLooseMatchOnlyIfNoOtherExist = true;
 }
 
 
@@ -116,6 +117,8 @@ void AlbumArt::run()
 {
     networkAccessManager = new QNetworkAccessManager();
     connect(networkAccessManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(networkFinished(QNetworkReply *)));
+
+    emit loadGlobalConfiguration(id);
 }
 
 
@@ -179,18 +182,46 @@ void AlbumArt::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configura
 }
 
 
-// this plugin has no UI
+// UI
 void AlbumArt::getUiQml(QUuid uniqueId)
 {
-    Q_UNUSED(uniqueId);
+    if (uniqueId != id) {
+        return;
+    }
+
+    QFile settingsFile("://AA_Settings.qml");
+    settingsFile.open(QFile::ReadOnly);
+    QString settings = settingsFile.readAll();
+    settingsFile.close();
+
+    settings.replace("check_always_value",           checkAlways                       ? "true" : "false");
+    settings.replace("allow_loose_match_value",      allowLooseMatch                   ? "true" : "false");
+    settings.replace("only_if_no_other_exist_value", allowLooseMatchOnlyIfNoOtherExist ? "true" : "false");
+
+    emit uiQml(id, settings);
 }
 
 
-// this plugin has no UI
+// UI
 void AlbumArt::uiResults(QUuid uniqueId, QJsonDocument results)
 {
-    Q_UNUSED(uniqueId);
-    Q_UNUSED(results);
+    if (uniqueId != id) {
+        return;
+    }
+
+    // going from strict to loose, have to give a chance to re-check
+    if (!allowLooseMatch && results.object().value("allow_loose_match").toBool()) {
+        alreadyFailed.clear();
+    }
+    if (allowLooseMatchOnlyIfNoOtherExist && !results.object().value("only_if_no_other_exist").toBool()) {
+        alreadyFailed.clear();
+    }
+
+    checkAlways                       = results.object().value("check_always").toBool();
+    allowLooseMatch                   = results.object().value("allow_loose_match").toBool();
+    allowLooseMatchOnlyIfNoOtherExist = results.object().value("only_if_no_other_exist").toBool();
+
+    emit saveGlobalConfiguration(id, configToJsonGlobal());
 }
 
 
@@ -300,9 +331,6 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
                     QXmlStreamAttributes attributes = xmlStreamReader.attributes();
                     if (attributes.hasAttribute("id")) {
                         currentReleaseGroupId = attributes.value("id").toString();
-                        if (releaseGroupId.isEmpty() && allowLooseMatch) {
-                            releaseGroupId = currentReleaseGroupId;
-                        }
                         inReleaseGroup = true;
                     }
                 }
@@ -319,34 +347,46 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
 
             if (tokenType == QXmlStreamReader::Characters) {
                 if (inReleaseGroupTitle) {
-                    titleMatch = (xmlStreamReader.text().toString().compare(requestedTrackInfo.album, Qt::CaseInsensitive) == 0);
+                    titleMatch = (xmlStreamReader.text().toString().compare(requestedTrackInfo.album.trimmed(), Qt::CaseInsensitive) == 0);
                 }
                 if (inArtistName) {
-                    if (titleMatch && (xmlStreamReader.text().toString().compare(requestedTrackInfo.performer, Qt::CaseInsensitive) == 0)) {
-                        releaseGroupId = currentReleaseGroupId;
-                        found          = true;
+                    if (xmlStreamReader.text().toString().compare(requestedTrackInfo.performer.trimmed(), Qt::CaseInsensitive) == 0) {
+                        if (titleMatch) {
+                            releaseGroupId = currentReleaseGroupId;
+                            found = true;
+                        }
+                        else if (releaseGroupId.isEmpty() && allowLooseMatch && (!allowLooseMatchOnlyIfNoOtherExist || (allowLooseMatchOnlyIfNoOtherExist && requestedTrackInfo.pictures.count() < 1))) {
+                            releaseGroupId = currentReleaseGroupId;
+                        }
                     }
                 }
             }
 
             if (tokenType == QXmlStreamReader::EndElement) {
                 if (xmlStreamReader.name().toString().compare("release-group") == 0) {
-                    inReleaseGroup = false;
+                    inReleaseGroup      = false;
+                    inReleaseGroupTitle = false;
                 }
                 if (xmlStreamReader.name().toString().compare("title") == 0) {
                     inReleaseGroupTitle = false;
                 }
                 if (xmlStreamReader.name().toString().compare("artist") == 0) {
-                    inArtist = false;
+                    inArtist     = false;
+                    inArtistName = false;
                 }
                 if (xmlStreamReader.name().toString().compare("name") == 0) {
                     inArtistName = false;
                 }
             }
         }
+        reply->readAll();
 
-        // this can happen is loose match isn't allowed but musicbrainz replied with loose mathces only, so do not put into alreadyChecked for later check (this scenario is kinda unlikely)
+        // not found?
         if (releaseGroupId.isEmpty()) {
+            // update configuration
+            alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album });
+            emit saveGlobalConfiguration(id, configToJsonGlobal());
+
             // diagnostics
             state = NotFound;
             if (sendDiagnostics) {
@@ -382,7 +422,7 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
     // load the image from the data received (this takes care of different formats)
     QImage picture = QImage::fromData(reply->readAll());
 
-    // let's just be on the safe side, some crazy stuff can appear
+    // let's just be on the safe side
     if (picture.format() == QImage::Format_Invalid) {
         return;
     }
@@ -422,7 +462,10 @@ QJsonDocument AlbumArt::configToJsonGlobal()
     }
 
     QJsonObject jsonObject;
-    jsonObject.insert("alreadyFailed", jsonArray);
+    jsonObject.insert("already_failed", jsonArray);
+    jsonObject.insert("check_always", checkAlways);
+    jsonObject.insert("allow_loose_match", allowLooseMatch);
+    jsonObject.insert("only_if_no_other_exist", allowLooseMatchOnlyIfNoOtherExist);
 
     QJsonDocument returnValue;
     returnValue.setObject(jsonObject);
@@ -434,12 +477,21 @@ QJsonDocument AlbumArt::configToJsonGlobal()
 // configuration conversion
 void AlbumArt::jsonToConfigGlobal(QJsonDocument jsonDocument)
 {
-    if (jsonDocument.object().contains("alreadyFailed")) {
+    if (jsonDocument.object().contains("already_failed")) {
         alreadyFailed.clear();
-        foreach (QJsonValue jsonValue, jsonDocument.object().value("alreadyFailed").toArray()) {
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("already_failed").toArray()) {
             QJsonArray value = jsonValue.toArray();
             alreadyFailed.append({ value.at(0).toString(), value.at(1).toString() });
         }
+    }
+    if (jsonDocument.object().contains("check_always")) {
+        checkAlways = jsonDocument.object().value("check_always").toBool();
+    }
+    if (jsonDocument.object().contains("allow_loose_match")) {
+        allowLooseMatch = jsonDocument.object().value("allow_loose_match").toBool();
+    }
+    if (jsonDocument.object().contains("only_if_no_other_exist")) {
+        allowLooseMatchOnlyIfNoOtherExist = jsonDocument.object().value("only_if_no_other_exist").toBool();
     }
 }
 
