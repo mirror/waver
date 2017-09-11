@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>AA_Settings.qml</file>
-    </qresource>
-</RCC>

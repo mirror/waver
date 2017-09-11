@@ -48,7 +48,3 @@ unix:!android {
     QMAKE_EXTRA_TARGETS += install translatedestdir
 }
 
-DISTFILES +=
-
-RESOURCES += \
-    qml.qrc

@@ -416,6 +416,7 @@ void GenericDecoder::sendDiagnosticsData()
         }
         diagnosticData.append({ "PCM format", QString("%1 Hz, %2 bit, %3").arg(audioBuffers.last()->format().sampleRate()).arg(audioBuffers.last()->format().sampleSize()).arg(type) });
     }
+    diagnosticData.append({ "URL", url.toString() });
     emit diagnostics(id, diagnosticData);
 }
 

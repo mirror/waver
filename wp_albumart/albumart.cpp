@@ -64,7 +64,7 @@ QString AlbumArt::waverVersionAPICompatibility()
 // global method
 bool AlbumArt::hasUI()
 {
-    return true;
+    return false;
 }
 
 
@@ -94,12 +94,9 @@ AlbumArt::AlbumArt()
 {
     id = QUuid("{1AEC5C13-454B-48BB-AA2A-93246243EC87}");
 
-    networkAccessManager              = NULL;
-    state                             = NotStartedYet;
-    sendDiagnostics                   = false;
-    checkAlways                       = true;
-    allowLooseMatch                   = true;
-    allowLooseMatchOnlyIfNoOtherExist = true;
+    networkAccessManager = NULL;
+    state                = NotStartedYet;
+    sendDiagnostics      = false;
 }
 
 
@@ -185,43 +182,15 @@ void AlbumArt::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configura
 // UI
 void AlbumArt::getUiQml(QUuid uniqueId)
 {
-    if (uniqueId != id) {
-        return;
-    }
-
-    QFile settingsFile("://AA_Settings.qml");
-    settingsFile.open(QFile::ReadOnly);
-    QString settings = settingsFile.readAll();
-    settingsFile.close();
-
-    settings.replace("check_always_value",           checkAlways                       ? "true" : "false");
-    settings.replace("allow_loose_match_value",      allowLooseMatch                   ? "true" : "false");
-    settings.replace("only_if_no_other_exist_value", allowLooseMatchOnlyIfNoOtherExist ? "true" : "false");
-
-    emit uiQml(id, settings);
+    Q_UNUSED(uniqueId);
 }
 
 
 // UI
 void AlbumArt::uiResults(QUuid uniqueId, QJsonDocument results)
 {
-    if (uniqueId != id) {
-        return;
-    }
-
-    // going from strict to loose, have to give a chance to re-check
-    if (!allowLooseMatch && results.object().value("allow_loose_match").toBool()) {
-        alreadyFailed.clear();
-    }
-    if (allowLooseMatchOnlyIfNoOtherExist && !results.object().value("only_if_no_other_exist").toBool()) {
-        alreadyFailed.clear();
-    }
-
-    checkAlways                       = results.object().value("check_always").toBool();
-    allowLooseMatch                   = results.object().value("allow_loose_match").toBool();
-    allowLooseMatchOnlyIfNoOtherExist = results.object().value("only_if_no_other_exist").toBool();
-
-    emit saveGlobalConfiguration(id, configToJsonGlobal());
+    Q_UNUSED(uniqueId)
+    Q_UNUSED(results)
 }
 
 
@@ -255,20 +224,8 @@ void AlbumArt::getInfo(QUuid uniqueId, TrackInfo trackInfo)
         return;
     }
 
-    // check if picture saved by this plugin exists
-    bool foundOurPicture = false;
-    if (checkAlways) {
-        QUrl lookingFor = QUrl::fromLocalFile(pictureFileName(trackInfo));
-        foreach (QUrl url, trackInfo.pictures) {
-            if (url == lookingFor) {
-                foundOurPicture = true;
-                break;
-            }
-        }
-    }
-
     // things that prevent checking
-    if (!trackInfo.url.isLocalFile() || (checkAlways && foundOurPicture) || (!checkAlways && (trackInfo.pictures.count() > 0))) {
+    if (!trackInfo.url.isLocalFile() || (trackInfo.pictures.count() > 0)) {
         // diagnostics
         state = NotToBeChecked;
         if (sendDiagnostics) {
@@ -298,16 +255,6 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
 {
     // got reply from musicbrains
     if (reply->url().host().compare("musicbrainz.org") == 0) {
-        if (reply->error() != QNetworkReply::NoError) {
-            // diagnostics
-            state = NotFound;
-            if (sendDiagnostics) {
-                sendDiagnosticsData();
-            }
-
-            reply->deleteLater();
-            return;
-        }
         if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) != 200) {
             // update configuration
             alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album });
@@ -367,7 +314,7 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
                             releaseGroupId = currentReleaseGroupId;
                             found = true;
                         }
-                        else if (releaseGroupId.isEmpty() && allowLooseMatch && (!allowLooseMatchOnlyIfNoOtherExist || (allowLooseMatchOnlyIfNoOtherExist && requestedTrackInfo.pictures.count() < 1))) {
+                        else if (releaseGroupId.isEmpty()) {
                             releaseGroupId = currentReleaseGroupId;
                         }
                     }
@@ -416,19 +363,11 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
 
         // send request
         networkAccessManager->get(request);
+
+        return;
     }
 
     // can not check the host because of the redirection, but must check the status
-    if (reply->error() != QNetworkReply::NoError) {
-        // diagnostics
-        state = NotFound;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
-
-        reply->deleteLater();
-        return;
-    }
     if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) != 200) {
         // update configuration
         alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album });
@@ -489,9 +428,6 @@ QJsonDocument AlbumArt::configToJsonGlobal()
 
     QJsonObject jsonObject;
     jsonObject.insert("already_failed", jsonArray);
-    jsonObject.insert("check_always", checkAlways);
-    jsonObject.insert("allow_loose_match", allowLooseMatch);
-    jsonObject.insert("only_if_no_other_exist", allowLooseMatchOnlyIfNoOtherExist);
 
     QJsonDocument returnValue;
     returnValue.setObject(jsonObject);
@@ -509,15 +445,6 @@ void AlbumArt::jsonToConfigGlobal(QJsonDocument jsonDocument)
             QJsonArray value = jsonValue.toArray();
             alreadyFailed.append({ value.at(0).toString(), value.at(1).toString() });
         }
-    }
-    if (jsonDocument.object().contains("check_always")) {
-        checkAlways = jsonDocument.object().value("check_always").toBool();
-    }
-    if (jsonDocument.object().contains("allow_loose_match")) {
-        allowLooseMatch = jsonDocument.object().value("allow_loose_match").toBool();
-    }
-    if (jsonDocument.object().contains("only_if_no_other_exist")) {
-        allowLooseMatchOnlyIfNoOtherExist = jsonDocument.object().value("only_if_no_other_exist").toBool();
     }
 }
 
