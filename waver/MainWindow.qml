@@ -1067,7 +1067,8 @@ ApplicationWindow {
                     if (link == "add") {
                         playlistAddSelectedItems.append({
                             pluginId: pluginIdProperty,
-                            id: idProperty
+                            id: idProperty,
+                            label: labelProperty
                         });
                         playlistAddSelected.positionViewAtEnd();
                     }
@@ -1095,7 +1096,7 @@ ApplicationWindow {
         id: playlistAddSelectedElement
 
         Text {
-            text: id
+            text: label
             elide: Text.ElideLeft
             height: textMetrics.height + (3 * 2)
             width: playlistAddSelected.width;

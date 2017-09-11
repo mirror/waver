@@ -70,7 +70,7 @@ void NetworkDownloader::run()
 
     networkReply = networkAccessManager->get(networkRequest);
 
-    connect(networkReply, SIGNAL(downloadProgress(qint64, qint64)),    this, SLOT(networkDownloadProgress(qint64, qint64)));
+    connect(networkReply, SIGNAL(downloadProgress(qint64, qint64)),   this, SLOT(networkDownloadProgress(qint64, qint64)));
     connect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
 
     QTimer::singleShot(7500, this, SLOT(connectionTimeout()));

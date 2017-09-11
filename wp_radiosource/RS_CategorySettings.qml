@@ -57,7 +57,7 @@ Item {
         onClicked: {
             var retval = [];
             replace_checkboxes_to_retval;
-            done(JSON.stringify({ selected_genres: retval }));
+            done(JSON.stringify(retval));
         }
     }
 
@@ -78,8 +78,6 @@ Item {
         anchors.rightMargin: 6
         anchors.bottom: cancelButton.top
         anchors.bottomMargin: 6
-        anchors.verticalCenter: importButton.verticalCenter
         onClicked: { replace_checkboxes_to_all }
-
     }
 }

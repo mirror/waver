@@ -54,7 +54,7 @@ Item {
     }
     CheckBox {
         id: only_if_no_other_exist
-        text: "Only if no other pictures exist already"
+        text: "Only if no other pictures exist"
         tristate: false
         checked: only_if_no_other_exist_value
         anchors.top: allow_loose_match.bottom

@@ -144,6 +144,41 @@ void WaverServer::finish(QString errorMessage)
 }
 
 
+// helper
+void WaverServer::outputError(QString errorMessage, QString title, bool fatal)
+{
+    // print to error output
+    if (title.isEmpty()) {
+        Globals::consoleOutput(QString("%1: %3").arg(fatal ? "Fatal error" : "Error").arg(errorMessage), true);
+    }
+    else {
+        Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(fatal ? "Fatal error" : "Error").arg(title).arg(errorMessage), true);
+    }
+
+    // send message to UI
+    QVariantHash messageHash;
+    messageHash.insert("message", (title.isEmpty() ? errorMessage : title + "\n\n" + errorMessage));
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
+
+    // add to error log
+    ErrorLogItem errorLogItem;
+    errorLogItem.fatal     = fatal;
+    errorLogItem.message   = errorMessage;
+    errorLogItem.timestamp = QDateTime::currentDateTime();
+    errorLogItem.title     = title;
+    while (errorLog.count() >= 100) {
+        errorLog.remove(0);
+    }
+    errorLog.append(errorLogItem);
+
+    // send error log to UI
+    if (sendErrorLogDiagnostics) {
+        sendErrorLogDiagnosticsToClients();
+    }
+}
+
+
 // private method
 void WaverServer::requestPlaylist()
 {
@@ -160,6 +195,7 @@ void WaverServer::requestPlaylist()
 
     // not requesting anymore tracks if couldn't start too many tracks already
     if (unableToStartCount >= (readyPlugins.count() * MAX_TRACKS_AT_ONCE)) {
+        outputError("Too many tracks couldn't start. Not requesting tracks anymore until a manually added track plays.", "", false);
         return;
     }
 
@@ -750,7 +786,7 @@ void WaverServer::pluginLibsLoaded()
 // plugin libraries loader signal handler
 void WaverServer::pluginLibsFailInfo(QString info)
 {
-    Globals::consoleOutput(info, true);
+    outputError(info, "", true);
 }
 
 
@@ -885,30 +921,7 @@ void WaverServer::ipcReceivedUrl(QUrl url)
 // interprocess communication signal handler
 void WaverServer::ipcReceivedError(bool fatal, QString error)
 {
-    // print to error output
-    Globals::consoleOutput(QString("%1 reported from interprocess communications: %2").arg(fatal ? "Fatal error" : "Error").arg(error), true);
-
-    // send message to UI
-    QVariantHash messageHash;
-    messageHash.insert("message", error);
-    IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
-
-    // add to error log
-    ErrorLogItem errorLogItem;
-    errorLogItem.fatal     = fatal;
-    errorLogItem.message   = error;
-    errorLogItem.timestamp = QDateTime::currentDateTime();
-    errorLogItem.title     = "Interprocess communications";
-    while (errorLog.count() >= 100) {
-        errorLog.remove(0);
-    }
-    errorLog.append(errorLogItem);
-
-    // send error log to UI
-    if (sendErrorLogDiagnostics) {
-        sendErrorLogDiagnosticsToClients();
-    }
+    outputError(error, "interprocess communications", fatal);
 }
 
 
@@ -1089,12 +1102,7 @@ void WaverServer::pluginUnready(QUuid uniqueId)
 // source plugin signal handler
 void WaverServer::pluginInfoMessage(QUuid uniqueId, QString message)
 {
-    Q_UNUSED(uniqueId);
-
-    QVariantHash messageHash;
-    messageHash.insert("message", sourcePlugins.value(uniqueId).name + "\n\n" + message);
-    IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
+    outputError(message, sourcePlugins.value(uniqueId).name, false);
 }
 
 
@@ -1535,32 +1543,7 @@ void WaverServer::trackInfoUpdated(QUrl url)
 // track signal handler
 void WaverServer::trackError(QUrl url, bool fatal, QString errorString)
 {
-    QString title = findTitleFromUrl(url);
-
-    // print to error output
-    Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(fatal ? "Fatal error" : "Error").arg(title).arg(errorString), true);
-
-    // send message to UI
-    QVariantHash messageHash;
-    messageHash.insert("message", title + "\n\n" + errorString);
-    IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
-
-    // add to error log
-    ErrorLogItem errorLogItem;
-    errorLogItem.fatal     = fatal;
-    errorLogItem.message   = errorString;
-    errorLogItem.timestamp = QDateTime::currentDateTime();
-    errorLogItem.title     = title;
-    while (errorLog.count() >= 100) {
-        errorLog.remove(0);
-    }
-    errorLog.append(errorLogItem);
-
-    // send error log to UI
-    if (sendErrorLogDiagnostics) {
-        sendErrorLogDiagnosticsToClients();
-    }
+    outputError(errorString, findTitleFromUrl(url), fatal);
 
     // cancel the track if fatal
     if (fatal) {

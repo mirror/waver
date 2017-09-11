@@ -140,6 +140,7 @@ class WaverServer : public QObject {
         void finish();
         void finish(QString errorMessage);
 
+        void         outputError(QString errorMessage, QString title, bool fatal);
         void         requestPlaylist();
         void         startNextTrack();
         void         reassignFadeIns();

@@ -28,6 +28,7 @@
 
 #include <QDateTime>
 #include <QFile>
+#include <QHash>
 #include <QIODevice>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -36,6 +37,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QRegExp>
+#include <QStandardPaths>
 #include <QString>
 #include <QStringList>
 #include <QThread>
@@ -78,28 +80,56 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
     private:
 
+        static const int CACHE_REQUEST_COUNT    = 6;
+        static const int PLAYLIST_REQUEST_DELAY = 100;
+
+        struct Genre {
+            QString name;
+            bool    isPrimary;
+        };
+
+        struct SelectedGenre {
+            QString name;
+            int     limit;
+        };
+
         struct Station {
             QString id;
+            QString base;
             QString name;
             QString genre;
+            QUrl    url;
+        };
+
+        enum State {
+            Idle,
+            GenreList,
+            Caching,
+            Opening,
+            Searching
         };
 
         QUuid   id;
         QString userAgent;
         QString key;
+        bool    readySent;
         bool    sendDiagnostics;
+        State   state;
 
-        QStringList genres;
-        QStringList selectedGenres;
-        QStringList bannedUrls;
+        QVector<Genre>         genres;
+        QDateTime              genresLoaded;
+        QVector<SelectedGenre> selectedGenres;
+        QStringList            bannedUrls;
+        QStringList            unableToStartUrls;
 
-        QString          base;
-        QVector<Station> stations;
-        int              stationIndex;
-        TracksInfo       tracksInfo;
+        QVector<Station>                 stationsCache;
+        QHash<QString, QVector<Station>> openData;
+        QVector<Station>                 stationsToOpen;
+        int                              cacheRetries;
 
         QNetworkAccessManager *networkAccessManager;
         QNetworkAccessManager *playlistAccessManager;
+        QNetworkReply         *latestReply;
 
         QJsonDocument configToJson();
         QJsonDocument configToJsonGlobal();
@@ -107,6 +137,14 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         void          jsonToConfigGlobal(QJsonDocument jsonDocument);
 
         QString getKey();
+
+        void cache();
+        int  findSelectedGenreIndex(QString genreName);
+        int  findStationWithoutUrl(QVector<Station> stations);
+        int  findStationById(QVector<Station> stations, QString id, bool emptyUrlOnly);
+        void sendDiagnosticsData();
+
+        QString getOpenTracksWaitParentId;
 
 
     public slots:
@@ -135,7 +173,10 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
         void networkFinished(QNetworkReply *reply);
         void playlistFinished(QNetworkReply *reply);
+        void cacheWait();
         void tuneIn();
+        void getOpenTracksWait();
+        void resolveOpenTracksWait();
 
 };
 

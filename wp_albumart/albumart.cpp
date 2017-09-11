@@ -298,6 +298,16 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
 {
     // got reply from musicbrains
     if (reply->url().host().compare("musicbrainz.org") == 0) {
+        if (reply->error() != QNetworkReply::NoError) {
+            // diagnostics
+            state = NotFound;
+            if (sendDiagnostics) {
+                sendDiagnosticsData();
+            }
+
+            reply->deleteLater();
+            return;
+        }
         if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) != 200) {
             // update configuration
             alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album });
@@ -308,6 +318,8 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
             if (sendDiagnostics) {
                 sendDiagnosticsData();
             }
+
+            reply->deleteLater();
             return;
         }
 
@@ -380,6 +392,7 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
             }
         }
         reply->readAll();
+        reply->deleteLater();
 
         // not found?
         if (releaseGroupId.isEmpty()) {
@@ -406,6 +419,16 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
     }
 
     // can not check the host because of the redirection, but must check the status
+    if (reply->error() != QNetworkReply::NoError) {
+        // diagnostics
+        state = NotFound;
+        if (sendDiagnostics) {
+            sendDiagnosticsData();
+        }
+
+        reply->deleteLater();
+        return;
+    }
     if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) != 200) {
         // update configuration
         alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album });
@@ -416,11 +439,14 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
         if (sendDiagnostics) {
             sendDiagnosticsData();
         }
+
+        reply->deleteLater();
         return;
     }
 
     // load the image from the data received (this takes care of different formats)
     QImage picture = QImage::fromData(reply->readAll());
+    reply->deleteLater();
 
     // let's just be on the safe side
     if (picture.format() == QImage::Format_Invalid) {
