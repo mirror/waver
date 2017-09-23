@@ -176,12 +176,16 @@ class WaverServer : public QObject {
         void getCollectionList();
         void savePluginSettings(QUuid uniqueId, QString collectionName, QJsonDocument settings);
         void loadPluginSettings(QUuid uniqueId, QString collectionName);
+        void executeSettingsSql(QUuid uniqueId, QString collectionName, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
         void startDiagnostics(QUuid uniqueId);
         void stopDiagnostics(QUuid uniqueId);
 
         void unableToStart(QUuid uniqueId, QUrl url);
         void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
+        void executedSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
+        void executedGlobalSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
+        void executedSqlError(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error);
         void getPlaylist(QUuid uniqueId, int maxCount);
         void getOpenTracks(QUuid uniqueId, QString parentId);
         void search(QUuid uniqueId, QString criteria);
@@ -212,6 +216,9 @@ class WaverServer : public QObject {
         void collectionList(QStringList collections, QString currentCollection);
         void loadedPluginSettings(QUuid uniqueId, QJsonDocument settings);
         void loadedPluginGlobalSettings(QUuid uniqueId, QJsonDocument settings);
+        void executedPluginSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
+        void executedPluginGlobalSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
+        void executedPluginSqlError(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error);
 
         void pluginUi(QUuid uniqueId, QString qml, QString header);
         void pluginUi(QUuid uniqueId, QString qml);
@@ -221,10 +228,14 @@ class WaverServer : public QObject {
         void pluginInfoMessage(QUuid uniqueId, QString message);
         void pluginDiagnostics(QUuid uniqueId, DiagnosticData data);
         void pluginDiagnostics(QUuid uniqueId, QUrl url, DiagnosticData data);
+
         void loadConfiguration(QUuid uniqueId);
         void loadGlobalConfiguration(QUuid uniqueId);
         void saveConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
+        void executeSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
+        void executeGlobalSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
+
         void playlist(QUuid uniqueId, TracksInfo tracksInfo);
         void openTracksResults(QUuid uniqueId, OpenTracks openTracks);
         void searchResults(QUuid uniqueId, OpenTracks openTracks);

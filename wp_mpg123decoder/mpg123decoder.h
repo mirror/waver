@@ -38,14 +38,14 @@
 
 #include "feed.h"
 #include "mpg123lib/mpg123.h"
-#include "../waver/API/plugindecoder_001.h"
+#include "../waver/API/plugindecoder_004.h"
 #include "../waver/pluginfactory.h"
 
 
 extern "C" WP_MPG123DECODER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_001 {
+class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_004 {
         Q_OBJECT
 
     public:
@@ -89,6 +89,10 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_001 {
         void start(QUuid uniqueId) override;
 
         void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+
+        void sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)       override;
+        void globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results) override;
+        void sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)              override;
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;

@@ -18,7 +18,7 @@
 #    (GPL.TXT) along with Waver. If not, see <http://www.gnu.org/licenses/>.
 
 
-QT += qml quick multimedia
+QT += qml quick multimedia sql
 
 unix:!android {
     QT += dbus

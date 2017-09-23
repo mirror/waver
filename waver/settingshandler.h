@@ -30,10 +30,20 @@
 #include <QJsonDocument>
 #include <QObject>
 #include <QRegExp>
+#include <QSqlDatabase>
+#include <QSqlError>
+#include <QSqlQuery>
+#include <QSqlRecord>
 #include <QStandardPaths>
 #include <QString>
 #include <QStringList>
 #include <QUuid>
+#include <QVariant>
+#include <QVariantHash>
+#include <QVariantList>
+#include <QVector>
+
+#include "pluginglobals.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -55,6 +65,8 @@ class SettingsHandler : public QObject {
         QDir *settingsDir;
 
         QString pluginSettingsFileName(QUuid persistentUniqueId, QString collectionName);
+        QString pluginSettingsDatabaseName(QUuid persistentUniqueId, QString collectionName, bool temporary);
+        QString pluginSettingsConnectionName(QUuid persistentUniqueId, QString collectionName, bool temporary);
 
 
     signals:
@@ -63,6 +75,10 @@ class SettingsHandler : public QObject {
 
         void loadedPluginSettings(QUuid id, QJsonDocument settings);
         void loadedPluginGlobalSettings(QUuid id, QJsonDocument settings);
+
+        void sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
+        void globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
+        void sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error);
 
 
     public slots:
@@ -75,6 +91,8 @@ class SettingsHandler : public QObject {
 
         void savePluginSettings(QUuid persistentUniqueId, QString collectionName, QJsonDocument settings);
         void loadPluginSettings(QUuid persistentUniqueId, QString collectionName);
+
+        void executeSql(QUuid persistentUniqueId, QString collectionName, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
 
 };
 

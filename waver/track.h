@@ -176,6 +176,8 @@ class Track : public QObject {
         void savePluginGlobalSettings(QUuid uniqueId, QJsonDocument settings);
         void loadPluginSettings(QUuid uniqueId);
         void loadPluginGlobalSettings(QUuid uniqueId);
+        void executeSettingsSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
+        void executeGlobalSettingsSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
         void loadedPlugins(Track::PluginList pluginsWithUI);
         void loadedPluginsWithUI(Track::PluginList pluginsWithUI);
         void pluginUi(QUuid id, QString qml, QString header);
@@ -191,6 +193,10 @@ class Track : public QObject {
 
         void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
+        void executedSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
+        void executedGlobalSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
+        void executedSqlError(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error);
+
         void requestPluginUi(QUuid id);
         void pluginUiResults(QUuid uniqueId, QJsonDocument results);
         void startDiagnostics(QUuid uniqueId);
@@ -218,6 +224,9 @@ class Track : public QObject {
 
         void loadedPluginSettings(QUuid id, QJsonDocument settings);
         void loadedPluginGlobalSettings(QUuid id, QJsonDocument settings);
+        void executedPluginSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
+        void executedPluginGlobalSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
+        void executedPluginSqlError(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error);
         void requestedPluginUi(QUuid id);
         void receivedPluginUiResults(QUuid uniqueId, QJsonDocument results);
         void startPluginDiagnostics(QUuid uniquedId);
@@ -230,6 +239,8 @@ class Track : public QObject {
         void loadGlobalConfiguration(QUuid uniqueId);
         void saveConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
+        void executeSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
+        void executeGlobalSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
         void ui(QUuid uniqueId, QString qml);
         void infoMessage(QUuid uniqueId, QString message);
         void diagnostics(QUuid id, DiagnosticData diagnosticData);

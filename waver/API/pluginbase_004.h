@@ -53,6 +53,9 @@ class PluginBase_004 : public QObject {
         void loadGlobalConfiguration(QUuid uniqueId);
         void saveConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
+        void executeSql(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
+        void executeGlobalSql(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
+        
 
         void uiQml(QUuid uniqueId, QString qmlString);
 
@@ -65,8 +68,11 @@ class PluginBase_004 : public QObject {
 
         virtual void run() = 0;
 
-        virtual void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) = 0;
-        virtual void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) = 0;
+        virtual void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)                                                                  = 0;
+        virtual void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)                                                            = 0;
+        virtual void sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)       = 0;
+        virtual void globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results) = 0;
+        virtual void sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)              = 0;
 
         virtual void getUiQml(QUuid uniqueId)                         = 0;
         virtual void uiResults(QUuid uniqueId, QJsonDocument results) = 0;

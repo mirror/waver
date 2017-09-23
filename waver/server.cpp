@@ -60,6 +60,7 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     qRegisterMetaType<OpenTracks>("OpenTracks");
     qRegisterMetaType<DiagnosticItem>("DiagnosticItem");
     qRegisterMetaType<DiagnosticData>("DiagnosticData");
+    qRegisterMetaType<SqlResults>("SqlResults");
     qRegisterMetaType<Track::PluginList>("Track::PluginList");
 }
 
@@ -91,14 +92,18 @@ void WaverServer::run()
     connect(&settingsThread, SIGNAL(started()),  settingsHandler, SLOT(run()));
     connect(&settingsThread, SIGNAL(finished()), settingsHandler, SLOT(deleteLater()));
 
-    connect(this, SIGNAL(saveCollectionList(QStringList, QString)),                    settingsHandler, SLOT(saveCollectionList(QStringList, QString)));
-    connect(this, SIGNAL(saveCollectionList(QString)),                                 settingsHandler, SLOT(saveCollectionList(QString)));
-    connect(this, SIGNAL(getCollectionList()),                                         settingsHandler, SLOT(getCollectionList()));
-    connect(this, SIGNAL(savePluginSettings(QUuid, QString, QJsonDocument)),           settingsHandler, SLOT(savePluginSettings(QUuid, QString, QJsonDocument)));
-    connect(this, SIGNAL(loadPluginSettings(QUuid, QString)),                          settingsHandler, SLOT(loadPluginSettings(QUuid, QString)));
-    connect(settingsHandler, SIGNAL(collectionList(QStringList, QString)),             this,            SLOT(collectionList(QStringList, QString)));
-    connect(settingsHandler, SIGNAL(loadedPluginSettings(QUuid, QJsonDocument)),       this,            SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
-    connect(settingsHandler, SIGNAL(loadedPluginGlobalSettings(QUuid, QJsonDocument)), this,            SLOT(loadedPluginGlobalSettings(QUuid, QJsonDocument)));
+    connect(this,            SIGNAL(saveCollectionList(QStringList, QString)),                                      settingsHandler, SLOT(saveCollectionList(QStringList, QString)));
+    connect(this,            SIGNAL(saveCollectionList(QString)),                                                   settingsHandler, SLOT(saveCollectionList(QString)));
+    connect(this,            SIGNAL(getCollectionList()),                                                           settingsHandler, SLOT(getCollectionList()));
+    connect(this,            SIGNAL(savePluginSettings(QUuid, QString, QJsonDocument)),                             settingsHandler, SLOT(savePluginSettings(QUuid, QString, QJsonDocument)));
+    connect(this,            SIGNAL(loadPluginSettings(QUuid, QString)),                                            settingsHandler, SLOT(loadPluginSettings(QUuid, QString)));
+    connect(this,            SIGNAL(executeSettingsSql(QUuid, QString, bool, QString, int, QString, QVariantList)), settingsHandler, SLOT(executeSql(QUuid, QString, bool, QString, int, QString, QVariantList)));
+    connect(settingsHandler, SIGNAL(collectionList(QStringList, QString)),                                          this,            SLOT(collectionList(QStringList, QString)));
+    connect(settingsHandler, SIGNAL(loadedPluginSettings(QUuid, QJsonDocument)),                                    this,            SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
+    connect(settingsHandler, SIGNAL(loadedPluginGlobalSettings(QUuid, QJsonDocument)),                              this,            SLOT(loadedPluginGlobalSettings(QUuid, QJsonDocument)));
+    connect(settingsHandler, SIGNAL(sqlResults(QUuid, bool, QString, int, SqlResults)),                             this,            SLOT(executedPluginSqlResults(QUuid, bool, QString, int, SqlResults)));
+    connect(settingsHandler, SIGNAL(globalSqlResults(QUuid, bool, QString, int, SqlResults)),                       this,            SLOT(executedPluginGlobalSqlResults(QUuid, bool, QString, int, SqlResults)));
+    connect(settingsHandler, SIGNAL(sqlError(QUuid, bool, QString, int, QString)),                                  this,            SLOT(executedPluginSqlError(QUuid, bool, QString, int, QString)));
 
     settingsThread.start();
 }
@@ -771,9 +776,14 @@ void WaverServer::pluginLibsLoaded()
                 connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
             }
             if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
-                connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(pluginDiagnostics(QUuid, DiagnosticData)));
-                connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
-                connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
+                connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)),                                 this,   SLOT(pluginDiagnostics(QUuid, DiagnosticData)));
+                connect(plugin, SIGNAL(executeSql(QUuid, bool, QString, int, QString, QVariantList)),       this,   SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
+                connect(plugin, SIGNAL(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)), this,   SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
+                connect(this,   SIGNAL(startDiagnostics(QUuid)),                                            plugin, SLOT(startDiagnostics(QUuid)));
+                connect(this,   SIGNAL(stopDiagnostics(QUuid)),                                             plugin, SLOT(stopDiagnostics(QUuid)));
+                connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
+                connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
+                connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
             }
         }
     }
@@ -1019,6 +1029,30 @@ void WaverServer::loadedPluginGlobalSettings(QUuid uniqueId, QJsonDocument setti
 }
 
 
+// settings storage signal handler
+void WaverServer::executedPluginSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    // nothing much to do, just re-emit for sources and tracks
+    emit executedSqlResults(uniqueId, temporary, clientIdentifier, clientSqlIdentifier, results);
+}
+
+
+// settings storage signal handler
+void WaverServer::executedPluginGlobalSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    // nothing much to do, just re-emit for sources and tracks
+    emit executedGlobalSqlResults(uniqueId, temporary, clientIdentifier, clientSqlIdentifier, results);
+}
+
+
+// settings storage signal handler
+void WaverServer::executedPluginSqlError(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)
+{
+    // nothing much to do, just re-emit for sources and tracks
+    emit executedSqlError(uniqueId, temporary, clientIdentifier, clientSqlIdentifier, error);
+}
+
+
 // track signal handler
 void WaverServer::pluginUi(QUuid uniqueId, QString qml, QString header)
 {
@@ -1236,8 +1270,34 @@ void WaverServer::saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configur
         return;
     }
 
-    // re-emit and re-emit for settings storage handler
+    // re-emit for settings storage handler
     emit savePluginSettings(uniqueId, "", configuration);
+}
+
+
+// plugin signal handler (this can come from source or track)
+void WaverServer::executeSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values)
+{
+    // parameter check
+    if (sql.isEmpty()) {
+        return;
+    }
+
+    // re-emit for settings storage handler
+    executeSettingsSql(uniqueId, currentCollection, temporary, clientIdentifier, clientSqlIdentifier, sql, values);
+}
+
+
+// plugin signal handler (this can come from source or track)
+void WaverServer::executeGlobalSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values)
+{
+    // parameter check
+    if (sql.isEmpty()) {
+        return;
+    }
+
+    // re-emit for settings storage handler
+    executeSettingsSql(uniqueId, "", temporary, clientIdentifier, clientSqlIdentifier, sql, values);
 }
 
 
@@ -1251,23 +1311,28 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo)
 
         Track *track = new Track(&loadedLibs, trackInfo, uniqueId, this);
 
-        connect(this,  SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),       track, SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
-        connect(this,  SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), track, SLOT(loadedPluginGlobalSettings(QUuid, QJsonDocument)));
-        connect(this,  SIGNAL(startDiagnostics(QUuid)),                         track, SLOT(startPluginDiagnostics(QUuid)));
-        connect(this,  SIGNAL(stopDiagnostics(QUuid)),                          track, SLOT(stopPluginDiagnostics(QUuid)));
-        connect(track, SIGNAL(savePluginSettings(QUuid, QJsonDocument)),        this,  SLOT(saveConfiguration(QUuid, QJsonDocument)));
-        connect(track, SIGNAL(savePluginGlobalSettings(QUuid, QJsonDocument)),  this,  SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
-        connect(track, SIGNAL(loadPluginSettings(QUuid)),                       this,  SLOT(loadConfiguration(QUuid)));
-        connect(track, SIGNAL(loadPluginGlobalSettings(QUuid)),                 this,  SLOT(loadGlobalConfiguration(QUuid)));
-        connect(track, SIGNAL(requestFadeInForNextTrack(QUrl, qint64)),         this,  SLOT(trackRequestFadeInForNextTrack(QUrl, qint64)));
-        connect(track, SIGNAL(playPosition(QUrl, bool, long, long)),            this,  SLOT(trackPosition(QUrl, bool, long, long)));
-        connect(track, SIGNAL(aboutToFinish(QUrl)),                             this,  SLOT(trackAboutToFinish(QUrl)));
-        connect(track, SIGNAL(finished(QUrl)),                                  this,  SLOT(trackFinished(QUrl)));
-        connect(track, SIGNAL(trackInfoUpdated(QUrl)),                          this,  SLOT(trackInfoUpdated(QUrl)));
-        connect(track, SIGNAL(error(QUrl, bool, QString)),                      this,  SLOT(trackError(QUrl, bool, QString)));
-        connect(track, SIGNAL(loadedPlugins(Track::PluginList)),                this,  SLOT(trackLoadedPlugins(Track::PluginList)));
-        connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginList)),          this,  SLOT(trackLoadedPluginsWithUI(Track::PluginList)));
-        connect(track, SIGNAL(pluginDiagnostics(QUuid, QUrl, DiagnosticData)),  this,  SLOT(pluginDiagnostics(QUuid, QUrl, DiagnosticData)));
+        connect(this,  SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),                                  track, SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
+        connect(this,  SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)),                            track, SLOT(loadedPluginGlobalSettings(QUuid, QJsonDocument)));
+        connect(this,  SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),                  track, SLOT(executedPluginSqlResults(QUuid, bool, QString, int, SqlResults)));
+        connect(this,  SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),            track, SLOT(executedPluginGlobalSqlResults(QUuid, bool, QString, int, SqlResults)));
+        connect(this,  SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),                       track, SLOT(executedPluginSqlError(QUuid, bool, QString, int, QString)));
+        connect(this,  SIGNAL(startDiagnostics(QUuid)),                                                    track, SLOT(startPluginDiagnostics(QUuid)));
+        connect(this,  SIGNAL(stopDiagnostics(QUuid)),                                                     track, SLOT(stopPluginDiagnostics(QUuid)));
+        connect(track, SIGNAL(savePluginSettings(QUuid, QJsonDocument)),                                   this,  SLOT(saveConfiguration(QUuid, QJsonDocument)));
+        connect(track, SIGNAL(savePluginGlobalSettings(QUuid, QJsonDocument)),                             this,  SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
+        connect(track, SIGNAL(loadPluginSettings(QUuid)),                                                  this,  SLOT(loadConfiguration(QUuid)));
+        connect(track, SIGNAL(loadPluginGlobalSettings(QUuid)),                                            this,  SLOT(loadGlobalConfiguration(QUuid)));
+        connect(track, SIGNAL(executeSettingsSql(QUuid, bool, QString, int, QString, QVariantList)),       this,  SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(track, SIGNAL(executeGlobalSettingsSql(QUuid, bool, QString, int, QString, QVariantList)), this,  SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(track, SIGNAL(requestFadeInForNextTrack(QUrl, qint64)),                                    this,  SLOT(trackRequestFadeInForNextTrack(QUrl, qint64)));
+        connect(track, SIGNAL(playPosition(QUrl, bool, long, long)),                                       this,  SLOT(trackPosition(QUrl, bool, long, long)));
+        connect(track, SIGNAL(aboutToFinish(QUrl)),                                                        this,  SLOT(trackAboutToFinish(QUrl)));
+        connect(track, SIGNAL(finished(QUrl)),                                                             this,  SLOT(trackFinished(QUrl)));
+        connect(track, SIGNAL(trackInfoUpdated(QUrl)),                                                     this,  SLOT(trackInfoUpdated(QUrl)));
+        connect(track, SIGNAL(error(QUrl, bool, QString)),                                                 this,  SLOT(trackError(QUrl, bool, QString)));
+        connect(track, SIGNAL(loadedPlugins(Track::PluginList)),                                           this,  SLOT(trackLoadedPlugins(Track::PluginList)));
+        connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginList)),                                     this,  SLOT(trackLoadedPluginsWithUI(Track::PluginList)));
+        connect(track, SIGNAL(pluginDiagnostics(QUuid, QUrl, DiagnosticData)),                             this,  SLOT(pluginDiagnostics(QUuid, QUrl, DiagnosticData)));
 
         // add to playlist
         playlistTracks.append(track);

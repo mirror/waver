@@ -180,6 +180,39 @@ void LocalSource::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument config
 }
 
 
+// configuration
+void LocalSource::sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void LocalSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void LocalSource::sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(error);
+}
+
+
 // client wants to display this plugin's configuration dialog
 void LocalSource::getUiQml(QUuid uniqueId)
 {

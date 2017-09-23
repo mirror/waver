@@ -141,6 +141,39 @@ void Analyzer::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configura
 }
 
 
+// configuration
+void Analyzer::sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void Analyzer::globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void Analyzer::sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(error);
+}
+
+
 // server event handler
 void Analyzer::getUiQml(QUuid uniqueId)
 {

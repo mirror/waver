@@ -86,6 +86,7 @@ class WP_ALBUMART_EXPORT AlbumArt : public PluginInfo_004 {
             CanNotCheck,
             InAlreadyFailed,
             CheckStarted,
+            SuccessLooseMatch,
             Success,
             NotFound
         };
@@ -99,6 +100,7 @@ class WP_ALBUMART_EXPORT AlbumArt : public PluginInfo_004 {
 
         bool  sendDiagnostics;
         State state;
+        bool  exact;
 
         QJsonDocument configToJsonGlobal();
         void          jsonToConfigGlobal(QJsonDocument jsonDocument);
@@ -112,6 +114,10 @@ class WP_ALBUMART_EXPORT AlbumArt : public PluginInfo_004 {
 
         void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)       override;
         void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+
+        void sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)       override;
+        void globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results) override;
+        void sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)              override;
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;

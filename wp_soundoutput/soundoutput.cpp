@@ -169,6 +169,39 @@ void SoundOutput::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument config
 }
 
 
+// configuration
+void SoundOutput::sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void SoundOutput::globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void SoundOutput::sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(error);
+}
+
+
 // signal handler
 void SoundOutput::getUiQml(QUuid uniqueId)
 {

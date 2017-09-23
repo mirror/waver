@@ -80,33 +80,66 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
     private:
 
-        static const int CACHE_REQUEST_COUNT    = 6;
-        static const int PLAYLIST_REQUEST_DELAY = 100;
+        static const int UNABLE_TO_START_EXPIRY_DAYS = 7;
+        static const int GENRES_EXPIRY_DAYS          = 30;
+        static const int GENRE_EXPIRY_HOURS          = 12;    // SHOUTcast documentation says 24 hours, but there's no starting point for that
+        static const int NETWORK_WAIT_MS             = 500;
+        static const int PLAYLIST_REQUEST_DELAY_MS   = 100;
+        static const int SEARCH_TABLE_LIMIT          = 250000;
+
+        static const bool SQL_TEMPORARY_DB = true;
+
+        static const int SQL_CREATE_TABLE_STATIONS     = 1;
+        static const int SQL_CREATE_TABLE_SEARCH       = 2;
+        static const int SQL_GENRE_SEARCH_STATION_LIST = 10;
+        static const int SQL_GET_PLAYLIST              = 11;
+        static const int SQL_GENRE_SEARCH_OPENING      = 12;
+        static const int SQL_OPEN_GENRE_STATIONS       = 13;
+        static const int SQL_OPEN_PLAYLIST             = 14;
+        static const int SQL_STATION_SEARCH_OPENING    = 20;
+        static const int SQL_STATION_SEARCH_STATIONS   = 21;
+        static const int SQL_STATION_SEARCH_PLAYLIST   = 22;
+        static const int SQL_DIAGNOSTICS               = 90;
+        static const int SQL_SEARCH_COUNT              = 91;
+        static const int SQL_NO_RESULTS                = 99;
+
+        enum State {
+            Idle,
+            GenreList,
+            StationList,
+            Opening,
+            Searching,
+            TuneIn
+        };
+
+        enum StationTempDestination {
+            Playlist,
+            Open,
+            Search
+        };
 
         struct Genre {
             QString name;
             bool    isPrimary;
         };
 
-        struct SelectedGenre {
-            QString name;
-            int     limit;
+        struct GenreSearchItem {
+            QString genreName;
+            State   state;
         };
 
-        struct Station {
-            QString id;
-            QString base;
-            QString name;
-            QString genre;
-            QUrl    url;
+        struct StationTemp {
+            StationTempDestination destination;
+            QString                id;
+            QString                base;
+            QString                name;
+            QString                genre;
+            QUrl                   url;
         };
 
-        enum State {
-            Idle,
-            GenreList,
-            Caching,
-            Opening,
-            Searching
+        struct UnableToStartUrl {
+            QUrl   url;
+            qint64 timestamp;
         };
 
         QUuid   id;
@@ -116,20 +149,25 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         bool    sendDiagnostics;
         State   state;
 
-        QVector<Genre>         genres;
-        QDateTime              genresLoaded;
-        QVector<SelectedGenre> selectedGenres;
-        QStringList            bannedUrls;
-        QStringList            unableToStartUrls;
+        void setState(State state);
 
-        QVector<Station>                 stationsCache;
-        QHash<QString, QVector<Station>> openData;
-        QVector<Station>                 stationsToOpen;
-        int                              cacheRetries;
+        QVector<Genre>            genres;
+        QDateTime                 genresLoaded;
+        QStringList               selectedGenres;
+        QVector<QUrl>             bannedUrls;
+        QVector<UnableToStartUrl> unableToStartUrls;
+        QHash<QString, QDateTime> stationsLoaded;
+
+        int                  playlistReturnCount;
+        QVector<StationTemp> tuneInTemp;
+
+        QVector<GenreSearchItem> genreSearchItems;
+        QString                  openGenreSearchGenre;
+
+        QString stationSearchCriteria;
 
         QNetworkAccessManager *networkAccessManager;
         QNetworkAccessManager *playlistAccessManager;
-        QNetworkReply         *latestReply;
 
         QJsonDocument configToJson();
         QJsonDocument configToJsonGlobal();
@@ -138,13 +176,10 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
         QString getKey();
 
-        void cache();
-        int  findSelectedGenreIndex(QString genreName);
-        int  findStationWithoutUrl(QVector<Station> stations);
-        int  findStationById(QVector<Station> stations, QString id, bool emptyUrlOnly);
-        void sendDiagnosticsData();
+        void removeExpiredUnableToStartUrls();
+        bool isUnableToStartUrl(QUrl url);
 
-        QString getOpenTracksWaitParentId;
+        void sendDiagnosticsData();
 
 
     public slots:
@@ -153,6 +188,10 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
         void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
         void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+
+        void sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)       override;
+        void globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results) override;
+        void sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)              override;
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
@@ -173,10 +212,10 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
         void networkFinished(QNetworkReply *reply);
         void playlistFinished(QNetworkReply *reply);
-        void cacheWait();
+        void genreSearch();
+        void stationSearch();
+        void tuneInStarter();
         void tuneIn();
-        void getOpenTracksWait();
-        void resolveOpenTracksWait();
 
 };
 

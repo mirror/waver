@@ -141,21 +141,11 @@ void Mpg123Decoder::run()
 
     // set up output formats
     mpg123_format_none(mpg123Handle);
-    mpg123_format(mpg123Handle, 8000,  MPG123_STEREO | MPG123_MONO,
-        MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 |
-        MPG123_ENC_UNSIGNED_32);
-    mpg123_format(mpg123Handle, 11025, MPG123_STEREO | MPG123_MONO,
-        MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 |
-        MPG123_ENC_UNSIGNED_32);
-    mpg123_format(mpg123Handle, 22050, MPG123_STEREO | MPG123_MONO,
-        MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 |
-        MPG123_ENC_UNSIGNED_32);
-    mpg123_format(mpg123Handle, 44100, MPG123_STEREO | MPG123_MONO,
-        MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 |
-        MPG123_ENC_UNSIGNED_32);
-    mpg123_format(mpg123Handle, 48000, MPG123_STEREO | MPG123_MONO,
-        MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 |
-        MPG123_ENC_UNSIGNED_32);
+    mpg123_format(mpg123Handle, 8000,  MPG123_STEREO | MPG123_MONO, MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 | MPG123_ENC_UNSIGNED_32);
+    mpg123_format(mpg123Handle, 11025, MPG123_STEREO | MPG123_MONO, MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 | MPG123_ENC_UNSIGNED_32);
+    mpg123_format(mpg123Handle, 22050, MPG123_STEREO | MPG123_MONO, MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 | MPG123_ENC_UNSIGNED_32);
+    mpg123_format(mpg123Handle, 44100, MPG123_STEREO | MPG123_MONO, MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 | MPG123_ENC_UNSIGNED_32);
+    mpg123_format(mpg123Handle, 48000, MPG123_STEREO | MPG123_MONO, MPG123_ENC_SIGNED_8 | MPG123_ENC_UNSIGNED_8 | MPG123_ENC_SIGNED_16 | MPG123_ENC_UNSIGNED_16 | MPG123_ENC_SIGNED_32 | MPG123_ENC_UNSIGNED_32);
 }
 
 
@@ -200,6 +190,39 @@ void Mpg123Decoder::loadedConfiguration(QUuid uniqueId, QJsonDocument configurat
 {
     Q_UNUSED(uniqueId);
     Q_UNUSED(configuration);
+}
+
+
+// configuration
+void Mpg123Decoder::sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void Mpg123Decoder::globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void Mpg123Decoder::sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(error);
 }
 
 

@@ -4,6 +4,8 @@
 #include <QAudioBuffer>
 #include <QHash>
 #include <QUrl>
+#include <QVariant>
+#include <QVariantHash>
 #include <QVector>
 
 typedef QVector<QAudioBuffer *> BufferQueue;
@@ -28,6 +30,8 @@ struct OpenTrack {
     bool    selectable;
 };
 typedef QVector<OpenTrack> OpenTracks;
+
+typedef QVector<QVariantHash> SqlResults;
 
 struct DiagnosticItem {
     QString label;

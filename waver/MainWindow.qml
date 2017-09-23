@@ -1148,7 +1148,8 @@ ApplicationWindow {
                     if (link == "add") {
                         searchSelectedItems.append({
                             pluginId: pluginIdProperty,
-                            id: idProperty
+                            id: idProperty,
+                            label: labelProperty
                         });
                         searchSelected.positionViewAtEnd();
                     }
@@ -1156,6 +1157,7 @@ ApplicationWindow {
 
                 property string pluginIdProperty: pluginId
                 property string idProperty      : id
+                property string labelProperty   : label
             }
 
             Rectangle {
@@ -1175,7 +1177,7 @@ ApplicationWindow {
         id: searchSelectedElement
 
         Text {
-            text: id
+            text: label
             elide: Text.ElideLeft
             height: textMetrics.height + (3 * 2)
             width: searchSelected.width;

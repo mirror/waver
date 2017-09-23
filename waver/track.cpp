@@ -226,9 +226,14 @@ void Track::setupDecoderPlugin(QObject *plugin)
         connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
     }
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
-        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(diagnostics(QUuid, DiagnosticData)));
-        connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
-        connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
+        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)),                                 this,   SLOT(diagnostics(QUuid, DiagnosticData)));
+        connect(plugin, SIGNAL(executeSql(QUuid, bool, QString, int, QString, QVariantList)),       this,   SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(plugin, SIGNAL(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)), this,   SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(this,   SIGNAL(startDiagnostics(QUuid)),                                            plugin, SLOT(startDiagnostics(QUuid)));
+        connect(this,   SIGNAL(stopDiagnostics(QUuid)),                                             plugin, SLOT(stopDiagnostics(QUuid)));
+        connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
+        connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
+        connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
 }
 
@@ -310,9 +315,14 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
         connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
     }
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
-        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(diagnostics(QUuid, DiagnosticData)));
-        connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
-        connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
+        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)),                                 this,   SLOT(diagnostics(QUuid, DiagnosticData)));
+        connect(plugin, SIGNAL(executeSql(QUuid, bool, QString, int, QString, QVariantList)),       this,   SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(plugin, SIGNAL(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)), this,   SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(this,   SIGNAL(startDiagnostics(QUuid)),                                            plugin, SLOT(startDiagnostics(QUuid)));
+        connect(this,   SIGNAL(stopDiagnostics(QUuid)),                                             plugin, SLOT(stopDiagnostics(QUuid)));
+        connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
+        connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
+        connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
 }
 
@@ -393,9 +403,14 @@ void Track::setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<
         connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
     }
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
-        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(diagnostics(QUuid, DiagnosticData)));
-        connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
-        connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
+        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)),                                 this,   SLOT(diagnostics(QUuid, DiagnosticData)));
+        connect(plugin, SIGNAL(executeSql(QUuid, bool, QString, int, QString, QVariantList)),       this,   SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(plugin, SIGNAL(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)), this,   SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(this,   SIGNAL(startDiagnostics(QUuid)),                                            plugin, SLOT(startDiagnostics(QUuid)));
+        connect(this,   SIGNAL(stopDiagnostics(QUuid)),                                             plugin, SLOT(stopDiagnostics(QUuid)));
+        connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
+        connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
+        connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
 }
 
@@ -478,9 +493,14 @@ void Track::setupOutputPlugin(QObject *plugin)
         connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
     }
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
-        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(diagnostics(QUuid, DiagnosticData)));
-        connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
-        connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
+        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)),                                 this,   SLOT(diagnostics(QUuid, DiagnosticData)));
+        connect(plugin, SIGNAL(executeSql(QUuid, bool, QString, int, QString, QVariantList)),       this,   SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(plugin, SIGNAL(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)), this,   SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(this,   SIGNAL(startDiagnostics(QUuid)),                                            plugin, SLOT(startDiagnostics(QUuid)));
+        connect(this,   SIGNAL(stopDiagnostics(QUuid)),                                             plugin, SLOT(stopDiagnostics(QUuid)));
+        connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
+        connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
+        connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
 }
 
@@ -548,10 +568,15 @@ void Track::setupInfoPlugin(QObject *plugin)
         connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
     }
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
-        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)), this,   SLOT(diagnostics(QUuid, DiagnosticData)));
-        connect(this,   SIGNAL(startDiagnostics(QUuid)),            plugin, SLOT(startDiagnostics(QUuid)));
-        connect(this,   SIGNAL(stopDiagnostics(QUuid)),             plugin, SLOT(stopDiagnostics(QUuid)));
-        connect(this,   SIGNAL(getInfo(QUuid, TrackInfo)),          plugin, SLOT(getInfo(QUuid, TrackInfo)));
+        connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)),                                 this,   SLOT(diagnostics(QUuid, DiagnosticData)));
+        connect(plugin, SIGNAL(executeSql(QUuid, bool, QString, int, QString, QVariantList)),       this,   SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(plugin, SIGNAL(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)), this,   SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(this,   SIGNAL(startDiagnostics(QUuid)),                                            plugin, SLOT(startDiagnostics(QUuid)));
+        connect(this,   SIGNAL(stopDiagnostics(QUuid)),                                             plugin, SLOT(stopDiagnostics(QUuid)));
+        connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
+        connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
+        connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
+        connect(this,   SIGNAL(getInfo(QUuid, TrackInfo)),                                          plugin, SLOT(getInfo(QUuid, TrackInfo)));
     }
 }
 
@@ -886,6 +911,30 @@ void Track::loadedPluginGlobalSettings(QUuid id, QJsonDocument settings)
 
 
 // server signal handler
+void Track::executedPluginSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    // re-emit for plugins
+    emit executedSqlResults(uniqueId, temporary, clientIdentifier, clientSqlIdentifier, results);
+}
+
+
+// server signal handler
+void Track::executedPluginGlobalSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    // re-emit for plugins
+    emit executedGlobalSqlResults(uniqueId, temporary, clientIdentifier, clientSqlIdentifier, results);
+}
+
+
+// server signal handler
+void Track::executedPluginSqlError(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)
+{
+    // re-emit for plugins
+    emit executedSqlError(uniqueId, temporary, clientIdentifier, clientSqlIdentifier, error);
+}
+
+
+// server signal handler
 void Track::requestedPluginUi(QUuid id)
 {
     // just re-emit, only the plugin with the same id will respond anyways
@@ -944,6 +993,22 @@ void Track::saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
 {
     // re-emit for server
     emit savePluginGlobalSettings(uniqueId, configuration);
+}
+
+
+// plugin signal handler
+void Track::executeSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values)
+{
+    // re-emit for server
+    emit executeSettingsSql(uniqueId, temporary, clientIdentifier, clientSqlIdentifier, sql, values);
+}
+
+
+// plugin signal handler
+void Track::executeGlobalSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values)
+{
+    // re-emit for server
+    emit executeGlobalSettingsSql(uniqueId, temporary, clientIdentifier, clientSqlIdentifier, sql, values);
 }
 
 

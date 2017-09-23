@@ -215,6 +215,39 @@ void GenericDecoder::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument con
 }
 
 
+// configuration
+void GenericDecoder::sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void GenericDecoder::globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void GenericDecoder::sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(error);
+}
+
+
 // this plugin has no configuration
 void GenericDecoder::getUiQml(QUuid uniqueId)
 {
@@ -416,7 +449,6 @@ void GenericDecoder::sendDiagnosticsData()
         }
         diagnosticData.append({ "PCM format", QString("%1 Hz, %2 bit, %3").arg(audioBuffers.last()->format().sampleRate()).arg(audioBuffers.last()->format().sampleSize()).arg(type) });
     }
-    diagnosticData.append({ "URL", url.toString() });
     emit diagnostics(id, diagnosticData);
 }
 

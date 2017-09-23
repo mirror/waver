@@ -121,8 +121,8 @@ void RadioSource::run()
     playlistAccessManager = new QNetworkAccessManager();
     connect(playlistAccessManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(playlistFinished(QNetworkReply *)));
 
-    emit loadGlobalConfiguration(id);
-    emit loadConfiguration(id);
+    // temporary db
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_CREATE_TABLE_STATIONS, "CREATE TABLE IF NOT EXISTS stations (id UNIQUE, base, name, genre, url DEFAULT NULL, banned INT DEFAULT 0, unable_to_start INT DEFAULT 0, playcount INT DEFAULT 0)", QVariantList());
 }
 
 
@@ -133,9 +133,14 @@ void RadioSource::loadedConfiguration(QUuid uniqueId, QJsonDocument configuratio
         return;
     }
 
-    stationsCache.clear();
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "DELETE FROM stations", QVariantList());
+    stationsLoaded.clear();
 
     jsonToConfig(configuration);
+
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
 
     if (selectedGenres.count() < 1) {
         readySent = false;
@@ -143,10 +148,9 @@ void RadioSource::loadedConfiguration(QUuid uniqueId, QJsonDocument configuratio
         return;
     }
 
-    if ((genres.count() > 0) && (selectedGenres.count() > 0)) {
-        cacheRetries = 0;
-        cache();
-    }
+    // get some stations to start with
+    genreSearchItems.append({ selectedGenres.at(qrand() % selectedGenres.count()), StationList });
+    genreSearch();
 }
 
 
@@ -158,8 +162,9 @@ void RadioSource::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument config
     }
 
     jsonToConfigGlobal(configuration);
+    removeExpiredUnableToStartUrls();
 
-    if (genresLoaded.daysTo(QDateTime::currentDateTime()) >= 15) {
+    if (genresLoaded.daysTo(QDateTime::currentDateTime()) > GENRES_EXPIRY_DAYS) {
         genres.clear();
     }
 
@@ -167,22 +172,228 @@ void RadioSource::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument config
         readySent = false;
         emit unready(id);
 
-        state = GenreList;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
+        setState(GenreList);
 
         QNetworkRequest request(QUrl("http://api.shoutcast.com/genre/secondary?parentid=0&k=" + key + "&f=xml"));
         request.setRawHeader("User-Agent", userAgent.toUtf8());
-        latestReply = networkAccessManager->get(request);
+        networkAccessManager->get(request);
 
         return;
     }
 
-    if ((genres.count() > 0) && (selectedGenres.count() > 0)) {
-        cacheRetries = 0;
-        cache();
+    emit loadConfiguration(id);
+}
+
+
+// configuration
+void RadioSource::sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+
+    if (persistentUniqueId != id) {
+        return;
     }
+
+    if (clientSqlIdentifier == SQL_CREATE_TABLE_STATIONS) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_CREATE_TABLE_SEARCH, "CREATE TABLE IF NOT EXISTS search (id, base, name, genre, url DEFAULT NULL, criteria)", QVariantList());
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_CREATE_TABLE_SEARCH) {
+        emit loadGlobalConfiguration(id);
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_GENRE_SEARCH_STATION_LIST) {
+        if (!readySent) {
+            readySent = true;
+            emit ready(id);
+        }
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_GET_PLAYLIST) {
+        foreach (QVariantHash result, results) {
+            StationTemp stationTemp;
+            stationTemp.id          = result.value("id").toString();
+            stationTemp.base        = result.value("base").toString();
+            stationTemp.name        = result.value("name").toString();
+            stationTemp.genre       = result.value("genre").toString();
+            stationTemp.url         = QUrl(result.value("url").toString());
+            stationTemp.destination = Playlist;
+
+            tuneInTemp.append(stationTemp);
+        }
+
+        tuneInStarter();
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_GENRE_SEARCH_OPENING) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_OPEN_GENRE_STATIONS, "SELECT id, name FROM stations WHERE genre = ?", QVariantList({ openGenreSearchGenre }));
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_OPEN_GENRE_STATIONS) {
+        OpenTracks openTracks;
+        foreach (QVariantHash result, results) {
+            OpenTrack openTrack;
+            openTrack.hasChildren = false;
+            openTrack.id          = result.value("id").toString();
+            openTrack.label       = result.value("name").toString();
+            openTrack.selectable  = true;
+            openTracks.append(openTrack);
+        }
+
+        qSort(openTracks.begin(), openTracks.end(), [](OpenTrack a, OpenTrack b) {
+            return (a.label.compare(b.label) < 0);
+        });
+
+        emit openTracksResults(id, openTracks);
+
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_OPEN_PLAYLIST) {
+        foreach (QVariantHash result, results) {
+            StationTemp stationTemp;
+            stationTemp.id          = result.value("id").toString();
+            stationTemp.base        = result.value("base").toString();
+            stationTemp.name        = result.value("name").toString();
+            stationTemp.genre       = result.value("genre").toString();
+            stationTemp.url         = QUrl(result.value("url").toString());
+            stationTemp.destination = Open;
+
+            tuneInTemp.append(stationTemp);
+        }
+
+        tuneInStarter();
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_STATION_SEARCH_OPENING) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_STATION_SEARCH_STATIONS, "SELECT * FROM search WHERE criteria = ?", QVariantList({ stationSearchCriteria }));
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_STATION_SEARCH_STATIONS) {
+        if (results.count() < 1) {
+            stationSearch();
+            return;
+        }
+        if ((results.count() == 1) && (results.at(0).value("name").toString().compare("NOTHING") == 0)) {
+            return;
+        }
+
+        OpenTracks openTracks;
+        foreach (QVariantHash result, results) {
+            OpenTrack openTrack;
+            openTrack.hasChildren = false;
+            openTrack.id          = "SEARCH_" + result.value("id").toString();
+            openTrack.label       = result.value("name").toString();
+            openTrack.selectable  = true;
+            openTracks.append(openTrack);
+        }
+
+        qSort(openTracks.begin(), openTracks.end(), [](OpenTrack a, OpenTrack b) {
+            return (a.label.compare(b.label) < 0);
+        });
+
+        emit searchResults(id, openTracks);
+    }
+
+    if (clientSqlIdentifier == SQL_STATION_SEARCH_PLAYLIST) {
+        foreach (QVariantHash result, results) {
+            StationTemp stationTemp;
+            stationTemp.id          = result.value("id").toString();
+            stationTemp.base        = result.value("base").toString();
+            stationTemp.name        = result.value("name").toString();
+            stationTemp.genre       = result.value("genre").toString();
+            stationTemp.url         = QUrl(result.value("url").toString());
+            stationTemp.destination = Search;
+
+            tuneInTemp.append(stationTemp);
+        }
+
+        tuneInStarter();
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_SEARCH_COUNT) {
+        int counter = results.at(0).value("counter").toString().toInt();
+        if (counter > SEARCH_TABLE_LIMIT) {
+            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "DELETE FROM search", QVariantList());
+        }
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_DIAGNOSTICS) {
+        DiagnosticData diagnosticData;
+
+        switch (state) {
+            case Idle:
+                diagnosticData.append({ "Status", "Idle"});
+                break;
+            case GenreList:
+                diagnosticData.append({ "Status", "Getting genre list..." });
+                break;
+            case StationList:
+                diagnosticData.append({ "Status", "Caching station data..." });
+                break;
+            case Opening:
+                diagnosticData.append({ "Status", "Getting station data..." });
+                break;
+            case Searching:
+                diagnosticData.append({ "Status", "Searching stations..." });
+                break;
+            case TuneIn:
+                diagnosticData.append({ "Status", "Tuning in to stations..." });
+                break;
+        }
+
+
+        DiagnosticItem diagnosticItem;
+        diagnosticItem.label   = "Banned stations";
+        diagnosticItem.message = QString("%1").arg(bannedUrls.count());
+        diagnosticData.append(diagnosticItem);
+
+        foreach (QVariantHash result, results) {
+            DiagnosticItem stationCount;
+            stationCount.label   = result.value("genre").toString();
+            stationCount.message = result.value("counter").toString();
+            diagnosticData.append(stationCount);
+        }
+
+        emit diagnostics(id, diagnosticData);
+        return;
+    }
+}
+
+
+// configuration
+void RadioSource::sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)
+{
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+
+    if (persistentUniqueId != id) {
+        return;
+    }
+
+    emit infoMessage(id, error);
 }
 
 
@@ -209,20 +420,11 @@ void RadioSource::getUiQml(QUuid uniqueId)
     QString checkboxesToAll;
     QString checkboxesToRetval;
     for (int i = 0; i < genres.count(); i++) {
-        bool isSelected = false;
-        int  j          = 0;
-        while (!isSelected && (j < selectedGenres.count())) {
-            if (genres.at(i).name.compare(selectedGenres.at(j).name) == 0) {
-                isSelected = true;
-            }
-            j++;
-        }
-
         checkboxes.append(
             QString("CheckBox { id: %1; text: \"%2\"; tristate: false; checked: %3; anchors.top: %4; anchors.topMargin: %5; anchors.left: parent.left; anchors.leftMargin: 6 }")
             .arg(QString("cb_%1").arg(i))
             .arg(genres.at(i).isPrimary ? "<b>" + genres.at(i).name + "</b>" : genres.at(i).name)
-            .arg(isSelected ? "true" : "false")
+            .arg(selectedGenres.contains(genres.at(i).name) ? "true" : "false")
             .arg(i > 0 ? QString("cb_%1.bottom").arg(i - 1) : "parent.top")
             .arg((i > 0) && genres.at(i).isPrimary ? "36" : "6"));
         checkboxesToAll.append(QString("%1.checked = allCheck.checked; ").arg(QString("cb_%1").arg(i)));
@@ -243,30 +445,12 @@ void RadioSource::uiResults(QUuid uniqueId, QJsonDocument results)
         return;
     }
 
-    QVector<SelectedGenre> uiSelectedList;
+    selectedGenres.clear();
     foreach (QJsonValue jsonValue, results.array()) {
-        SelectedGenre uiSelected;
-        uiSelected.name  = jsonValue.toString();
-        uiSelected.limit = 0;
-
-        uiSelected.name.replace(QRegExp("</?b>"), "");
-
-        foreach (SelectedGenre selectedGenre, selectedGenres) {
-            if (uiSelected.name.compare(selectedGenre.name) == 0) {
-                uiSelected.limit = selectedGenre.limit;
-            }
-        }
-
-        uiSelectedList.append(uiSelected);
+        selectedGenres.append(jsonValue.toString().replace(QRegExp("<\\/?b>"), ""));
     }
-
-    selectedGenres = uiSelectedList;
-
-    loadedConfiguration(id, configToJson());
-
-    emit requestRemoveTracks(id);
-
     emit saveConfiguration(id, configToJson());
+    emit requestRemoveTracks(id);
 }
 
 
@@ -300,11 +484,20 @@ void RadioSource::unableToStart(QUuid uniqueId, QUrl url)
         return;
     }
 
-    if (!unableToStartUrls.contains(url.toString())) {
-        unableToStartUrls.append(url.toString());
-    }
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET unable_to_start = 1 WHERE url = ?", QVariantList({ url.toString() }));
 
-    emit saveGlobalConfiguration(id, configToJsonGlobal());
+    bool found = false;
+    int  i     = 0;
+    while (!found && (i < unableToStartUrls.count())) {
+        if (unableToStartUrls.at(i).url == url) {
+            found = true;
+        }
+        i++;
+    }
+    if (!found) {
+        unableToStartUrls.append({ url, QDateTime::currentMSecsSinceEpoch() });
+        emit saveGlobalConfiguration(id, configToJsonGlobal());
+    }
 }
 
 
@@ -315,60 +508,13 @@ void RadioSource::getPlaylist(QUuid uniqueId, int maxCount)
         return;
     }
 
-    // just to make sure, this should never happen
-    if ((stationsCache.count() < 1) && (state == Idle)) {
-        cacheRetries = 0;
-        cache();
-        return;
-    }
-
     // how many to return
-    int count = (qrand() % maxCount) + 1;
+    playlistReturnCount = (qrand() % maxCount) + 1;
 
-    // select stations to return
-    TracksInfo   tracksInfo;
-    bool         added = true;
-    while (added && (tracksInfo.count() < count)) {
-        added = false;
-        int i = 0;
-        while (!added && (i < stationsCache.count())) {
-            if (!stationsCache.at(i).url.isEmpty() && (!bannedUrls.contains(stationsCache.at(i).url.toString()) && !unableToStartUrls.contains(stationsCache.at(i).url.toString()))) {
-                TrackInfo trackInfo;
+    // select stations to return (these will be dealt with in the sql signal handler)
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_GET_PLAYLIST, "SELECT id, base, name, genre, url FROM stations WHERE (banned = 0) AND (unable_to_start = 0) ORDER BY playcount, RANDOM() LIMIT ?", QVariantList({ bannedUrls.count() + unableToStartUrls.count() + playlistReturnCount }));
 
-                trackInfo.album     = stationsCache.at(i).genre;
-                trackInfo.cast      = true;
-                trackInfo.performer = "Online Radio";
-                trackInfo.title     = stationsCache.at(i).name;
-                trackInfo.track     = 0;
-                trackInfo.url       = stationsCache.at(i).url;
-                trackInfo.year      = 0;
-                trackInfo.actions.insert(0, "Ban");
-                trackInfo.pictures.append(QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png"));
-
-                tracksInfo.append(trackInfo);
-
-                stationsCache.remove(i);
-                added = true;
-            }
-            i++;
-        }
-    }
-
-    // diagnostics
-    if (sendDiagnostics) {
-        sendDiagnosticsData();
-    }
-
-    // send stations
-    if (tracksInfo.count() > 0) {
-        emit playlist(id, tracksInfo);
-    }
-
-    // maybe cache is low
-    if ((stationsCache.count() < CACHE_REQUEST_COUNT) && (state == Idle)) {
-        cacheRetries = 0;
-        cache();
-    }
+    return;
 }
 
 
@@ -383,11 +529,11 @@ void RadioSource::getOpenTracks(QUuid uniqueId, QString parentId)
 
     // top level
     if (parentId == 0) {
-        foreach (SelectedGenre genre, selectedGenres) {
+        foreach (QString genre, selectedGenres) {
             OpenTrack openTrack;
             openTrack.hasChildren = true;
-            openTrack.id          = genre.name;
-            openTrack.label       = genre.name;
+            openTrack.id          = genre;
+            openTrack.label       = genre;
             openTrack.selectable = false;
             openTracks.append(openTrack);
         }
@@ -402,62 +548,14 @@ void RadioSource::getOpenTracks(QUuid uniqueId, QString parentId)
     }
 
     // genre level, see if it was already queried
-    if (openData.contains(parentId)) {
-        foreach (Station station, openData.value(parentId)) {
-            OpenTrack openTrack;
-            openTrack.hasChildren = false;
-            openTrack.id          = station.id;
-            openTrack.label       = station.name;
-            openTrack.selectable = true;
-            openTracks.append(openTrack);
-        }
-
-        qSort(openTracks.begin(), openTracks.end(), [](OpenTrack a, OpenTrack b) {
-            return (a.label.compare(b.label) < 0);
-        });
-
-        emit openTracksResults(id, openTracks);
-
+    if (stationsLoaded.contains(parentId)) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_OPEN_GENRE_STATIONS, "SELECT id, name FROM stations WHERE genre = ?", QVariantList({ parentId }));
         return;
     }
 
-    // must wait if another network operation is in progress
-    if (state != Idle) {
-        getOpenTracksWaitParentId = parentId;
-        QTimer::singleShot(CACHE_REQUEST_COUNT * PLAYLIST_REQUEST_DELAY * 2, this, SLOT(getOpenTracksWait()));
-        return;
-    }
-
-    state = Opening;
-    if (sendDiagnostics) {
-        sendDiagnosticsData();
-    }
-
-    // send request
-    QNetworkRequest request(QUrl("http://api.shoutcast.com/legacy/genresearch?k=" + key + "&genre=" + parentId));
-    request.setRawHeader("User-Agent", userAgent.toUtf8());
-    latestReply = networkAccessManager->get(request);
-}
-
-
-// timer slot
-void RadioSource::getOpenTracksWait()
-{
-    // somthing's taking too long, better cancel it
-    if (state != Idle) {
-        emit infoMessage(id, "Network operation takes too long, cancelling");
-        latestReply->abort();
-    }
-
-    state = Opening;
-    if (sendDiagnostics) {
-        sendDiagnosticsData();
-    }
-
-    // send request
-    QNetworkRequest request(QUrl("http://api.shoutcast.com/legacy/genresearch?k=" + key + "&genre=" + getOpenTracksWaitParentId));
-    request.setRawHeader("User-Agent", userAgent.toUtf8());
-    latestReply = networkAccessManager->get(request);
+    // must query stations
+    genreSearchItems.append({ parentId, Opening });
+    genreSearch();
 }
 
 
@@ -468,54 +566,30 @@ void RadioSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
         return;
     }
 
-    // find the stations to open
-    stationsToOpen.clear();
-    foreach (QString genre, openData.keys()) {
-        foreach (Station station, openData.value(genre)) {
-            if (selectedTracks.contains(station.id)) {
-                stationsToOpen.append(station);
-            }
+    if (selectedTracks.count() < 1) {
+        return;
+    }
+
+    QStringList  openBinds;
+    QVariantList openValues;
+    QStringList  searchBinds;
+    QVariantList searchValues;
+    foreach (QString selectedTrack, selectedTracks) {
+        if (selectedTrack.startsWith("SEARCH_")) {
+            searchBinds.append("?");
+            searchValues.append(selectedTrack.replace("SEARCH_", ""));
+            continue;
         }
+        openBinds.append("?");
+        openValues.append(selectedTrack);
     }
 
-    // make sure there's something to open
-    if (stationsToOpen.count() < 1) {
-        return;
+    if (openValues.count() > 0) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_OPEN_PLAYLIST, "SELECT id, base, name, genre, url FROM stations WHERE id IN (" + openBinds.join(",") + ")", openValues);
     }
-
-    // must wait if another network operation is in progress
-    if (state != Idle) {
-        QTimer::singleShot(CACHE_REQUEST_COUNT * PLAYLIST_REQUEST_DELAY * 2, this, SLOT(resolveOpenTracksWait()));
-        return;
+    if (searchValues.count() > 0) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_STATION_SEARCH_PLAYLIST, "SELECT id, base, name, genre, url FROM search WHERE id IN (" + searchBinds.join(",") + ")", searchValues);
     }
-
-    // state and diagnostics
-    state = Opening;
-    if (sendDiagnostics) {
-        sendDiagnosticsData();
-    }
-
-    // start to get the urls
-    tuneIn();
-}
-
-
-// timer slot
-void RadioSource::resolveOpenTracksWait()
-{
-    // something's taking too long, better cancel it
-    if (state != Idle) {
-        emit infoMessage(id, "Network operation takes too long, cancelling");
-        latestReply->abort();
-    }
-
-    state = Opening;
-    if (sendDiagnostics) {
-        sendDiagnosticsData();
-    }
-
-    // start to get the urls
-    tuneIn();
 }
 
 
@@ -525,36 +599,10 @@ void RadioSource::search(QUuid uniqueId, QString criteria)
     if (uniqueId != id) {
         return;
     }
-    /*
-        criteria.replace("_", " ").replace(" ", "");
 
-        QVector<Station> matches;
-        foreach (Station station, stations) {
-            QString modifying(station.name);
-            modifying.replace("_", " ").replace(" ", "");
+    stationSearchCriteria = criteria.toLower();
 
-            if (modifying.contains(criteria, Qt::CaseInsensitive)) {
-                matches.append(station);
-            }
-        }
-
-        qSort(matches.begin(), matches.end(), [](Station a, Station b) {
-            return (a.name.compare(b.name) < 0);
-        });
-
-        OpenTracks openTracks;
-        foreach (Station match, matches) {
-            OpenTrack openTrack;
-
-            openTrack.hasChildren = false;
-            openTrack.id          = match.url.toString();
-            openTrack.label       = match.name;
-            openTrack.selectable  = true;
-            openTracks.append(openTrack);
-        }
-
-        emit searchResults(id, openTracks);
-    */
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_STATION_SEARCH_STATIONS, "SELECT * FROM search WHERE criteria = ?", QVariantList({ stationSearchCriteria }));
 }
 
 
@@ -566,135 +614,33 @@ void RadioSource::action(QUuid uniqueId, int actionKey, QUrl url)
     }
 
     if (actionKey == 0) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET banned = 1 WHERE url = ?", QVariantList({ url.toString() }));
         if (!bannedUrls.contains(url.toString())) {
             bannedUrls.append(url.toString());
+            emit saveGlobalConfiguration(id, configToJsonGlobal());
         }
-        emit saveGlobalConfiguration(id, configToJsonGlobal());
         emit requestRemoveTrack(id, url);
-        return;
     }
 
     if (actionKey == 1) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET banned = 0 WHERE url = ?", QVariantList({ url.toString() }));
         if (bannedUrls.contains(url.toString())) {
             bannedUrls.removeAll(url.toString());
             emit saveGlobalConfiguration(id, configToJsonGlobal());
-            emit requestRemoveTrack(id, url);
         }
-        return;
-    }
-}
-
-
-// private method
-void RadioSource::cache()
-{
-    // this should never happen, but just to be on the safe side
-    if (selectedGenres.count() < 1) {
-        readySent = false;
-        emit unready(id);
-        return;
     }
 
-    // must wait if another network operation is in progress
-    if (state != Idle) {
-        QTimer::singleShot(CACHE_REQUEST_COUNT * PLAYLIST_REQUEST_DELAY * 2, this, SLOT(cacheWait()));
-        return;
-    }
-
-    // set state
-    state = Caching;
     if (sendDiagnostics) {
         sendDiagnosticsData();
     }
-
-    // should select from those that aren't done yet
-    QVector<SelectedGenre> notDoneSelected;
-    foreach (SelectedGenre selectedGenre, selectedGenres) {
-        if (selectedGenre.limit >= 0) {
-            notDoneSelected.append(selectedGenre);
-        }
-    }
-    if (notDoneSelected.count() < 1) {
-        // all are done, use all
-        for (int i = 0; i < selectedGenres.count(); i++) {
-            selectedGenres[i].limit = 0;
-        }
-        emit saveConfiguration(id, configToJson());
-        notDoneSelected.append(selectedGenres);
-    }
-
-    // random select a genre
-    SelectedGenre genre = notDoneSelected.at(qrand() % notDoneSelected.count());
-
-    // maybe it's in open data if user opened from this genre earlier
-    if (openData.contains(genre.name)) {
-        // find genre
-        int genreIndex = findSelectedGenreIndex(genre.name);
-        if (genreIndex < 0) {
-            emit infoMessage(id, "Genre not found in selected genre list");
-            return;
-        }
-
-        // get stations from open data
-        QVector<Station> stationsTemp;
-        int i = selectedGenres.at(genreIndex).limit;
-        while ((i < openData.value(selectedGenres.at(genreIndex).name).count()) && (stationsTemp.count() < CACHE_REQUEST_COUNT)) {
-            stationsTemp.append(openData.value(selectedGenres.at(genreIndex).name).at(i));
-            i++;
-        }
-
-        // save new limit
-        selectedGenres[genreIndex].limit = (stationsTemp.count() < CACHE_REQUEST_COUNT ? 0 : selectedGenres.at(genreIndex).limit + stationsTemp.count());
-        emit saveConfiguration(id, configToJson());
-
-        // use stations
-        stationsCache.append(stationsTemp);
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
-
-        // start to get the urls
-        tuneIn();
-
-        return;
-    }
-
-    // have to query now
-    QNetworkRequest request(QUrl("http://api.shoutcast.com/legacy/genresearch?k=" + key + "&limit=" + QString("%1,%2").arg(genre.limit).arg(CACHE_REQUEST_COUNT) + "&genre=" + genre.name));
-    request.setRawHeader("User-Agent", userAgent.toUtf8());
-    latestReply = networkAccessManager->get(request);
-}
-
-
-// timer slot
-void RadioSource::cacheWait()
-{
-    // somthing's taking too long, better cancel it
-    if (state != Idle) {
-        emit infoMessage(id, "Network operation takes too long, cancelling");
-
-        latestReply->abort();
-
-        state = Idle;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
-    }
-
-    cache();
 }
 
 
 // configuration conversion
 QJsonDocument RadioSource::configToJson()
 {
-    QJsonArray jsonArray;
-    foreach (SelectedGenre selectedGenre, selectedGenres) {
-        jsonArray.append(QJsonArray({ selectedGenre.name, selectedGenre.limit }));
-    }
-
     QJsonObject jsonObject;
-    jsonObject.insert("selected_genre_list", jsonArray);
+    jsonObject.insert("selected_genres", QJsonArray::fromStringList(selectedGenres));
 
     QJsonDocument returnValue;
     returnValue.setObject(jsonObject);
@@ -706,17 +652,27 @@ QJsonDocument RadioSource::configToJson()
 // configuration conversion
 QJsonDocument RadioSource::configToJsonGlobal()
 {
-    QJsonArray jsonArray;
+    QJsonArray jsonArrayGenres;
     foreach (Genre genre, genres) {
-        jsonArray.append(QJsonArray({ genre.name, genre.isPrimary }));
+        jsonArrayGenres.append(QJsonArray({ genre.name, genre.isPrimary }));
+    }
+
+    QJsonArray jsonArrayBanned;
+    foreach (QUrl bannedUrl, bannedUrls) {
+        jsonArrayBanned.append(bannedUrl.toString());
+    }
+
+    QJsonArray jsonArrayUnableToStart;
+    foreach (UnableToStartUrl unableToStartUrl, unableToStartUrls) {
+        jsonArrayUnableToStart.append(QJsonArray({ unableToStartUrl.url.toString(), unableToStartUrl.timestamp }));
     }
 
     QJsonObject jsonObject;
 
-    jsonObject.insert("genre_list", jsonArray);
-    jsonObject.insert("genre_list_loaded", genresLoaded.toString());
-    jsonObject.insert("banned_urls", QJsonArray::fromStringList(bannedUrls));
-    jsonObject.insert("unable_to_start_urls", QJsonArray::fromStringList(unableToStartUrls));
+    jsonObject.insert("genre_list", jsonArrayGenres);
+    jsonObject.insert("genre_list_timestamp", genresLoaded.toMSecsSinceEpoch());   // TODO wrote in normal format to cfg file
+    jsonObject.insert("banned", jsonArrayBanned);
+    jsonObject.insert("unable_to_start", jsonArrayUnableToStart);
 
     QJsonDocument returnValue;
     returnValue.setObject(jsonObject);
@@ -728,24 +684,24 @@ QJsonDocument RadioSource::configToJsonGlobal()
 // configuration conversion
 void RadioSource::jsonToConfig(QJsonDocument jsonDocument)
 {
-    if (jsonDocument.object().contains("selected_genre_list")) {
+    if (jsonDocument.object().contains("selected_genres")) {
         selectedGenres.clear();
 
-        foreach (QJsonValue jsonValue, jsonDocument.object().value("selected_genre_list").toArray()) {
-            QJsonArray value = jsonValue.toArray();
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("selected_genres").toArray()) {
+            QString value = jsonValue.toString();
 
-            // this is more for the UI results - can't have the same twice but some subgenres are listed under multiple primary genres
+            // this is for the UI results - can't have the same twice but some subgenres are listed under multiple primary genres
             int i      = 0;
             bool found = false;
             while ((i < selectedGenres.count()) && !found) {
-                if (selectedGenres.at(i).name.compare(value.at(0).toString()) == 0) {
+                if (selectedGenres.at(i).compare(value) == 0) {
                     found = true;
                 }
                 i++;
             }
 
             if (!found) {
-                selectedGenres.append({ value.at(0).toString(), value.at(1).toInt() });
+                selectedGenres.append(value);
             }
         }
     }
@@ -762,19 +718,20 @@ void RadioSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
             genres.append({ value.at(0).toString(), value.at(1).toBool() });
         }
     }
-    if (jsonDocument.object().contains("genre_list_loaded")) {
-        genresLoaded = QDateTime::fromString(jsonDocument.object().value("genre_list_loaded").toString());
+    if (jsonDocument.object().contains("genre_list_timestamp")) {
+        genresLoaded = QDateTime::fromMSecsSinceEpoch((qint64)jsonDocument.object().value("genre_list_timestamp").toDouble());   // TODO wrote in normal format to cfg file
     }
-    if (jsonDocument.object().contains("banned_urls")) {
+    if (jsonDocument.object().contains("banned")) {
         bannedUrls.clear();
-        foreach (QJsonValue jsonValue, jsonDocument.object().value("banned_urls").toArray()) {
-            bannedUrls.append(jsonValue.toString());
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("banned").toArray()) {
+            bannedUrls.append(QUrl(jsonValue.toString()));
         }
     }
-    if (jsonDocument.object().contains("unable_to_start_urls")) {
+    if (jsonDocument.object().contains("unable_to_start")) {
         unableToStartUrls.clear();
-        foreach (QJsonValue jsonValue, jsonDocument.object().value("unable_to_start_urls").toArray()) {
-            unableToStartUrls.append(jsonValue.toString());
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("unable_to_start").toArray()) {
+            QJsonArray value = jsonValue.toArray();
+            unableToStartUrls.append({ QUrl(value.at(0).toString()), (qint64)value.at(1).toDouble() });
         }
     }
 }
@@ -817,33 +774,64 @@ QString RadioSource::getKey()
 }
 
 
+// timer slot
+void RadioSource::genreSearch()
+{
+    // have to wait for Idle
+    if (state != Idle) {
+        QTimer::singleShot(NETWORK_WAIT_MS, this, SLOT(genreSearch()));
+        return;
+    }
+
+    setState(genreSearchItems.first().state);
+
+    // send request
+    QNetworkRequest request(QUrl("http://api.shoutcast.com/legacy/genresearch?k=" + key + "&genre=" + genreSearchItems.first().genreName));
+    request.setRawHeader("User-Agent", userAgent.toUtf8());
+    networkAccessManager->get(request);
+}
+
+
+// timer slot
+void RadioSource::stationSearch()
+{
+    // have to wait for Idle
+    if (state != Idle) {
+        QTimer::singleShot(NETWORK_WAIT_MS, this, SLOT(stationSearch()));
+        return;
+    }
+
+    setState(Searching);
+
+    // send request
+    QNetworkRequest request(QUrl("http://api.shoutcast.com/legacy/stationsearch?k=" + key + "&search=" + stationSearchCriteria));
+    request.setRawHeader("User-Agent", userAgent.toUtf8());
+    networkAccessManager->get(request);
+}
+
+
 // network signal handler
 void RadioSource::networkFinished(QNetworkReply *reply)
 {
     // make sure reply OK
     if (reply->error() != QNetworkReply::NoError) {
-        emit infoMessage(id, QString("Network error"));
-        state = Idle;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
+        emit infoMessage(id, QString("Network error: %1").arg(reply->errorString()));
+        setState(Idle);
         reply->deleteLater();
         return;
     }
     if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) != 200) {
         emit infoMessage(id, QString("SHOUTcast Radio Directory service returned status %1").arg(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toString()));
-        state = Idle;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
+        setState(Idle);
         reply->deleteLater();
         return;
     }
 
-    bool             genresChanged   = false;
-    bool             stationsChanged = false;
-    QString          base;
-    QVector<Station> stationsTemp;
+    bool         genresCleaned = false;
+    bool         searchFind    = false;
+    QString      base;
+    QStringList  binds;
+    QVariantList values;
 
     QXmlStreamReader xmlStreamReader(reply);
     while (!xmlStreamReader.atEnd()) {
@@ -851,30 +839,18 @@ void RadioSource::networkFinished(QNetworkReply *reply)
 
         if (tokenType == QXmlStreamReader::StartElement) {
             // genre query
-            if (!genresChanged && (xmlStreamReader.name().toString().compare("genrelist") == 0)) {
+            if (!genresCleaned && (xmlStreamReader.name().toString().compare("genrelist") == 0)) {
+                genresCleaned = true;
                 genres.clear();
-                genresChanged = true;
             }
             if (xmlStreamReader.name().toString().compare("genre") == 0) {
-                Genre genre;
-                genre.isPrimary = false;
-
                 QXmlStreamAttributes attributes = xmlStreamReader.attributes();
-                if (attributes.hasAttribute("name")) {
-                    genre.name = attributes.value("name").toString();
-                }
-                if (attributes.hasAttribute("parentid")) {
-                    genre.isPrimary = (attributes.value("parentid").toString().compare("0") == 0);
-                }
-                if (!genre.name.isEmpty()) {
-                    genres.append(genre);
+                if ((attributes.hasAttribute("parentid")) && (attributes.hasAttribute("name"))) {
+                    genres.append({ attributes.value("name").toString(), attributes.value("parentid").toString().compare("0") == 0 });
                 }
             }
 
-            // stations query
-            if (!stationsChanged && (xmlStreamReader.name().toString().compare("stationlist") == 0)) {
-                stationsChanged = true;
-            }
+            // stations query or search
             if (xmlStreamReader.name().toString().compare("tunein") == 0) {
                 QXmlStreamAttributes attributes = xmlStreamReader.attributes();
                 if (attributes.hasAttribute("base")) {
@@ -882,151 +858,141 @@ void RadioSource::networkFinished(QNetworkReply *reply)
                 }
             }
             if (xmlStreamReader.name().toString().compare("station") == 0) {
-                Station     station;
-                QStringList stationsGenres;
-
                 QXmlStreamAttributes attributes = xmlStreamReader.attributes();
-                if (attributes.hasAttribute("id")) {
-                    station.id = attributes.value("id").toString();
-                }
-                if (attributes.hasAttribute("name")) {
-                    station.name = attributes.value("name").toString();
+
+                if (state == Searching) {
+                    if (attributes.hasAttribute("id") && attributes.hasAttribute("name")) {
+                        QString genre = "Unknown";
+                        if (attributes.hasAttribute("genre")) {
+                            genre = attributes.value("genre").toString();
+                        }
+
+                        binds.append("(?,?,?,?,?)");
+
+                        values.append(attributes.value("id").toString());
+                        values.append(base);
+                        values.append(attributes.value("name").toString());
+                        values.append(genre);
+                        values.append(stationSearchCriteria);
+
+                        // can't have too many in one single statement
+                        if (values.count() >= 750) {
+                            searchFind = true;
+                            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "INSERT INTO search (id, base, name, genre, criteria) VALUES " + binds.join(","), values);
+                            binds.clear();
+                            values.clear();
+                        }
+                    }
+                    continue;
                 }
 
-                if (attributes.hasAttribute("genre")) {
-                    stationsGenres.append(attributes.value("genre").toString());
-                }
-                int i = 1;
-                while (attributes.hasAttribute(QString("genre%1").arg(i))) {
-                    stationsGenres.append(attributes.value(QString("genre%1").arg(i)).toString());
-                    i++;
-                }
-                station.genre = stationsGenres.join(' ');
+                if (attributes.hasAttribute("id") && attributes.hasAttribute("name") && attributes.hasAttribute("genre")) {
+                    QString genre = attributes.value("genre").toString();
+                    if (genre.compare(genreSearchItems.first().genreName) == 0) {
+                        binds.append("(?,?,?,?)");
 
-                if (!station.id.isEmpty() && !station.name.isEmpty() && !station.genre.isEmpty()) {
-                    station.base = base;
-                    stationsTemp.append(station);
+                        values.append(attributes.value("id").toString());
+                        values.append(base);
+                        values.append(attributes.value("name").toString());
+                        values.append(genre);
+
+                        // can't have too many in one single statement
+                        if (values.count() >= 750) {
+                            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO stations (id, base, name, genre) VALUES " + binds.join(","), values);
+                            binds.clear();
+                            values.clear();
+                        }
+                    }
                 }
             }
         }
     }
     if (xmlStreamReader.hasError()) {
         emit infoMessage(id, "Error while parsing XML response from SHOUTcast Radio Directory service");
-        state = Idle;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
+        setState(Idle);
         reply->deleteLater();
         return;
     }
 
     // genre query
-    if (genresChanged) {
+    if (state == GenreList) {
         // save configuration
         genresLoaded = QDateTime::currentDateTime();
         emit saveGlobalConfiguration(id, configToJsonGlobal());
 
-        state = Idle;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
-
-        // this was initiated by nonexisting configuration, so let's act now
-        if ((genres.count() > 0) && (selectedGenres.count() > 0)) {
-            cacheRetries = 0;
-            cache();
-        }
-
+        // set state
+        setState(Idle);
         reply->deleteLater();
+
+        // this was initiated by nonexisting global configuration, so continue startup sequence
+        emit loadConfiguration(id);
+
         return;
     }
 
     // stations query
-    if (stationsChanged) {
-        // get the genre
-        QString genre;
-        QString query = reply->url().query();
-        if (query.contains("genre=")) {
-            // genre was passed last
-            genre = query.mid(query.indexOf("genre=") + QString("genre=").length());
+    if ((state == StationList) || (state == Opening)) {
+        // finish saving or fake it
+        int clientSqlIdentifier = (state == Opening ? SQL_GENRE_SEARCH_OPENING : SQL_GENRE_SEARCH_STATION_LIST);
+        if (values.count() > 0) {
+            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", clientSqlIdentifier, "INSERT OR IGNORE INTO stations (id, base, name, genre) VALUES " + binds.join(","), values);
         }
-        reply->deleteLater();
-        if (genre.isEmpty()) {
-            emit infoMessage(id, "Genre not found in URL query");
-            state = Idle;
-            if (sendDiagnostics) {
-                sendDiagnosticsData();
-            }
-            return;
+        else {
+            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", clientSqlIdentifier, "SELECT CURRENT_TIMESTAMP", QVariantList());
         }
 
-        // find the genre
-        int genreIndex = findSelectedGenreIndex(genre);
-        if (genreIndex < 0) {
-            emit infoMessage(id, "Genre not found in selected genre list");
-            state = Idle;
-            if (sendDiagnostics) {
-                sendDiagnosticsData();
-            }
-            return;
-        }
-
-        if (state == Caching) {
-            // maybe no station was returned, probably query limit passed the number of available stations
-            if (stationsTemp.count() < 1) {
-                // reset limit
-                selectedGenres[genreIndex].limit = -1;
-                emit saveConfiguration(id, configToJson());
-
-                state = Idle;
-                if (sendDiagnostics) {
-                    sendDiagnosticsData();
-                }
-
-                // retry
-                if (cacheRetries <= 3) {
-                    cacheRetries++;
-                    cache();
-                    return;
-                }
-
-                return;
-            }
-
-            // save new limit
-            selectedGenres[genreIndex].limit = (stationsTemp.count() < CACHE_REQUEST_COUNT ? -1 : selectedGenres.at(genreIndex).limit + stationsTemp.count());
-            emit saveConfiguration(id, configToJson());
-
-            // use stations
-            stationsCache.append(stationsTemp);
-
-            if (sendDiagnostics) {
-                sendDiagnosticsData();
-            }
-
-            // start to get the urls
-            tuneIn();
-        }
-
+        // maintenance
         if (state == Opening) {
-            state = Idle;
-            if (sendDiagnostics) {
-                sendDiagnosticsData();
-            }
-
-            // must prevent infinite loop
-            if (stationsTemp.count() < 1) {
-                return;
-            }
-
-            // remember the stations
-            openData.remove(selectedGenres.at(genreIndex).name);
-            openData.insert(selectedGenres.at(genreIndex).name, stationsTemp);
-
-            // this will send it back to the client
-            getOpenTracks(id, selectedGenres.at(genreIndex).name);
+            openGenreSearchGenre = genreSearchItems.first().genreName;
         }
+        stationsLoaded.insert(genreSearchItems.first().genreName, QDateTime::currentDateTime());
+        genreSearchItems.removeFirst();
+
+        setState(Idle);
+        return;
     }
+
+    // stations search query
+    if (state == Searching) {
+        // finish saving or fake it
+        if (values.count() > 0) {
+            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_STATION_SEARCH_OPENING, "INSERT INTO search (id, base, name, genre, criteria) VALUES " + binds.join(","), values);
+        }
+        else {
+            if (searchFind) {
+                emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_STATION_SEARCH_OPENING, "SELECT CURRENT_TIMESTAMP", QVariantList());
+            }
+            else {
+                values.append("NOTHING");
+                values.append("NOTHING");
+                values.append("NOTHING");
+                values.append("NOTHING");
+                values.append(stationSearchCriteria);
+                emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_STATION_SEARCH_OPENING, "INSERT INTO search (id, base, name, genre, criteria) VALUES (?,?,?,?,?)", values);
+            }
+        }
+        setState(Idle);
+        return;
+    }
+}
+
+
+// timer signal handler
+void RadioSource::tuneInStarter()
+{
+    // already tuning in?
+    if (state == TuneIn) {
+        return;
+    }
+
+    // have to wait for Idle
+    if (state != Idle) {
+        QTimer::singleShot(NETWORK_WAIT_MS, this, SLOT(tuneInStarter()));
+        return;
+    }
+
+    setState(TuneIn);
+    tuneIn();
 }
 
 
@@ -1034,90 +1000,90 @@ void RadioSource::networkFinished(QNetworkReply *reply)
 void RadioSource::tuneIn()
 {
     // just to be on the safe side, this should never happen
-    if ((state != Caching) && (state != Opening) && (state != Searching)) {
+    if (state != TuneIn) {
         emit infoMessage(id, "Invalid state");
-        state = Idle;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
+        setState(Idle);
         return;
     }
 
-    if (state == Caching) {
-        // find next station to get url for
-        int stationIndex = findStationWithoutUrl(stationsCache);
-
-        // all stations have url (can't be here if there are no stations)
-        if (stationIndex < 0) {
-            state = Idle;
-            if (sendDiagnostics) {
-                sendDiagnosticsData();
-            }
-
-            // maybe too many stations were unable to start before or are banned
-            if (stationsCache.count() < CACHE_REQUEST_COUNT) {
-                cacheRetries++;
-                cache();
-            }
-
-            // let the world know
-            if (!readySent) {
-                emit ready(id);
-                readySent = true;
-            }
-
-            return;
+    // check if there's anything without URL
+    int tuneInTempIndex = -1;
+    int i = 0;
+    while ((tuneInTempIndex < 0) && (i < tuneInTemp.count())) {
+        if (tuneInTemp.at(i).url.isEmpty()) {
+            tuneInTempIndex = i;
         }
-
-        // request the playlist for this station
-        QNetworkRequest request(QUrl("http://yp.shoutcast.com" + stationsCache.at(stationIndex).base + "?id=" + stationsCache.at(stationIndex).id));
-        request.setRawHeader("User-Agent", userAgent.toUtf8());
-        latestReply = playlistAccessManager->get(request);
+        i++;
     }
 
-    if (state == Opening) {
-        // find next station to get url for
-        int stationIndex = findStationWithoutUrl(stationsToOpen);
-
-        // all stations have url (can't be here if there are no stations)
-        if (stationIndex < 0) {
-            state = Idle;
-            if (sendDiagnostics) {
-                sendDiagnosticsData();
+    // no more stations to tune in to
+    if (tuneInTempIndex < 0) {
+        // send stations to server
+        TracksInfo tracksInfo;
+        foreach (StationTemp station, tuneInTemp) {
+            TrackInfo trackInfo;
+            trackInfo.album     = station.genre;
+            trackInfo.cast      = true;
+            trackInfo.performer = "Online Radio";
+            trackInfo.title     = station.name;
+            trackInfo.track     = 0;
+            trackInfo.url       = station.url;
+            trackInfo.year      = 0;
+            trackInfo.pictures.append(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
+            if (bannedUrls.contains(station.url)) {
+                trackInfo.actions.insert(1, "Remove ban");
+            }
+            else {
+                trackInfo.actions.insert(0, "Ban");
             }
 
-            TracksInfo tracksInfo;
-            foreach (Station station, stationsToOpen) {
-                TrackInfo trackInfo;
+            tracksInfo.append(trackInfo);
 
-                trackInfo.album     = station.genre;
-                trackInfo.cast      = true;
-                trackInfo.performer = "Online Radio";
-                trackInfo.title     = station.name;
-                trackInfo.track     = 0;
-                trackInfo.url       = station.url;
-                trackInfo.year      = 0;
-                trackInfo.pictures.append(QUrl::fromLocalFile(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png"));
+            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET playcount = playcount + 1 WHERE url = ?", QVariantList({ station.url.toString() }));
+        }
+        emit playlist(id, tracksInfo);
 
-                if (bannedUrls.contains(station.url.toString())) {
-                    trackInfo.actions.insert(1, "Remove ban");
-                }
-                else {
-                    trackInfo.actions.insert(0, "Ban");
-                }
+        tuneInTemp.clear();
 
-                tracksInfo.append(trackInfo);
+        setState(Idle);
+
+        // this is a good place to do some maintenance because here it's reasonable to expect that the plugin will be idle for a while
+
+        // make sure search table doesn't grow out of control
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_SEARCH_COUNT, "SELECT COUNT(*) AS counter FROM search", QVariantList());
+
+        // let's see if there are expired genres
+        QStringList stationsToBeReloaded;
+        foreach (QString genreName, stationsLoaded.keys()) {
+            if (stationsLoaded.value(genreName).secsTo(QDateTime::currentDateTime()) > (GENRE_EXPIRY_HOURS * 60 * 60)) {
+                stationsToBeReloaded.append(genreName);
             }
-            emit playlist(id, tracksInfo);
-
-            return;
+        }
+        foreach (QString genreName, stationsToBeReloaded) {
+            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "DELETE FROM stations WHERE genre = ?", QVariantList({ genreName }));
+            stationsLoaded.remove(genreName);
         }
 
-        // request the playlist for this station
-        QNetworkRequest request(QUrl("http://yp.shoutcast.com" + stationsToOpen.at(stationIndex).base + "?id=" + stationsToOpen.at(stationIndex).id));
-        request.setRawHeader("User-Agent", userAgent.toUtf8());
-        latestReply = playlistAccessManager->get(request);
+        // let's see if there's a genre that needs to be loaded
+        QStringList genresToBeLoaded;
+        foreach (QString selectedGenre, selectedGenres) {
+            if (!stationsLoaded.contains(selectedGenre)) {
+                genresToBeLoaded.append(selectedGenre);
+            }
+        }
+        if (genresToBeLoaded.count() > 0) {
+            genreSearchItems.append({ genresToBeLoaded.at(qrand() % genresToBeLoaded.count()), StationList });
+            genreSearch();
+        }
+
+        return;
     }
+
+    // request the playlist for this station
+    QNetworkRequest request(QUrl("http://yp.shoutcast.com" + tuneInTemp.at(tuneInTempIndex).base + "?id=" + tuneInTemp.at(tuneInTempIndex).id));
+    request.setRawHeader("User-Agent", userAgent.toUtf8());
+    playlistAccessManager->get(request);
+
 }
 
 
@@ -1127,21 +1093,13 @@ void RadioSource::playlistFinished(QNetworkReply *reply)
     // make sure reply OK
     if (reply->error() != QNetworkReply::NoError) {
         emit infoMessage(id, QString("Network error"));
-        state = Idle;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
-
+        setState(Idle);
         reply->deleteLater();
         return;
     }
     if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) != 200) {
         emit infoMessage(id, QString("SHOUTcast Radio Directory service returned status %1").arg(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toString()));
-        state = Idle;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
-
+        setState(Idle);
         reply->deleteLater();
         return;
     }
@@ -1155,113 +1113,124 @@ void RadioSource::playlistFinished(QNetworkReply *reply)
     }
     if (stationId.isEmpty()) {
         emit infoMessage(id, "Station id not found in URL query");
-        state = Idle;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
+        setState(Idle);
         reply->deleteLater();
         return;
     }
 
-    // find it in the stations
-    int stationIndex = -1;
-    if (state == Caching) {
-        stationIndex = findStationById(stationsCache, stationId, true);
-    }
-    else if (state == Opening) {
-        stationIndex = findStationById(stationsToOpen, stationId, true);
-    }
-    if (stationIndex < 0) {
-        emit infoMessage(id, "Station id not found in stations list");
-        state = Idle;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
-        reply->deleteLater();
-        return;
-    }
-
-    // get the station's playlist
+    // get the playlist
     QString stationPlaylist(reply->readAll());
     reply->deleteLater();
 
-    // see if there's a good URL
+    // get the urls
     int i = 1;
-    QUrl    url;
-    QRegExp regExp;
+    QVector<QUrl> urls;
+    QRegExp       regExp;
     regExp.setMinimal(true);
     regExp.setPattern(QString("File%1=(.+)\n").arg(i));
-    while ((stationPlaylist.contains(regExp)) && url.isEmpty()) {
-        url = QUrl(regExp.capturedTexts().at(1));
-        if ((state == Caching) && (bannedUrls.contains(url.toString()) || unableToStartUrls.contains(url.toString()))) {
-            url.clear();
-        }
+    while (stationPlaylist.contains(regExp)) {
+        urls.append(QUrl(regExp.capturedTexts().at(1)));
+
         i++;
         regExp.setPattern(QString("File%1=(.+)\n").arg(i));
     }
-    if (url.isEmpty()) {
-        // this station is probably either banned or was unable to be started before
-        if (state == Caching) {
-            stationsCache.remove(stationIndex);
+
+    // select one url
+    QUrl selectedUrl;
+    foreach (QUrl url, urls) {
+        if (selectedUrl.isEmpty()) {
+            selectedUrl = url;
         }
-        else if (state == Opening) {
-            stationsToOpen.remove(stationIndex);
+        else if (!isUnableToStartUrl(url)) {
+            selectedUrl = url;
         }
     }
-    else {
-        if (state == Caching) {
-            stationsCache[stationIndex].url = url;
+
+    bool isBanned        = bannedUrls.contains(selectedUrl);
+    bool isUnableToStart = selectedUrl.isEmpty() || isUnableToStartUrl(selectedUrl);
+
+    // update database
+    QVariantList values;
+    values.append(selectedUrl.isEmpty() ? NULL : selectedUrl.toString());
+    values.append(isBanned);
+    values.append(isUnableToStart);
+    values.append(stationId);
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET url = ?, banned = ?, unable_to_start = ? WHERE id = ?", values);
+    QVariantList searchValues;
+    searchValues.append(selectedUrl.isEmpty() ? NULL : selectedUrl.toString());
+    searchValues.append(stationId);
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE search SET url = ? WHERE id = ?", searchValues);
+
+    // update list
+    i = 0;
+    while (i < tuneInTemp.count()) {
+        if (tuneInTemp.at(i).id.compare(stationId) == 0) {
+            // must delete if url can not be used
+            if ((tuneInTemp.at(i).destination == Playlist) && (isBanned || isUnableToStart)) {
+                tuneInTemp.remove(i);
+                continue;
+            }
+            tuneInTemp[i].url = selectedUrl;
         }
-        else if (state == Opening) {
-            stationsToOpen[stationIndex].url = url;
+        i++;
+    }
+
+    // check if there's enough playlist items with url (database query returned more to cover for banned and unable_to_start)
+    i = 0;
+    int playlistCount = 0;
+    while (i < tuneInTemp.count()) {
+        if (tuneInTemp.at(i).destination == Playlist) {
+            if (!tuneInTemp.at(i).url.isEmpty()) {
+                playlistCount++;
+                i++;
+                continue;
+            }
+            if (playlistCount >= playlistReturnCount) {
+                tuneInTemp.remove(i);
+                continue;
+            }
         }
+        i++;
     }
 
     // check the next station's URL after a bit of a delay so not to run too many requests rapidly
-    QTimer::singleShot(PLAYLIST_REQUEST_DELAY, this, SLOT(tuneIn()));
+    QTimer::singleShot(PLAYLIST_REQUEST_DELAY_MS, this, SLOT(tuneIn()));
 }
 
 
 // helper
-int RadioSource::findSelectedGenreIndex(QString genreName)
+void RadioSource::setState(State state)
 {
-    int returnValue = -1;
-    int i           = 0;
-    while ((i < selectedGenres.count()) && (returnValue < 0)) {
-        if (selectedGenres.at(i).name.compare(genreName) == 0) {
-            returnValue = i;
-        }
-        i++;
+    this->state = state;
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
     }
-
-    return returnValue;
 }
 
 
 // helper
-int RadioSource::findStationWithoutUrl(QVector<Station> stations)
+void RadioSource::removeExpiredUnableToStartUrls()
 {
-    int returnValue = -1;
-    int i            = 0;
-    while ((i < stations.count()) && (returnValue < 0)) {
-        if (stations.at(i).url.isEmpty()) {
-            returnValue = i;
+    QVector<UnableToStartUrl> cleaned;
+    foreach (UnableToStartUrl unableToStartUrl, unableToStartUrls) {
+        QDateTime dateTime = QDateTime::fromMSecsSinceEpoch(unableToStartUrl.timestamp);
+        if (dateTime.daysTo(QDateTime::currentDateTime()) < UNABLE_TO_START_EXPIRY_DAYS) {
+            cleaned.append(unableToStartUrl);
         }
-        i++;
     }
-
-    return returnValue;
+    unableToStartUrls = cleaned;
 }
 
 
 // helper
-int RadioSource::findStationById(QVector<Station> stations, QString id, bool emptyUrlOnly)
+bool RadioSource::isUnableToStartUrl(QUrl url)
 {
-    int returnValue = -1;
-    int i           = 0;
-    while ((i < stations.count()) && (returnValue < 0)) {
-        if ((stations.at(i).id.compare(id) == 0) && (!emptyUrlOnly || (stations.at(i).url.isEmpty()))) {
-            returnValue = i;
+    bool returnValue = false;
+
+    int i = 0;
+    while (!returnValue && (i < unableToStartUrls.count())) {
+        if (url == unableToStartUrls.at(i).url) {
+            returnValue = true;
         }
         i++;
     }
@@ -1273,51 +1242,5 @@ int RadioSource::findStationById(QVector<Station> stations, QString id, bool emp
 // helper
 void RadioSource::sendDiagnosticsData()
 {
-    DiagnosticData diagnosticData;
-
-    switch (state) {
-        case Idle:
-            diagnosticData.append({ "Status", "Idle"});
-            break;
-        case GenreList:
-            diagnosticData.append({ "Status", "Getting genre list..." });
-            break;
-        case Caching:
-            diagnosticData.append({ "Status", "Caching station data..." });
-            break;
-        case Opening:
-            diagnosticData.append({ "Status", "Getting station data..." });
-            break;
-        case Searching:
-            diagnosticData.append({ "Status", "Searching stations..." });
-            break;
-    }
-
-    int noUrl = 0;
-    foreach (Station station, stationsCache) {
-        if (station.url.isEmpty()) {
-            noUrl++;
-        }
-    }
-
-    DiagnosticItem diagnosticItem;
-    diagnosticItem.label   = "Stations' data in cache";
-    diagnosticItem.message = QString("%1 (Incomplete: %2)").arg(stationsCache.count()).arg(noUrl);
-    diagnosticData.append(diagnosticItem);
-
-    diagnosticItem.label   = "Banned stations";
-    diagnosticItem.message = QString("%1").arg(bannedUrls.count());
-    diagnosticData.append(diagnosticItem);
-
-    QStringList openDataAvailable;
-    foreach (QString genre, openData.keys()) {
-        openDataAvailable.append(genre);
-    }
-    if (openDataAvailable.count() > 0) {
-        diagnosticItem.label   = (openDataAvailable.count() > 1 ? "Buffered lists" : "Buffered list");
-        diagnosticItem.message = openDataAvailable.join(", ");
-        diagnosticData.append(diagnosticItem);
-    }
-
-    emit diagnostics(id, diagnosticData);
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_DIAGNOSTICS, "SELECT genre, COUNT(*) AS counter FROM stations GROUP BY genre", QVariantList());
 }

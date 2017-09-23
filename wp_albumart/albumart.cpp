@@ -179,6 +179,39 @@ void AlbumArt::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configura
 }
 
 
+// configuration
+void AlbumArt::sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void AlbumArt::globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(results);
+}
+
+
+// configuration
+void AlbumArt::sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)
+{
+    Q_UNUSED(persistentUniqueId);
+    Q_UNUSED(temporary);
+    Q_UNUSED(clientIdentifier);
+    Q_UNUSED(clientSqlIdentifier);
+    Q_UNUSED(error);
+}
+
+
 // UI
 void AlbumArt::getUiQml(QUuid uniqueId)
 {
@@ -355,6 +388,8 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
             return;
         }
 
+        exact = found;
+
         // construct request for image, this must follow redirections because that's how cover art archive answers
         QNetworkRequest request(QUrl("http://coverartarchive.org//release-group/" + releaseGroupId + "/front"));
         request.setRawHeader("User-Agent", userAgent.toUtf8());
@@ -399,7 +434,7 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
     QTimer::singleShot(500, this, SLOT(signalTimer()));
 
     // diagnostics
-    state = Success;
+    state = (exact ? Success : SuccessLooseMatch);
     if (sendDiagnostics) {
         sendDiagnosticsData();
     }
@@ -469,6 +504,9 @@ void AlbumArt::sendDiagnosticsData()
             break;
         case CheckStarted:
             diagnosticData.append({ "Status", "Checking..." });
+            break;
+        case SuccessLooseMatch:
+            diagnosticData.append({ "Status", "Success, but with loose match" });
             break;
         case Success:
             diagnosticData.append({ "Status", "Success" });

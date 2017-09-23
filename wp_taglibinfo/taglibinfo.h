@@ -85,6 +85,10 @@ class WP_TAGLIBINFO_EXPORT TagLibInfo : public PluginInfo_004 {
         void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)       override;
         void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
 
+        void sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)       override;
+        void globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results) override;
+        void sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)              override;
+
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
 
