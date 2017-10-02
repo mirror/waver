@@ -122,7 +122,7 @@ void RadioSource::run()
     connect(playlistAccessManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(playlistFinished(QNetworkReply *)));
 
     // temporary db
-    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_CREATE_TABLE_STATIONS, "CREATE TABLE IF NOT EXISTS stations (id UNIQUE, base, name, genre, url DEFAULT NULL, banned INT DEFAULT 0, unable_to_start INT DEFAULT 0, playcount INT DEFAULT 0)", QVariantList());
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_CREATE_TABLE_STATIONS, "CREATE TABLE stations (id UNIQUE, base, name, genre, url DEFAULT NULL, banned INT DEFAULT 0, unable_to_start INT DEFAULT 0, playcount INT DEFAULT 0)", QVariantList());
 }
 
 
@@ -196,7 +196,7 @@ void RadioSource::sqlResults(QUuid persistentUniqueId, bool temporary, QString c
 }
 
 
-// configuration
+// temporary storage
 void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
 {
     Q_UNUSED(temporary);
@@ -207,7 +207,7 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
     }
 
     if (clientSqlIdentifier == SQL_CREATE_TABLE_STATIONS) {
-        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_CREATE_TABLE_SEARCH, "CREATE TABLE IF NOT EXISTS search (id, base, name, genre, url DEFAULT NULL, criteria)", QVariantList());
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_CREATE_TABLE_SEARCH, "CREATE TABLE search (id, base, name, genre, url DEFAULT NULL, criteria)", QVariantList());
         return;
     }
 
@@ -744,7 +744,7 @@ void RadioSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
 //
 QString RadioSource::getKey()
 {
-    QFile keyFile("://key");
+    QFile keyFile("://rs_key");
     keyFile.open(QFile::ReadOnly);
     QString keyEncrypted = keyFile.readAll();
     keyFile.close();
@@ -777,6 +777,10 @@ QString RadioSource::getKey()
 // timer slot
 void RadioSource::genreSearch()
 {
+    if (genreSearchItems.count() < 1) {
+        return;
+    }
+
     // have to wait for Idle
     if (state != Idle) {
         QTimer::singleShot(NETWORK_WAIT_MS, this, SLOT(genreSearch()));
@@ -949,6 +953,9 @@ void RadioSource::networkFinished(QNetworkReply *reply)
         genreSearchItems.removeFirst();
 
         setState(Idle);
+
+        QTimer::singleShot(NETWORK_WAIT_MS, this, SLOT(genreSearch()));
+
         return;
     }
 

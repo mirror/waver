@@ -73,11 +73,13 @@ QString IpcMessageUtils::constructIpcString(IpcMessages ipcMessage)
 // static, create a string that is ready to be sent over interprocess communication TCP/IP connection
 QString IpcMessageUtils::constructIpcString(IpcMessages ipcMessage, QJsonDocument ipcJsonData)
 {
+
     if (ipcJsonData.isEmpty()) {
         return QString("%1%2").arg(ipcMessagesToStrings.value(ipcMessage)).arg(MESSAGE_SEPARATOR);
     }
-    return QString("%1:%2%3").arg(ipcMessagesToStrings.value(ipcMessage)).arg(QString(ipcJsonData.toJson(
-                    QJsonDocument::Compact))).arg(MESSAGE_SEPARATOR);
+
+    QString temp = QString("%1:%2%3").arg(ipcMessagesToStrings.value(ipcMessage), QString::fromUtf8(ipcJsonData.toJson(QJsonDocument::Compact)), QString(MESSAGE_SEPARATOR));
+    return temp;
 }
 
 

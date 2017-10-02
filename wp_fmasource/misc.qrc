@@ -1,5 +1,5 @@
 <RCC>
     <qresource prefix="/">
-        <file>rs_key</file>
+        <file>fma_key</file>
     </qresource>
 </RCC>

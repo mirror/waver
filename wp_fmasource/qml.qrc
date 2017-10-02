@@ -1,5 +1,5 @@
 <RCC>
     <qresource prefix="/">
-        <file>rs_key</file>
+        <file>FMA_CategorySettings.qml</file>
     </qresource>
 </RCC>

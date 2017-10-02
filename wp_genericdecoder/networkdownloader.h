@@ -37,6 +37,10 @@
 #include <QVector>
 #include <QWaitCondition>
 
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
+
 
 // TODO retry download if interrupted
 

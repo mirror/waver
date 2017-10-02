@@ -21,15 +21,13 @@
 */
 
 
-#ifndef RADIOSOURCE_H
-#define RADIOSOURCE_H
+#ifndef FMASOURCE_H
+#define FMASOURCE_H
 
-#include "wp_radiosource_global.h"
+#include "wp_fmasource_global.h"
 
 #include <QDateTime>
 #include <QFile>
-#include <QHash>
-#include <QIODevice>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -37,20 +35,19 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QRegExp>
-#include <QStandardPaths>
 #include <QString>
-#include <QStringList>
-#include <QThread>
 #include <QTimer>
 #include <QUrl>
 #include <QUuid>
-#include <QVariantHash>
+#include <QVariant>
+#include <QVariantList>
 #include <QVector>
 #include <QXmlStreamAttribute>
 #include <QXmlStreamAttributes>
 #include <QXmlStreamReader>
 
 #include "../waver/pluginfactory.h"
+#include "../waver/pluginglobals.h"
 #include "../waver/API/pluginsource_004.h"
 
 #ifdef QT_DEBUG
@@ -58,10 +55,10 @@
 #endif
 
 
-extern "C" WP_RADIOSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
+extern "C" WP_FMASOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
+class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
         Q_OBJECT
 
     public:
@@ -74,72 +71,83 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         bool    hasUI()                         override;
         void    setUserAgent(QString userAgent) override;
 
-        explicit RadioSource();
-        ~RadioSource();
+        explicit FMASource();
+        ~FMASource();
 
 
     private:
 
-        static const int UNABLE_TO_START_EXPIRY_DAYS = 15;
-        static const int GENRES_EXPIRY_DAYS          = 30;
-        static const int GENRE_EXPIRY_HOURS          = 12;    // SHOUTcast documentation says 24 hours, but there's no starting point for that
-        static const int NETWORK_WAIT_MS             = 500;
-        static const int PLAYLIST_REQUEST_DELAY_MS   = 100;
-        static const int SEARCH_TABLE_LIMIT          = 250000;
+        static const int GENRES_EXPIRY_DAYS = 30;
+        static const int NETWORK_WAIT_MS    = 500;
 
-        static const bool SQL_TEMPORARY_DB = true;
+        static const bool SQL_TEMPORARY_DB = false;
 
-        static const int SQL_CREATE_TABLE_STATIONS     = 1;
-        static const int SQL_CREATE_TABLE_SEARCH       = 2;
-        static const int SQL_GENRE_SEARCH_STATION_LIST = 10;
-        static const int SQL_GET_PLAYLIST              = 11;
-        static const int SQL_GENRE_SEARCH_OPENING      = 12;
-        static const int SQL_OPEN_GENRE_STATIONS       = 13;
-        static const int SQL_OPEN_PLAYLIST             = 14;
-        static const int SQL_STATION_SEARCH_OPENING    = 20;
-        static const int SQL_STATION_SEARCH_STATIONS   = 21;
-        static const int SQL_STATION_SEARCH_PLAYLIST   = 22;
-        static const int SQL_DIAGNOSTICS               = 90;
-        static const int SQL_SEARCH_COUNT              = 91;
-        static const int SQL_NO_RESULTS                = 99;
+        static const int SQL_CREATETABLE_ALBUMS           = 1;
+        static const int SQL_CREATETABLE_TRACKS           = 2;
+        static const int SQL_LOADMORE_ALBUMGENRES         = 10;
+        static const int SQL_LOADMORE_ALBUMSLOADED        = 11;
+        static const int SQL_LOADMORE_ALBUMSWITHOUTTRACKS = 12;
+        static const int SQL_LOADMORE_TRACKSLOADED        = 13;
+        static const int SQL_GET_PLAYLIST                 = 20;
+        static const int SQL_NO_RESULTS                   = 99;
+
+
+        enum ParseElement {
+            Unknown,
+            Page, TotalPages,
+            GenreId, GenreHandle, GenreParentId, GenreTitle,
+            AlbumId, AlbumTitle, AlbumDateReleased, ArtistName, AlbumImages,
+            TrackId, TrackTitle, TrackUrl, TrackImageFile, TrackNumber, TrackGenres
+        };
 
         enum State {
             Idle,
             GenreList,
-            StationList,
+            AlbumList,
+            TrackList,
             Opening,
-            Searching,
-            TuneIn
-        };
-
-        enum StationTempDestination {
-            Playlist,
-            Open,
-            Search
+            Searching
         };
 
         struct Genre {
+            int     id;
+            int     parentId;
+            QString handle;
             QString name;
-            bool    isPrimary;
+        };
+
+        struct GenreDisplay {
+            int     id;
+            QString name;
+            bool    isTopLevel;
+            int     indent;
         };
 
         struct GenreSearchItem {
-            QString genreName;
-            State   state;
+            int   genreId;
+            State state;
         };
 
-        struct StationTemp {
-            StationTempDestination destination;
-            QString                id;
-            QString                base;
-            QString                name;
-            QString                genre;
-            QUrl                   url;
+        struct Album {
+            int     id;
+            int     genreId;
+            QString album;
+            QString performer;
+            int     year;
         };
 
-        struct UnableToStartUrl {
-            QUrl   url;
-            qint64 timestamp;
+        struct AlbumSearchItem {
+            int   albumId;
+            State state;
+        };
+
+        struct Track {
+            int     id;
+            int     albumId;
+            QString title;
+            QString url;
+            QString pictureUrl;
+            int     track;
         };
 
         QUuid   id;
@@ -151,23 +159,14 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
         void setState(State state);
 
-        QVector<Genre>            genres;
-        QDateTime                 genresLoaded;
-        QStringList               selectedGenres;
-        QVector<QUrl>             bannedUrls;
-        QVector<UnableToStartUrl> unableToStartUrls;
-        QHash<QString, QDateTime> stationsLoaded;
-
-        int                  playlistReturnCount;
-        QVector<StationTemp> tuneInTemp;
+        QVector<Genre> genres;
+        QDateTime      genresLoaded;
+        QVector<int>   selectedGenres;
 
         QVector<GenreSearchItem> genreSearchItems;
-        QString                  openGenreSearchGenre;
-
-        QString stationSearchCriteria;
+        QVector<AlbumSearchItem> albumSearchItems;
 
         QNetworkAccessManager *networkAccessManager;
-        QNetworkAccessManager *playlistAccessManager;
 
         QJsonDocument configToJson();
         QJsonDocument configToJsonGlobal();
@@ -176,8 +175,9 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
         QString getKey();
 
-        void removeExpiredUnableToStartUrls();
-        bool isUnableToStartUrl(QUrl url);
+        bool stringToInt(QString str, int *num);
+        void sortGenres(int parentId, QVector<GenreDisplay> *sorted, int level);
+        void selectedGenresBinds(QString *binds, QVariantList *values);
 
         void sendDiagnosticsData();
 
@@ -186,7 +186,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
         void run() override;
 
-        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)       override;
         void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
 
         void sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)       override;
@@ -211,12 +211,8 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
     private slots:
 
         void networkFinished(QNetworkReply *reply);
-        void playlistFinished(QNetworkReply *reply);
         void genreSearch();
-        void stationSearch();
-        void tuneInStarter();
-        void tuneIn();
-
+        void albumSearch();
 };
 
-#endif // RADIOSOURCE_H
+#endif // FMASOURCE_H

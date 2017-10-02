@@ -44,6 +44,10 @@
 #include "../waver/pluginfactory.h"
 #include "../waver/API/plugindecoder_004.h"
 
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
+
 
 extern "C" WP_GENERICDECODER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 

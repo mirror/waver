@@ -90,6 +90,10 @@ ApplicationWindow {
     // error messages and warnings
     function displayUserMessage(messageText)
     {
+        if (!messageText) {
+            messageText = "Unknown Error";
+        }
+
         userMessageFadeoutAnimation.stop()
         userMessage.text    = messageText;
         userMessage.opacity = 1;

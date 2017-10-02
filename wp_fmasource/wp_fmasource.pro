@@ -22,24 +22,25 @@
 QT -= gui
 QT += multimedia
 
-TARGET = wp_localsource
+TARGET = wp_fmasource
 TEMPLATE = lib
 
-DEFINES += WP_LOCALSOURCE_LIBRARY
+DEFINES += WP_FMASOURCE_LIBRARY
 
 CONFIG += c++11
 
-SOURCES += localsource.cpp \
-    filescanner.cpp
+SOURCES += \
+        fmasource.cpp
 
-HEADERS += localsource.h \
-    wp_localsource_global.h \
+HEADERS += \
+    fmasource.h \
+    wp_fmasource_global.h \
     ../waver/API/pluginbase_004.h \
     ../waver/API/pluginsource_004.h \
     ../waver/pluginfactory.h \
-    filescanner.h
 
-RESOURCES += qml.qrc
+RESOURCES += misc.qrc \
+    qml.qrc
 
 unix:!android {
     target.path = /opt/waver/bin
@@ -49,4 +50,6 @@ unix:!android {
     install.depends = translatedestdir
     QMAKE_EXTRA_TARGETS += install translatedestdir
 }
+
+
 

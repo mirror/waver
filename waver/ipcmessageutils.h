@@ -39,6 +39,10 @@
 
 #include "pluginglobals.h"
 
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
+
 
 const int  TCP_TIMEOUT       = 2500;
 const char MESSAGE_SEPARATOR = 30;

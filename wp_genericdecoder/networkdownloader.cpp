@@ -67,6 +67,8 @@ void NetworkDownloader::run()
 
     QNetworkRequest networkRequest = QNetworkRequest(url);
     networkRequest.setRawHeader("User-Agent", userAgent.toUtf8());
+    networkRequest.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+    networkRequest.setMaximumRedirectsAllowed(12);
 
     networkReply = networkAccessManager->get(networkRequest);
 
@@ -104,7 +106,7 @@ void NetworkDownloader::networkDownloadProgress(qint64 bytesReceived, qint64 byt
     mutex.unlock();
 
     // let the world know when pre-caching is done
-    if ((bytesReceived > 10240) && !readyEmitted) {
+    if (!readyEmitted && (bytesReceived > (bytesTotal > 0 ? qMin(bytesTotal, (qint64)1024 * 1024) : 10240))) {
         emit ready();
         readyEmitted = true;
     }
@@ -152,6 +154,7 @@ void NetworkDownloader::preCacheTimeout()
 qint64 NetworkDownloader::readData(char *data, qint64 maxlen)
 {
     if (buffer.count() < 1) {
+        emit error("Download buffer underrun");
         return 0;
     }
 
@@ -162,8 +165,8 @@ qint64 NetworkDownloader::readData(char *data, qint64 maxlen)
         qint64 copyCount = qMin(maxlen - returnPos, (qint64)buffer.at(0)->count());
 
         memcpy(data + returnPos, buffer.at(0)->constData(), copyCount);
-
         returnPos += copyCount;
+
         if (copyCount == buffer.at(0)->count()) {
             delete buffer.at(0);
             buffer.remove(0);
