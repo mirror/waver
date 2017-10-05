@@ -283,6 +283,10 @@ ApplicationWindow {
             return;
         }
 
+        if ((playlistAddSelectableItems.count == 1) && (playlistAddSelectableItems.get(0).id == "LOADING")) {
+            playlistAddSelectableItems.clear();
+        }
+
         if ((playlistAddSelectableItems.count < 1) && (playlistAdd.directoryHistory.length > 1)) {
             var history = playlistAdd.directoryHistory[playlistAdd.directoryHistory.length - 2]
             if (history) {
@@ -1065,6 +1069,14 @@ ApplicationWindow {
                         }
 
                         playlistAddSelectableItems.clear();
+
+                        playlistAddSelectableItems.append({
+                            pluginId: "LOADING",
+                            actions: "<i>--- please wait while getting data ---</i>",
+                            label: "Loading...",
+                            id: "LOADING",
+                        });
+
                         getOpenTracks(pluginIdProperty, idProperty);
                     }
 

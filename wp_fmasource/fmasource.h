@@ -77,18 +77,28 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
 
     private:
 
-        static const int GENRES_EXPIRY_DAYS = 30;
         static const int NETWORK_WAIT_MS    = 500;
 
-        static const bool SQL_TEMPORARY_DB = false;
-
-        static const int SQL_CREATETABLE_ALBUMS           = 1;
-        static const int SQL_CREATETABLE_TRACKS           = 2;
-        static const int SQL_LOADMORE_ALBUMGENRES         = 10;
-        static const int SQL_LOADMORE_ALBUMSLOADED        = 11;
-        static const int SQL_LOADMORE_ALBUMSWITHOUTTRACKS = 12;
-        static const int SQL_LOADMORE_TRACKSLOADED        = 13;
-        static const int SQL_GET_PLAYLIST                 = 20;
+        static const int SQL_CREATETABLE_GENRES           = 1;
+        static const int SQL_CREATETABLE_ALBUMS           = 2;
+        static const int SQL_CREATETABLE_TRACKS           = 3;
+        static const int SQL_CREATETABLE_BANNED           = 4;
+        static const int SQL_STARTUPCHECK_GENRECOUNT      = 10;
+        static const int SQL_STARTUPCHECK_GENRESLOADED    = 11;
+        static const int SQL_LOADMORE_GENRESWITHOUTALBUM  = 20;
+        static const int SQL_LOADMORE_ALBUMSLOADED        = 21;
+        static const int SQL_LOADMORE_ALBUMSWITHOUTTRACKS = 22;
+        static const int SQL_LOADMORE_TRACKSLOADED        = 23;
+        static const int SQL_GET_PLAYLIST                 = 30;
+        static const int SQL_OPEN_TOPLEVEL                = 31;
+        static const int SQL_OPEN_PERFORMERS              = 32;
+        static const int SQL_OPEN_PERFORMERS_GENRESEARCH  = 33;
+        static const int SQL_OPEN_PERFORMERS_LOADED       = 34;
+        static const int SQL_OPEN_ALBUMS                  = 35;
+        static const int SQL_OPEN_TRACKS                  = 36;
+        static const int SQL_OPEN_TRACKS_LOADED           = 37;
+        static const int SQL_SEARCH                       = 40;
+        static const int SQL_UIQML_GENRELIST              = 41;
         static const int SQL_NO_RESULTS                   = 99;
 
 
@@ -105,7 +115,8 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
             GenreList,
             AlbumList,
             TrackList,
-            Opening,
+            OpeningPerformersAlbums,
+            OpeningTracks,
             Searching
         };
 
@@ -124,8 +135,9 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
         };
 
         struct GenreSearchItem {
-            int   genreId;
-            State state;
+            int     genreId;
+            QString genreHandle;
+            State   state;
         };
 
         struct Album {
@@ -156,12 +168,12 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
         bool    readySent;
         bool    sendDiagnostics;
         State   state;
+        int     openingId;
+        QString searchCriteria;
 
         void setState(State state);
 
-        QVector<Genre> genres;
-        QDateTime      genresLoaded;
-        QVector<int>   selectedGenres;
+        QVector<int> selectedGenres;
 
         QVector<GenreSearchItem> genreSearchItems;
         QVector<AlbumSearchItem> albumSearchItems;
@@ -169,14 +181,14 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
         QNetworkAccessManager *networkAccessManager;
 
         QJsonDocument configToJson();
-        QJsonDocument configToJsonGlobal();
         void          jsonToConfig(QJsonDocument jsonDocument);
-        void          jsonToConfigGlobal(QJsonDocument jsonDocument);
 
         QString getKey();
 
+        void loadMore();
+
         bool stringToInt(QString str, int *num);
-        void sortGenres(int parentId, QVector<GenreDisplay> *sorted, int level);
+        void sortGenres(QVector<Genre> genres, int parentId, QVector<GenreDisplay> *sorted, int level);
         void selectedGenresBinds(QString *binds, QVariantList *values);
 
         void sendDiagnosticsData();
