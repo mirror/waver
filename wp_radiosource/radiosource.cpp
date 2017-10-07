@@ -445,12 +445,24 @@ void RadioSource::uiResults(QUuid uniqueId, QJsonDocument results)
         return;
     }
 
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "DELETE FROM stations", QVariantList());
+    stationsLoaded.clear();
+
     selectedGenres.clear();
     foreach (QJsonValue jsonValue, results.array()) {
         selectedGenres.append(jsonValue.toString().replace(QRegExp("<\\/?b>"), ""));
     }
     emit saveConfiguration(id, configToJson());
     emit requestRemoveTracks(id);
+
+    if (selectedGenres.count() < 1) {
+        readySent = false;
+        emit unready(id);
+        return;
+    }
+
+    genreSearchItems.append({ selectedGenres.at(qrand() % selectedGenres.count()), StationList });
+    genreSearch();
 }
 
 
@@ -891,6 +903,7 @@ void RadioSource::networkFinished(QNetworkReply *reply)
                 }
 
                 if (attributes.hasAttribute("id") && attributes.hasAttribute("name") && attributes.hasAttribute("genre")) {
+                    // TODO logo
                     QString genre = attributes.value("genre").toString();
                     if (genre.compare(genreSearchItems.first().genreName) == 0) {
                         binds.append("(?,?,?,?)");

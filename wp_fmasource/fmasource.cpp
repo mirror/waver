@@ -532,6 +532,8 @@ void FMASource::uiResults(QUuid uniqueId, QJsonDocument results)
     }
     emit saveConfiguration(id, configToJson());
     emit requestRemoveTracks(id);
+
+    loadMore();
 }
 
 

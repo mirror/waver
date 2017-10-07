@@ -154,10 +154,10 @@ void WaverServer::outputError(QString errorMessage, QString title, bool fatal)
 {
     // print to error output
     if (title.isEmpty()) {
-        Globals::consoleOutput(QString("%1: %3").arg(fatal ? "Fatal error" : "Error").arg(errorMessage), true);
+        Globals::consoleOutput(QString("%1: %3").arg(fatal ? "Fatal error" : "Error", errorMessage), true);
     }
     else {
-        Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(fatal ? "Fatal error" : "Error").arg(title).arg(errorMessage), true);
+        Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(fatal ? "Fatal error" : "Error", title, errorMessage), true);
     }
 
     // send message to UI

@@ -153,7 +153,7 @@ void NetworkDownloader::preCacheTimeout()
 // override
 qint64 NetworkDownloader::readData(char *data, qint64 maxlen)
 {
-    if (buffer.count() < 1) {
+    if ((buffer.count() < 1) && (maxlen > 0)) {
         emit error("Download buffer underrun");
         return 0;
     }

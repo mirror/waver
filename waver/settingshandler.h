@@ -27,6 +27,8 @@
 #include <QByteArray>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
+#include <QFileInfoList>
 #include <QJsonDocument>
 #include <QObject>
 #include <QRegExp>
@@ -37,6 +39,7 @@
 #include <QStandardPaths>
 #include <QString>
 #include <QStringList>
+#include <QTimer>
 #include <QUuid>
 #include <QVariant>
 #include <QVariantHash>
@@ -63,6 +66,9 @@ class SettingsHandler : public QObject {
     private:
 
         QDir *settingsDir;
+
+        QVector<QUuid>  pluginIds;
+        bool            cleanedUp;
 
         QString pluginSettingsFileName(QUuid persistentUniqueId, QString collectionName);
         QString pluginSettingsDatabaseName(QUuid persistentUniqueId, QString collectionName, bool temporary);
@@ -93,6 +99,11 @@ class SettingsHandler : public QObject {
         void loadPluginSettings(QUuid persistentUniqueId, QString collectionName);
 
         void executeSql(QUuid persistentUniqueId, QString collectionName, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
+
+
+    private slots:
+
+        void cleanup();
 
 };
 

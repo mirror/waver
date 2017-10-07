@@ -29,15 +29,7 @@ const QString SettingsHandler::DEFAULT_COLLECTION_NAME = "Default";
 SettingsHandler::SettingsHandler(QObject *parent) : QObject(parent)
 {
     settingsDir = NULL;
-
-    // find application data location
-    QString dataLocation = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    if (dataLocation.length() > 0) {
-        settingsDir = new QDir(dataLocation);
-        if (!settingsDir->exists()) {
-            settingsDir->mkpath(dataLocation);
-        }
-    }
+    cleanedUp   = false;
 }
 
 
@@ -59,6 +51,10 @@ SettingsHandler::~SettingsHandler()
 // helper
 QString SettingsHandler::pluginSettingsFileName(QUuid persistentUniqueId, QString collectionName)
 {
+    if (!cleanedUp && !pluginIds.contains(persistentUniqueId)) {
+        pluginIds.append(persistentUniqueId);
+    }
+
     if (collectionName.isEmpty()) {
         return settingsDir->absoluteFilePath((QString("%1.cfg").arg(persistentUniqueId.toString().replace(QRegExp("[{}]"), ""))).toLower());
     }
@@ -69,6 +65,10 @@ QString SettingsHandler::pluginSettingsFileName(QUuid persistentUniqueId, QStrin
 // helper
 QString SettingsHandler::pluginSettingsDatabaseName(QUuid persistentUniqueId, QString collectionName, bool temporary)
 {
+    if (!cleanedUp && !pluginIds.contains(persistentUniqueId)) {
+        pluginIds.append(persistentUniqueId);
+    }
+
     if (temporary) {
         return "";
     }
@@ -96,8 +96,20 @@ QString SettingsHandler::pluginSettingsConnectionName(QUuid persistentUniqueId, 
 // thread entry point
 void SettingsHandler::run()
 {
+    // find application data location
+    QString dataLocation = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
+    if (dataLocation.length() > 0) {
+        settingsDir = new QDir(dataLocation);
+        if (!settingsDir->exists()) {
+            settingsDir->mkpath(dataLocation);
+        }
+    }
+
     // send back collections list, server needs this at startup to trigger loading of source plugins
     getCollectionList();
+
+    // perform cleanup later to have a chance to collect plugin ids
+    QTimer::singleShot(60000, this, SLOT(cleanup()));
 }
 
 
@@ -179,6 +191,7 @@ void SettingsHandler::savePluginSettings(QUuid persistentUniqueId, QString colle
     if (settingsDir == NULL) {
         return;
     }
+
     QFile file(pluginSettingsFileName(persistentUniqueId, collectionName));
     if (!file.open(QFile::WriteOnly)) {
         return;
@@ -264,4 +277,47 @@ void SettingsHandler::executeSql(QUuid persistentUniqueId, QString collectionNam
     }
 
     emit sqlResults(persistentUniqueId, temporary, clientIdentifier, clientSqlIdentifier, results);
+}
+
+
+// private slot
+void SettingsHandler::cleanup()
+{
+    cleanedUp = true;
+
+    QStringList collections;
+    QFile file(settingsDir->absoluteFilePath("collections.cfg"));
+    if (!file.open(QFile::ReadOnly | QFile::Text)) {
+        collections.append(DEFAULT_COLLECTION_NAME);
+    }
+    else {
+        collections.append(QString(file.readAll()).split("\n"));
+        file.close();
+        collections.removeAll("");
+        collections.removeFirst();
+    }
+
+    QStringList allPossibleConfigFilesAndDatabases;
+    foreach (QUuid pluginId, pluginIds) {
+        allPossibleConfigFilesAndDatabases.append(pluginSettingsFileName(pluginId, ""));
+        allPossibleConfigFilesAndDatabases.append(pluginSettingsDatabaseName(pluginId, "", false));
+        foreach (QString collection, collections) {
+            allPossibleConfigFilesAndDatabases.append(pluginSettingsFileName(pluginId, collection));
+            allPossibleConfigFilesAndDatabases.append(pluginSettingsDatabaseName(pluginId, collection, false));
+        }
+    }
+
+    QStringList excludedConfigFiles;
+    excludedConfigFiles.append("collections.cfg");
+
+    QFileInfoList configFiles = settingsDir->entryInfoList();
+    foreach (QFileInfo configFile, configFiles) {
+        if (configFile.suffix().isEmpty() || ((configFile.suffix().compare("cfg") != 0) && (configFile.suffix().compare("db") != 0)) || (excludedConfigFiles.contains(configFile.fileName()))) {
+            continue;
+        }
+
+        if (!allPossibleConfigFilesAndDatabases.contains(configFile.absoluteFilePath())) {
+            QFile::remove(configFile.absoluteFilePath());
+        }
+    }
 }

@@ -600,11 +600,11 @@ void WaverApplication::updateUIDiagnosticsMessage(QJsonDocument jsonDocument)
 
             // format it
             QString message = QString("<pre>%1 <b>%2</b><br>  %3%4%5</pre>")
-                .arg(dataItemHash.value("timestamp").toString())
-                .arg(dataItemHash.value("title").toString())
-                .arg(fatal ? "<font color=\"#880000\">" : "")
-                .arg(dataItemHash.value("message").toString())
-                .arg(fatal ? "</font>" : "");
+                .arg(dataItemHash.value("timestamp").toString(),
+                    dataItemHash.value("title").toString(),
+                    fatal ? "<font color=\"#880000\">" : "",
+                    dataItemHash.value("message").toString(),
+                    fatal ? "</font>" : "");
 
             // descending order
             messages.prepend(message);
