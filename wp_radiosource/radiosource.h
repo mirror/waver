@@ -82,12 +82,12 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
         static const int UNABLE_TO_START_EXPIRY_DAYS = 15;
         static const int GENRES_EXPIRY_DAYS          = 30;
-        static const int GENRE_EXPIRY_HOURS          = 12;    // SHOUTcast documentation says 24 hours, but there's no starting point for that
+        static const int GENRE_EXPIRY_HOURS          = 12;        // SHOUTcast documentation says 24 hours, but there's no starting point for that
         static const int NETWORK_WAIT_MS             = 500;
         static const int PLAYLIST_REQUEST_DELAY_MS   = 100;
         static const int SEARCH_TABLE_LIMIT          = 250000;
 
-        static const bool SQL_TEMPORARY_DB = true;
+        static const bool SQL_TEMPORARY_DB = true;                // using an in-memory temporary database
 
         static const int SQL_CREATE_TABLE_STATIONS     = 1;
         static const int SQL_CREATE_TABLE_SEARCH       = 2;

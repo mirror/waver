@@ -99,6 +99,7 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
         static const int SQL_OPEN_TRACKS_LOADED           = 37;
         static const int SQL_SEARCH                       = 40;
         static const int SQL_UIQML_GENRELIST              = 41;
+        static const int SQL_DIAGNOSTICS                  = 90;
         static const int SQL_NO_RESULTS                   = 99;
 
 
@@ -107,7 +108,7 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
             Page, TotalPages,
             GenreId, GenreHandle, GenreParentId, GenreTitle,
             AlbumId, AlbumTitle, AlbumDateReleased, ArtistName, AlbumImages,
-            TrackId, TrackTitle, TrackUrl, TrackImageFile, TrackNumber, TrackGenres
+            TrackId, TrackTitle, TrackArtistName, TrackUrl, TrackImageFile, TrackNumber, TrackGenres
         };
 
         enum State {
@@ -116,8 +117,7 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
             AlbumList,
             TrackList,
             OpeningPerformersAlbums,
-            OpeningTracks,
-            Searching
+            OpeningTracks
         };
 
         struct Genre {
@@ -157,6 +157,7 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
             int     id;
             int     albumId;
             QString title;
+            QString performer;
             QString url;
             QString pictureUrl;
             int     track;

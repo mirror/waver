@@ -36,7 +36,7 @@ void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 // constructor
 FMASource::FMASource()
 {
-    id  = QUuid("{A41DEA06-4B1E-4C3F-8108-76EB29556089}");
+    id  = QUuid("{A41DEA06-4B1E-4C3F-8108-76EB29546089}");
     key = getKey();
 
     networkAccessManager = NULL;
@@ -173,7 +173,7 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
     }
 
     if (clientSqlIdentifier == SQL_CREATETABLE_ALBUMS) {
-        emit executeGlobalSql(id, false, "", SQL_CREATETABLE_TRACKS, "CREATE TABLE IF NOT EXISTS tracks (id INT PRIMARY KEY, album_id INT, title, url, picture_url, track INT, playcount INT DEFAULT 0)", QVariantList());
+        emit executeGlobalSql(id, false, "", SQL_CREATETABLE_TRACKS, "CREATE TABLE IF NOT EXISTS tracks (id INT PRIMARY KEY, album_id INT, title, performer, url, picture_url, track INT, playcount INT DEFAULT 0)", QVariantList());
         return;
     }
 
@@ -237,6 +237,8 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
             return;
         }
 
+        // TODO here should be something to load newly added albums from FMA
+
         SqlResults fakeResults;
         globalSqlResults(id, false, "", SQL_LOADMORE_TRACKSLOADED, fakeResults);
         return;
@@ -256,7 +258,7 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
             TrackInfo trackInfo;
             trackInfo.album     = result.value("album").toString();
             trackInfo.cast      = false;
-            trackInfo.performer = result.value("performer").toString();
+            trackInfo.performer = (result.value("performer").toString().compare(result.value("album_performer").toString()) == 0 ? result.value("performer").toString() : result.value("performer").toString() + " (" + result.value("album_performer").toString() + ")");
             trackInfo.title     = result.value("title").toString();
             trackInfo.track     = result.value("track").toInt();
             trackInfo.url       = QUrl(result.value("url").toString());
@@ -432,6 +434,46 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
 
         return;
     }
+
+    if (clientSqlIdentifier == SQL_DIAGNOSTICS) {
+        DiagnosticData diagnosticData;
+
+        switch (state) {
+            case Idle:
+                diagnosticData.append({ "Status", "Idle"});
+                break;
+            case GenreList:
+                diagnosticData.append({ "Status", "Getting genre list..." });
+                break;
+            case AlbumList:
+                diagnosticData.append({ "Status", "Getting albums data..." });
+                break;
+            case TrackList:
+                diagnosticData.append({ "Status", "Getting tracks data..." });
+                break;
+            case OpeningPerformersAlbums:
+                diagnosticData.append({ "Status", "Opening performers and albums..." });
+                break;
+            case OpeningTracks:
+                diagnosticData.append({ "Status", "Opening tracks..." });
+                break;
+        }
+
+        foreach (QVariantHash result, results) {
+            DiagnosticItem stationCount;
+            stationCount.label   = result.value("genre").toString();
+            if (result.value("album_count").toInt() > 0) {
+                stationCount.message = QString("Albums: %1, Tracks loaded: %2, banned: %3, not yet loaded: %4 albums").arg(result.value("album_count").toInt(), 4).arg(result.value("track_count").toInt(), 5).arg(result.value("banned_count").toInt(), 4).arg(result.value("albums_not_yet_loaded").toInt(), 4);
+            }
+            else {
+                stationCount.message = "No albums loaded yet";
+            }
+            diagnosticData.append(stationCount);
+        }
+
+        emit diagnostics(id, diagnosticData);
+        return;
+    }
 }
 
 
@@ -580,7 +622,7 @@ void FMASource::getPlaylist(QUuid uniqueId, int trackCount)
     QVariantList values;
     selectedGenresBinds(&binds, &values);
     values.append(trackCount);
-    emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, performer, album, title, url, picture_url, track, year FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT ?", values);
+    emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT ?", values);
 
     return;
 }
@@ -649,7 +691,7 @@ void FMASource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
     }
 
     if (values.count() > 0) {
-        emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, performer, album, title, url, picture_url, track, year FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id WHERE tracks.id IN (" + binds.join(",") + ")", values);
+        emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id WHERE tracks.id IN (" + binds.join(",") + ")", values);
     }
 }
 
@@ -663,7 +705,7 @@ void FMASource::search(QUuid uniqueId, QString criteria)
 
     // TODO change this to use FMA's search service
     criteria = "%" + criteria.toLower() + "%";
-    emit executeGlobalSql(id, false, "", SQL_SEARCH, "SELECT tracks.id, performer, title FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id WHERE (performer LIKE ?) OR (title LIKE ?) ORDER BY title", QVariantList({ criteria, criteria }));
+    emit executeGlobalSql(id, false, "", SQL_SEARCH, "SELECT id, performer, title FROM tracks WHERE (performer LIKE ?) OR (title LIKE ?) ORDER BY title", QVariantList({ criteria, criteria }));
 }
 
 
@@ -904,17 +946,14 @@ void FMASource::networkFinished(QNetworkReply *reply)
                 if (xmlStreamReader.name().toString().compare("track_title") == 0) {
                     parseElement = TrackTitle;
                 }
+                if (xmlStreamReader.name().toString().compare("artist_name") == 0) {
+                    parseElement = TrackArtistName;
+                }
                 if (xmlStreamReader.name().toString().compare("track_url") == 0) {
                     parseElement = TrackUrl;
                 }
                 if (xmlStreamReader.name().toString().compare("track_image_file") == 0) {
                     parseElement = TrackImageFile;
-                }
-                if (xmlStreamReader.name().toString().compare("artist_name") == 0) {
-                    parseElement = ArtistName;
-                }
-                if (xmlStreamReader.name().toString().compare("album_title") == 0) {
-                    parseElement = AlbumTitle;
                 }
                 if (xmlStreamReader.name().toString().compare("track_number") == 0) {
                     parseElement = TrackNumber;
@@ -966,6 +1005,9 @@ void FMASource::networkFinished(QNetworkReply *reply)
                     break;
                 case TrackTitle:
                     trackTemp.title = text;
+                    break;
+                case TrackArtistName:
+                    trackTemp.performer = text;
                     break;
                 case TrackUrl:
                     trackTemp.url = text.append("/download");
@@ -1032,18 +1074,19 @@ void FMASource::networkFinished(QNetworkReply *reply)
                 }
 
                 if ((state == TrackList) || (state == OpeningTracks)) {
-                    binds.append("(?,?,?,?,?,?)");
+                    binds.append("(?,?,?,?,?,?,?)");
 
                     values.append(trackTemp.id);
                     values.append(trackTemp.albumId);
                     values.append(trackTemp.title);
+                    values.append(trackTemp.performer);
                     values.append(trackTemp.url);
                     values.append(trackTemp.pictureUrl);
                     values.append(trackTemp.track);
 
                     // can't have too many in one single statement
                     if (values.count() >= 750) {
-                        emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO tracks (id, album_id, title, url, picture_url, track) VALUES " + binds.join(","), values);
+                        emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO tracks (id, album_id, title, performer, url, picture_url, track) VALUES " + binds.join(","), values);
                         binds.clear();
                         values.clear();
                     }
@@ -1067,7 +1110,7 @@ void FMASource::networkFinished(QNetworkReply *reply)
             emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO albums (id, genre_id, album, performer, year) VALUES " + binds.join(","), values);
         }
         if ((state == TrackList) || (state == OpeningTracks)) {
-            emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO tracks (id, album_id, title, url, picture_url, track) VALUES " + binds.join(","), values);
+            emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO tracks (id, album_id, title, performer, url, picture_url, track) VALUES " + binds.join(","), values);
         }
     }
 
@@ -1150,5 +1193,31 @@ void FMASource::setState(State state)
 // diagnostics
 void FMASource::sendDiagnosticsData()
 {
+    QString      binds;
+    QVariantList values;
+    selectedGenresBinds(&binds, &values);
 
+    QString diagnosticsSql(
+        " SELECT name AS genre,                                                                               "
+        "        (SELECT COUNT(*)                                                                             "
+        "         FROM albums                                                                                 "
+        "         WHERE genre_id = genres.id) AS album_count,                                                 "
+        "        (SELECT COUNT(*)                                                                             "
+        "         FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id                                 "
+        "         WHERE genre_id = genres.id) AS track_count,                                                 "
+        "        (SELECT COUNT(*)                                                                             "
+        "         FROM banned                                                                                 "
+        "              LEFT JOIN tracks ON banned.track_id = tracks.id                                        "
+        "              LEFT JOIN albums ON tracks.album_id = albums.id                                        "
+        "         WHERE genre_id = genres.id) AS banned_count,	                                              "
+        "        (SELECT COUNT(*)                                                                             "
+        "         FROM albums                                                                                 "
+        "         WHERE (genre_id = genres.id) AND                                                            "
+        "               (id NOT IN (SELECT album_id FROM tracks GROUP BY album_id))) AS albums_not_yet_loaded "
+        " FROM genres                                                                                         "
+        " WHERE id IN (" + binds + ")                                                                         "
+        " ORDER BY name                                                                                       "
+    );
+
+    emit executeGlobalSql(id, false, "", SQL_DIAGNOSTICS, diagnosticsSql, values);
 }
