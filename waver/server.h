@@ -31,6 +31,7 @@
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonObject>
 #include <QLibrary>
 #include <QMetaObject>
 #include <QMetaMethod>
@@ -45,6 +46,8 @@
 #include <QUrl>
 #include <QUuid>
 #include <QVariantHash>
+#include <QVariantList>
+#include <QVariantMap>
 #include <QVector>
 
 #include "ipcmessageutils.h"
@@ -93,6 +96,7 @@ class WaverServer : public QObject {
             QString waverVersionAPICompatibility;
             bool    hasUI;
             bool    ready;
+            int     priority;
         };
         typedef QHash<QUuid, SourcePlugin> SourcePlugins;
 
@@ -104,6 +108,7 @@ class WaverServer : public QObject {
         };
 
         QStringList arguments;
+        QStringList collections;
         QString     currentCollection;
 
         PluginLibsLoader::LoadedLibs loadedLibs;
@@ -140,6 +145,11 @@ class WaverServer : public QObject {
         void finish();
         void finish(QString errorMessage);
 
+        QJsonDocument configToJson();
+        QJsonDocument configToJsonGlobal();
+        void          jsonToConfigGlobal(QJsonDocument jsonDocument);
+        void          jsonToConfig(QJsonDocument jsonDocument);
+
         void         outputError(QString errorMessage, QString title, bool fatal);
         void         requestPlaylist();
         void         startNextTrack();
@@ -148,6 +158,7 @@ class WaverServer : public QObject {
         QString      findTitleFromUrl(QUrl url);
         void         stopAllDiagnostics();
 
+        void handleCollectionMenuChange(QJsonDocument jsonDocument);
         void handleCollectionsDialogResults(QJsonDocument jsonDocument);
         void handlePluginUIRequest(QJsonDocument jsonDocument);
         void handlePluginUIResults(QJsonDocument jsonDocument);
@@ -157,6 +168,9 @@ class WaverServer : public QObject {
         void handleSearchSelection(QJsonDocument jsonDocument);
         void handleTrackActionsRequest(QJsonDocument jsonDocument);
         void handleDiagnostics(QJsonDocument jsonDocument);
+        void handleSourcePrioritiesRequest(QJsonDocument jsonDocument);
+        void handleSourcePrioritiesResult(QJsonDocument jsonDocument);
+        void sendCollectionListToClients();
         void sendPlaylistToClients(int contextShowTrackIndex);
         void sendPlaylistToClients();
         void sendPluginsToClients();
@@ -171,9 +185,8 @@ class WaverServer : public QObject {
 
         void ipcSend(QString data);
 
-        void saveCollectionList(QStringList collections, QString currentCollection);
-        void saveCollectionList(QString currentCollection);
-        void getCollectionList();
+        void saveWaverSettings(QString collectionName, QJsonDocument settings);
+        void loadWaverSettings(QString collectionName);
         void savePluginSettings(QUuid uniqueId, QString collectionName, QJsonDocument settings);
         void loadPluginSettings(QUuid uniqueId, QString collectionName);
         void executeSettingsSql(QUuid uniqueId, QString collectionName, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
@@ -186,7 +199,7 @@ class WaverServer : public QObject {
         void executedSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
         void executedGlobalSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
         void executedSqlError(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error);
-        void getPlaylist(QUuid uniqueId, int maxCount);
+        void getPlaylist(QUuid uniqueId, int trackCount);
         void getOpenTracks(QUuid uniqueId, QString parentId);
         void search(QUuid uniqueId, QString criteria);
         void resolveOpenTracks(QUuid uniqueId, QStringList selectedTrackIds);
@@ -213,7 +226,8 @@ class WaverServer : public QObject {
         void ipcReceivedError(bool fatal, QString error);
         void ipcNoClient();
 
-        void collectionList(QStringList collections, QString currentCollection);
+        void loadedWaverSettings(QJsonDocument settings);
+        void loadedWaverGlobalSettings(QJsonDocument settings);
         void loadedPluginSettings(QUuid uniqueId, QJsonDocument settings);
         void loadedPluginGlobalSettings(QUuid uniqueId, QJsonDocument settings);
         void executedPluginSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);

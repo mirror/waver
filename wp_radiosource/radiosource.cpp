@@ -514,14 +514,14 @@ void RadioSource::unableToStart(QUuid uniqueId, QUrl url)
 
 
 // reuest for playlist entries
-void RadioSource::getPlaylist(QUuid uniqueId, int maxCount)
+void RadioSource::getPlaylist(QUuid uniqueId, int trackCount)
 {
     if (uniqueId != id) {
         return;
     }
 
     // how many to return
-    playlistReturnCount = (qrand() % maxCount) + 1;
+    playlistReturnCount = trackCount;
 
     // select stations to return (these will be dealt with in the sql signal handler)
     emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_GET_PLAYLIST, "SELECT id, base, name, genre, url FROM stations WHERE (banned = 0) AND (unable_to_start = 0) ORDER BY playcount, RANDOM() LIMIT ?", QVariantList({ bannedUrls.count() + unableToStartUrls.count() + playlistReturnCount }));

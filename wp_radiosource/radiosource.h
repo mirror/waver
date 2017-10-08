@@ -200,7 +200,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         void stopDiagnostics(QUuid uniqueId)  override;
 
         void unableToStart(QUuid uniqueId, QUrl url)                       override;
-        void getPlaylist(QUuid uniqueId, int maxCount)                     override;
+        void getPlaylist(QUuid uniqueId, int trackCount)                   override;
         void getOpenTracks(QUuid uniqueId, QString parentId)               override;
         void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks) override;
 

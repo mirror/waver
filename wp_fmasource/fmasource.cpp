@@ -569,7 +569,7 @@ void FMASource::unableToStart(QUuid uniqueId, QUrl url)
 
 
 // reuest for playlist entries
-void FMASource::getPlaylist(QUuid uniqueId, int maxCount)
+void FMASource::getPlaylist(QUuid uniqueId, int trackCount)
 {
     if (uniqueId != id) {
         return;
@@ -579,7 +579,7 @@ void FMASource::getPlaylist(QUuid uniqueId, int maxCount)
     QString      binds;
     QVariantList values;
     selectedGenresBinds(&binds, &values);
-    values.append((qrand() % maxCount) + 1);
+    values.append(trackCount);
     emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, performer, album, title, url, picture_url, track, year FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT ?", values);
 
     return;

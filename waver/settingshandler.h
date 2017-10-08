@@ -65,7 +65,8 @@ class SettingsHandler : public QObject {
 
     private:
 
-        QDir *settingsDir;
+        QDir  *settingsDir;
+        QUuid  waverFakePluginId;
 
         QVector<QUuid>  pluginIds;
         bool            cleanedUp;
@@ -77,7 +78,8 @@ class SettingsHandler : public QObject {
 
     signals:
 
-        void collectionList(QStringList collections, QString currentCollection);
+        void loadedWaverSettings(QJsonDocument settings);
+        void loadedWaverGlobalSettings(QJsonDocument settings);
 
         void loadedPluginSettings(QUuid id, QJsonDocument settings);
         void loadedPluginGlobalSettings(QUuid id, QJsonDocument settings);
@@ -91,9 +93,8 @@ class SettingsHandler : public QObject {
 
         void run();
 
-        void saveCollectionList(QStringList collections, QString currentCollection);
-        void saveCollectionList(QString currentCollection);
-        void getCollectionList();
+        void saveWaverSettings(QString collectionName, QJsonDocument settings);
+        void loadWaverSettings(QString collectionName);
 
         void savePluginSettings(QUuid persistentUniqueId, QString collectionName, QJsonDocument settings);
         void loadPluginSettings(QUuid persistentUniqueId, QString collectionName);

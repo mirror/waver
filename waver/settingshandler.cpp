@@ -28,8 +28,9 @@ const QString SettingsHandler::DEFAULT_COLLECTION_NAME = "Default";
 // constructor
 SettingsHandler::SettingsHandler(QObject *parent) : QObject(parent)
 {
-    settingsDir = NULL;
-    cleanedUp   = false;
+    settingsDir       = NULL;
+    waverFakePluginId = QUuid("{040020F4-155B-48E8-8382-2AC528845063}");
+    cleanedUp         = false;
 }
 
 
@@ -105,8 +106,8 @@ void SettingsHandler::run()
         }
     }
 
-    // send back collections list, server needs this at startup to trigger loading of source plugins
-    getCollectionList();
+    // courtesy of settings handler
+    loadWaverSettings("");
 
     // perform cleanup later to have a chance to collect plugin ids
     QTimer::singleShot(60000, this, SLOT(cleanup()));
@@ -114,74 +115,41 @@ void SettingsHandler::run()
 
 
 // slot
-void SettingsHandler::saveCollectionList(QStringList collections, QString currentCollection)
+void SettingsHandler::saveWaverSettings(QString collectionName, QJsonDocument settings)
 {
-    // can't delete default collection
-    if (!collections.contains(DEFAULT_COLLECTION_NAME)) {
-        collections.append(DEFAULT_COLLECTION_NAME);
-    }
-
-    // current collection may be deleted
-    if (!collections.contains(currentCollection)) {
-        currentCollection = DEFAULT_COLLECTION_NAME;
-    }
-
-    // save
-    QFile file(settingsDir->absoluteFilePath("collections.cfg"));
-    if (!file.open(QFile::WriteOnly | QFile::Text)) {
+    if (settingsDir == NULL) {
         return;
     }
-    file.write(currentCollection.append("\n").toUtf8());
-    foreach (QString collection, collections) {
-        file.write(collection.append("\n").toUtf8());
-    }
-    file.close();
 
-    // send it back because it might changed
-    getCollectionList();
+    QFile file(pluginSettingsFileName(waverFakePluginId, collectionName));
+    if (!file.open(QFile::WriteOnly)) {
+        return;
+    }
+    file.write(settings.toJson());
+    file.flush();
+    file.close();
 }
 
 
 // slot
-void SettingsHandler::saveCollectionList(QString currentCollection)
+void SettingsHandler::loadWaverSettings(QString collectionName)
 {
-    // get existing collections list
-    QStringList collections;
-    QFile file(settingsDir->absoluteFilePath("collections.cfg"));
-    if (!file.open(QFile::ReadOnly | QFile::Text)) {
-        collections.append(DEFAULT_COLLECTION_NAME);
-    }
-    else {
-        collections.append(QString(file.readAll()).split("\n"));
-        file.close();
-        collections.removeAll("");
-        collections.removeFirst();
+    QJsonDocument returnValue;
+
+    if (settingsDir != NULL) {
+        QFile file(pluginSettingsFileName(waverFakePluginId, collectionName));
+        if (file.open(QFile::ReadOnly)) {
+            returnValue = QJsonDocument::fromJson(file.readAll());
+            file.close();
+        }
     }
 
-    // save
-    saveCollectionList(collections, currentCollection);
-}
-
-
-// slot
-void SettingsHandler::getCollectionList()
-{
-    QStringList collections;
-
-    QFile file(settingsDir->absoluteFilePath("collections.cfg"));
-    if (!file.open(QFile::ReadOnly | QFile::Text)) {
-        collections.append(DEFAULT_COLLECTION_NAME);
-        emit collectionList(collections, DEFAULT_COLLECTION_NAME);
+    if (collectionName.isEmpty()) {
+        loadedWaverGlobalSettings(returnValue);
         return;
     }
-    collections.append(QString(file.readAll()).split("\n"));
-    file.close();
-    collections.removeAll("");
 
-    QString currentCollection = collections.at(0);
-    collections.removeFirst();
-
-    emit collectionList(collections, currentCollection);
+    emit loadedWaverSettings(returnValue);
 }
 
 
@@ -307,12 +275,9 @@ void SettingsHandler::cleanup()
         }
     }
 
-    QStringList excludedConfigFiles;
-    excludedConfigFiles.append("collections.cfg");
-
     QFileInfoList configFiles = settingsDir->entryInfoList();
     foreach (QFileInfo configFile, configFiles) {
-        if (configFile.suffix().isEmpty() || ((configFile.suffix().compare("cfg") != 0) && (configFile.suffix().compare("db") != 0)) || (excludedConfigFiles.contains(configFile.fileName()))) {
+        if (configFile.suffix().isEmpty() || ((configFile.suffix().compare("cfg") != 0) && (configFile.suffix().compare("db") != 0))) {
             continue;
         }
 

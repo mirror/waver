@@ -285,7 +285,7 @@ void LocalSource::unableToStart(QUuid uniqueId, QUrl url)
 
 
 // request for playlist entries
-void LocalSource::getPlaylist(QUuid uniqueId, int maxCount)
+void LocalSource::getPlaylist(QUuid uniqueId, int trackCount)
 {
     if (uniqueId != id) {
         return;
@@ -325,8 +325,7 @@ void LocalSource::getPlaylist(QUuid uniqueId, int maxCount)
     }
 
     // random select some tracks according to variation
-    int count = (qrand() % maxCount) + 1;
-    for (int i = 1; i <= count; i++) {
+    for (int i = 1; i <= trackCount; i++) {
         // make sure we didn't run out of tracks
         if (trackFileNames.count() < 1) {
             break;

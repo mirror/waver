@@ -23,7 +23,6 @@
 
 #include "server.h"
 
-
 // constructor
 WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(parent)
 {
@@ -92,13 +91,13 @@ void WaverServer::run()
     connect(&settingsThread, SIGNAL(started()),  settingsHandler, SLOT(run()));
     connect(&settingsThread, SIGNAL(finished()), settingsHandler, SLOT(deleteLater()));
 
-    connect(this,            SIGNAL(saveCollectionList(QStringList, QString)),                                      settingsHandler, SLOT(saveCollectionList(QStringList, QString)));
-    connect(this,            SIGNAL(saveCollectionList(QString)),                                                   settingsHandler, SLOT(saveCollectionList(QString)));
-    connect(this,            SIGNAL(getCollectionList()),                                                           settingsHandler, SLOT(getCollectionList()));
+    connect(this,            SIGNAL(saveWaverSettings(QString, QJsonDocument)),                                     settingsHandler, SLOT(saveWaverSettings(QString, QJsonDocument)));
+    connect(this,            SIGNAL(loadWaverSettings(QString)),                                                    settingsHandler, SLOT(loadWaverSettings(QString)));
     connect(this,            SIGNAL(savePluginSettings(QUuid, QString, QJsonDocument)),                             settingsHandler, SLOT(savePluginSettings(QUuid, QString, QJsonDocument)));
     connect(this,            SIGNAL(loadPluginSettings(QUuid, QString)),                                            settingsHandler, SLOT(loadPluginSettings(QUuid, QString)));
     connect(this,            SIGNAL(executeSettingsSql(QUuid, QString, bool, QString, int, QString, QVariantList)), settingsHandler, SLOT(executeSql(QUuid, QString, bool, QString, int, QString, QVariantList)));
-    connect(settingsHandler, SIGNAL(collectionList(QStringList, QString)),                                          this,            SLOT(collectionList(QStringList, QString)));
+    connect(settingsHandler, SIGNAL(loadedWaverSettings(QJsonDocument)),                                            this,            SLOT(loadedWaverSettings(QJsonDocument)));
+    connect(settingsHandler, SIGNAL(loadedWaverGlobalSettings(QJsonDocument)),                                      this,            SLOT(loadedWaverGlobalSettings(QJsonDocument)));
     connect(settingsHandler, SIGNAL(loadedPluginSettings(QUuid, QJsonDocument)),                                    this,            SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
     connect(settingsHandler, SIGNAL(loadedPluginGlobalSettings(QUuid, QJsonDocument)),                              this,            SLOT(loadedPluginGlobalSettings(QUuid, QJsonDocument)));
     connect(settingsHandler, SIGNAL(sqlResults(QUuid, bool, QString, int, SqlResults)),                             this,            SLOT(executedPluginSqlResults(QUuid, bool, QString, int, SqlResults)));
@@ -149,6 +148,78 @@ void WaverServer::finish(QString errorMessage)
 }
 
 
+// configuration conversion
+QJsonDocument WaverServer::configToJson()
+{
+    QJsonArray sourcePriorities;
+    foreach (QUuid pluginId, sourcePlugins.keys()) {
+        sourcePriorities.append(QJsonArray({ pluginId.toString(), sourcePlugins.value(pluginId).priority }));
+    }
+
+    QJsonObject jsonObject;
+    jsonObject.insert("source_priorities", sourcePriorities);
+
+    QJsonDocument returnValue;
+    returnValue.setObject(jsonObject);
+
+    return returnValue;
+}
+
+
+// configuration conversion
+QJsonDocument WaverServer::configToJsonGlobal()
+{
+    QJsonObject jsonObject;
+    jsonObject.insert("collections", QJsonArray::fromStringList(collections));
+    jsonObject.insert("current_collection", currentCollection);
+
+    QJsonDocument returnValue;
+    returnValue.setObject(jsonObject);
+
+    return returnValue;
+}
+
+
+// configuration conversion
+void WaverServer::jsonToConfig(QJsonDocument jsonDocument)
+{
+    if (jsonDocument.object().contains("source_priorities")) {
+        foreach (QJsonValue dataItem, jsonDocument.object().value("source_priorities").toArray()) {
+            QVariantList sourcePriority = dataItem.toArray().toVariantList();
+
+            QUuid pluginId(sourcePriority.at(0).toString());
+            if (sourcePlugins.contains(pluginId)) {
+                sourcePlugins[pluginId].priority = sourcePriority.at(1).toInt();
+            }
+        }
+    }
+}
+
+
+// configuration conversion
+void WaverServer::jsonToConfigGlobal(QJsonDocument jsonDocument)
+{
+    collections.clear();
+    if (jsonDocument.object().contains("collections")) {
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("collections").toArray()) {
+            collections.append(jsonValue.toString());
+        }
+    }
+    if (!collections.contains(SettingsHandler::DEFAULT_COLLECTION_NAME)) {
+        collections.prepend(SettingsHandler::DEFAULT_COLLECTION_NAME);
+    }
+    qSort(collections);
+
+    currentCollection.clear();
+    if (jsonDocument.object().contains("current_collection")) {
+        currentCollection = jsonDocument.object().value("current_collection").toString();
+    }
+    if (currentCollection.isEmpty()) {
+        currentCollection = SettingsHandler::DEFAULT_COLLECTION_NAME;
+    }
+}
+
+
 // helper
 void WaverServer::outputError(QString errorMessage, QString title, bool fatal)
 {
@@ -187,12 +258,15 @@ void WaverServer::outputError(QString errorMessage, QString title, bool fatal)
 // private method
 void WaverServer::requestPlaylist()
 {
-    // enumerate ready source plugins
+    // enumerate ready source plugins and also get sum of priorities
     QVector<QUuid> readyPlugins;
+    int            totalPriority = 0;
     foreach (QUuid pluginId, sourcePlugins.keys()) {
         if (sourcePlugins.value(pluginId).ready) {
             readyPlugins.append(pluginId);
         }
+
+        totalPriority += sourcePlugins.value(pluginId).priority;
     }
     if (readyPlugins.count() < 1) {
         return;
@@ -204,24 +278,29 @@ void WaverServer::requestPlaylist()
         return;
     }
 
-    // don't use the same as before if there are more than one
-    if (readyPlugins.count() > 1) {
-        readyPlugins.removeAll(lastPlaylistPlugin);
+    // which plugin to use
+    int pluginIndex = readyPlugins.indexOf(lastPlaylistPlugin) + 1;
+    if (pluginIndex >= readyPlugins.count()) {
+        pluginIndex = 0;
     }
-
-    // random which plugin to use
-    int pluginIndex = qrand() % readyPlugins.count();
 
     // give priority to local files at startup
     if (waitingForLocalSource) {
         pluginIndex = readyPlugins.indexOf(QUuid("{187C9046-4801-4DB2-976C-128761F25BD8}"));
         if (pluginIndex < 0) {
+            // plugin ready slot will call this request playlist method again
             return;
         }
     }
 
+    // calculate track count
+    int count = qRound(((((double)100 / totalPriority) * sourcePlugins.value(readyPlugins.at(pluginIndex)).priority) / 100) * (MAX_TRACKS_AT_ONCE * sourcePlugins.count()));
+    if (count < 1) {
+        count = 1;
+    }
+
     // emit signal
-    emit getPlaylist(readyPlugins.at(pluginIndex), MAX_TRACKS_AT_ONCE);
+    emit getPlaylist(readyPlugins.at(pluginIndex), count);
     lastPlaylistPlugin = readyPlugins.at(pluginIndex);
 }
 
@@ -367,14 +446,59 @@ void WaverServer::stopAllDiagnostics()
 
 
 // private method
+void WaverServer::handleCollectionMenuChange(QJsonDocument jsonDocument)
+{
+    QString newCurrentCollection = jsonDocument.object().toVariantHash().value("collection").toString();
+    if (newCurrentCollection.compare(currentCollection) == 0) {
+        return;
+    }
+
+    currentCollection = newCurrentCollection;
+    emit saveWaverSettings("", configToJsonGlobal());
+
+    // load plugin settings for new collection
+    foreach (QUuid pluginId, sourcePlugins.keys()) {
+        emit loadPluginSettings(pluginId, currentCollection);
+    }
+
+    // empty playlist
+    QVector<Track *> tracksToBeDeleted;
+    tracksToBeDeleted.append(playlistTracks);
+    foreach (Track *track, tracksToBeDeleted) {
+        playlistTracks.removeAll(track);
+        delete track;
+    }
+
+    // stop current track
+    currentTrack->interrupt();
+
+    // UI signal
+    sendPlaylistToClients();
+
+    // next track from newly selected collection
+    startNextTrack();
+}
+
+
+// private method
 void WaverServer::handleCollectionsDialogResults(QJsonDocument jsonDocument)
 {
-    QStringList collections;
+    collections.clear();
     foreach (QVariant collection, jsonDocument.array()) {
         collections.append(collection.toString());
     }
 
-    emit saveCollectionList(collections, currentCollection);
+    emit saveWaverSettings("", configToJsonGlobal());
+
+    if (!collections.contains(currentCollection)) {
+        handleCollectionMenuChange(QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
+            {
+                "collection", SettingsHandler::DEFAULT_COLLECTION_NAME
+            }
+        }))));
+    }
+
+    sendCollectionListToClients();
 }
 
 
@@ -570,6 +694,61 @@ void WaverServer::handleDiagnostics(QJsonDocument jsonDocument)
 
 
 // private method
+void WaverServer::handleSourcePrioritiesRequest(QJsonDocument jsonDocument)
+{
+    Q_UNUSED(jsonDocument);
+
+    QJsonArray jsonArray;
+    foreach (QUuid pluginId, sourcePlugins.keys()) {
+        jsonArray.append(QJsonObject::fromVariantHash(QVariantHash({
+            {
+                "id", pluginId.toString()
+            },
+            {
+                "name", sourcePlugins.value(pluginId).name
+            },
+            {
+                "priority", sourcePlugins.value(pluginId).priority
+            }
+        })));
+    }
+
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::SourcePriorities, QJsonDocument(jsonArray)));
+}
+
+
+// private method
+void WaverServer::handleSourcePrioritiesResult(QJsonDocument jsonDocument)
+{
+    QVariantList data = jsonDocument.array().toVariantList();
+    foreach (QVariant dataItem, data) {
+        QVariantMap sourcePriority = dataItem.toMap();
+        sourcePlugins[QUuid(sourcePriority.value("id").toString())].priority = sourcePriority.value("priority").toInt();
+    }
+
+    emit saveWaverSettings(currentCollection, configToJson());
+}
+
+
+// private method
+void WaverServer::sendCollectionListToClients()
+{
+    QJsonArray collectionArray = QJsonArray::fromStringList(collections);
+
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::CollectionList, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
+        {
+            "collections", collectionArray
+        },
+        {
+            "current_collection", currentCollection
+        }
+    })))));
+}
+
+
+// private method
 void WaverServer::sendPlaylistToClients(int contextShowTrackIndex)
 {
     IpcMessageUtils ipcMessageUtils;
@@ -720,7 +899,8 @@ void WaverServer::pluginLibsLoaded()
 
             // remember some info about the plugin
             SourcePlugin pluginData;
-            pluginData.ready = false;
+            pluginData.ready    = false;
+            pluginData.priority = 100;
             if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
                 finish("Failed to invoke method on plugin");
             }
@@ -788,6 +968,9 @@ void WaverServer::pluginLibsLoaded()
         }
     }
 
+    // get the priorities
+    emit loadWaverSettings(currentCollection);
+
     // start source thread and hance source plugins
     sourcesThread.start();
 }
@@ -809,12 +992,11 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
     switch (message) {
 
         case IpcMessageUtils::CollectionList:
-            emit getCollectionList();
+            sendCollectionListToClients();
             break;
 
         case IpcMessageUtils::CollectionMenuChange:
-            // settings handler will reply with collectionList
-            emit saveCollectionList(jsonDocument.object().toVariantHash().value("collection").toString());
+            handleCollectionMenuChange(jsonDocument);
             break;
 
         case IpcMessageUtils::CollectionsDialogResults:
@@ -905,6 +1087,14 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
             handleSearchRequest(jsonDocument);
             break;
 
+        case IpcMessageUtils::SourcePriorities:
+            handleSourcePrioritiesRequest(jsonDocument);
+            break;
+
+        case IpcMessageUtils::SourcePriorityResults:
+            handleSourcePrioritiesResult(jsonDocument);
+            break;
+
         case IpcMessageUtils::TrackAction:
             handleTrackActionsRequest(jsonDocument);
             break;
@@ -943,12 +1133,14 @@ void WaverServer::ipcNoClient()
 
 
 // settings storage signal handler
-void WaverServer::collectionList(QStringList collections, QString currentCollection)
+void WaverServer::loadedWaverGlobalSettings(QJsonDocument settings)
 {
-    // settings storage sends this signal right after it just started at server startup
-    if (this->currentCollection.isEmpty()) {
-        this->currentCollection = currentCollection;
+    bool justStarted = this->currentCollection.isEmpty();
 
+    jsonToConfigGlobal(settings);
+
+    // settings storage sends this signal right after it just started at server startup
+    if (justStarted) {
         // instantiate, set up, and start plugin library loader (it sends finished right after plugins are loaded)
 
         PluginLibsLoader *pluginLibsLoader = new PluginLibsLoader(NULL, &loadedLibs);
@@ -966,50 +1158,13 @@ void WaverServer::collectionList(QStringList collections, QString currentCollect
         // nothing else to do now
         return;
     }
+}
 
-    // is collection changed?
-    if (this->currentCollection.compare(currentCollection) != 0) {
-        this->currentCollection = currentCollection;
 
-        // load plugin settings for new collection
-        foreach (QUuid pluginId, sourcePlugins.keys()) {
-            emit loadPluginSettings(pluginId, this->currentCollection);
-        }
-
-        // empty playlist
-        QVector<Track *> tracksToBeDeleted;
-        tracksToBeDeleted.append(playlistTracks);
-        foreach (Track *track, tracksToBeDeleted) {
-            playlistTracks.removeAll(track);
-            delete track;
-        }
-
-        // stop current track
-        currentTrack->interrupt();
-
-        // UI signal
-        sendPlaylistToClients();
-
-        // next track from newly selected collection
-        startNextTrack();
-    }
-
-    // send to UI
-
-    qSort(collections);
-
-    QJsonArray collectionArray = QJsonArray::fromStringList(collections);
-
-    IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::CollectionList,
-    QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
-        {
-            "collections", collectionArray
-        },
-        {
-            "current_collection", currentCollection
-        }
-    })))));
+// settings storage signal handler
+void WaverServer::loadedWaverSettings(QJsonDocument settings)
+{
+    jsonToConfig(settings);
 }
 
 

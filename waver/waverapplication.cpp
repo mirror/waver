@@ -97,12 +97,15 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(this,         SIGNAL(uiDisplayPluginUI(QVariant, QVariant, QVariant)),                         uiMainWindow, SLOT(displayPluginUI(QVariant, QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiAddToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)), uiMainWindow, SLOT(addToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiDisplayDiagnosticsMessage(QVariant, QVariant)),                         uiMainWindow, SLOT(displayDiagnosticsMessage(QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiClearSourcePrioritiesList()),                                           uiMainWindow, SLOT(clearSourcePrioritiesList()));
+        disconnect(this,         SIGNAL(uiAddToSourcePrioritiesList(QVariant, QVariant, QVariant)),               uiMainWindow, SLOT(addToSourcePrioritiesList(QVariant, QVariant, QVariant)));
         disconnect(uiMainWindow, SIGNAL(menuPause()),                                                             this,         SLOT(menuPause()));
         disconnect(uiMainWindow, SIGNAL(menuResume()),                                                            this,         SLOT(menuResume()));
         disconnect(uiMainWindow, SIGNAL(menuNext()),                                                              this,         SLOT(menuNext()));
         disconnect(uiMainWindow, SIGNAL(menuCollection(QVariant)),                                                this,         SLOT(menuCollection(QVariant)));
         disconnect(uiMainWindow, SIGNAL(menuAbout()),                                                             this,         SLOT(menuAbout()));
         disconnect(uiMainWindow, SIGNAL(menuQuit()),                                                              this,         SLOT(menuQuit()));
+        disconnect(uiMainWindow, SIGNAL(menuSourcePriorities(QVariant)),                                          this,         SLOT(menuSourcePriorities(QVariant)));
         disconnect(uiMainWindow, SIGNAL(collectionsDialogResults(QVariant)),                                      this,         SLOT(collectionsDialogResults(QVariant)));
         disconnect(uiMainWindow, SIGNAL(pluginUIResults(QVariant, QVariant)),                                     this,         SLOT(pluginUIResults(QVariant, QVariant)));
         disconnect(uiMainWindow, SIGNAL(getOpenTracks(QVariant, QVariant)),                                       this,         SLOT(getOpenTracks(QVariant, QVariant)));
@@ -110,6 +113,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(uiMainWindow, SIGNAL(trackAction(QVariant, QVariant)),                                         this,         SLOT(trackAction(QVariant, QVariant)));
         disconnect(uiMainWindow, SIGNAL(getDiagnostics(QVariant)),                                                this,         SLOT(getDiagnostics(QVariant)));
         disconnect(uiMainWindow, SIGNAL(doneDiagnostics()),                                                       this,         SLOT(doneDiagnostics()));
+        disconnect(uiMainWindow, SIGNAL(sourcePrioritiesDialogResults(QVariant)),                                 this,         SLOT(sourcePrioritiesDialogResults(QVariant)));
     }
 
     // what we're really interested in is the main application window
@@ -138,6 +142,8 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(this,         SIGNAL(uiAddToSearchList(QVariant, QVariant, QVariant)),                         uiMainWindow, SLOT(addToSearchList(QVariant, QVariant, QVariant)));
     connect(this,         SIGNAL(uiAbout(QVariant, QVariant, QVariant)),                                   uiMainWindow, SLOT(aboutDialog(QVariant, QVariant, QVariant)));
     connect(this,         SIGNAL(uiDisplayDiagnosticsMessage(QVariant, QVariant)),                         uiMainWindow, SLOT(displayDiagnosticsMessage(QVariant, QVariant)));
+    connect(this,         SIGNAL(uiClearSourcePrioritiesList()),                                           uiMainWindow, SLOT(clearSourcePrioritiesList()));
+    connect(this,         SIGNAL(uiAddToSourcePrioritiesList(QVariant, QVariant, QVariant)),               uiMainWindow, SLOT(addToSourcePrioritiesList(QVariant, QVariant, QVariant)));
     connect(uiMainWindow, SIGNAL(menuPause()),                                                             this,         SLOT(menuPause()));
     connect(uiMainWindow, SIGNAL(menuResume()),                                                            this,         SLOT(menuResume()));
     connect(uiMainWindow, SIGNAL(menuNext()),                                                              this,         SLOT(menuNext()));
@@ -145,6 +151,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(uiMainWindow, SIGNAL(menuPlugin(QVariant)),                                                    this,         SLOT(menuPlugin(QVariant)));
     connect(uiMainWindow, SIGNAL(menuAbout()),                                                             this,         SLOT(menuAbout()));
     connect(uiMainWindow, SIGNAL(menuQuit()),                                                              this,         SLOT(menuQuit()));
+    connect(uiMainWindow, SIGNAL(menuSourcePriorities()),                                                  this,         SLOT(menuSourcePriorities()));
     connect(uiMainWindow, SIGNAL(collectionsDialogResults(QVariant)),                                      this,         SLOT(collectionsDialogResults(QVariant)));
     connect(uiMainWindow, SIGNAL(pluginUIResults(QVariant, QVariant)),                                     this,         SLOT(pluginUIResults(QVariant, QVariant)));
     connect(uiMainWindow, SIGNAL(getOpenTracks(QVariant, QVariant)),                                       this,         SLOT(getOpenTracks(QVariant, QVariant)));
@@ -153,6 +160,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(uiMainWindow, SIGNAL(trackAction(QVariant, QVariant)),                                         this,         SLOT(trackAction(QVariant, QVariant)));
     connect(uiMainWindow, SIGNAL(getDiagnostics(QVariant)),                                                this,         SLOT(getDiagnostics(QVariant)));
     connect(uiMainWindow, SIGNAL(doneDiagnostics()),                                                       this,         SLOT(doneDiagnostics()));
+    connect(uiMainWindow, SIGNAL(sourcePrioritiesDialogResults(QVariant)),                                 this,         SLOT(sourcePrioritiesDialogResults(QVariant)));
 }
 
 
@@ -243,8 +251,7 @@ void WaverApplication::menuQuit()
 // UI signal handler
 void WaverApplication::collectionsDialogResults(QVariant collectionsArray)
 {
-    emit ipcSend(IpcMessageUtils::CollectionsDialogResults,
-        QJsonDocument(QJsonArray::fromStringList(collectionsArray.toStringList())));
+    emit ipcSend(IpcMessageUtils::CollectionsDialogResults, QJsonDocument(QJsonArray::fromStringList(collectionsArray.toStringList())));
 }
 
 
@@ -335,6 +342,20 @@ void WaverApplication::doneDiagnostics()
             "mode", "done"
         }
     }))));
+}
+
+
+// UI signal handler
+void WaverApplication::menuSourcePriorities()
+{
+    emit ipcSend(IpcMessageUtils::SourcePriorities, QJsonDocument());
+}
+
+
+// UI signal handler
+void WaverApplication::sourcePrioritiesDialogResults(QVariant results)
+{
+    emit ipcSend(IpcMessageUtils::SourcePriorityResults, QJsonDocument::fromJson(results.toString().toUtf8()));
 }
 
 
@@ -660,6 +681,19 @@ void WaverApplication::updateUIDiagnosticsMessage(QJsonDocument jsonDocument)
 }
 
 
+// soure plugin priorities
+void WaverApplication::updateUISourcePriorities(QJsonDocument jsonDocument)
+{
+    emit uiClearSourcePrioritiesList();
+
+    QVariantList data = jsonDocument.array().toVariantList();
+    foreach (QVariant dataItem, data) {
+        QVariantMap sourcePriority = dataItem.toMap();
+        emit uiAddToSourcePrioritiesList(sourcePriority.value("id"), sourcePriority.value("name"), sourcePriority.value("priority"));
+    }
+}
+
+
 // interprocess communication signal handler
 void WaverApplication::ipcOpened()
 {
@@ -734,6 +768,10 @@ void WaverApplication::ipcMessage(IpcMessageUtils::IpcMessages message, QJsonDoc
 
         case IpcMessageUtils::Search:
             updateUISearchList(jsonDocument);
+            break;
+
+        case IpcMessageUtils::SourcePriorities:
+            updateUISourcePriorities(jsonDocument);
             break;
 
         case IpcMessageUtils::TrackInfos:

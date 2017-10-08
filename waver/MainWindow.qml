@@ -47,6 +47,7 @@ ApplicationWindow {
     readonly property int  menu_x_closed: app.width * -1
     readonly property int  plugins_id_start: 1000
     readonly property int  plugins_id_end: 1999
+    readonly property int  tracks_per_source: 4
 
     property bool active: true
 
@@ -55,10 +56,12 @@ ApplicationWindow {
     signal menuResume()
     signal menuNext()
     signal menuCollection(variant collectionLabel)
+    signal menuSourcePriorities()
     signal menuPlugin(variant foreignId)
     signal menuAbout()
     signal menuQuit()
     signal collectionsDialogResults(variant collectionsArray)
+    signal sourcePrioritiesDialogResults(variant priorities)
     signal pluginUIResults(variant foreignId, variant results)
     signal getOpenTracks(variant pluginId, variant parentId)
     signal startSearch(variant criteria)
@@ -378,6 +381,26 @@ ApplicationWindow {
     }
 
 
+    // source priorities
+
+    function clearSourcePrioritiesList()
+    {
+        sourcePrioritiesItems.clear();
+    }
+
+    function addToSourcePrioritiesList(id, name, priority)
+    {
+        sourcePrioritiesItems.append({
+            pluginId      : id,
+            pluginName    : name,
+            pluginPriority: priority,
+            pluginFeedback: 0,
+        });
+
+        calculateSourcePrioritiesCount();
+    }
+
+
     // about dialog
     function aboutDialog(appName, AppVersion, appDescription)
     {
@@ -423,14 +446,38 @@ ApplicationWindow {
             break;
 
         case 2:
+            sourcePriorities.visible = true;
+            sourcePrioritiesIn.start();
+
+            menuSourcePriorities();
+            break;
+
+        case 3:
             diagnostics.visible = true;
             diagnosticsIn.start();
             getDiagnostics(diagnosticsSelectorItems.get(diagnosticsSelector.currentIndex).foreignId);
             break;
 
-        case 3:
+        case 4:
             menuAbout();
             break;
+        }
+    }
+
+    function calculateSourcePrioritiesCount()
+    {
+        var totalPriority = 0;
+        for(var i = 0; i < sourcePrioritiesItems.count; i++) {
+            totalPriority += sourcePrioritiesItems.get(i).pluginPriority;
+        }
+
+        for(var i = 0; i < sourcePrioritiesItems.count; i++) {
+            var count = Math.round((((100 / totalPriority) * sourcePrioritiesItems.get(i).pluginPriority) / 100) * (tracks_per_source * sourcePrioritiesItems.count));
+            if (count < 1) {
+                count = 1;
+            }
+
+            sourcePrioritiesItems.get(i).pluginFeedback = count;
         }
     }
 
@@ -745,6 +792,35 @@ ApplicationWindow {
     }
 
 
+    // source priorities dialog transitions
+
+    NumberAnimation {
+        id: sourcePrioritiesIn
+        target: sourcePriorities
+        property: "opacity"
+        from: opacity_transparent
+        to: opacity_opaque
+        duration: duration_fadeout
+    }
+
+    NumberAnimation {
+        id: sourcePrioritiesOut
+        target: sourcePriorities
+        property: "opacity"
+        from: opacity_opaque
+        to: opacity_transparent
+        duration: duration_fadeout
+    }
+
+    Timer {
+        id: sourcePrioritiesOutVisibility
+        interval: duration_fadeout + 25
+        onTriggered: {
+            sourcePriorities.visible = false;
+        }
+    }
+
+
     // diagnostics dialog transitions
 
     NumberAnimation {
@@ -826,16 +902,23 @@ ApplicationWindow {
         }
 
         ListElement {
+            labelText: "Source priorities"
+            imageSource: "images/collections.png"
+            clickId: 2
+            foreignId: "N/A"
+        }
+
+        ListElement {
             labelText: "Diagnostics"
             imageSource: "images/diagnostics.png"
-            clickId: 2
+            clickId: 3
             foreignId: "N/A"
         }
 
         ListElement {
             labelText: "About"
             imageSource: "images/about.png"
-            clickId: 3
+            clickId: 4
             foreignId: "N/A"
         }
     }
@@ -1256,6 +1339,58 @@ ApplicationWindow {
                 border.color: "#666666"
                 color: "transparent"
                 radius: 3
+            }
+        }
+    }
+
+
+    // source priorities
+
+    ListModel {
+        id: sourcePrioritiesItems
+    }
+
+    Component {
+        id: sourcePrioritiesElement
+
+        Item {
+            height: sourcePrioritySlider.height
+            width: sourcePrioritiesList.width
+
+            Rectangle {
+                anchors.fill: parent
+                border.color: "#666666"
+                color: "transparent"
+                radius: 3
+            }
+
+            PlatformLabel {
+                text: pluginName
+                anchors.left: parent.left
+                anchors.leftMargin: 6
+                anchors.right: parent.horizontalCenter
+                anchors.verticalCenter: sourcePrioritySlider.verticalCenter
+            }
+
+            Slider {
+                id: sourcePrioritySlider
+                anchors.left: parent.horizontalCenter
+                anchors.right: sourcePriorityFeedback.left
+                value: pluginPriority
+                from: 1
+                to: 100
+                onValueChanged: {
+                    pluginPriority = Math.round(value);
+                    calculateSourcePrioritiesCount()
+                }
+            }
+
+            PlatformLabel {
+                id: sourcePriorityFeedback
+                anchors.right: parent.right
+                anchors.rightMargin: 6
+                text: pluginFeedback
+                anchors.verticalCenter: sourcePrioritySlider.verticalCenter
             }
         }
     }
@@ -2111,6 +2246,77 @@ ApplicationWindow {
             onClicked: {
                 collectionsOut.start();
                 collectionsOutVisibility.start();
+            }
+        }
+    }
+
+
+    /*****
+      source priorities dialog
+    *****/
+
+    Item {
+        id: sourcePriorities
+        anchors.fill: parent
+        opacity: opacity_transparent
+        visible: false
+
+        MouseArea {
+            anchors.fill: sourcePriorities
+        }
+
+        Rectangle {
+            id: sourcePrioritiesBackground
+            anchors.fill: sourcePriorities
+        }
+
+        ListView {
+            id: sourcePrioritiesList
+            model: sourcePrioritiesItems
+            delegate: sourcePrioritiesElement
+            anchors.left: sourcePrioritiesBackground.left
+            anchors.leftMargin: 6
+            anchors.right: sourcePrioritiesBackground.right
+            anchors.rightMargin: 6
+            anchors.top: sourcePrioritiesBackground.top
+            anchors.topMargin: 6
+            anchors.bottom: sourcePrioritiesDone.top
+            anchors.bottomMargin: 6
+            spacing: 6
+            clip: true
+        }
+
+        Button {
+            id: sourcePrioritiesDone
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 6
+            text: "Done"
+            onClicked: {
+                var retval = [];
+                for(var i = 0; i < sourcePrioritiesItems.count; i++) {
+                    retval.push({
+                         id: sourcePrioritiesItems.get(i).pluginId,
+                         priority: sourcePrioritiesItems.get(i).pluginPriority
+                    });
+                }
+                sourcePrioritiesDialogResults(JSON.stringify(retval));
+
+                sourcePrioritiesOut.start();
+                sourcePrioritiesOutVisibility.start();
+            }
+        }
+
+        Button {
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 6
+            text: "Cancel"
+            onClicked: {
+                sourcePrioritiesOut.start();
+                sourcePrioritiesOutVisibility.start();
             }
         }
     }

@@ -58,6 +58,8 @@ IpcMessageUtils::IpcMessageUtils(QObject *parent) : QObject(parent)
     ipcMessagesToStrings[QuitClients]              = "quit_clients";
     ipcMessagesToStrings[Resume]                   = "resume";
     ipcMessagesToStrings[Search]                   = "search";
+    ipcMessagesToStrings[SourcePriorities]         = "source_priorities";
+    ipcMessagesToStrings[SourcePriorityResults]    = "source_priority_results";
     ipcMessagesToStrings[TrackAction]              = "track_action";
     ipcMessagesToStrings[TrackInfos]               = "track_info";
 }

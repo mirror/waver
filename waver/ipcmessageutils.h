@@ -76,6 +76,8 @@ class IpcMessageUtils : public QObject {
             QuitClients,
             Resume,
             Search,
+            SourcePriorities,
+            SourcePriorityResults,
             TrackAction,
             TrackInfos,
         };

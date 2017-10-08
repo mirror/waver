@@ -58,7 +58,7 @@ class PluginSource_004 : public PluginBase_004 {
     public slots:
 
         virtual void unableToStart(QUuid uniqueId, QUrl url)                         = 0;
-        virtual void getPlaylist(QUuid uniqueId, int maxCount)                       = 0;
+        virtual void getPlaylist(QUuid uniqueId, int trackCount)                     = 0;
         virtual void getOpenTracks(QUuid uniqueId, QString parentId)                 = 0;
         virtual void resolveOpenTracks(QUuid uniqueId, QStringList selectedTrackIds) = 0;
         virtual void search(QUuid uniqueId, QString criteria)                        = 0;
