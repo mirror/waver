@@ -513,7 +513,7 @@ void WaverApplication::updateUIPlaylist(QJsonDocument jsonDocument)
             actions.append(QString("<a href=\"%1\">%2</a>").arg(actionKey).arg(trackInfo.actions.value(actionKey)));
         }
 
-        emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "images/waver.png"), trackInfo.title, trackInfo.performer, actions.join(" "), (i == contextShowTrackIndex));
+        emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "images/waver.png"), trackInfo.title.simplified(), trackInfo.performer.simplified(), actions.join(" "), (i == contextShowTrackIndex));
     }
 
     if (contextShowTrackIndex >= 0) {

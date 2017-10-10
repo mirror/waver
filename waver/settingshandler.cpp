@@ -44,6 +44,9 @@ SettingsHandler::~SettingsHandler()
     foreach (QString connectionName, QSqlDatabase::connectionNames()) {
         QSqlDatabase database = QSqlDatabase::database(connectionName, false);
         database.close();
+        while (database.isOpen()) {
+            QThread::currentThread()->msleep(50);
+        }
         QSqlDatabase::removeDatabase(connectionName);
     }
 }
@@ -253,16 +256,25 @@ void SettingsHandler::cleanup()
 {
     cleanedUp = true;
 
-    QStringList collections;
-    QFile file(settingsDir->absoluteFilePath("collections.cfg"));
-    if (!file.open(QFile::ReadOnly | QFile::Text)) {
-        collections.append(DEFAULT_COLLECTION_NAME);
+    if (settingsDir == NULL) {
+        return;
     }
-    else {
-        collections.append(QString(file.readAll()).split("\n"));
+
+    QJsonDocument jsonDocument;
+    QFile file(pluginSettingsFileName(waverFakePluginId, ""));
+    if (file.open(QFile::ReadOnly)) {
+        jsonDocument = QJsonDocument::fromJson(file.readAll());
         file.close();
-        collections.removeAll("");
-        collections.removeFirst();
+    }
+
+    QStringList collections;
+    if (jsonDocument.object().contains("collections")) {
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("collections").toArray()) {
+            collections.append(jsonValue.toString());
+        }
+    }
+    if (!collections.contains(SettingsHandler::DEFAULT_COLLECTION_NAME)) {
+        collections.prepend(SettingsHandler::DEFAULT_COLLECTION_NAME);
     }
 
     QStringList allPossibleConfigFilesAndDatabases;

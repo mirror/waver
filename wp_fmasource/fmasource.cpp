@@ -258,7 +258,7 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
             TrackInfo trackInfo;
             trackInfo.album     = result.value("album").toString();
             trackInfo.cast      = false;
-            trackInfo.performer = (result.value("performer").toString().compare(result.value("album_performer").toString()) == 0 ? result.value("performer").toString() : result.value("performer").toString() + " (" + result.value("album_performer").toString() + ")");
+            trackInfo.performer = (result.value("performer").toString().compare(result.value("album_performer").toString()) == 0 ? result.value("performer").toString() : result.value("performer").toString() + "\n(" + result.value("album_performer").toString() + ")");
             trackInfo.title     = result.value("title").toString();
             trackInfo.track     = result.value("track").toInt();
             trackInfo.url       = QUrl(result.value("url").toString());

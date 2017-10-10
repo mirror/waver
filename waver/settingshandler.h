@@ -29,7 +29,10 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QFileInfoList>
+#include <QJsonArray>
 #include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonValue>
 #include <QObject>
 #include <QRegExp>
 #include <QSqlDatabase>
@@ -39,6 +42,7 @@
 #include <QStandardPaths>
 #include <QString>
 #include <QStringList>
+#include <QThread>
 #include <QTimer>
 #include <QUuid>
 #include <QVariant>
