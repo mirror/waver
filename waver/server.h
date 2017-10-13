@@ -150,13 +150,15 @@ class WaverServer : public QObject {
         void          jsonToConfigGlobal(QJsonDocument jsonDocument);
         void          jsonToConfig(QJsonDocument jsonDocument);
 
-        void         outputError(QString errorMessage, QString title, bool fatal);
-        void         requestPlaylist();
-        void         startNextTrack();
-        void         reassignFadeIns();
-        QVariantHash positionToElapsedRemaining(bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
-        QString      findTitleFromUrl(QUrl url);
-        void         stopAllDiagnostics();
+        void outputError(QString errorMessage, QString title, bool fatal);
+        void requestPlaylist();
+        void startNextTrack();
+
+        void          reassignFadeIns();
+        QVariantHash  positionToElapsedRemaining(bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
+        QString       findTitleFromUrl(QUrl url);
+        Track        *createTrack(TrackInfo trackInfo, QUuid pluginId);
+        void          stopAllDiagnostics();
 
         void handleCollectionMenuChange(QJsonDocument jsonDocument);
         void handleCollectionsDialogResults(QJsonDocument jsonDocument);
@@ -194,12 +196,14 @@ class WaverServer : public QObject {
         void stopDiagnostics(QUuid uniqueId);
 
         void unableToStart(QUuid uniqueId, QUrl url);
+        void castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds);
         void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void executedSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
         void executedGlobalSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
         void executedSqlError(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error);
         void getPlaylist(QUuid uniqueId, int trackCount);
+        void getReplacement(QUuid uniqueId);
         void getOpenTracks(QUuid uniqueId, QString parentId);
         void search(QUuid uniqueId, QString criteria);
         void resolveOpenTracks(QUuid uniqueId, QStringList selectedTrackIds);
@@ -251,6 +255,7 @@ class WaverServer : public QObject {
         void executeGlobalSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
 
         void playlist(QUuid uniqueId, TracksInfo tracksInfo);
+        void replacement(QUuid uniqueId, TrackInfo trackInfo);
         void openTracksResults(QUuid uniqueId, OpenTracks openTracks);
         void searchResults(QUuid uniqueId, OpenTracks openTracks);
         void requestedRemoveTracks(QUuid uniqueId);

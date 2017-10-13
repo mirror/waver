@@ -278,6 +278,27 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
         return;
     }
 
+    if (clientSqlIdentifier == SQL_GET_REPLACEMENT) {
+        if (results.count() > 0) {
+            TrackInfo trackInfo;
+            trackInfo.album     = results.at(0).value("album").toString();
+            trackInfo.cast      = false;
+            trackInfo.performer = (results.at(0).value("performer").toString().compare(results.at(0).value("album_performer").toString()) == 0 ? results.at(0).value("performer").toString() : results.at(0).value("performer").toString() + "\n(" + results.at(0).value("album_performer").toString() + ")");
+            trackInfo.title     = results.at(0).value("title").toString();
+            trackInfo.track     = results.at(0).value("track").toInt();
+            trackInfo.url       = QUrl(results.at(0).value("url").toString());
+            trackInfo.year      = results.at(0).value("year").toInt();
+            trackInfo.actions.insert(0, "Ban");
+            trackInfo.actions.insert(1, "Ban album");
+            trackInfo.pictures.append(QUrl(results.at(0).value("picture_url").toString().toUtf8()));
+
+            emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "UPDATE tracks SET playcount = playcount + 1 WHERE id = ?", QVariantList({ results.at(0).value("id").toInt() }));
+
+            emit replacement(id, trackInfo);
+        }
+        replacementOldTrack.removeFirst();
+    }
+
     if (clientSqlIdentifier == SQL_OPEN_TOPLEVEL) {
         OpenTracks openTracks;
         foreach (QVariantHash result, results) {
@@ -610,6 +631,15 @@ void FMASource::unableToStart(QUuid uniqueId, QUrl url)
 }
 
 
+// this should never happen because of no casts
+void FMASource::castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(url);
+    Q_UNUSED(playedSeconds);
+}
+
+
 // reuest for playlist entries
 void FMASource::getPlaylist(QUuid uniqueId, int trackCount)
 {
@@ -627,6 +657,19 @@ void FMASource::getPlaylist(QUuid uniqueId, int trackCount)
     return;
 }
 
+
+// get replacement for a track that could not start
+void FMASource::getReplacement(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    QString      binds;
+    QVariantList values;
+    selectedGenresBinds(&binds, &values);
+    emit executeGlobalSql(id, false, "", SQL_GET_REPLACEMENT, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT 1", values);
+}
 
 // client wants to dispaly open dialog
 void FMASource::getOpenTracks(QUuid uniqueId, QString parentId)

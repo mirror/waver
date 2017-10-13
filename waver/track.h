@@ -81,6 +81,8 @@ class Track : public QObject {
         void   startWithoutFadeIn();
         void   addMoreToCastPlaytime();
         void   addALotToCastPlaytime();
+        void   setReplacable(bool replacable);
+        bool   isReplacable();
 
         TrackInfo getTrackInfo();
         void      addPictures(QVector<QUrl> pictures);
@@ -155,6 +157,7 @@ class Track : public QObject {
         qint64 decodedMillisecondsAtUnderrun;
         qint64 playedMilliseconds;
         bool   tagsChecked;
+        bool   replacable;
 
         void setupDecoderPlugin(QObject *plugin);
         void setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);

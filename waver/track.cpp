@@ -57,6 +57,7 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUui
     playedMilliseconds                   = 0;
     dspInitialBufferCount                = 0;
     tagsChecked                          = false;
+    replacable                           = true;
 
     // priority maps
     QMap<int, QUuid> dspPrePriorityMap;
@@ -800,6 +801,20 @@ void Track::addMoreToCastPlaytime()
 void Track::addALotToCastPlaytime()
 {
     currentCastPlaytimeMilliseconds = 24 * 60 * 60 * 1000;
+}
+
+
+// public method
+void Track::setReplacable(bool replacable)
+{
+    this->replacable = replacable;
+}
+
+
+// public method
+bool Track::isReplacable()
+{
+    return replacable;
 }
 
 

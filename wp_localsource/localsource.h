@@ -135,10 +135,12 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_004 {
         void startDiagnostics(QUuid uniqueId) override;
         void stopDiagnostics(QUuid uniqueId)  override;
 
-        void unableToStart(QUuid uniqueId, QUrl url)                       override;
-        void getPlaylist(QUuid uniqueId, int trackCount)                   override;
-        void getOpenTracks(QUuid uniqueId, QString parentId)               override;
-        void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks) override;
+        void unableToStart(QUuid uniqueId, QUrl url)                        override;
+        void castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds) override;
+        void getPlaylist(QUuid uniqueId, int trackCount)                    override;
+        void getReplacement(QUuid uniqueId)                                 override;
+        void getOpenTracks(QUuid uniqueId, QString parentId)                override;
+        void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)  override;
 
         void search(QUuid uniqueId, QString criteria)        override;
         void action(QUuid uniqueId, int actionKey, QUrl url) override;

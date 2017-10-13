@@ -90,13 +90,14 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
         static const int SQL_LOADMORE_ALBUMSWITHOUTTRACKS = 22;
         static const int SQL_LOADMORE_TRACKSLOADED        = 23;
         static const int SQL_GET_PLAYLIST                 = 30;
-        static const int SQL_OPEN_TOPLEVEL                = 31;
-        static const int SQL_OPEN_PERFORMERS              = 32;
-        static const int SQL_OPEN_PERFORMERS_GENRESEARCH  = 33;
-        static const int SQL_OPEN_PERFORMERS_LOADED       = 34;
-        static const int SQL_OPEN_ALBUMS                  = 35;
-        static const int SQL_OPEN_TRACKS                  = 36;
-        static const int SQL_OPEN_TRACKS_LOADED           = 37;
+        static const int SQL_GET_REPLACEMENT              = 31;
+        static const int SQL_OPEN_TOPLEVEL                = 32;
+        static const int SQL_OPEN_PERFORMERS              = 33;
+        static const int SQL_OPEN_PERFORMERS_GENRESEARCH  = 34;
+        static const int SQL_OPEN_PERFORMERS_LOADED       = 35;
+        static const int SQL_OPEN_ALBUMS                  = 36;
+        static const int SQL_OPEN_TRACKS                  = 37;
+        static const int SQL_OPEN_TRACKS_LOADED           = 38;
         static const int SQL_SEARCH                       = 40;
         static const int SQL_UIQML_GENRELIST              = 41;
         static const int SQL_DIAGNOSTICS                  = 90;
@@ -163,14 +164,15 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
             int     track;
         };
 
-        QUuid   id;
-        QString userAgent;
-        QString key;
-        bool    readySent;
-        bool    sendDiagnostics;
-        State   state;
-        int     openingId;
-        QString searchCriteria;
+        QUuid              id;
+        QString            userAgent;
+        QString            key;
+        bool               readySent;
+        bool               sendDiagnostics;
+        State              state;
+        int                openingId;
+        QVector<TrackInfo> replacementOldTrack;
+        QString            searchCriteria;
 
         void setState(State state);
 
@@ -213,7 +215,9 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
         void stopDiagnostics(QUuid uniqueId)  override;
 
         void unableToStart(QUuid uniqueId, QUrl url)                       override;
+        void castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds) override;
         void getPlaylist(QUuid uniqueId, int trackCount)                   override;
+        void getReplacement(QUuid uniqueId)                                override;
         void getOpenTracks(QUuid uniqueId, QString parentId)               override;
         void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks) override;
 

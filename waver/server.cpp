@@ -956,9 +956,12 @@ void WaverServer::pluginLibsLoaded()
                 connect(this,   SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedGlobalConfiguration(QUuid, QJsonDocument)));
             }
             if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
+                connect(plugin, SIGNAL(replacement(QUuid, TrackInfo)),                                      this,   SLOT(replacement(QUuid, TrackInfo)));
                 connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)),                                 this,   SLOT(pluginDiagnostics(QUuid, DiagnosticData)));
                 connect(plugin, SIGNAL(executeSql(QUuid, bool, QString, int, QString, QVariantList)),       this,   SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
                 connect(plugin, SIGNAL(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)), this,   SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
+                connect(this,   SIGNAL(castFinishedEarly(QUuid, QUrl, int)),                                plugin, SLOT(castFinishedEarly(QUuid, QUrl, int)));
+                connect(this,   SIGNAL(getReplacement(QUuid)),                                              plugin, SLOT(getReplacement(QUuid)));
                 connect(this,   SIGNAL(startDiagnostics(QUuid)),                                            plugin, SLOT(startDiagnostics(QUuid)));
                 connect(this,   SIGNAL(stopDiagnostics(QUuid)),                                             plugin, SLOT(stopDiagnostics(QUuid)));
                 connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
@@ -1012,6 +1015,7 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
                 playlistTracks.at(0)->startWithoutFadeIn();
             }
             if (currentTrack != NULL) {
+                currentTrack->setReplacable(false);
                 currentTrack->setStatus(Track::Paused);
                 currentTrack->interrupt();
                 return;
@@ -1462,32 +1466,8 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo)
     Globals::consoleOutput(QString("Received %1 tracks from %2").arg(tracksInfo.count()).arg(sourcePlugins.value(uniqueId).name), false);
 
     foreach (TrackInfo trackInfo, tracksInfo) {
-        // create and set up track
-
-        Track *track = new Track(&loadedLibs, trackInfo, uniqueId, this);
-
-        connect(this,  SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),                                  track, SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
-        connect(this,  SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)),                            track, SLOT(loadedPluginGlobalSettings(QUuid, QJsonDocument)));
-        connect(this,  SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),                  track, SLOT(executedPluginSqlResults(QUuid, bool, QString, int, SqlResults)));
-        connect(this,  SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),            track, SLOT(executedPluginGlobalSqlResults(QUuid, bool, QString, int, SqlResults)));
-        connect(this,  SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),                       track, SLOT(executedPluginSqlError(QUuid, bool, QString, int, QString)));
-        connect(this,  SIGNAL(startDiagnostics(QUuid)),                                                    track, SLOT(startPluginDiagnostics(QUuid)));
-        connect(this,  SIGNAL(stopDiagnostics(QUuid)),                                                     track, SLOT(stopPluginDiagnostics(QUuid)));
-        connect(track, SIGNAL(savePluginSettings(QUuid, QJsonDocument)),                                   this,  SLOT(saveConfiguration(QUuid, QJsonDocument)));
-        connect(track, SIGNAL(savePluginGlobalSettings(QUuid, QJsonDocument)),                             this,  SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
-        connect(track, SIGNAL(loadPluginSettings(QUuid)),                                                  this,  SLOT(loadConfiguration(QUuid)));
-        connect(track, SIGNAL(loadPluginGlobalSettings(QUuid)),                                            this,  SLOT(loadGlobalConfiguration(QUuid)));
-        connect(track, SIGNAL(executeSettingsSql(QUuid, bool, QString, int, QString, QVariantList)),       this,  SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
-        connect(track, SIGNAL(executeGlobalSettingsSql(QUuid, bool, QString, int, QString, QVariantList)), this,  SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
-        connect(track, SIGNAL(requestFadeInForNextTrack(QUrl, qint64)),                                    this,  SLOT(trackRequestFadeInForNextTrack(QUrl, qint64)));
-        connect(track, SIGNAL(playPosition(QUrl, bool, long, long)),                                       this,  SLOT(trackPosition(QUrl, bool, long, long)));
-        connect(track, SIGNAL(aboutToFinish(QUrl)),                                                        this,  SLOT(trackAboutToFinish(QUrl)));
-        connect(track, SIGNAL(finished(QUrl)),                                                             this,  SLOT(trackFinished(QUrl)));
-        connect(track, SIGNAL(trackInfoUpdated(QUrl)),                                                     this,  SLOT(trackInfoUpdated(QUrl)));
-        connect(track, SIGNAL(error(QUrl, bool, QString)),                                                 this,  SLOT(trackError(QUrl, bool, QString)));
-        connect(track, SIGNAL(loadedPlugins(Track::PluginList)),                                           this,  SLOT(trackLoadedPlugins(Track::PluginList)));
-        connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginList)),                                     this,  SLOT(trackLoadedPluginsWithUI(Track::PluginList)));
-        connect(track, SIGNAL(pluginDiagnostics(QUuid, QUrl, DiagnosticData)),                             this,  SLOT(pluginDiagnostics(QUuid, QUrl, DiagnosticData)));
+        // create track
+        Track *track = createTrack(trackInfo, uniqueId);
 
         // add to playlist
         playlistTracks.append(track);
@@ -1509,6 +1489,63 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo)
 
     // this will not do anything if a track is already playing
     startNextTrack();
+}
+
+
+// source plugin signal handler
+void WaverServer::replacement(QUuid uniqueId, TrackInfo trackInfo)
+{
+    Globals::consoleOutput(QString("Received replacement track from %1").arg(sourcePlugins.value(uniqueId).name), false);
+
+    // create track
+    Track *track = createTrack(trackInfo, uniqueId);
+
+    // find the position to insert
+    int insertPosition = 0;
+    while ((insertPosition < playlistTracks.count()) && (playlistTracks.at(insertPosition)->getSourcePluginId() == uniqueId) && (playlistTracks.at(0)->status() != Track::Idle)) {
+        insertPosition++;
+    }
+
+    // insert track to playlist
+    playlistTracks.insert(insertPosition, track);
+
+    // take care of fades
+    reassignFadeIns();
+
+    // UI signal
+    sendPlaylistToClients();
+}
+
+
+// helper
+Track *WaverServer::createTrack(TrackInfo trackInfo, QUuid pluginId)
+{
+    Track *track = new Track(&loadedLibs, trackInfo, pluginId, this);
+
+    connect(this,  SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),                                  track, SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
+    connect(this,  SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)),                            track, SLOT(loadedPluginGlobalSettings(QUuid, QJsonDocument)));
+    connect(this,  SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),                  track, SLOT(executedPluginSqlResults(QUuid, bool, QString, int, SqlResults)));
+    connect(this,  SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),            track, SLOT(executedPluginGlobalSqlResults(QUuid, bool, QString, int, SqlResults)));
+    connect(this,  SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),                       track, SLOT(executedPluginSqlError(QUuid, bool, QString, int, QString)));
+    connect(this,  SIGNAL(startDiagnostics(QUuid)),                                                    track, SLOT(startPluginDiagnostics(QUuid)));
+    connect(this,  SIGNAL(stopDiagnostics(QUuid)),                                                     track, SLOT(stopPluginDiagnostics(QUuid)));
+    connect(track, SIGNAL(savePluginSettings(QUuid, QJsonDocument)),                                   this,  SLOT(saveConfiguration(QUuid, QJsonDocument)));
+    connect(track, SIGNAL(savePluginGlobalSettings(QUuid, QJsonDocument)),                             this,  SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
+    connect(track, SIGNAL(loadPluginSettings(QUuid)),                                                  this,  SLOT(loadConfiguration(QUuid)));
+    connect(track, SIGNAL(loadPluginGlobalSettings(QUuid)),                                            this,  SLOT(loadGlobalConfiguration(QUuid)));
+    connect(track, SIGNAL(executeSettingsSql(QUuid, bool, QString, int, QString, QVariantList)),       this,  SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
+    connect(track, SIGNAL(executeGlobalSettingsSql(QUuid, bool, QString, int, QString, QVariantList)), this,  SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
+    connect(track, SIGNAL(requestFadeInForNextTrack(QUrl, qint64)),                                    this,  SLOT(trackRequestFadeInForNextTrack(QUrl, qint64)));
+    connect(track, SIGNAL(playPosition(QUrl, bool, long, long)),                                       this,  SLOT(trackPosition(QUrl, bool, long, long)));
+    connect(track, SIGNAL(aboutToFinish(QUrl)),                                                        this,  SLOT(trackAboutToFinish(QUrl)));
+    connect(track, SIGNAL(finished(QUrl)),                                                             this,  SLOT(trackFinished(QUrl)));
+    connect(track, SIGNAL(trackInfoUpdated(QUrl)),                                                     this,  SLOT(trackInfoUpdated(QUrl)));
+    connect(track, SIGNAL(error(QUrl, bool, QString)),                                                 this,  SLOT(trackError(QUrl, bool, QString)));
+    connect(track, SIGNAL(loadedPlugins(Track::PluginList)),                                           this,  SLOT(trackLoadedPlugins(Track::PluginList)));
+    connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginList)),                                     this,  SLOT(trackLoadedPluginsWithUI(Track::PluginList)));
+    connect(track, SIGNAL(pluginDiagnostics(QUuid, QUrl, DiagnosticData)),                             this,  SLOT(pluginDiagnostics(QUuid, QUrl, DiagnosticData)));
+
+    return track;
 }
 
 
@@ -1669,6 +1706,14 @@ void WaverServer::trackFinished(QUrl url)
         return;
     }
 
+    // get number of ready source plugins
+    int readySources;
+    foreach (QUuid pluginId, sourcePlugins.keys()) {
+        if (sourcePlugins.value(pluginId).ready) {
+            readySources++;
+        }
+    }
+
     // is this the current track?
     if ((currentTrack != NULL) && (url == currentTrack->getTrackInfo().url)) {
         // send message to source if could not even start
@@ -1678,6 +1723,19 @@ void WaverServer::trackFinished(QUrl url)
             if (playlistTracks.count() > 0) {
                 playlistTracks.at(0)->startWithoutFadeIn();
             }
+        }
+
+        // send message to source if cast finished too early
+        if ((currentTrack->getTrackInfo().cast) && (positionSeconds < 180)) {
+            emit castFinishedEarly(currentTrack->getSourcePluginId(), url, positionSeconds);
+            if (playlistTracks.count() > 0) {
+                playlistTracks.at(0)->startWithoutFadeIn();
+            }
+        }
+
+        // get replacement?
+        if (currentTrack->isReplacable() && (readySources > 0) && ((positionSeconds < 1) || ((currentTrack->getTrackInfo().cast) && (positionSeconds < 180)))) {
+            emit getReplacement(currentTrack->getSourcePluginId());
         }
 
         // housekeeping
@@ -1695,8 +1753,12 @@ void WaverServer::trackFinished(QUrl url)
     foreach (Track *track, playlistTracks) {
         if (track->getTrackInfo().url == url) {
             tracksToBeDeleted.append(track);
+            if (track->isReplacable() && (readySources > 0)) {
+                emit getReplacement(track->getSourcePluginId());
+            }
         }
     }
+
     foreach (Track *track, tracksToBeDeleted) {
         unableToStartCount++;
         emit unableToStart(track->getSourcePluginId(), track->getTrackInfo().url);

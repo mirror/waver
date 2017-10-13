@@ -284,6 +284,15 @@ void LocalSource::unableToStart(QUuid uniqueId, QUrl url)
 }
 
 
+// this should never happen because of no casts
+void LocalSource::castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(url);
+    Q_UNUSED(playedSeconds);
+}
+
+
 // request for playlist entries
 void LocalSource::getPlaylist(QUuid uniqueId, int trackCount)
 {
@@ -444,6 +453,22 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount)
     }
 }
 
+
+// get replacement for a track that could not start (very simple because it's unlikely to happen in this plugin)
+void LocalSource::getReplacement(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    if (trackFileNames.count() < 1) {
+        return;
+    }
+
+    TrackInfo trackInfo = trackInfoFromFilePath(trackFileNames.at(qrand() % trackFileNames.count()));
+
+    emit replacement(id, trackInfo);
+}
 
 // client wants to dispaly open dialog
 void LocalSource::getOpenTracks(QUuid uniqueId, QString parentId)

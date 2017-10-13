@@ -44,6 +44,7 @@ RadioSource::RadioSource()
     readySent             = false;
     sendDiagnostics       = false;
     state                 = Idle;
+    lastReplacementTime   = 0;
 
     QFile::remove(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
     QFile::copy(":/images/wp_radiosource.png", QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
@@ -233,6 +234,23 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
             stationTemp.genre       = result.value("genre").toString();
             stationTemp.url         = QUrl(result.value("url").toString());
             stationTemp.destination = Playlist;
+
+            tuneInTemp.append(stationTemp);
+        }
+
+        tuneInStarter();
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_GET_REPLACEMENT) {
+        foreach (QVariantHash result, results) {
+            StationTemp stationTemp;
+            stationTemp.id          = result.value("id").toString();
+            stationTemp.base        = result.value("base").toString();
+            stationTemp.name        = result.value("name").toString();
+            stationTemp.genre       = result.value("genre").toString();
+            stationTemp.url         = QUrl(result.value("url").toString());
+            stationTemp.destination = Replacement;
 
             tuneInTemp.append(stationTemp);
         }
@@ -513,6 +531,19 @@ void RadioSource::unableToStart(QUuid uniqueId, QUrl url)
 }
 
 
+// server says station stopped playing too early
+void RadioSource::castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    if (playedSeconds < 30) {
+        unableToStart(id, url);
+    }
+}
+
+
 // reuest for playlist entries
 void RadioSource::getPlaylist(QUuid uniqueId, int trackCount)
 {
@@ -527,6 +558,22 @@ void RadioSource::getPlaylist(QUuid uniqueId, int trackCount)
     emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_GET_PLAYLIST, "SELECT id, base, name, genre, url FROM stations WHERE (banned = 0) AND (unable_to_start = 0) ORDER BY playcount, RANDOM() LIMIT ?", QVariantList({ bannedUrls.count() + unableToStartUrls.count() + playlistReturnCount }));
 
     return;
+}
+
+
+// get replacement for a track that could not start or ended prematurely
+void RadioSource::getReplacement(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    if ((QDateTime::currentMSecsSinceEpoch() - lastReplacementTime) <= NETWORK_WAIT_MS) {
+        QThread::currentThread()->msleep(NETWORK_WAIT_MS);
+    }
+    lastReplacementTime = QDateTime::currentMSecsSinceEpoch();
+
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_GET_REPLACEMENT, "SELECT id, base, name, genre, url FROM stations WHERE (banned = 0) AND (unable_to_start = 0) ORDER BY playcount, RANDOM() LIMIT ?", QVariantList({ bannedUrls.count() + unableToStartUrls.count() + 1 }));
 }
 
 
@@ -1057,11 +1104,18 @@ void RadioSource::tuneIn()
                 trackInfo.actions.insert(0, "Ban");
             }
 
-            tracksInfo.append(trackInfo);
+            if ((station.destination == Playlist) || (station.destination == Open)) {
+                tracksInfo.append(trackInfo);
+            }
+            if (station.destination == Replacement) {
+                emit replacement(id, trackInfo);
+            }
 
             emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET playcount = playcount + 1 WHERE url = ?", QVariantList({ station.url.toString() }));
         }
-        emit playlist(id, tracksInfo);
+        if (tracksInfo.count() > 0) {
+            emit playlist(id, tracksInfo);
+        }
 
         tuneInTemp.clear();
 
@@ -1186,7 +1240,7 @@ void RadioSource::playlistFinished(QNetworkReply *reply)
     while (i < tuneInTemp.count()) {
         if (tuneInTemp.at(i).id.compare(stationId) == 0) {
             // must delete if url can not be used
-            if ((tuneInTemp.at(i).destination == Playlist) && (isBanned || isUnableToStart)) {
+            if (((tuneInTemp.at(i).destination == Playlist) || (tuneInTemp.at(i).destination == Replacement)) && (isBanned || isUnableToStart)) {
                 tuneInTemp.remove(i);
                 continue;
             }
@@ -1199,13 +1253,13 @@ void RadioSource::playlistFinished(QNetworkReply *reply)
     i = 0;
     int playlistCount = 0;
     while (i < tuneInTemp.count()) {
-        if (tuneInTemp.at(i).destination == Playlist) {
+        if ((tuneInTemp.at(i).destination == Playlist) || (tuneInTemp.at(i).destination == Replacement)) {
             if (!tuneInTemp.at(i).url.isEmpty()) {
                 playlistCount++;
                 i++;
                 continue;
             }
-            if (playlistCount >= playlistReturnCount) {
+            if (playlistCount >= (tuneInTemp.at(i).destination == Playlist ? playlistReturnCount : 1)) {
                 tuneInTemp.remove(i);
                 continue;
             }

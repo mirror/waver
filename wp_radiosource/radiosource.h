@@ -93,9 +93,10 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         static const int SQL_CREATE_TABLE_SEARCH       = 2;
         static const int SQL_GENRE_SEARCH_STATION_LIST = 10;
         static const int SQL_GET_PLAYLIST              = 11;
-        static const int SQL_GENRE_SEARCH_OPENING      = 12;
-        static const int SQL_OPEN_GENRE_STATIONS       = 13;
-        static const int SQL_OPEN_PLAYLIST             = 14;
+        static const int SQL_GET_REPLACEMENT           = 12;
+        static const int SQL_GENRE_SEARCH_OPENING      = 13;
+        static const int SQL_OPEN_GENRE_STATIONS       = 14;
+        static const int SQL_OPEN_PLAYLIST             = 15;
         static const int SQL_STATION_SEARCH_OPENING    = 20;
         static const int SQL_STATION_SEARCH_STATIONS   = 21;
         static const int SQL_STATION_SEARCH_PLAYLIST   = 22;
@@ -114,6 +115,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
         enum StationTempDestination {
             Playlist,
+            Replacement,
             Open,
             Search
         };
@@ -148,6 +150,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         bool    readySent;
         bool    sendDiagnostics;
         State   state;
+        qint64  lastReplacementTime;
 
         void setState(State state);
 
@@ -199,10 +202,12 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         void startDiagnostics(QUuid uniqueId) override;
         void stopDiagnostics(QUuid uniqueId)  override;
 
-        void unableToStart(QUuid uniqueId, QUrl url)                       override;
-        void getPlaylist(QUuid uniqueId, int trackCount)                   override;
-        void getOpenTracks(QUuid uniqueId, QString parentId)               override;
-        void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks) override;
+        void unableToStart(QUuid uniqueId, QUrl url)                        override;
+        void castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds) override;
+        void getPlaylist(QUuid uniqueId, int trackCount)                    override;
+        void getReplacement(QUuid uniqueId)                                 override;
+        void getOpenTracks(QUuid uniqueId, QString parentId)                override;
+        void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)  override;
 
         void search(QUuid uniqueId, QString criteria)        override;
         void action(QUuid uniqueId, int actionKey, QUrl url) override;
