@@ -90,6 +90,7 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_004 {
         QStringList trackFileNames;
         QStringList alreadyPlayedTrackFileNames;
         QStringList bannedFileNames;
+        QStringList lovedFileNames;
 
         QString variationSetting;
         int     variationCurrent;
@@ -97,6 +98,11 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_004 {
         QString variationDir;
         int     variationSetCountSinceHigh;
         int     variationSetCountSinceLow;
+
+        bool        reCalculateLoved;
+        int         tracksSinceLoved;
+        QStringList lovedInCurrentCollection;
+        int         lovedFrequency;
 
         bool sendDiagnostics;
 

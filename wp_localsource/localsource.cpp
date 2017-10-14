@@ -38,6 +38,9 @@ LocalSource::LocalSource()
     id           = QUuid("{187C9046-4801-4DB2-976C-128761F25BD8}");
     readyEmitted = false;
 
+    tracksSinceLoved = 0;
+    reCalculateLoved = true;
+
     variationSetting           = "Medium";
     variationSetCountSinceHigh = 0;
     variationSetCountSinceLow  = 0;
@@ -340,70 +343,101 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount)
             break;
         }
 
-        // set variation if done
-        if (variationRemaining == 0) {
-            variationSetCurrentRemainingDir();
-        }
-
         // make scanners wait so they don't mess up the arrays while we're working with them
         mutex.lock();
 
         // see what we can select form
         QStringList variationSelection;
 
-        // first try a simple filter
-        foreach (QString trackFileName, trackFileNames) {
-            // this will append everything is variationDir is empty
-            if (trackFileName.startsWith(variationDir)) {
-                variationSelection.append(trackFileName);
+        // is variation done?
+        if (variationRemaining == 0) {
+            // set variatioon variables
+            variationSetCurrentRemainingDir();
+
+            // maybe it's time to throw in a loved track
+            if (lovedFileNames.count() > 0) {
+                if (reCalculateLoved) {
+                    lovedInCurrentCollection.clear();
+                    lovedFrequency = 0;
+
+                    foreach (QString lovedFileName, lovedFileNames) {
+                        if (trackFileNames.contains(lovedFileName) || alreadyPlayedTrackFileNames.contains(lovedFileName)) {
+                            lovedInCurrentCollection.append(lovedFileName);
+                        }
+                    }
+
+                    if (lovedInCurrentCollection.count() > 0) {
+                        lovedFrequency = qMax(qMin((trackFileNames.count() + alreadyPlayedTrackFileNames.count()) / lovedInCurrentCollection.count(), 15), 3);
+                    }
+
+                    reCalculateLoved = false;
+                }
+                if ((lovedFrequency > 0) && (tracksSinceLoved >= lovedFrequency)) {
+                    tracksSinceLoved   = 0;
+                    variationSelection = lovedInCurrentCollection;
+                }
             }
         }
 
-        // if there are no more tracks in current variation directory and variation is Low, then we have to try parent dir
-        if ((variationSelection.count() < 1) && (variationCurrent == 0)) {
-            QString currentVariationDir = variationDir;
-
-            // find the base directory
-            currentVariationDir.append("/");
-            QString baseDirectory;
-            foreach (QString directory, directories) {
-                if (currentVariationDir.startsWith(directory) && (directory.length() > baseDirectory.length())) {
-                    baseDirectory = directory;
+        // no loved tracks now
+        if (variationSelection.count() < 1) {
+            // first try a simple filter
+            foreach (QString trackFileName, trackFileNames) {
+                // this will append everything is variationDir is empty
+                if (trackFileName.startsWith(variationDir)) {
+                    variationSelection.append(trackFileName);
                 }
             }
-            if (baseDirectory.endsWith("/")) {
-                baseDirectory = baseDirectory.left(baseDirectory.length() - 1);
-            }
 
-            // get parent directory path
-            while (currentVariationDir.endsWith("/")) {
-                currentVariationDir = currentVariationDir.left(currentVariationDir.length() - 1);
-            }
-            currentVariationDir = (currentVariationDir.contains("/") ? currentVariationDir.left(currentVariationDir.lastIndexOf("/")) : "");
+            // if there are no more tracks in current variation directory and variation is Low, then we have to try parent dir
+            if ((variationSelection.count() < 1) && (variationCurrent == 0)) {
+                QString currentVariationDir = variationDir;
 
-            // make sure there is a parent directory
-            if ((currentVariationDir.length() > 0) && (currentVariationDir.compare(baseDirectory) != 0)) {
-                // set current variation directory to parent
-                variationDir = currentVariationDir;
+                // find the base directory
+                currentVariationDir.append("/");
+                QString baseDirectory;
+                foreach (QString directory, directories) {
+                    if (currentVariationDir.startsWith(directory) && (directory.length() > baseDirectory.length())) {
+                        baseDirectory = directory;
+                    }
+                }
+                if (baseDirectory.endsWith("/")) {
+                    baseDirectory = baseDirectory.left(baseDirectory.length() - 1);
+                }
 
-                // filter again
-                foreach (QString trackFileName, trackFileNames) {
-                    if (trackFileName.startsWith(variationDir)) {
-                        variationSelection.append(trackFileName);
+                // get parent directory path
+                while (currentVariationDir.endsWith("/")) {
+                    currentVariationDir = currentVariationDir.left(currentVariationDir.length() - 1);
+                }
+                currentVariationDir = (currentVariationDir.contains("/") ? currentVariationDir.left(currentVariationDir.lastIndexOf("/")) : "");
+
+                // make sure there is a parent directory
+                if ((currentVariationDir.length() > 0) && (currentVariationDir.compare(baseDirectory) != 0)) {
+                    // set current variation directory to parent
+                    variationDir = currentVariationDir;
+
+                    // filter again
+                    foreach (QString trackFileName, trackFileNames) {
+                        if (trackFileName.startsWith(variationDir)) {
+                            variationSelection.append(trackFileName);
+                        }
                     }
                 }
             }
-        }
 
-        // there are no more tracks in variation directory (or its parent if variation is Low)
-        if (variationSelection.count() < 1) {
-            // set a new variation (directory will be empty, don't have to filter on it)
-            variationSetCurrentRemainingDir();
+            // there are no more tracks in variation directory (or its parent if variation is Low)
+            if (variationSelection.count() < 1) {
+                // set a new variation (directory will be empty, don't have to filter on it)
+                variationSetCurrentRemainingDir();
 
-            // copy without filter
-            foreach (QString trackFileName, trackFileNames) {
-                variationSelection.append(trackFileName);
+                // copy without filter
+                foreach (QString trackFileName, trackFileNames) {
+                    variationSelection.append(trackFileName);
+                }
             }
+
+            // adjust counter
+            tracksSinceLoved++;
         }
 
         // this should never happen
@@ -417,8 +451,12 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount)
         int     trackIndex     = trackFileNames.indexOf(trackFileName);
 
         // so that it won't be played again
-        trackFileNames.removeAt(trackIndex);
-        alreadyPlayedTrackFileNames.append(trackFileName);
+        if (trackIndex >= 0) {
+            trackFileNames.removeAt(trackIndex);
+        }
+        if (!alreadyPlayedTrackFileNames.contains(trackFileName)) {
+            alreadyPlayedTrackFileNames.append(trackFileName);
+        }
 
         // scanners can continue
         mutex.unlock();
@@ -432,7 +470,7 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount)
             variationDir = trackFileName.left(trackFileName.lastIndexOf("/"));
         }
 
-        // adjust variation track counter
+        // adjust counter
         variationRemaining--;
     }
 
@@ -651,6 +689,28 @@ void LocalSource::action(QUuid uniqueId, int actionKey, QUrl url)
         return;
     }
 
+    if (actionKey == 1) {
+        mutex.lock();
+        lovedFileNames.append(url.toLocalFile());
+        mutex.unlock();
+
+        emit saveGlobalConfiguration(id, configToJsonGlobal());
+
+        reCalculateLoved = true;
+        return;
+    }
+
+    if (actionKey == 2) {
+        mutex.lock();
+        lovedFileNames.removeAll(url.toLocalFile());
+        mutex.unlock();
+
+        emit saveGlobalConfiguration(id, configToJsonGlobal());
+
+        reCalculateLoved = true;
+        return;
+    }
+
     // diagnostics
     if (sendDiagnostics) {
         sendDiagnosticsData();
@@ -690,6 +750,8 @@ void LocalSource::readyTimer()
 // scanner signal handler
 void LocalSource::scannerFinished()
 {
+    reCalculateLoved = true;
+
     // get the scanner that sent this signal
     FileScanner *sender = (FileScanner *) QObject::sender();
 
@@ -711,25 +773,22 @@ void LocalSource::scannerFinished()
     scanners.remove(senderIndex);
     delete sender;
 
-    // maybe all tracks have been played already?
-    int trackFileNamesCount;
-    int alreadyPlayedTrackFileNamesCount;
-    mutex.lock();
-    trackFileNamesCount              = trackFileNames.count();
-    alreadyPlayedTrackFileNamesCount = alreadyPlayedTrackFileNames.count();
-    mutex.unlock();
-    if ((trackFileNamesCount < 1) && (alreadyPlayedTrackFileNamesCount > 0) && (scanners.count() == 0)) {
-        // start over
-        mutex.lock();
-        alreadyPlayedTrackFileNames.clear();
-        mutex.unlock();
+    // things to do after all scanners finished
+    if (scanners.count() < 1) {
+        // maybe all tracks have been played already?
+        if ((trackFileNames.count() < 1) && (alreadyPlayedTrackFileNames.count() > 0)) {
+            // start over
+            mutex.lock();
+            alreadyPlayedTrackFileNames.clear();
+            mutex.unlock();
 
-        // must save updated configuration
-        emit saveConfiguration(id, configToJson());
+            // must save updated configuration
+            emit saveConfiguration(id, configToJson());
 
-        // start new scans
-        foreach (QString directory, directories) {
-            scanDir(directory);
+            // start new scans
+            foreach (QString directory, directories) {
+                scanDir(directory);
+            }
         }
     }
 
@@ -765,6 +824,7 @@ QJsonDocument LocalSource::configToJsonGlobal()
 
     mutex.lock();
     jsonObject.insert("bannedFileNames", QJsonValue(QJsonArray::fromStringList(bannedFileNames)));
+    jsonObject.insert("lovedFileNames", QJsonValue(QJsonArray::fromStringList(lovedFileNames)));
     mutex.unlock();
 
     QJsonDocument returnValue;
@@ -789,7 +849,16 @@ void LocalSource::jsonToConfig(QJsonDocument jsonDocument)
     if (jsonDocument.object().contains("alreadyPlayedTrackFileNames")) {
         alreadyPlayedTrackFileNames.clear();
         foreach (QJsonValue jsonValue, jsonDocument.object().value("alreadyPlayedTrackFileNames").toArray()) {
-            alreadyPlayedTrackFileNames.append(jsonValue.toString());
+            bool inDirectories = false;
+            foreach (QString directory, directories) {
+                if (jsonValue.toString().startsWith(directory)) {
+                    inDirectories = true;
+                    break;
+                }
+            }
+            if (inDirectories) {
+                alreadyPlayedTrackFileNames.append(jsonValue.toString());
+            }
         }
     }
 
@@ -806,14 +875,26 @@ void LocalSource::jsonToConfig(QJsonDocument jsonDocument)
 // configuration conversion
 void LocalSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
 {
-    if (jsonDocument.object().contains("bannedFileNames")) {
-        mutex.lock();
-        bannedFileNames.clear();
-        foreach (QJsonValue jsonValue, jsonDocument.object().value("bannedFileNames").toArray()) {
-            bannedFileNames.append(jsonValue.toString());
+    mutex.lock();
+
+    lovedFileNames.clear();
+    bannedFileNames.clear();
+
+    if (jsonDocument.object().contains("lovedFileNames")) {
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("lovedFileNames").toArray()) {
+            lovedFileNames.append(jsonValue.toString());
         }
-        mutex.unlock();
     }
+
+    if (jsonDocument.object().contains("bannedFileNames")) {
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("bannedFileNames").toArray()) {
+            if (!lovedFileNames.contains(jsonValue.toString())) {
+                bannedFileNames.append(jsonValue.toString());
+            }
+        }
+    }
+
+    mutex.unlock();
 }
 
 
@@ -822,7 +903,9 @@ bool LocalSource::isTrackFile(QFileInfo fileInfo)
 {
     return
         (
-            fileInfo.exists() && fileInfo.isFile() && !fileInfo.isSymLink() &&
+            fileInfo.exists() &&
+            fileInfo.isFile() &&
+            !fileInfo.isSymLink() &&
             (fileInfo.fileName().endsWith(".mp3", Qt::CaseInsensitive) || mimeDatabase.mimeTypeForFile(fileInfo).name().startsWith("audio", Qt::CaseInsensitive))
         );
 }
@@ -880,6 +963,12 @@ TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
     trackInfo.track     = 0;
     trackInfo.pictures.append(pictures);
     trackInfo.actions.insert(0, "Ban");
+    if (lovedFileNames.contains(filePath)) {
+        trackInfo.actions.insert(2, "Unlove");
+    }
+    else {
+        trackInfo.actions.insert(1, "Love");
+    }
 
     return trackInfo;
 }
