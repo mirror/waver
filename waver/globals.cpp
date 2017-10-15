@@ -40,7 +40,7 @@ QString Globals::appVersion()
 
 QString Globals::appDesc()
 {
-    return "Open source sound player with plug-in architecture";
+    return "Open source sound player";
 }
 
 
@@ -52,13 +52,13 @@ QString Globals::author()
 
 QString Globals::email()
 {
-    return "peter.papp.p@gmail.com";
+    return "<a href=\"mailto:peter.papp.p@gmail.com\">peter.papp.p@gmail.com</a>";
 }
 
 
 QString Globals::website()
 {
-    return "https://launchpad.net/waver";
+    return "<a href=\"https://launchpad.net/waver\">launchpad.net/waver</a>";
 }
 
 
@@ -71,6 +71,17 @@ QString Globals::copyright()
 QString Globals::license()
 {
     return "This is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.\n\nThis software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License (GPL.TXT) along with this software. If not, see http://www.gnu.org/licenses/";
+}
+
+QString Globals::credits()
+{
+    return "Online Radio Stations plugin is powered by SHOUTcast (<a href=\"https://www.shoutcast.com\">shoutcast.com</a>)\n\nFree Music plugin is powered by the Free Music Archive (<a href=\"http://www.freemusicarchive.org\">freemusicarchive.org</a>)";
+}
+
+
+QString Globals::privacy()
+{
+    return "Waver does not collect or send personal information of any kind";
 }
 
 

@@ -402,11 +402,17 @@ ApplicationWindow {
 
 
     // about dialog
-    function aboutDialog(appName, AppVersion, appDescription)
+    function aboutDialog(data)
     {
-        aboutName.text        = appName
-        aboutVersion.text     = AppVersion
-        aboutDescription.text = appDescription
+        var dataParsed = JSON.parse(data);
+
+        aboutName.text          = dataParsed["name"];
+        aboutVersion.text       = dataParsed["version"];
+        aboutDescription.text   = dataParsed["description"];
+        aboutCopyright.text     = dataParsed["copyright"];
+        aboutLink.text          = dataParsed["website"];
+        aboutEmail.text         = dataParsed["email"];
+        aboutFlickableText.text = dataParsed["credits"].replace(/\n/g, "<br>") + "<br><br><b>" + dataParsed["privacy"].replace(/\n/g, "<br>") + "</b><br><br>" + dataParsed["license"].replace(/\n/g, "<br>");
 
         about.visible = true;
         aboutIn.start();
@@ -2416,39 +2422,15 @@ ApplicationWindow {
             anchors.fill: about
         }
 
-        MouseArea {
-            anchors.fill: aboutLink
-            cursorShape: Qt.PointingHandCursor
-        }
-
         PlatformLabel {
             id: aboutName
-            anchors.left: parent.left
-            anchors.leftMargin: 6
+            anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
             anchors.topMargin: 6
             font.pointSize: userMessage.font.pointSize * largeMul
             font.bold: true
-            text: ""
         }
-        PlatformLabel {
-            id: aboutVersionLabel
-            anchors.left: aboutName.right
-            anchors.leftMargin: 6
-            anchors.top: parent.top
-            anchors.topMargin: 6
-            font.pointSize: userMessage.font.pointSize * largeMul
-            text: "version"
-        }
-        PlatformLabel {
-            id: aboutVersion
-            anchors.left: aboutVersionLabel.right
-            anchors.leftMargin: 6
-            anchors.top: parent.top
-            anchors.topMargin: 6
-            font.pointSize: userMessage.font.pointSize * largeMul
-            text: ""
-        }
+
         PlatformLabel {
             id: aboutDescription
             anchors.left: parent.left
@@ -2456,33 +2438,73 @@ ApplicationWindow {
             anchors.top: aboutName.bottom
             anchors.topMargin: 12
             font.italic: true
-            text: ""
         }
+
         PlatformLabel {
-            id: aboutLink
+            id: aboutVersionLabel
+            anchors.right: aboutVersion.left
+            anchors.rightMargin: 6
+            anchors.top: aboutName.bottom
+            anchors.topMargin: 12
+            text: "version"
+        }
+
+        PlatformLabel {
+            id: aboutVersion
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.top: aboutName.bottom
+            anchors.topMargin: 12
+        }
+
+        PlatformLabel {
+            id: aboutCopyright
             anchors.left: parent.left
             anchors.leftMargin: 6
             anchors.top: aboutDescription.bottom
             anchors.topMargin: 12
-            text: "<a href=\"https://launchpad.net/waver\">https://launchpad.net/waver</a>"
-            onLinkActivated: {
-                Qt.openUrlExternally("https://launchpad.net/waver");
-            }
         }
+
         PlatformLabel {
-            id: aboutCopyright
+            id: aboutEmail
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.top: aboutVersion.bottom
+            anchors.topMargin: 12
+            onLinkActivated: Qt.openUrlExternally(link);
+        }
+
+        PlatformLabel {
+            id: aboutLink
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: aboutCopyright.bottom
+            anchors.topMargin: 18
+            onLinkActivated: Qt.openUrlExternally(link);
+        }
+
+        Flickable {
+            id: aboutFlickable
             anchors.left: parent.left
             anchors.leftMargin: 6
             anchors.right: parent.right
             anchors.rightMargin: 6
             anchors.top: aboutLink.bottom
-            anchors.topMargin: 12
+            anchors.topMargin: 24
             anchors.bottom: aboutOK.top
-            anchors.bottomMargin: 6
-            elide: Text.ElideNone
-            wrapMode: Text.WordWrap
-            text: "Copyright (C) 2017 Peter Papp <peter.papp.p@gmail.com>\n\nThis is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.\n\nThis software is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.\n\nYou should have received a copy of the GNU General Public License (GPL.TXT) along with this software. If not, see http://www.gnu.org/licenses/"
+            anchors.bottomMargin: 12
+            contentWidth: aboutFlickableText.width
+            contentHeight: aboutFlickableText.height
+            clip: true
+
+            PlatformLabel {
+                id: aboutFlickableText
+                wrapMode: Text.WordWrap
+                width: aboutFlickable.width
+                font.pointSize: userMessage.font.pointSize * smallMul
+                onLinkActivated: Qt.openUrlExternally(link);
+            }
         }
+
         Button {
             id: aboutOK
             anchors.right: parent.right

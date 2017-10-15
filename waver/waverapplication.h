@@ -117,7 +117,7 @@ class WaverApplication : public QGuiApplication {
         void uiDisplayPluginUI(QVariant id, QVariant qml, QVariant Header);
         void uiAddToOpenTracksList(QVariant pluginId, QVariant hasChildren, QVariant selectable, QVariant label, QVariant id);
         void uiAddToSearchList(QVariant pluginId, QVariant label, QVariant id);
-        void uiAbout(QVariant appName, QVariant appVersion, QVariant appDescription);
+        void uiAbout(QVariant data);
         void uiDisplayDiagnosticsMessage(QVariant pluginId, QVariant text);
         void uiClearSourcePrioritiesList();
         void uiAddToSourcePrioritiesList(QVariant id, QVariant name, QVariant priority);

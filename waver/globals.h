@@ -48,6 +48,8 @@ class Globals : public QObject {
         static QString website();
         static QString copyright();
         static QString license();
+        static QString credits();
+        static QString privacy();
 
         static QString userAgent();
 

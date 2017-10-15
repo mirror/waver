@@ -521,12 +521,11 @@ void RadioSource::unableToStart(QUuid uniqueId, QUrl url)
     emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET unable_to_start = 1 WHERE url = ?", QVariantList({ url.toString() }));
 
     bool found = false;
-    int  i     = 0;
-    while (!found && (i < unableToStartUrls.count())) {
-        if (unableToStartUrls.at(i).url == url) {
+    foreach (UnableToStartUrl unableToStartUrl, unableToStartUrls) {
+        if (unableToStartUrl.url == url) {
             found = true;
+            break;
         }
-        i++;
     }
     if (!found) {
         unableToStartUrls.append({ url, QDateTime::currentMSecsSinceEpoch() });

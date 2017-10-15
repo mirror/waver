@@ -1697,21 +1697,31 @@ void WaverServer::trackAboutToFinish(QUrl url)
 // track signal handler
 void WaverServer::trackFinished(QUrl url)
 {
+    // get number of ready source plugins
+    int readySources = 0;
+    foreach (QUuid pluginId, sourcePlugins.keys()) {
+        if (sourcePlugins.value(pluginId).ready) {
+            readySources++;
+        }
+    }
+
     // is this the previous track?
     if ((previousTrack != NULL) && (url == previousTrack->getTrackInfo().url)) {
+        // send message to source if cast finished too early
+        if ((previousTrack->getTrackInfo().cast) && (previousPositionSeconds < 180)) {
+            emit castFinishedEarly(previousTrack->getSourcePluginId(), url, previousPositionSeconds);
+        }
+
+        // get replacement if needed
+        if (previousTrack->isReplacable() && (readySources > 0) && ((previousPositionSeconds < 1) || ((previousTrack->getTrackInfo().cast) && (previousPositionSeconds < 180)))) {
+            emit getReplacement(previousTrack->getSourcePluginId());
+        }
+
         // housekeeping
         delete previousTrack;
         previousTrack = NULL;
         previousPositionSeconds = 0;
         return;
-    }
-
-    // get number of ready source plugins
-    int readySources;
-    foreach (QUuid pluginId, sourcePlugins.keys()) {
-        if (sourcePlugins.value(pluginId).ready) {
-            readySources++;
-        }
     }
 
     // is this the current track?
@@ -1733,7 +1743,7 @@ void WaverServer::trackFinished(QUrl url)
             }
         }
 
-        // get replacement?
+        // get replacement if needed
         if (currentTrack->isReplacable() && (readySources > 0) && ((positionSeconds < 1) || ((currentTrack->getTrackInfo().cast) && (positionSeconds < 180)))) {
             emit getReplacement(currentTrack->getSourcePluginId());
         }

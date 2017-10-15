@@ -96,6 +96,8 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(this,         SIGNAL(uiAddToPluginsWithUIList(QVariant, QVariant)),                            uiMainWindow, SLOT(addToPluginsWithUIList(QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiDisplayPluginUI(QVariant, QVariant, QVariant)),                         uiMainWindow, SLOT(displayPluginUI(QVariant, QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiAddToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)), uiMainWindow, SLOT(addToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiAddToSearchList(QVariant, QVariant, QVariant)),                         uiMainWindow, SLOT(addToSearchList(QVariant, QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiAbout(QVariant)),                                                       uiMainWindow, SLOT(aboutDialog(QVariant)));
         disconnect(this,         SIGNAL(uiDisplayDiagnosticsMessage(QVariant, QVariant)),                         uiMainWindow, SLOT(displayDiagnosticsMessage(QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiClearSourcePrioritiesList()),                                           uiMainWindow, SLOT(clearSourcePrioritiesList()));
         disconnect(this,         SIGNAL(uiAddToSourcePrioritiesList(QVariant, QVariant, QVariant)),               uiMainWindow, SLOT(addToSourcePrioritiesList(QVariant, QVariant, QVariant)));
@@ -140,7 +142,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(this,         SIGNAL(uiDisplayPluginUI(QVariant, QVariant, QVariant)),                         uiMainWindow, SLOT(displayPluginUI(QVariant, QVariant, QVariant)));
     connect(this,         SIGNAL(uiAddToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)), uiMainWindow, SLOT(addToOpenTracksList(QVariant, QVariant, QVariant, QVariant, QVariant)));
     connect(this,         SIGNAL(uiAddToSearchList(QVariant, QVariant, QVariant)),                         uiMainWindow, SLOT(addToSearchList(QVariant, QVariant, QVariant)));
-    connect(this,         SIGNAL(uiAbout(QVariant, QVariant, QVariant)),                                   uiMainWindow, SLOT(aboutDialog(QVariant, QVariant, QVariant)));
+    connect(this,         SIGNAL(uiAbout(QVariant)),                                                       uiMainWindow, SLOT(aboutDialog(QVariant)));
     connect(this,         SIGNAL(uiDisplayDiagnosticsMessage(QVariant, QVariant)),                         uiMainWindow, SLOT(displayDiagnosticsMessage(QVariant, QVariant)));
     connect(this,         SIGNAL(uiClearSourcePrioritiesList()),                                           uiMainWindow, SLOT(clearSourcePrioritiesList()));
     connect(this,         SIGNAL(uiAddToSourcePrioritiesList(QVariant, QVariant, QVariant)),               uiMainWindow, SLOT(addToSourcePrioritiesList(QVariant, QVariant, QVariant)));
@@ -229,7 +231,18 @@ void WaverApplication::menuPlugin(QVariant id)
 // menu signal handler
 void WaverApplication::menuAbout()
 {
-    emit uiAbout(Globals::appName(), Globals::appVersion(), Globals::appDesc());
+    QVariantHash data;
+    data.insert("name", Globals::appName());
+    data.insert("version", Globals::appVersion());
+    data.insert("description", Globals::appDesc());
+    data.insert("email", Globals::email());
+    data.insert("website", Globals::website());
+    data.insert("copyright", Globals::copyright());
+    data.insert("license", Globals::license());
+    data.insert("credits", Globals::credits());
+    data.insert("privacy", Globals::privacy());
+
+    emit uiAbout(QString(QJsonDocument(QJsonObject::fromVariantHash(data)).toJson()));
 }
 
 
