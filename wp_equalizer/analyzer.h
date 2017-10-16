@@ -89,6 +89,7 @@ class WP_EQUALIZER_EXPORT Analyzer : PluginDspPre_004 {
 
         bool                    filtersSetup;
         bool                    firstNonSilentPositionChecked;
+        bool                    fadeInChecked;
         qint64                  resultLastCalculated;
         IIRFilter::SampleTypes  sampleType;
         IIRFilterChain         *replayGainFilter;

@@ -79,6 +79,8 @@ class Track : public QObject {
         void   interrupt();
         void   startWithFadeIn(qint64 lengthMilliseconds);
         void   startWithoutFadeIn();
+        void   setAboutToFinishSend(qint64 beforeEndMillisecods);
+        void   resetAboutToFinishSend();
         void   addMoreToCastPlaytime();
         void   addALotToCastPlaytime();
         void   setReplacable(bool replacable);
@@ -91,6 +93,8 @@ class Track : public QObject {
         qint64    getFadeInRequestedMilliseconds();
         bool      getNextTrackFadeInRequested();
         qint64    getNextTrackFadeInRequestedMilliseconds();
+        bool      getPreviousTrackAboutToFinishSendRequested();
+        qint64    getPreviousTrackAboutToFinishSendRequestedMilliseconds();
 
 
     private:
@@ -149,8 +153,11 @@ class Track : public QObject {
         qint64 interruptPosition;
         bool   interruptPositionWithFadeOut;
         qint64 interruptAboutToFinishSendPosition;
+        qint64 interruptAboutToFinishSendPositionInternal;
         bool   nextTrackFadeInRequested;
         qint64 nextTrackFadeInRequestedMilliseconds;
+        bool   previousTrackAboutToFinishSendRequested;
+        qint64 previousTrackAboutToFinishSendRequestedMilliseconds;
         bool   decodingDone;
         bool   finishedSent;
         qint64 decodedMilliseconds;
@@ -190,6 +197,7 @@ class Track : public QObject {
         void aboutToFinish(QUrl url);
         void finished(QUrl url);
         void requestFadeInForNextTrack(QUrl url, qint64 lengthMilliseconds);
+        void requestAboutToFinishSendForPreviousTrack(QUrl url, qint64 posBeforeEndMilliseconds);
         void trackInfoUpdated(QUrl url);
 
         // for internal receivers
@@ -264,6 +272,7 @@ class Track : public QObject {
         void dspPreRequestFadeInForNextTrack(QUuid uniqueId, qint64 lengthMilliseconds);
         void dspPreRequestInterrupt(QUuid uniqueId, qint64 posMilliseconds, bool withFadeOut);
         void dspPreRequestAboutToFinishSend(QUuid uniqueId, qint64 posMilliseconds);
+        void dspPreRequestAboutToFinishSendForPreviousTrack(QUuid uniqueId, qint64 posBeforeEndMilliseconds);
         void dspPreMessageToDspPlugin(QUuid uniqueId, QUuid destinationUniqueId, int messageId, QVariant value);
 
         void infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo);

@@ -50,15 +50,23 @@ QString Globals::author()
 }
 
 
-QString Globals::email()
+QString Globals::email(bool linkOk)
 {
-    return "<a href=\"mailto:peter.papp.p@gmail.com\">peter.papp.p@gmail.com</a>";
+    if (linkOk) {
+        return "<a href=\"mailto:peter.papp.p@gmail.com\">peter.papp.p@gmail.com</a>";
+    }
+
+    return "peter.papp.p@gmail.com";
 }
 
 
-QString Globals::website()
+QString Globals::website(bool linkOk)
 {
-    return "<a href=\"https://launchpad.net/waver\">launchpad.net/waver</a>";
+    if (linkOk) {
+        return "<a href=\"https://launchpad.net/waver\">launchpad.net/waver</a>";
+    }
+
+    return "https://launchpad.net/waver";
 }
 
 
@@ -87,7 +95,7 @@ QString Globals::privacy()
 
 QString Globals::userAgent()
 {
-    return appName() + "/" + appVersion() + " ( " + website() + " )";
+    return appName() + "/" + appVersion() + " ( " + website(false) + " )";
 }
 
 

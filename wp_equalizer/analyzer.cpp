@@ -88,6 +88,7 @@ Analyzer::Analyzer()
 
     filtersSetup                  = false;
     firstNonSilentPositionChecked = false;
+    fadeInChecked                 = false;
     sampleType                    = IIRFilter::Unknown;
     replayGainFilter              = NULL;
     replayGainCalculator          = NULL;
@@ -294,9 +295,20 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
                 // usually there's at least one tenth of a second silence at the begining of tracks; if not, chances are it's a live recording or a medley or something similar
                 if (!firstNonSilentPositionChecked && (fadeOutDetector->getFirstNonSilentMSec() > 0)) {
                     firstNonSilentPositionChecked = true;
+
                     if (fadeOutDetector->getFirstNonSilentMSec() < 100) {
                         emit requestFadeIn(id, Track::INTERRUPT_FADE_SECONDS * 1000);
                         diagnosticsHash["is_live"] = true;
+                    }
+                }
+
+                // fade in check
+                if (!fadeInChecked && (fadeOutDetector->checkedPositionMSec() >= 12000)) {
+                    fadeInChecked = true;
+
+                    qint64 fadeInEnd = qMin(fadeOutDetector->getFadeInEndPoisitionMSec(), (qint64)12000);
+                    if (fadeInEnd >= 6000) {
+                        emit requestAboutToFinishSendForPreviousTrack(id, qRound64((double)fadeInEnd));
                     }
                 }
 
@@ -379,7 +391,20 @@ void Analyzer::transition()
 
     // live recording, medley, etc
     if ((fadeOutDetector->getFirstNonSilentMSec() > 0) && (fadeOutDetector->getFirstNonSilentMSec() < 100)) {
-        emit requestInterrupt(id, fadeOutDetector->getLastNonSilentMSec() - (Track::INTERRUPT_FADE_SECONDS * 1000) - 500, true);
+        qint64 position = fadeOutDetector->getLastNonSilentMSec() - (Track::INTERRUPT_FADE_SECONDS * 1000) - 500;
+
+        emit requestInterrupt(id, position, true);
+        emit requestAboutToFinishSend(id, position - 500);
+        emit requestFadeInForNextTrack(id, Track::INTERRUPT_FADE_SECONDS * 1000);
+
+        diagnosticsHash["transition_type"]   = "Crossfade";
+        diagnosticsHash["transition_start"]  = position - 500;
+        diagnosticsHash["transition_length"] = (Track::INTERRUPT_FADE_SECONDS * 1000);
+
+        if (sendDiagnostics) {
+            sendDiagnosticsData();
+        }
+        return;
     }
 
     // gapless play

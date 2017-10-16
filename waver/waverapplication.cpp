@@ -235,8 +235,8 @@ void WaverApplication::menuAbout()
     data.insert("name", Globals::appName());
     data.insert("version", Globals::appVersion());
     data.insert("description", Globals::appDesc());
-    data.insert("email", Globals::email());
-    data.insert("website", Globals::website());
+    data.insert("email", Globals::email(true));
+    data.insert("website", Globals::website(true));
     data.insert("copyright", Globals::copyright());
     data.insert("license", Globals::license());
     data.insert("credits", Globals::credits());

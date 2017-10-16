@@ -39,25 +39,28 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUui
     this->sourcePliginId = sourcePliginId;
 
     // initializations
-    currentStatus                        = Idle;
-    currentCastPlaytimeMilliseconds      = CAST_PLAYTIME_MILLISECONDS;
-    fadeInRequested                      = false;
-    fadeInRequestedInternal              = false;
-    fadeInRequestedMilliseconds          = 0;
-    fadeInRequestedInternalMilliseconds  = 0;
-    interruptInProgress                  = false;
-    interruptPosition                    = 0;
-    interruptPositionWithFadeOut         = true;
-    interruptAboutToFinishSendPosition   = 0;
-    nextTrackFadeInRequested             = false;
-    nextTrackFadeInRequestedMilliseconds = 0;
-    decodingDone                         = false;
-    finishedSent                         = false;
-    decodedMilliseconds                  = 0;
-    playedMilliseconds                   = 0;
-    dspInitialBufferCount                = 0;
-    tagsChecked                          = false;
-    replacable                           = true;
+    currentStatus                                       = Idle;
+    currentCastPlaytimeMilliseconds                     = CAST_PLAYTIME_MILLISECONDS;
+    fadeInRequested                                     = false;
+    fadeInRequestedInternal                             = false;
+    fadeInRequestedMilliseconds                         = 0;
+    fadeInRequestedInternalMilliseconds                 = 0;
+    interruptInProgress                                 = false;
+    interruptPosition                                   = 0;
+    interruptPositionWithFadeOut                        = true;
+    interruptAboutToFinishSendPosition                  = 0;
+    interruptAboutToFinishSendPositionInternal          = 0;
+    nextTrackFadeInRequested                            = false;
+    nextTrackFadeInRequestedMilliseconds                = 0;
+    previousTrackAboutToFinishSendRequested             = false;
+    previousTrackAboutToFinishSendRequestedMilliseconds = 0;
+    decodingDone                                        = false;
+    finishedSent                                        = false;
+    decodedMilliseconds                                 = 0;
+    playedMilliseconds                                  = 0;
+    dspInitialBufferCount                               = 0;
+    tagsChecked                                         = false;
+    replacable                                          = true;
 
     // priority maps
     QMap<int, QUuid> dspPrePriorityMap;
@@ -319,6 +322,7 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
         connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)),                                 this,   SLOT(diagnostics(QUuid, DiagnosticData)));
         connect(plugin, SIGNAL(executeSql(QUuid, bool, QString, int, QString, QVariantList)),       this,   SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
         connect(plugin, SIGNAL(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)), this,   SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
+        connect(plugin, SIGNAL(requestAboutToFinishSendForPreviousTrack(QUuid, qint64)),            this,   SLOT(dspPreRequestAboutToFinishSendForPreviousTrack(QUuid, qint64)));
         connect(this,   SIGNAL(startDiagnostics(QUuid)),                                            plugin, SLOT(startDiagnostics(QUuid)));
         connect(this,   SIGNAL(stopDiagnostics(QUuid)),                                             plugin, SLOT(stopDiagnostics(QUuid)));
         connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
@@ -765,6 +769,20 @@ qint64 Track::getNextTrackFadeInRequestedMilliseconds()
 
 
 // public method
+bool Track::getPreviousTrackAboutToFinishSendRequested()
+{
+    return previousTrackAboutToFinishSendRequested;
+}
+
+
+// public method
+qint64 Track::getPreviousTrackAboutToFinishSendRequestedMilliseconds()
+{
+    return previousTrackAboutToFinishSendRequestedMilliseconds;
+}
+
+
+// public method
 void Track::startWithFadeIn(qint64 lengthMilliseconds)
 {
     // this has effect only when the track starts to play
@@ -785,6 +803,26 @@ void Track::startWithoutFadeIn()
 
     fadeInRequested             = false;
     fadeInRequestedMilliseconds = 0;
+}
+
+
+// public method
+void Track::setAboutToFinishSend(qint64 beforeEndMillisecods)
+{
+    if (trackInfo.cast || !decodingDone) {
+        return;
+    }
+
+    if ((interruptAboutToFinishSendPosition == 0) || (interruptAboutToFinishSendPosition > (decodedMilliseconds - beforeEndMillisecods))) {
+        interruptAboutToFinishSendPosition = decodedMilliseconds - beforeEndMillisecods;
+    }
+}
+
+
+// public method
+void Track::resetAboutToFinishSend()
+{
+    interruptAboutToFinishSendPosition = interruptAboutToFinishSendPositionInternal;
 }
 
 
@@ -1319,6 +1357,10 @@ void Track::decoderFinished(QUuid uniqueId)
     foreach (QUuid pluginId, dspPrePlugins.keys()) {
         emit decoderDone(pluginId);
     }
+
+    if (currentStatus == Paused) {
+        emit playPosition(trackInfo.url, true, trackInfo.cast ? currentCastPlaytimeMilliseconds : decodedMilliseconds, playedMilliseconds);
+    }
 }
 
 
@@ -1399,7 +1441,8 @@ void Track::outputPositionChanged(QUuid uniqueId, qint64 posMilliseconds)
     }
 
     if ((interruptAboutToFinishSendPosition > 0) && (posMilliseconds >= interruptAboutToFinishSendPosition)) {
-        interruptAboutToFinishSendPosition = 0;
+        interruptAboutToFinishSendPosition         = 0;
+        interruptAboutToFinishSendPositionInternal = 0;
         emit aboutToFinish(trackInfo.url);
     }
 
@@ -1513,8 +1556,20 @@ void Track::dspPreRequestAboutToFinishSend(QUuid uniqueId, qint64 posMillisecond
 {
     Q_UNUSED(uniqueId);
 
-    // new request overwrites pervious one
-    interruptAboutToFinishSendPosition = posMilliseconds;
+    interruptAboutToFinishSendPosition         = posMilliseconds;
+    interruptAboutToFinishSendPositionInternal = posMilliseconds;
+}
+
+
+// pre-dsp signal handler
+void Track::dspPreRequestAboutToFinishSendForPreviousTrack(QUuid uniqueId, qint64 posBeforeEndMilliseconds)
+{
+    Q_UNUSED(uniqueId);
+
+    previousTrackAboutToFinishSendRequested             = true;
+    previousTrackAboutToFinishSendRequestedMilliseconds = posBeforeEndMilliseconds;
+
+    emit requestAboutToFinishSendForPreviousTrack(trackInfo.url, posBeforeEndMilliseconds);
 }
 
 

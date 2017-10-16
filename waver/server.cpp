@@ -365,11 +365,19 @@ void WaverServer::reassignFadeIns()
 {
     for (int i = 0; i < playlistTracks.count(); i++) {
         if (i == 0) {
-            if ((currentTrack != NULL) && currentTrack->getNextTrackFadeInRequested()) {
-                playlistTracks.at(i)->startWithFadeIn(currentTrack->getNextTrackFadeInRequestedMilliseconds());
-            }
-            else {
-                playlistTracks.at(i)->startWithoutFadeIn();
+            if (currentTrack != NULL) {
+                if (currentTrack->getNextTrackFadeInRequested()) {
+                    playlistTracks.at(i)->startWithFadeIn(currentTrack->getNextTrackFadeInRequestedMilliseconds());
+                }
+                else {
+                    playlistTracks.at(i)->startWithoutFadeIn();
+                }
+                if (playlistTracks.at(i)->getPreviousTrackAboutToFinishSendRequested()) {
+                    currentTrack->setAboutToFinishSend(playlistTracks.at(i)->getPreviousTrackAboutToFinishSendRequestedMilliseconds());
+                }
+                else {
+                    currentTrack->resetAboutToFinishSend();
+                }
             }
         }
         else {
@@ -378,6 +386,12 @@ void WaverServer::reassignFadeIns()
             }
             else {
                 playlistTracks.at(i)->startWithoutFadeIn();
+            }
+            if (playlistTracks.at(i)->getPreviousTrackAboutToFinishSendRequested()) {
+                playlistTracks.at(i - 1)->setAboutToFinishSend(playlistTracks.at(i)->getPreviousTrackAboutToFinishSendRequestedMilliseconds());
+            }
+            else {
+                playlistTracks.at(i - 1)->resetAboutToFinishSend();
             }
         }
     }
@@ -1536,6 +1550,7 @@ Track *WaverServer::createTrack(TrackInfo trackInfo, QUuid pluginId)
     connect(track, SIGNAL(executeSettingsSql(QUuid, bool, QString, int, QString, QVariantList)),       this,  SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
     connect(track, SIGNAL(executeGlobalSettingsSql(QUuid, bool, QString, int, QString, QVariantList)), this,  SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
     connect(track, SIGNAL(requestFadeInForNextTrack(QUrl, qint64)),                                    this,  SLOT(trackRequestFadeInForNextTrack(QUrl, qint64)));
+    connect(track, SIGNAL(requestAboutToFinishSendForPreviousTrack(QUrl, qint64)),                     this,  SLOT(trackRequestAboutToFinishSendForPreviousTrack(QUrl, qint64)));
     connect(track, SIGNAL(playPosition(QUrl, bool, long, long)),                                       this,  SLOT(trackPosition(QUrl, bool, long, long)));
     connect(track, SIGNAL(aboutToFinish(QUrl)),                                                        this,  SLOT(trackAboutToFinish(QUrl)));
     connect(track, SIGNAL(finished(QUrl)),                                                             this,  SLOT(trackFinished(QUrl)));
@@ -1626,6 +1641,16 @@ void WaverServer::trackRequestFadeInForNextTrack(QUrl url, qint64 lengthMillisec
 
 
 // track signal handler
+void WaverServer::trackRequestAboutToFinishSendForPreviousTrack(QUrl url, qint64 posBeforeEndMilliseconds)
+{
+    // pass it on to current track; source can only be the first track in the playlist
+    if ((playlistTracks.count() > 0) && (url == playlistTracks.at(0)->getTrackInfo().url)) {
+        currentTrack->setAboutToFinishSend(posBeforeEndMilliseconds);
+    }
+}
+
+
+// track signal handler
 void WaverServer::trackPosition(QUrl url, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds)
 {
     // show previous track's time still? (during crossfade)
@@ -1656,8 +1681,8 @@ void WaverServer::trackPosition(QUrl url, bool decoderFinished, long knownDurati
         }
     }
 
-    // UI signal only once a second and if not showing previous still
-    if (!showPreviousTime && (positionSeconds != (positionMilliseconds / 1000))) {
+    // UI signal only once a second and if not showing previous still (there can be one signal while stopped, when decoder finishes)
+    if (!showPreviousTime && ((positionSeconds != (positionMilliseconds / 1000)) || currentTrack->status() == Track::Paused)) {
         positionSeconds = (positionMilliseconds / 1000);
 
         unableToStartCount = 0;

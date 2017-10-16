@@ -48,6 +48,7 @@ class PluginDspPre_004 : public PluginBase_004 {
         void requestFadeInForNextTrack(QUuid uniqueId, qint64 lengthMilliseconds);
         void requestInterrupt(QUuid uniqueId, qint64 posMilliseconds, bool withFadeOut);
         void requestAboutToFinishSend(QUuid uniqueId, qint64 posMilliseconds);
+        void requestAboutToFinishSendForPreviousTrack(QUuid uniqueId, qint64 posBeforeEndMilliseconds);
         void messageToDspPlugin(QUuid uniqueId, QUuid destinationUniqueId, int messageId, QVariant value);
 
         void bufferDone(QUuid uniqueId, QAudioBuffer *buffer);

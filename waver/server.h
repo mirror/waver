@@ -265,6 +265,7 @@ class WaverServer : public QObject {
         void trackLoadedPlugins(Track::PluginList pluginsWithUI);
         void trackLoadedPluginsWithUI(Track::PluginList pluginsWithUI);
         void trackRequestFadeInForNextTrack(QUrl url, qint64 lengthMilliseconds);
+        void trackRequestAboutToFinishSendForPreviousTrack(QUrl url, qint64 posBeforeEndMilliseconds);
         void trackPosition(QUrl url, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
         void trackAboutToFinish(QUrl url);
         void trackFinished(QUrl url);

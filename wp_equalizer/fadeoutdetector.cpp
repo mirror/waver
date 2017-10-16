@@ -171,3 +171,25 @@ qint64 FadeOutDetector::getLastNonSilentMSec()
 {
     return lastNonSilentUSec / 1000;
 }
+
+
+qint64 FadeOutDetector::getFadeInEndPoisitionMSec()
+{
+    qint64 retval   = envelope.first().positionUSec / 1000;
+    double previous = 0.0;
+
+    int i = 0;
+    while ((i <= envelope.count()) && (envelope.at(i).movingAverage > previous)) {
+        retval   = envelope.at(i).positionUSec / 1000;
+        previous = envelope.at(i).movingAverage;
+        i++;
+    }
+
+    return retval;
+}
+
+
+qint64 FadeOutDetector::checkedPositionMSec()
+{
+    return positionUSec / 1000;
+}

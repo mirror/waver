@@ -44,8 +44,8 @@ class Globals : public QObject {
         static QString appDesc();
 
         static QString author();
-        static QString email();
-        static QString website();
+        static QString email(bool linkOk);
+        static QString website(bool linkOk);
         static QString copyright();
         static QString license();
         static QString credits();

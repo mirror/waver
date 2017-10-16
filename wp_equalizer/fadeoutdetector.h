@@ -45,8 +45,10 @@ class FadeOutDetector : public IIRFilterCallback {
         void   filterCallback(double *sample, int channelIndex) override;
         qint64 getFadeOutStartPoisitionMSec();
         qint64 getFadeOutEndPoisitionMSec();
+        qint64 getFadeInEndPoisitionMSec();
         qint64 getFirstNonSilentMSec();
         qint64 getLastNonSilentMSec();
+        qint64 checkedPositionMSec();
 
 
     private:
