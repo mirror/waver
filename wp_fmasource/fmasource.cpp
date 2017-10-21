@@ -302,7 +302,6 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
 
             emit replacement(id, trackInfo);
         }
-        replacementOldTrack.removeFirst();
     }
 
     if (clientSqlIdentifier == SQL_OPEN_TOPLEVEL) {

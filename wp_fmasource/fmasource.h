@@ -172,7 +172,6 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
         bool               sendDiagnostics;
         State              state;
         int                openingId;
-        QVector<TrackInfo> replacementOldTrack;
         QString            searchCriteria;
 
         void setState(State state);

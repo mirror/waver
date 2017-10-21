@@ -38,6 +38,7 @@ NetworkDownloader::NetworkDownloader(QUrl url, QWaitCondition *waitCondition, QS
     downloadStarted  = false;
     readyEmitted     = false;
     downloadFinished = false;
+    errorOnUnderrun  = true;
 }
 
 
@@ -153,12 +154,10 @@ void NetworkDownloader::preCacheTimeout()
 // override
 qint64 NetworkDownloader::readData(char *data, qint64 maxlen)
 {
-    /*
-        if ((buffer.count() < 1) && (maxlen > 0)) {
+    if ((buffer.count() < 1) && (maxlen > 0) && (errorOnUnderrun)) {
         emit error("Download buffer underrun");
         return 0;
-        }
-    */
+    }
 
     qint64 returnPos = 0;
 
@@ -242,3 +241,8 @@ bool NetworkDownloader::isFinshed()
 }
 
 
+// public method
+void NetworkDownloader::setErrorOnUnderrun(bool errorOnUnderrun)
+{
+    this->errorOnUnderrun = errorOnUnderrun;
+}

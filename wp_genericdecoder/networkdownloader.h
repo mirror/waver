@@ -42,9 +42,6 @@
 #endif
 
 
-// TODO retry download if interrupted
-
-
 class NetworkDownloader : public QIODevice {
         Q_OBJECT
 
@@ -56,12 +53,13 @@ class NetworkDownloader : public QIODevice {
         qint64 readData(char *data, qint64 maxlen)     override;
         qint64 writeData(const char *data, qint64 len) override;
 
-        bool   isSequential() const override;
+        bool   isSequential()   const override;
         qint64 bytesAvailable() const override;
-        qint64 pos() const override;
+        qint64 pos()            const override;
 
         qint64 realBytesAvailable();
         bool   isFinshed();
+        void   setErrorOnUnderrun(bool errorOnUnderrun);
 
 
     private:
@@ -81,6 +79,7 @@ class NetworkDownloader : public QIODevice {
         bool downloadStarted;
         bool readyEmitted;
         bool downloadFinished;
+        bool errorOnUnderrun;
 
 
     signals:
