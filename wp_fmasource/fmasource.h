@@ -85,6 +85,7 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
         static const int SQL_CREATETABLE_BANNED           = 4;
         static const int SQL_STARTUPCHECK_GENRECOUNT      = 10;
         static const int SQL_STARTUPCHECK_GENRESLOADED    = 11;
+        static const int SQL_COLLECTIONCHECK_GENRE        = 12;
         static const int SQL_LOADMORE_GENRESWITHOUTALBUM  = 20;
         static const int SQL_LOADMORE_ALBUMSLOADED        = 21;
         static const int SQL_LOADMORE_ALBUMSWITHOUTTRACKS = 22;

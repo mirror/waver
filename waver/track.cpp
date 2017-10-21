@@ -1615,6 +1615,13 @@ void Track::infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo)
         }
     }
 
+    if (!trackInfo.actions.isEmpty()) {
+        this->trackInfo.actions.clear();
+        foreach (int actionId, trackInfo.actions.keys()) {
+            this->trackInfo.actions.insert(actionId, trackInfo.actions.value(actionId));
+        }
+    }
+
     emit trackInfoUpdated(trackInfo.url);
 
     // other information can be queried after tags are discovered, but do this only once when play begins (see also in setStatus)

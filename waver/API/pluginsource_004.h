@@ -54,6 +54,7 @@ class PluginSource_004 : public PluginBase_004 {
         void searchResults(QUuid uniqueId, OpenTracks openTracks);
         void requestRemoveTracks(QUuid uniqueId);
         void requestRemoveTrack(QUuid uniqueId, QUrl url);
+        void updateTrackInfo(QUuid uniqueId, TrackInfo trackInfo);
 
 
     public slots:

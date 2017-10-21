@@ -134,14 +134,13 @@ void LocalSource::loadedConfiguration(QUuid uniqueId, QJsonDocument configuratio
 
     bool doScan = false;
     if (configuration.isEmpty()) {
-        if (directories.isEmpty()) {
-            // use default locations
-            directories.append(QStandardPaths::standardLocations(QStandardPaths::MusicLocation));
+        // use default locations
+        directories.clear();
+        directories.append(QStandardPaths::standardLocations(QStandardPaths::MusicLocation));
 
-            // must save updated configuration
-            emit saveConfiguration(id, configToJson());
-            doScan = true;
-        }
+        // must save updated configuration
+        emit saveConfiguration(id, configToJson());
+        doScan = true;
     }
     else {
         jsonToConfig(configuration);
@@ -691,10 +690,18 @@ void LocalSource::action(QUuid uniqueId, int actionKey, QUrl url)
 
     if (actionKey == 1) {
         mutex.lock();
-        lovedFileNames.append(url.toLocalFile());
+        if (!lovedFileNames.contains(url.toLocalFile())) {
+            lovedFileNames.append(url.toLocalFile());
+        }
         mutex.unlock();
 
         emit saveGlobalConfiguration(id, configToJsonGlobal());
+
+        TrackInfo trackInfo;
+        trackInfo.url = url;
+        trackInfo.actions.insert(0, "Ban");
+        trackInfo.actions.insert(2, "Unlove");
+        emit updateTrackInfo(id, trackInfo);
 
         reCalculateLoved = true;
         return;
@@ -706,6 +713,12 @@ void LocalSource::action(QUuid uniqueId, int actionKey, QUrl url)
         mutex.unlock();
 
         emit saveGlobalConfiguration(id, configToJsonGlobal());
+
+        TrackInfo trackInfo;
+        trackInfo.url = url;
+        trackInfo.actions.insert(0, "Ban");
+        trackInfo.actions.insert(1, "Love");
+        emit updateTrackInfo(id, trackInfo);
 
         reCalculateLoved = true;
         return;

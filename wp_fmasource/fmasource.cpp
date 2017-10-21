@@ -206,6 +206,12 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
         return;
     }
 
+    if (clientSqlIdentifier == SQL_COLLECTIONCHECK_GENRE) {
+        if (results.count() > 0) {
+            selectedGenres.append(results.at(0).value("id").toInt());
+        }
+    }
+
     if (clientSqlIdentifier == SQL_LOADMORE_GENRESWITHOUTALBUM) {
         if (results.count() > 0) {
             foreach (QVariantHash result, results) {
@@ -879,13 +885,15 @@ QJsonDocument FMASource::configToJson()
 // configuration conversion
 void FMASource::jsonToConfig(QJsonDocument jsonDocument)
 {
+    selectedGenres.clear();
 
     if (jsonDocument.object().contains("selected_genres")) {
-        selectedGenres.clear();
-
         foreach (QJsonValue jsonValue, jsonDocument.object().value("selected_genres").toArray()) {
             selectedGenres.append(jsonValue.toInt());
         }
+    }
+    else {
+        emit executeGlobalSql(id, false, "", SQL_COLLECTIONCHECK_GENRE, "SELECT id FROM genres ORDER BY RANDOM() LIMIT 1", QVariantList());
     }
 }
 

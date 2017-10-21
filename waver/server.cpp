@@ -183,6 +183,10 @@ QJsonDocument WaverServer::configToJsonGlobal()
 // configuration conversion
 void WaverServer::jsonToConfig(QJsonDocument jsonDocument)
 {
+    foreach (SourcePlugin sourcePlugin, sourcePlugins) {
+        sourcePlugin.priority = 100;
+    }
+
     if (jsonDocument.object().contains("source_priorities")) {
         foreach (QJsonValue dataItem, jsonDocument.object().value("source_priorities").toArray()) {
             QVariantList sourcePriority = dataItem.toArray().toVariantList();
@@ -469,6 +473,9 @@ void WaverServer::handleCollectionMenuChange(QJsonDocument jsonDocument)
 
     currentCollection = newCurrentCollection;
     emit saveWaverSettings("", configToJsonGlobal());
+
+    // load waver settings for new collection
+    emit loadWaverSettings(currentCollection);
 
     // load plugin settings for new collection
     foreach (QUuid pluginId, sourcePlugins.keys()) {
@@ -974,6 +981,7 @@ void WaverServer::pluginLibsLoaded()
                 connect(plugin, SIGNAL(diagnostics(QUuid, DiagnosticData)),                                 this,   SLOT(pluginDiagnostics(QUuid, DiagnosticData)));
                 connect(plugin, SIGNAL(executeSql(QUuid, bool, QString, int, QString, QVariantList)),       this,   SLOT(executeSql(QUuid, bool, QString, int, QString, QVariantList)));
                 connect(plugin, SIGNAL(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)), this,   SLOT(executeGlobalSql(QUuid, bool, QString, int, QString, QVariantList)));
+                connect(plugin, SIGNAL(updateTrackInfo(QUuid, TrackInfo)),                                  this,   SLOT(pluginUpdateTrackInfo(QUuid, TrackInfo)));
                 connect(this,   SIGNAL(castFinishedEarly(QUuid, QUrl, int)),                                plugin, SLOT(castFinishedEarly(QUuid, QUrl, int)));
                 connect(this,   SIGNAL(getReplacement(QUuid)),                                              plugin, SLOT(getReplacement(QUuid)));
                 connect(this,   SIGNAL(startDiagnostics(QUuid)),                                            plugin, SLOT(startDiagnostics(QUuid)));
@@ -1310,6 +1318,25 @@ void WaverServer::pluginUnready(QUuid uniqueId)
 void WaverServer::pluginInfoMessage(QUuid uniqueId, QString message)
 {
     outputError(message, sourcePlugins.value(uniqueId).name, false);
+}
+
+
+// source plugin signal handler
+void WaverServer::pluginUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo)
+{
+    Q_UNUSED(uniqueId);
+
+    if ((previousTrack != NULL) && (previousTrack->getTrackInfo().url == trackInfo.url)) {
+        previousTrack->infoUpdateTrackInfo(QUuid(), trackInfo);
+    }
+    if ((currentTrack != NULL) && (currentTrack->getTrackInfo().url == trackInfo.url)) {
+        currentTrack->infoUpdateTrackInfo(QUuid(), trackInfo);
+    }
+    foreach (Track *track, playlistTracks) {
+        if (track->getTrackInfo().url == trackInfo.url) {
+            track->infoUpdateTrackInfo(QUuid(), trackInfo);
+        }
+    }
 }
 
 

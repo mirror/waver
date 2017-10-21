@@ -282,7 +282,7 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
                 resultLastCalculated = buffer.startTime();
 
                 double result = replayGainCalculator->calculateResult();
-                emit messageToDspPlugin(id, QUuid("{8D25249B-4D29-4279-80B5-4DCDD23A5809}"), DSP_MESSAGE_REPLAYGAIN, result);
+                emit messageToDspPlugin(id, QUuid("{8D25249B-4D29-4279-80B5-4DC0D23A5809}"), DSP_MESSAGE_REPLAYGAIN, result);
                 diagnosticsHash["replay_gain"] = result;
 
                 if (sendDiagnostics) {

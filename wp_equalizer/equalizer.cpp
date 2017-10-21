@@ -83,7 +83,7 @@ void Equalizer::setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMute
 // constructor
 Equalizer::Equalizer()
 {
-    id = QUuid("{8D25249B-4D29-4279-80B5-4DCDD23A5809}");
+    id = QUuid("{8D25249B-4D29-4279-80B5-4DC0D23A5809}");
 
     equalizerFilters = NULL;
 
@@ -142,12 +142,20 @@ void Equalizer::filterCallback(double *sample, int channelIndex)
 // server event handler
 void Equalizer::run()
 {
-    emit loadConfiguration(id);
+    emit loadGlobalConfiguration(id);
 }
 
 
 // server event handler
 void Equalizer::loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(configuration);
+}
+
+
+// server event handler
+void Equalizer::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
 {
     if (uniqueId != id) {
         return;
@@ -187,14 +195,6 @@ void Equalizer::loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)
     if (sampleRate > 0) {
         createFilters();
     }
-}
-
-
-// server event handler
-void Equalizer::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
-{
-    Q_UNUSED(uniqueId);
-    Q_UNUSED(configuration);
 }
 
 
@@ -266,8 +266,8 @@ void Equalizer::uiResults(QUuid uniqueId, QJsonDocument results)
         return;
     }
 
-    saveConfiguration(id, results);
-    loadedConfiguration(id, results);
+    saveGlobalConfiguration(id, results);
+    loadedGlobalConfiguration(id, results);
 }
 
 

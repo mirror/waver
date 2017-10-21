@@ -243,6 +243,7 @@ class Track : public QObject {
         void startPluginDiagnostics(QUuid uniquedId);
         void stopPluginDiagnostics(QUuid uniquedId);
 
+        void infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo);
 
     private slots:
 
@@ -275,7 +276,6 @@ class Track : public QObject {
         void dspPreRequestAboutToFinishSendForPreviousTrack(QUuid uniqueId, qint64 posBeforeEndMilliseconds);
         void dspPreMessageToDspPlugin(QUuid uniqueId, QUuid destinationUniqueId, int messageId, QVariant value);
 
-        void infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo);
         void infoAddInfoHtml(QUuid uniqueId, QString info);
 
 };

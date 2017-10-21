@@ -746,26 +746,31 @@ QJsonDocument RadioSource::configToJsonGlobal()
 // configuration conversion
 void RadioSource::jsonToConfig(QJsonDocument jsonDocument)
 {
-    if (jsonDocument.object().contains("selected_genres")) {
-        selectedGenres.clear();
+    selectedGenres.clear();
 
+    if (jsonDocument.object().contains("selected_genres")) {
         foreach (QJsonValue jsonValue, jsonDocument.object().value("selected_genres").toArray()) {
             QString value = jsonValue.toString();
 
-            // this is for the UI results - can't have the same twice but some subgenres are listed under multiple primary genres
-            int i      = 0;
+            // make sure to use only existing
             bool found = false;
-            while ((i < selectedGenres.count()) && !found) {
-                if (selectedGenres.at(i).compare(value) == 0) {
+            foreach (Genre genre, genres) {
+                if (genre.name.compare(value) == 0) {
                     found = true;
                 }
-                i++;
+            }
+            if (!found) {
+                continue;
             }
 
-            if (!found) {
+            // some subgenres appear more than once
+            if (!selectedGenres.contains(value)) {
                 selectedGenres.append(value);
             }
         }
+    }
+    else {
+        selectedGenres.append(genres.at(qrand() % genres.count()).name);
     }
 }
 

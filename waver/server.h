@@ -244,6 +244,7 @@ class WaverServer : public QObject {
         void pluginReady(QUuid uniqueId);
         void pluginUnready(QUuid uniqueId);
         void pluginInfoMessage(QUuid uniqueId, QString message);
+        void pluginUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo);
         void pluginDiagnostics(QUuid uniqueId, DiagnosticData data);
         void pluginDiagnostics(QUuid uniqueId, QUrl url, DiagnosticData data);
 
