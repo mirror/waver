@@ -40,7 +40,7 @@ class Feed : public QObject {
 
     public:
 
-        explicit Feed(QUrl url);
+        explicit Feed(QUrl url, QString userAgent);
         ~Feed();
 
         size_t read(char *data, size_t maxlen);
@@ -60,9 +60,10 @@ class Feed : public QObject {
 
         QMutex mutex;
 
-        bool downloadStarted;
-        bool readyEmitted;
-        bool downloadFinished;
+        bool    downloadStarted;
+        bool    readyEmitted;
+        bool    downloadFinished;
+        QString userAgent;
 
 
     signals:
