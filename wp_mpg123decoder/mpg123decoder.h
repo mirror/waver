@@ -41,6 +41,9 @@
 #include "../waver/API/plugindecoder_004.h"
 #include "../waver/pluginfactory.h"
 
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
 
 extern "C" WP_MPG123DECODER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
@@ -50,13 +53,14 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_004 {
 
     public:
 
-        int     pluginType()                   override;
-        QString pluginName()                   override;
-        int     pluginVersion()                override;
-        QString waverVersionAPICompatibility() override;
-        QUuid   persistentUniqueId()           override;
-        bool    hasUI()                        override;
-        void    setUrl(QUrl url)               override;
+        int     pluginType()                    override;
+        QString pluginName()                    override;
+        int     pluginVersion()                 override;
+        QString waverVersionAPICompatibility()  override;
+        QUuid   persistentUniqueId()            override;
+        bool    hasUI()                         override;
+        void    setUrl(QUrl url)                override;
+        void    setUserAgent(QString userAgent) override;
 
         explicit Mpg123Decoder();
         ~Mpg123Decoder();
@@ -79,8 +83,13 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_004 {
         QThread  feedThread;
         Feed    *feed;
 
-        int    memoryUsage;
-        qint64 decodedMicroSeconds;
+        int     memoryUsage;
+        qint64  decodedMicroSeconds;
+        bool    sendDiagnostics;
+        QString userAgent;
+
+        void    sendDiagnosticsData();
+        QString formatBytes(double bytes);
 
 
     public slots:
@@ -88,7 +97,8 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_004 {
         void run()                 override;
         void start(QUuid uniqueId) override;
 
-        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
+        void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)       override;
+        void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration) override;
 
         void sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)       override;
         void globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results) override;
@@ -96,6 +106,9 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_004 {
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
+
+        void startDiagnostics(QUuid uniqueId) override;
+        void stopDiagnostics(QUuid uniqueId)  override;
 
         void bufferDone(QUuid uniqueId, QAudioBuffer *buffer) override;
 

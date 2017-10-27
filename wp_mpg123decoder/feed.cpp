@@ -24,9 +24,10 @@
 #include "feed.h"
 
 // constructor
-Feed::Feed(QUrl url) : QObject(0)
+Feed::Feed(QUrl url, QString userAgent) : QObject(0)
 {
-    this->url           = url;
+    this->url       = url;
+    this->userAgent = userAgent;
 
     file                 = NULL;
     networkAccessManager = NULL;
@@ -80,7 +81,12 @@ void Feed::run()
     }
 
     networkAccessManager = new QNetworkAccessManager();
-    networkReply = networkAccessManager->get(QNetworkRequest(url));
+
+    QNetworkRequest networkRequest = QNetworkRequest(url);
+    networkRequest.setRawHeader("User-Agent", userAgent.toUtf8());
+    networkRequest.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+    networkRequest.setMaximumRedirectsAllowed(12);
+    networkReply = networkAccessManager->get(networkRequest);
 
     connect(networkReply, SIGNAL(downloadProgress(qint64, qint64)),    this, SLOT(networkDownloadProgress(qint64, qint64)));
     connect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));

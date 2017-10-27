@@ -51,27 +51,21 @@ QString Mpg123Decoder::pluginName()
 // global method
 int Mpg123Decoder::pluginVersion()
 {
-    return 1;
+    return 2;
 }
 
 
 // overrided virtual function
 QString Mpg123Decoder::waverVersionAPICompatibility()
 {
-    return "0.0.1";
+    return "0.0.4";
 }
 
 
-// constructor
-Mpg123Decoder::Mpg123Decoder()
+// global method
+void Mpg123Decoder::setUserAgent(QString userAgent)
 {
-    id = QUuid("{6D1360A1-AE45-4D40-AFAF-74BD35982B53}");
-
-    memoryUsage         = 0;
-    decodedMicroSeconds = 0;
-
-    feed         = NULL;
-    mpg123Handle = NULL;
+    this->userAgent = userAgent;
 }
 
 
@@ -96,6 +90,19 @@ void Mpg123Decoder::setUrl(QUrl url)
     if (this->url.isEmpty()) {
         this->url = url;
     }
+}
+
+
+// constructor
+Mpg123Decoder::Mpg123Decoder()
+{
+    id = QUuid("{6D1360A1-AE45-4D40-AFAF-74BD35982B53}");
+
+    memoryUsage         = 0;
+    decodedMicroSeconds = 0;
+    feed                = NULL;
+    mpg123Handle        = NULL;
+    sendDiagnostics     = false;
 }
 
 
@@ -165,7 +172,7 @@ void Mpg123Decoder::start(QUuid uniqueId)
 
     // start feed (a.k.a. file reader/downloader)
 
-    feed = new Feed(url);
+    feed = new Feed(url, userAgent);
     feed->moveToThread(&feedThread);
 
     connect(&feedThread, SIGNAL(started()),  feed, SLOT(run()));
@@ -187,6 +194,14 @@ void Mpg123Decoder::start(QUuid uniqueId)
 
 // this plugin has no configuration
 void Mpg123Decoder::loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(configuration);
+}
+
+
+// this plugin has no configuration
+void Mpg123Decoder::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
 {
     Q_UNUSED(uniqueId);
     Q_UNUSED(configuration);
@@ -241,6 +256,29 @@ void Mpg123Decoder::uiResults(QUuid uniqueId, QJsonDocument results)
 }
 
 
+// client wants to receive updates of this plugin's diagnostic information
+void Mpg123Decoder::startDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = true;
+    sendDiagnosticsData();
+}
+
+
+// client doesnt want to receive updates of this plugin's diagnostic information anymore
+void Mpg123Decoder::stopDiagnostics(QUuid uniqueId)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    sendDiagnostics = false;
+}
+
+
 // network download signal handler
 void Mpg123Decoder::feedReady()
 {
@@ -274,8 +312,7 @@ void Mpg123Decoder::feedReady()
         }
 
         // feed to the decoder
-        int mpg123Result = mpg123_decode(mpg123Handle, (unsigned char *)&input, input_size, (unsigned char *)&output, OUTPUT_SIZE,
-                &output_size);
+        int mpg123Result = mpg123_decode(mpg123Handle, (unsigned char *)&input, input_size, (unsigned char *)&output, OUTPUT_SIZE, &output_size);
         if (mpg123Result == MPG123_ERR) {
             emit error(id, QString(mpg123_plain_strerror(mpg123Result)));
             wasError = true;
@@ -338,6 +375,11 @@ void Mpg123Decoder::feedReady()
             // remember buffer so it can be deleted later
             audioBuffers.append(audioBuffer);
 
+            // diagnostics
+            if (sendDiagnostics) {
+                sendDiagnosticsData();
+            }
+
             // emit signal
             emit bufferAvailable(id, audioBuffer);
 
@@ -394,4 +436,49 @@ void Mpg123Decoder::bufferDone(QUuid uniqueId, QAudioBuffer *buffer)
         memoryUsage -= buffer->byteCount();
         delete buffer;
     }
+
+    // diagnostics
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
+}
+
+
+// private method
+void Mpg123Decoder::sendDiagnosticsData()
+{
+    DiagnosticData diagnosticData;
+    diagnosticData.append({ "PCM buffer size", formatBytes((double) memoryUsage) });
+    if (audioBuffers.count() > 0) {
+        QString type;
+        switch (audioBuffers.last()->format().sampleType()) {
+            case QAudioFormat::SignedInt:
+                type = "signed";
+                break;
+            case QAudioFormat::UnSignedInt:
+                type = "unsigned";
+                break;
+            case QAudioFormat::Float:
+                type = "floating point";
+                break;
+            default:
+                type = "unknown";
+        }
+        diagnosticData.append({ "PCM format", QString("%1 Hz, %2 bit, %3").arg(audioBuffers.last()->format().sampleRate()).arg(audioBuffers.last()->format().sampleSize()).arg(type) });
+    }
+    emit diagnostics(id, diagnosticData);
+}
+
+
+// helper
+QString Mpg123Decoder::formatBytes(double bytes)
+{
+    if (bytes > (1024 * 1024)) {
+        return QString("%1 MB").arg(bytes / (1024 * 1024), 0, 'f', 2);
+    }
+    else if (bytes > 1024) {
+        return QString("%1 KB").arg(bytes / 1024, 0, 'f', 2);
+    }
+
+    return QString("%1 B").arg(bytes, 0, 'f', 0);
 }
