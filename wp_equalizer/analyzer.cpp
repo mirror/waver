@@ -303,12 +303,15 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
                 }
 
                 // fade in check
-                if (!fadeInChecked && (fadeOutDetector->checkedPositionMSec() >= 12000)) {
+                if (!fadeInChecked && (fadeOutDetector->checkedPositionMSec() >= 16000)) {
                     fadeInChecked = true;
 
-                    qint64 fadeInEnd = qMin(fadeOutDetector->getFadeInEndPoisitionMSec(), (qint64)12000);
+                    qint64 fadeInEnd = fadeOutDetector->getFadeInEndPoisitionMSec();
                     if (fadeInEnd >= 6000) {
-                        emit requestAboutToFinishSendForPreviousTrack(id, qRound64((double)fadeInEnd));
+                        qint64 beforeEndMilliseconds = qMin((qint64)7500, fadeInEnd / 2);
+
+                        emit requestAboutToFinishSendForPreviousTrack(id, beforeEndMilliseconds);
+                        diagnosticsHash["prev_track_about_to_finish_send"] = beforeEndMilliseconds;
                     }
                 }
 
@@ -445,6 +448,9 @@ void Analyzer::sendDiagnosticsData()
     }
     if (diagnosticsHash.contains("transition_length")) {
         diagnosticData.append({ "Transition length", QDateTime::fromMSecsSinceEpoch(diagnosticsHash.value("transition_length").toLongLong(), QTimeZone::utc()).toString("hh:mm:ss.zzz") });
+    }
+    if (diagnosticsHash.contains("prev_track_about_to_finish_send")) {
+        diagnosticData.append({ "Early start", QDateTime::fromMSecsSinceEpoch(diagnosticsHash.value("prev_track_about_to_finish_send").toLongLong(), QTimeZone::utc()).toString("hh:mm:ss.zzz") });
     }
 
     emit diagnostics(id, diagnosticData);

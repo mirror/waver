@@ -179,7 +179,7 @@ qint64 FadeOutDetector::getFadeInEndPoisitionMSec()
     double previous = 0.0;
 
     int i = 0;
-    while ((i <= envelope.count()) && (envelope.at(i).movingAverage > previous)) {
+    while ((i < envelope.count()) && (envelope.at(i).movingAverage > previous)) {
         retval   = envelope.at(i).positionUSec / 1000;
         previous = envelope.at(i).movingAverage;
         i++;
