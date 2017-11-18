@@ -16,4 +16,3 @@ unix:!android {
 windows {
    SUBDIRS += wp_mpg123decoder/wp_mpg123decoder.pro
 }
-
