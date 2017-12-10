@@ -1042,6 +1042,7 @@ void LocalSource::sendDiagnosticsData()
     diagnosticData.append({ "In queue",       QString("%1").arg(trackFileNames.count()) });
     diagnosticData.append({ "Already played", QString("%1").arg(alreadyPlayedTrackFileNames.count()) });
     diagnosticData.append({ "Banned",         QString("%1").arg(bannedFileNames.count()) });
+    diagnosticData.append({ "Loved",          QString("%1").arg(lovedFileNames.count()) });
 
     emit diagnostics(id, diagnosticData);
 }

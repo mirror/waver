@@ -6,8 +6,8 @@ SUBDIRS +=                                 \
    wp_radiosource/wp_radiosource.pro       \
    wp_soundoutput/wp_soundoutput.pro       \
    wp_taglibinfo/wp_taglibinfo.pro         \
-   wp_albumart/wp_albumart.pro \
-    wp_fmasource
+   wp_albumart/wp_albumart.pro             \
+   wp_fmasource
 
 unix:!android {
    SUBDIRS += wp_genericdecoder/wp_genericdecoder.pro
