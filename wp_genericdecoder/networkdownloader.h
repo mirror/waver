@@ -97,6 +97,7 @@ class NetworkDownloader : public QIODevice {
 
         void networkDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
         void networkError(QNetworkReply::NetworkError code);
+        void networkRedirected(QUrl url);
 
         void connectionTimeout();
         void preCacheTimeout();

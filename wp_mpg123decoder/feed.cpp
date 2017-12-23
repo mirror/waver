@@ -88,8 +88,9 @@ void Feed::run()
     networkRequest.setMaximumRedirectsAllowed(12);
     networkReply = networkAccessManager->get(networkRequest);
 
-    connect(networkReply, SIGNAL(downloadProgress(qint64, qint64)),    this, SLOT(networkDownloadProgress(qint64, qint64)));
+    connect(networkReply, SIGNAL(downloadProgress(qint64, qint64)),   this, SLOT(networkDownloadProgress(qint64, qint64)));
     connect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
+    connect(networkReply, SIGNAL(redirected(QUrl)),                   this, SLOT(networkRedirected(QUrl)));
 
     QTimer::singleShot(7500, this, SLOT(connectionTimeout()));
     QTimer::singleShot(15000, this, SLOT(preCacheTimeout()));
@@ -136,6 +137,28 @@ void Feed::networkError(QNetworkReply::NetworkError code)
 
     downloadFinished = true;
     emit error(networkReply->errorString());
+}
+
+
+// network reply signal handler
+void Feed::networkRedirected(QUrl url)
+{
+    // TODO this list should be supplied by source plugins
+    QStringList blacklist;
+    blacklist.append("JamendoLounge");
+    blacklist.append("appblockingus.mp3");
+
+    bool redirectOK = true;
+    foreach (QString blacklistItem, blacklist) {
+        if (url.toString().contains(blacklistItem)) {
+            redirectOK = false;
+            break;
+        }
+    }
+
+    if (!redirectOK) {
+        networkReply->abort();
+    }
 }
 
 
