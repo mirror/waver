@@ -32,8 +32,8 @@
 #include <QTimer>
 #include <QUrl>
 
+#include <QThread>
 
-// TODO retry download if interrupted
 
 class Feed : public QObject {
         Q_OBJECT
@@ -45,6 +45,7 @@ class Feed : public QObject {
 
         size_t read(char *data, size_t maxlen);
         bool   isFinished();
+        qint64 getTotalBufferBytes();
 
 
     private:
@@ -64,6 +65,10 @@ class Feed : public QObject {
         bool    readyEmitted;
         bool    downloadFinished;
         QString userAgent;
+
+        qint64 totalBufferBytes;
+
+        void updateTotalBufferBytes();
 
 
     signals:

@@ -52,14 +52,14 @@ QString GenericDecoder::pluginName()
 // global method
 int GenericDecoder::pluginVersion()
 {
-    return 2;
+    return 3;
 }
 
 
 // global function
 QString GenericDecoder::waverVersionAPICompatibility()
 {
-    return "0.0.4";
+    return "0.0.5";
 }
 
 
@@ -74,6 +74,13 @@ QUuid GenericDecoder::persistentUniqueId()
 bool GenericDecoder::hasUI()
 {
     return false;
+}
+
+
+// overriden virtual function
+int GenericDecoder::priority()
+{
+    return 2;
 }
 
 
@@ -320,7 +327,7 @@ void GenericDecoder::decoderBufferReady()
     }
 
     // get the data
-    QAudioBuffer bufferReady = audioDecoder->read();
+    bufferReady = audioDecoder->read();
 
     // make a copy
     QAudioBuffer *audioBuffer = new QAudioBuffer(QByteArray((char *)bufferReady.constData(), bufferReady.byteCount()), bufferReady.format(), decodedMicroSeconds);
@@ -343,6 +350,7 @@ void GenericDecoder::decoderBufferReady()
     // delay to limit memory usage and also to relieve the CPU (the exponential curve allows fast decoding in the beginning, then slows it down sharply as memory gets closer to limit)
     double        factor = qPow(memoryUsage, 12) / qPow(MAX_MEMORY, 12);
     unsigned long delay  = qMin((unsigned long)2500 * qRound((factor * USEC_PER_SEC) / 2500), USEC_PER_SEC - 1);
+    delay = 1000;
     if (delay > 0) {
         QThread::currentThread()->usleep(delay);
     }

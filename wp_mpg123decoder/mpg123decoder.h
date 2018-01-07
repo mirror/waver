@@ -38,7 +38,7 @@
 
 #include "feed.h"
 #include "mpg123lib/mpg123.h"
-#include "../waver/API/plugindecoder_004.h"
+#include "../waver/API/plugindecoder_005.h"
 #include "../waver/pluginfactory.h"
 
 #ifdef QT_DEBUG
@@ -48,7 +48,7 @@
 extern "C" WP_MPG123DECODER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_004 {
+class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_005 {
         Q_OBJECT
 
     public:
@@ -59,6 +59,7 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_004 {
         QString waverVersionAPICompatibility()  override;
         QUuid   persistentUniqueId()            override;
         bool    hasUI()                         override;
+        int     priority()                      override;
         void    setUrl(QUrl url)                override;
         void    setUserAgent(QString userAgent) override;
 

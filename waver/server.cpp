@@ -1820,7 +1820,6 @@ void WaverServer::trackFinished(QUrl url)
             }
         }
     }
-
     foreach (Track *track, tracksToBeDeleted) {
         unableToStartCount++;
         emit unableToStart(track->getSourcePluginId(), track->getTrackInfo().url);

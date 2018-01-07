@@ -47,12 +47,11 @@ NetworkDownloader::~NetworkDownloader()
 {
     if (networkReply != NULL) {
         networkReply->abort();
-        networkReply->close();
-        networkReply->deleteLater();
+        delete networkReply;
     }
 
     if (networkAccessManager != NULL) {
-        networkAccessManager->deleteLater();
+        delete networkAccessManager;
     }
 
     foreach (QByteArray *bufferData, buffer) {

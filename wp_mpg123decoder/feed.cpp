@@ -36,6 +36,7 @@ Feed::Feed(QUrl url, QString userAgent) : QObject(0)
     downloadStarted  = false;
     readyEmitted     = false;
     downloadFinished = false;
+    totalBufferBytes = 0;
 }
 
 
@@ -44,17 +45,16 @@ Feed::~Feed()
 {
     if (file != NULL) {
         file->close();
-        file->deleteLater();
+        delete file;
     }
 
     if (networkReply != NULL) {
         networkReply->abort();
-        networkReply->close();
-        networkReply->deleteLater();
+        delete networkReply;
     }
 
     if (networkAccessManager != NULL) {
-        networkAccessManager->deleteLater();
+        delete networkAccessManager;
     }
 
     foreach (QByteArray *bufferData, buffer) {
@@ -127,6 +127,9 @@ void Feed::networkDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
         emit ready();
         readyEmitted = true;
     }
+
+    // update stats
+    updateTotalBufferBytes();
 }
 
 
@@ -165,14 +168,6 @@ void Feed::networkRedirected(QUrl url)
 // timer signal handler
 void Feed::fileReadTimer()
 {
-    // get the total size of data already read into memory
-    qint64 totalBufferBytes = 0;
-    mutex.lock();
-    foreach (QByteArray *bufferElement, buffer) {
-        totalBufferBytes += bufferElement->size();
-    }
-    mutex.unlock();
-
     // if it's too much, let's wait until decoder processes some of it
     if (totalBufferBytes >= (10 * 1024 * 1024)) {
         QTimer::singleShot(5000, this, SLOT(fileReadTimer()));
@@ -200,6 +195,9 @@ void Feed::fileReadTimer()
         downloadFinished = true;
         return;
     }
+
+    // update stats
+    updateTotalBufferBytes();
 
     // read more later
     QTimer::singleShot(2500, this, SLOT(fileReadTimer()));
@@ -233,6 +231,9 @@ void Feed::preCacheTimeout()
 // public method
 size_t Feed::read(char *data, size_t maxlen)
 {
+    // update stats
+    updateTotalBufferBytes();
+
     if (buffer.count() < 1) {
         return 0;
     }
@@ -267,3 +268,20 @@ bool Feed::isFinished()
 }
 
 
+// public metod
+qint64 Feed::getTotalBufferBytes()
+{
+    return totalBufferBytes;
+}
+
+
+// helper
+void Feed::updateTotalBufferBytes()
+{
+    totalBufferBytes = 0;
+    mutex.lock();
+    foreach (QByteArray *bufferElement, buffer) {
+        totalBufferBytes += bufferElement->size();
+    }
+    mutex.unlock();
+}

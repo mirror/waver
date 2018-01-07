@@ -10,9 +10,11 @@ SUBDIRS +=                                 \
    wp_fmasource
 
 unix:!android {
-   SUBDIRS += wp_genericdecoder/wp_genericdecoder.pro
+    SUBDIRS +=                                  \
+        wp_genericdecoder/wp_genericdecoder.pro \
+        wp_mpg123decoder/wp_mpg123decoder.pro
 }
 
 windows {
-   SUBDIRS += wp_mpg123decoder/wp_mpg123decoder.pro
+    SUBDIRS += wp_mpg123decoder/wp_mpg123decoder.pro
 }

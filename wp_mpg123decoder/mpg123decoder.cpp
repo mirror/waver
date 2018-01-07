@@ -51,14 +51,14 @@ QString Mpg123Decoder::pluginName()
 // global method
 int Mpg123Decoder::pluginVersion()
 {
-    return 2;
+    return 3;
 }
 
 
 // overrided virtual function
 QString Mpg123Decoder::waverVersionAPICompatibility()
 {
-    return "0.0.4";
+    return "0.0.5";
 }
 
 
@@ -80,6 +80,13 @@ QUuid Mpg123Decoder::persistentUniqueId()
 bool Mpg123Decoder::hasUI()
 {
     return false;
+}
+
+
+// overriden virtual function
+int Mpg123Decoder::priority()
+{
+    return 1;
 }
 
 
@@ -448,7 +455,12 @@ void Mpg123Decoder::bufferDone(QUuid uniqueId, QAudioBuffer *buffer)
 void Mpg123Decoder::sendDiagnosticsData()
 {
     DiagnosticData diagnosticData;
+
     diagnosticData.append({ "PCM buffer size", formatBytes((double) memoryUsage) });
+    if (feed != NULL) {
+        diagnosticData.append({ "Raw buffer size", formatBytes((double) feed->getTotalBufferBytes()) });
+    }
+
     if (audioBuffers.count() > 0) {
         QString type;
         switch (audioBuffers.last()->format().sampleType()) {

@@ -63,6 +63,7 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUui
     replacable                                          = true;
 
     // priority maps
+    QMap<int, QUuid> decoderPriorityMap;
     QMap<int, QUuid> dspPrePriorityMap;
     QMap<int, QUuid> dspPriorityMap;
 
@@ -83,7 +84,7 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUui
 
             switch (pluginType) {
                 case PLUGIN_TYPE_DECODER:
-                    setupDecoderPlugin(plugin);
+                    setupDecoderPlugin(plugin, loadedLib.fromEasyPluginInstallDir, &decoderPriorityMap);
                     break;
                 case PLUGIN_TYPE_DSP_PRE:
                     setupDspPrePlugin(plugin, loadedLib.fromEasyPluginInstallDir, &dspPrePriorityMap);
@@ -108,6 +109,9 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUui
 
     // convert priority maps to vectors (iterating through a map is done in ascending order, and greater number means less priority, so it works out well)
     QMap<int, QUuid>::const_iterator i;
+    for (i = decoderPriorityMap.begin(); i != decoderPriorityMap.end(); ++i) {
+        decoderPriority.append(i.value());
+    }
     for (i = dspPrePriorityMap.begin(); i != dspPrePriorityMap.end(); ++i) {
         dspPrePriority.append(i.value());
     }
@@ -162,7 +166,7 @@ Track::~Track()
 
 
 // helper
-void Track::setupDecoderPlugin(QObject *plugin)
+void Track::setupDecoderPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap)
 {
     // get the ID of the plugin
     QUuid persistentUniqueId;
@@ -191,9 +195,6 @@ void Track::setupDecoderPlugin(QObject *plugin)
     }
     decoderPlugins[persistentUniqueId] = pluginData;
 
-    // add to decoders' list, this makes it easier to look for decoders
-    decoders.append(persistentUniqueId);
-
     // initializations
     if (!plugin->metaObject()->invokeMethod(plugin, "setUrl", Qt::DirectConnection, Q_ARG(QUrl, trackInfo.url))) {
         emit error(trackInfo.url, true, "Failed to invoke method on plugin");
@@ -203,6 +204,22 @@ void Track::setupDecoderPlugin(QObject *plugin)
             emit error(trackInfo.url, true, "Failed to invoke method on plugin");
         }
     }
+
+    // add to priority map
+    int priorty;
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
+        if (!plugin->metaObject()->invokeMethod(plugin, "priority", Qt::DirectConnection, Q_RETURN_ARG(int, priorty))) {
+            emit error(trackInfo.url, true, "Failed to invoke method on plugin");
+        }
+        priorty += (fromEasyPluginInstallDir ? 25000 : 0);
+    }
+    else {
+        priorty = 50000;
+    }
+    while (priorityMap->contains(priorty)) {
+        priorty++;
+    }
+    priorityMap->insert(priorty, persistentUniqueId);
 
     // move to appropriate thread
     plugin->moveToThread(&decoderThread);
@@ -606,8 +623,8 @@ void Track::setStatus(Status status)
         decoderThread.start();
         dspPreThread.start();
 
-        if (currentDecoderId.isNull() && (decoders.count() > 0)) {
-            currentDecoderId    = decoders.at(0);
+        if (currentDecoderId.isNull() && (decoderPriority.count() > 0)) {
+            currentDecoderId    = decoderPriority.at(0);
             decodedMilliseconds = 0;
             emit startDecode(currentDecoderId);
         }
@@ -622,8 +639,8 @@ void Track::setStatus(Status status)
         dspThread.start();
         outputThread.start();
 
-        if (currentDecoderId.isNull() && (decoders.count() > 0)) {
-            currentDecoderId    = decoders.at(0);
+        if (currentDecoderId.isNull() && (decoderPriority.count() > 0)) {
+            currentDecoderId    = decoderPriority.at(0);
             decodedMilliseconds = 0;
             emit startDecode(currentDecoderId);
         }
@@ -1374,8 +1391,8 @@ void Track::decoderError(QUuid uniqueId, QString errorMessage)
     // is this pre-buffering meaning playing did not start yet
     if (currentStatus != Playing) {
         // is there a next decoder?
-        int nextDecoderIndex = decoders.indexOf(currentDecoderId) + 1;
-        if (nextDecoderIndex < decoders.count()) {
+        int nextDecoderIndex = decoderPriority.indexOf(currentDecoderId) + 1;
+        if (nextDecoderIndex < decoderPriority.count()) {
             // as far as the outside world goes, this is not an error, so let's just try the next decoder
 
             dspSynchronizerQueue.clear();
@@ -1395,14 +1412,14 @@ void Track::decoderError(QUuid uniqueId, QString errorMessage)
                 pluginData.bufferMutex->unlock();
             }
 
-            currentDecoderId    = decoders.at(nextDecoderIndex);
+            currentDecoderId    = decoderPriority.at(nextDecoderIndex);
             decodedMilliseconds = 0;
-            emit startDecode(uniqueId);
+            emit startDecode(currentDecoderId);
 
             return;
         }
 
-        // there were no more decoders, so this is fatal at this point
+        // there are no more decoders, so this is fatal at this point
         emit error(trackInfo.url, true, errorMessage);
         return;
     }

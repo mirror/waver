@@ -132,7 +132,7 @@ class Track : public QObject {
         PluginsWithQueue outputPlugins;
         PluginsNoQueue   infoPlugins;
 
-        QVector<QUuid>     decoders;
+        QVector<QUuid>     decoderPriority;
         QVector<QUuid>     dspPrePriority;
         QVector<QUuid>     dspPriority;
         QVector<QObject *> dspPointers;
@@ -166,7 +166,7 @@ class Track : public QObject {
         bool   tagsChecked;
         bool   replacable;
 
-        void setupDecoderPlugin(QObject *plugin);
+        void setupDecoderPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);
         void setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);
         void setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);
         void setupOutputPlugin(QObject *plugin);
