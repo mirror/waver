@@ -260,9 +260,53 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
 
                 diagnosticsHash["format_supported"] = true;
                 switch (buffer.format().sampleRate()) {
+                    case 96000:
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_96000_YULEWALK_A, REPLAYGAIN_96000_YULEWALK_B));
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_96000_BUTTERWORTH_A, REPLAYGAIN_96000_BUTTERWORTH_B));
+                        break;
+                    case 88200:
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_88200_YULEWALK_A, REPLAYGAIN_88200_YULEWALK_B));
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_88200_BUTTERWORTH_A, REPLAYGAIN_88200_BUTTERWORTH_B));
+                        break;
+                    case 64000:
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_64000_YULEWALK_A, REPLAYGAIN_64000_YULEWALK_B));
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_64000_BUTTERWORTH_A, REPLAYGAIN_64000_BUTTERWORTH_B));
+                        break;
+                    case 48000:
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_48000_YULEWALK_A, REPLAYGAIN_48000_YULEWALK_B));
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_48000_BUTTERWORTH_A, REPLAYGAIN_48000_BUTTERWORTH_B));
+                        break;
                     case 44100:
                         replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_44100_YULEWALK_A, REPLAYGAIN_44100_YULEWALK_B));
                         replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_44100_BUTTERWORTH_A, REPLAYGAIN_44100_BUTTERWORTH_B));
+                        break;
+                    case 32000:
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_32000_YULEWALK_A, REPLAYGAIN_32000_YULEWALK_B));
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_32000_BUTTERWORTH_A, REPLAYGAIN_32000_BUTTERWORTH_B));
+                        break;
+                    case 24000:
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_24000_YULEWALK_A, REPLAYGAIN_24000_YULEWALK_B));
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_24000_BUTTERWORTH_A, REPLAYGAIN_24000_BUTTERWORTH_B));
+                        break;
+                    case 22050:
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_22050_YULEWALK_A, REPLAYGAIN_22050_YULEWALK_B));
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_22050_BUTTERWORTH_A, REPLAYGAIN_22050_BUTTERWORTH_B));
+                        break;
+                    case 16000:
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_16000_YULEWALK_A, REPLAYGAIN_16000_YULEWALK_B));
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_16000_BUTTERWORTH_A, REPLAYGAIN_16000_BUTTERWORTH_B));
+                        break;
+                    case 12000:
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_12000_YULEWALK_A, REPLAYGAIN_12000_YULEWALK_B));
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_12000_BUTTERWORTH_A, REPLAYGAIN_12000_BUTTERWORTH_B));
+                        break;
+                    case 11025:
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_11025_YULEWALK_A, REPLAYGAIN_11025_YULEWALK_B));
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_11025_BUTTERWORTH_A, REPLAYGAIN_11025_BUTTERWORTH_B));
+                        break;
+                    case 8000:
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_8000_YULEWALK_A, REPLAYGAIN_8000_YULEWALK_B));
+                        replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_8000_BUTTERWORTH_A, REPLAYGAIN_8000_BUTTERWORTH_B));
                         break;
                     default:
                         emit infoMessage(id, "PCM format not supported by ReplayGain Analyzer");

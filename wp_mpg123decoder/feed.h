@@ -32,8 +32,6 @@
 #include <QTimer>
 #include <QUrl>
 
-#include <QThread>
-
 
 class Feed : public QObject {
         Q_OBJECT

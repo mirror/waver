@@ -83,8 +83,6 @@ class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder_005 {
         QAudioDecoder           *audioDecoder;
         QVector<QAudioBuffer *>  audioBuffers;
 
-        QAudioBuffer bufferReady;
-
         QFile             *file;
         QThread            networkThread;
         NetworkDownloader *networkDownloader;

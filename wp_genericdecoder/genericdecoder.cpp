@@ -327,7 +327,7 @@ void GenericDecoder::decoderBufferReady()
     }
 
     // get the data
-    bufferReady = audioDecoder->read();
+    QAudioBuffer bufferReady = audioDecoder->read();
 
     // make a copy
     QAudioBuffer *audioBuffer = new QAudioBuffer(QByteArray((char *)bufferReady.constData(), bufferReady.byteCount()), bufferReady.format(), decodedMicroSeconds);
