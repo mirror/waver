@@ -31,6 +31,7 @@
 #include <QAudioBuffer>
 #include <QAudioFormat>
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QMutex>
 #include <QSysInfo>
 #include <QThread>
@@ -86,6 +87,7 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_005 {
 
         int     memoryUsage;
         qint64  decodedMicroSeconds;
+        qint64  lastNotNeedMore;
         bool    sendDiagnostics;
         QString userAgent;
 

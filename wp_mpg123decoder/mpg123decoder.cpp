@@ -110,6 +110,7 @@ Mpg123Decoder::Mpg123Decoder()
     feed                = NULL;
     mpg123Handle        = NULL;
     sendDiagnostics     = false;
+    lastNotNeedMore     = 0;
 }
 
 
@@ -320,10 +321,23 @@ void Mpg123Decoder::feedReady()
 
         // feed to the decoder
         int mpg123Result = mpg123_decode(mpg123Handle, (unsigned char *)&input, input_size, (unsigned char *)&output, OUTPUT_SIZE, &output_size);
+        if (lastNotNeedMore == 0) {
+            lastNotNeedMore = QDateTime::currentMSecsSinceEpoch();
+        }
         if (mpg123Result == MPG123_ERR) {
             emit error(id, QString(mpg123_plain_strerror(mpg123Result)));
             wasError = true;
             continue;
+        }
+        if (mpg123Result == MPG123_NEED_MORE) {
+            if ((lastNotNeedMore != 0) && (lastNotNeedMore < (QDateTime::currentMSecsSinceEpoch() - 5000))) {
+                emit error(id, QString(mpg123_plain_strerror(mpg123Result)));
+                wasError = true;
+                continue;
+            }
+        }
+        else {
+            lastNotNeedMore = QDateTime::currentMSecsSinceEpoch();
         }
 
         // there will be more than one decoded chucks for each input
@@ -406,6 +420,16 @@ void Mpg123Decoder::feedReady()
                 emit error(id, QString(mpg123_plain_strerror(mpg123Result)));
                 wasError    = true;
                 output_size = 0;
+            }
+            if (mpg123Result == MPG123_NEED_MORE) {
+                if ((lastNotNeedMore != 0) && (lastNotNeedMore < (QDateTime::currentMSecsSinceEpoch() - 5000))) {
+                    emit error(id, QString(mpg123_plain_strerror(mpg123Result)));
+                    wasError = true;
+                    continue;
+                }
+            }
+            else {
+                lastNotNeedMore = QDateTime::currentMSecsSinceEpoch();
             }
         }
     }
