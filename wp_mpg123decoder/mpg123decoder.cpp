@@ -325,8 +325,17 @@ void Mpg123Decoder::feedReady()
             lastNotNeedMore = QDateTime::currentMSecsSinceEpoch();
         }
         if (mpg123Result == MPG123_ERR) {
-            emit error(id, QString(mpg123_plain_strerror(mpg123Result)));
-            wasError = true;
+            // don't send error message if not too much raw data remains undecoded, some files have padding zeros for some reason
+            if (!feed->isFinished() || (feed->getTotalBufferBytes() > NOT_ERROR_REMAINING)) {
+                emit error(id, QString(mpg123_plain_strerror(mpg123Result)));
+                wasError = true;
+            }
+            else {
+                input_size = feed->read(&input[0], INPUT_SIZE);
+                while (input_size > 0) {
+                    input_size = feed->read(&input[0], INPUT_SIZE);
+                }
+            }
             continue;
         }
         if (mpg123Result == MPG123_NEED_MORE) {
@@ -417,15 +426,23 @@ void Mpg123Decoder::feedReady()
             // get more decoded pcm data
             int mpg123Result = mpg123_decode(mpg123Handle, NULL, 0, (unsigned char *)&output, OUTPUT_SIZE, &output_size);
             if (mpg123Result == MPG123_ERR) {
-                emit error(id, QString(mpg123_plain_strerror(mpg123Result)));
-                wasError    = true;
+                // don't send error message if not too much raw data remains undecoded, some files have padding zeros for some reason
+                if (!feed->isFinished() || (feed->getTotalBufferBytes() > NOT_ERROR_REMAINING)) {
+                    emit error(id, QString(mpg123_plain_strerror(mpg123Result)));
+                    wasError = true;
+                }
+                else {
+                    input_size = feed->read(&input[0], INPUT_SIZE);
+                    while (input_size > 0) {
+                        input_size = feed->read(&input[0], INPUT_SIZE);
+                    }
+                }
                 output_size = 0;
             }
             if (mpg123Result == MPG123_NEED_MORE) {
                 if ((lastNotNeedMore != 0) && (lastNotNeedMore < (QDateTime::currentMSecsSinceEpoch() - 5000))) {
                     emit error(id, QString(mpg123_plain_strerror(mpg123Result)));
                     wasError = true;
-                    continue;
                 }
             }
             else {

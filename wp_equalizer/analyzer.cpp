@@ -240,8 +240,7 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
 
     while (bufferQueue->count() > 0) {
         // Replay Gain analysis does change the signal, so let's make a copy of the buffer
-        QAudioBuffer buffer = QAudioBuffer(QByteArray((char *)bufferQueue->at(0)->constData(), bufferQueue->at(0)->byteCount()),
-                bufferQueue->at(0)->format(), bufferQueue->at(0)->startTime());
+        QAudioBuffer buffer = QAudioBuffer(QByteArray((char *)bufferQueue->at(0)->constData(), bufferQueue->at(0)->byteCount()), bufferQueue->at(0)->format(), bufferQueue->at(0)->startTime());
 
         // had to wait with filters setup for the first buffer because format needed
         if (!filtersSetup) {
@@ -249,8 +248,7 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
 
             sampleType = IIRFilter::getSampleTypeFromAudioFormat(buffer.format());
 
-            // TODO support more sample rates
-            QVector<int> supportedSampleRates({44100});
+            QVector<int> supportedSampleRates({ 96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000 });
 
             // set up only if supported
             if ((sampleType != IIRFilter::Unknown) && supportedSampleRates.contains(buffer.format().sampleRate())) {
@@ -308,15 +306,16 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
                         replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_8000_YULEWALK_A, REPLAYGAIN_8000_YULEWALK_B));
                         replayGainFilter->appendFilter(CoefficientList(REPLAYGAIN_8000_BUTTERWORTH_A, REPLAYGAIN_8000_BUTTERWORTH_B));
                         break;
-                    default:
-                        emit infoMessage(id, "PCM format not supported by ReplayGain Analyzer");
-                        diagnosticsHash["format_supported"] = false;
-                        if (sendDiagnostics) {
-                            sendDiagnosticsData();
-                        }
                 }
                 replayGainFilter->getFilter(0)->setCallbackRaw((IIRFilterCallback *)fadeOutDetector, (IIRFilterCallback::FilterCallbackPointer)&FadeOutDetector::filterCallback);
                 replayGainFilter->getFilter(1)->setCallbackFiltered((IIRFilterCallback *)replayGainCalculator, (IIRFilterCallback::FilterCallbackPointer)&ReplayGainCalculator::filterCallback);
+            }
+            else {
+                emit infoMessage(id, "PCM format not supported by ReplayGain Analyzer");
+                diagnosticsHash["format_supported"] = false;
+                if (sendDiagnostics) {
+                    sendDiagnosticsData();
+                }
             }
         }
 

@@ -70,10 +70,11 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_005 {
 
     private:
 
-        static const unsigned long MAX_MEMORY   = 50 * 1024 * 1024;
-        static const unsigned long USEC_PER_SEC = 1000000;
-        static const size_t        INPUT_SIZE   = 4 * 1024;
-        static const size_t        OUTPUT_SIZE  = 16 * 1024;
+        static const unsigned long MAX_MEMORY          = 50 * 1024 * 1024;
+        static const qint64        NOT_ERROR_REMAINING = 250 * 1024;
+        static const unsigned long USEC_PER_SEC        = 1000000;
+        static const size_t        INPUT_SIZE          = 4 * 1024;
+        static const size_t        OUTPUT_SIZE         = 16 * 1024;
 
         QUuid id;
         QUrl  url;

@@ -1412,8 +1412,9 @@ void Track::decoderError(QUuid uniqueId, QString errorMessage)
                 pluginData.bufferMutex->unlock();
             }
 
-            currentDecoderId    = decoderPriority.at(nextDecoderIndex);
-            decodedMilliseconds = 0;
+            currentDecoderId      = decoderPriority.at(nextDecoderIndex);
+            decodedMilliseconds   = 0;
+            dspInitialBufferCount = 0;
             emit startDecode(currentDecoderId);
 
             return;
