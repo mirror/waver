@@ -1061,6 +1061,7 @@ void RadioSource::tuneInStarter()
 {
     // already tuning in?
     if (state == TuneIn) {
+        // TODO increase replacement count
         return;
     }
 
@@ -1116,14 +1117,15 @@ void RadioSource::tuneIn()
                 trackInfo.actions.insert(0, "Ban");
             }
 
+            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET playcount = playcount + 1 WHERE url = ?", QVariantList({ station.url.toString() }));
+
             if ((station.destination == Playlist) || (station.destination == Open) || (station.destination == Search)) {
                 tracksInfo.append(trackInfo);
             }
             if (station.destination == Replacement) {
                 emit replacement(id, trackInfo);
+                break;
             }
-
-            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET playcount = playcount + 1 WHERE url = ?", QVariantList({ station.url.toString() }));
         }
         if (tracksInfo.count() > 0) {
             emit playlist(id, tracksInfo);

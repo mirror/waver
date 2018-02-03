@@ -311,6 +311,9 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
                     default:
                         emit infoMessage(id, "PCM format not supported by ReplayGain Analyzer");
                         diagnosticsHash["format_supported"] = false;
+                        if (sendDiagnostics) {
+                            sendDiagnosticsData();
+                        }
                 }
                 replayGainFilter->getFilter(0)->setCallbackRaw((IIRFilterCallback *)fadeOutDetector, (IIRFilterCallback::FilterCallbackPointer)&FadeOutDetector::filterCallback);
                 replayGainFilter->getFilter(1)->setCallbackFiltered((IIRFilterCallback *)replayGainCalculator, (IIRFilterCallback::FilterCallbackPointer)&ReplayGainCalculator::filterCallback);
