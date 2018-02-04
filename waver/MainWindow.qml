@@ -394,10 +394,7 @@ ApplicationWindow {
             pluginId      : id,
             pluginName    : name,
             pluginPriority: priority,
-            pluginFeedback: 0,
         });
-
-        calculateSourcePrioritiesCount();
     }
 
 
@@ -467,23 +464,6 @@ ApplicationWindow {
         case 4:
             menuAbout();
             break;
-        }
-    }
-
-    function calculateSourcePrioritiesCount()
-    {
-        var totalPriority = 0;
-        for(var i = 0; i < sourcePrioritiesItems.count; i++) {
-            totalPriority += sourcePrioritiesItems.get(i).pluginPriority;
-        }
-
-        for(var i = 0; i < sourcePrioritiesItems.count; i++) {
-            var count = Math.round((((100 / totalPriority) * sourcePrioritiesItems.get(i).pluginPriority) / 100) * (tracks_per_source * sourcePrioritiesItems.count));
-            if (count < 1) {
-                count = 1;
-            }
-
-            sourcePrioritiesItems.get(i).pluginFeedback = count;
         }
     }
 
@@ -1384,10 +1364,9 @@ ApplicationWindow {
                 anchors.right: sourcePriorityFeedback.left
                 value: pluginPriority
                 from: 1
-                to: 100
+                to: 10
                 onValueChanged: {
                     pluginPriority = Math.round(value);
-                    calculateSourcePrioritiesCount()
                 }
             }
 
@@ -1395,7 +1374,7 @@ ApplicationWindow {
                 id: sourcePriorityFeedback
                 anchors.right: parent.right
                 anchors.rightMargin: 6
-                text: pluginFeedback
+                text: pluginPriority
                 anchors.verticalCenter: sourcePrioritySlider.verticalCenter
             }
         }
@@ -1705,6 +1684,7 @@ ApplicationWindow {
             // labels and their background
 
             Rectangle {
+                id: label_bkg
                 anchors.right: parent.right
                 anchors.rightMargin: 6
                 anchors.left: parent.left
@@ -1758,14 +1738,13 @@ ApplicationWindow {
                 anchors.leftMargin: 9
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 3
+                width: label_bkg.width * 0.85
             }
             PlatformLabel {
                 id: track
                 text: "Track"
                 font.pointSize: userMessage.font.pointSize * smallMul
                 font.italic: true
-                anchors.left: album.right
-                anchors.leftMargin: 6
                 anchors.right: year.left
                 anchors.rightMargin: 6
                 anchors.bottom: parent.bottom

@@ -87,7 +87,7 @@ class WaverServer : public QObject {
 
     private:
 
-        static const int  MAX_TRACKS_AT_ONCE            = 4;
+        static const int  GIVE_UP_TRACKS_COUNT          = 12;
         static const long START_DECODE_PRE_MILLISECONDS = 45 * 1000;
 
         struct SourcePlugin {

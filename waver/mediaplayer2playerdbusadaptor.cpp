@@ -78,7 +78,7 @@ QVariantMap MediaPlayer2PlayerDBusAdaptor::metadata()
     returnValue.insert("mpris:trackid",     mprisId);
     returnValue.insert("xesam:url",         QString(trackInfo.url.toEncoded()));
     returnValue.insert("xesam:title",       trackInfo.title);
-    returnValue.insert("xesam:artist",      trackInfo.performer);
+    returnValue.insert("xesam:artist",      QStringList(trackInfo.performer));
     returnValue.insert("xesam:album",       trackInfo.album);
     returnValue.insert("xesam:trackNumber", trackInfo.track);
 
@@ -230,10 +230,7 @@ void MediaPlayer2PlayerDBusAdaptor::waverServerIpcSend(QString data)
                 break;
             case IpcMessageUtils::TrackInfos:
                 properties.insert("Metadata", metadata());
-                if (firstTrack) {
-                    firstTrack = false;
-                    properties.insert("PlaybackStatus", playbackStatus());
-                }
+                properties.insert("PlaybackStatus", playbackStatus());
                 break;
             default:
                 break;
@@ -249,13 +246,12 @@ void MediaPlayer2PlayerDBusAdaptor::waverServerIpcSend(QString data)
         QDBusConnection::sessionBus().send(mprisMessage);
 
         if (properties.contains("Metadata")) {
-            QDBusMessage notificationMessage = QDBusMessage::createMethodCall("org.freedesktop.Notifications",
-                    "/org/freedesktop/Notifications", "org.freedesktop.Notifications", "Notify");
+            QDBusMessage notificationMessage = QDBusMessage::createMethodCall("org.freedesktop.Notifications", "/org/freedesktop/Notifications", "org.freedesktop.Notifications", "Notify");
             notificationMessage << "Waver";
             notificationMessage << notificationId;
             notificationMessage << "";
             notificationMessage << properties.value("Metadata").toMap().value("xesam:title");
-            notificationMessage << properties.value("Metadata").toMap().value("xesam:artist");
+            notificationMessage << properties.value("Metadata").toMap().value("xesam:artist").toStringList().at(0);
             notificationMessage << QStringList();
             notificationMessage << QVariantMap();
             notificationMessage << 4000;

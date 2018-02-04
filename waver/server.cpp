@@ -184,7 +184,7 @@ QJsonDocument WaverServer::configToJsonGlobal()
 void WaverServer::jsonToConfig(QJsonDocument jsonDocument)
 {
     foreach (SourcePlugin sourcePlugin, sourcePlugins) {
-        sourcePlugin.priority = 100;
+        sourcePlugin.priority = 4;
     }
 
     if (jsonDocument.object().contains("source_priorities")) {
@@ -193,7 +193,8 @@ void WaverServer::jsonToConfig(QJsonDocument jsonDocument)
 
             QUuid pluginId(sourcePriority.at(0).toString());
             if (sourcePlugins.contains(pluginId)) {
-                sourcePlugins[pluginId].priority = sourcePriority.at(1).toInt();
+                int priority = sourcePriority.at(1).toInt();
+                sourcePlugins[pluginId].priority = (priority > 10 ? 4 : priority);
             }
         }
     }
@@ -262,22 +263,19 @@ void WaverServer::outputError(QString errorMessage, QString title, bool fatal)
 // private method
 void WaverServer::requestPlaylist()
 {
-    // enumerate ready source plugins and also get sum of priorities
+    // enumerate ready source plugins
     QVector<QUuid> readyPlugins;
-    int            totalPriority = 0;
     foreach (QUuid pluginId, sourcePlugins.keys()) {
         if (sourcePlugins.value(pluginId).ready) {
             readyPlugins.append(pluginId);
         }
-
-        totalPriority += sourcePlugins.value(pluginId).priority;
     }
     if (readyPlugins.count() < 1) {
         return;
     }
 
     // not requesting anymore tracks if couldn't start too many tracks already
-    if (unableToStartCount >= (readyPlugins.count() * MAX_TRACKS_AT_ONCE)) {
+    if (unableToStartCount >= GIVE_UP_TRACKS_COUNT) {
         outputError("Too many tracks couldn't start. Not requesting tracks anymore until a manually added track plays.", "", false);
         return;
     }
@@ -297,14 +295,8 @@ void WaverServer::requestPlaylist()
         }
     }
 
-    // calculate track count
-    int count = qRound(((((double)100 / totalPriority) * sourcePlugins.value(readyPlugins.at(pluginIndex)).priority) / 100) * (MAX_TRACKS_AT_ONCE * sourcePlugins.count()));
-    if (count < 1) {
-        count = 1;
-    }
-
     // emit signal
-    emit getPlaylist(readyPlugins.at(pluginIndex), count);
+    emit getPlaylist(readyPlugins.at(pluginIndex), sourcePlugins.value(readyPlugins.at(pluginIndex)).priority);
     lastPlaylistPlugin = readyPlugins.at(pluginIndex);
 }
 
@@ -921,7 +913,7 @@ void WaverServer::pluginLibsLoaded()
             // remember some info about the plugin
             SourcePlugin pluginData;
             pluginData.ready    = false;
-            pluginData.priority = 100;
+            pluginData.priority = 4;
             if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
                 finish("Failed to invoke method on plugin");
             }
