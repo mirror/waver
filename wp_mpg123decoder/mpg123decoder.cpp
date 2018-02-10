@@ -517,9 +517,35 @@ void Mpg123Decoder::sendDiagnosticsData()
             default:
                 type = "unknown";
         }
-        diagnosticData.append({ "PCM format", QString("%1 Hz, %2 bit, %3").arg(audioBuffers.last()->format().sampleRate()).arg(audioBuffers.last()->format().sampleSize()).arg(type) });
+        diagnosticData.append({ "PCM format", formatFormat(audioBuffers.last()->format(), false) });
     }
+
     emit diagnostics(id, diagnosticData);
+}
+
+
+// helper
+QString Mpg123Decoder::formatFormat(QAudioFormat format, bool compact)
+{
+    QString type;
+    switch (format.sampleType()) {
+        case QAudioFormat::SignedInt:
+            type = compact ? "s" : "signed";
+            break;
+        case QAudioFormat::UnSignedInt:
+            type = compact ? "u" : "unsigned";
+            break;
+        case QAudioFormat::Float:
+            type = compact ? "f" : "floating point";
+            break;
+        default:
+            type = compact ? "?" : "unknown";
+    }
+
+    if (compact) {
+        return QString("%1/%2%3").arg(format.sampleRate()).arg(format.sampleSize()).arg(type);
+    }
+    return QString("%1 Hz, %2 bit, %3").arg(format.sampleRate()).arg(format.sampleSize()).arg(type);
 }
 
 

@@ -39,6 +39,7 @@ LocalSource::LocalSource()
     readyEmitted = false;
 
     tracksSinceLoved = 0;
+    lovedFrequency   = 0;
     reCalculateLoved = true;
 
     variationSetting           = "Medium";
@@ -1039,10 +1040,11 @@ void LocalSource::sendDiagnosticsData()
 {
     DiagnosticData diagnosticData;
 
-    diagnosticData.append({ "In queue",       QString("%1").arg(trackFileNames.count()) });
-    diagnosticData.append({ "Already played", QString("%1").arg(alreadyPlayedTrackFileNames.count()) });
-    diagnosticData.append({ "Banned",         QString("%1").arg(bannedFileNames.count()) });
-    diagnosticData.append({ "Loved",          QString("%1").arg(lovedFileNames.count()) });
+    diagnosticData.append({ "In queue",           QString("%1").arg(trackFileNames.count()) });
+    diagnosticData.append({ "Already played",     QString("%1").arg(alreadyPlayedTrackFileNames.count()) });
+    diagnosticData.append({ "Banned",             QString("%1").arg(bannedFileNames.count()) });
+    diagnosticData.append({ "Loved",              QString("%1").arg(lovedFileNames.count()) });
+    diagnosticData.append({ "Tracks 'till loved", (lovedFrequency - tracksSinceLoved > 0 ? QString("Approx. %1").arg(lovedFrequency - tracksSinceLoved) : "Unknown") });
 
     emit diagnostics(id, diagnosticData);
 }

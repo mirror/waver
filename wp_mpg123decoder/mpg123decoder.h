@@ -93,6 +93,7 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_005 {
         QString userAgent;
 
         void    sendDiagnosticsData();
+        QString formatFormat(QAudioFormat format, bool compact);
         QString formatBytes(double bytes);
 
 
