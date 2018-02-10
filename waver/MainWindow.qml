@@ -286,7 +286,7 @@ ApplicationWindow {
             return;
         }
 
-        if ((playlistAddSelectableItems.count == 1) && (playlistAddSelectableItems.get(0).id == "LOADING")) {
+        if ((playlistAddSelectableItems.count == 1) && (playlistAddSelectableItems.get(0).label == "Loading...")) {
             playlistAddSelectableItems.clear();
         }
 
@@ -1127,7 +1127,7 @@ ApplicationWindow {
                 bottomPadding: 6
                 onLinkActivated: {
                     if (link == "open") {
-                        if (labelProperty == "..") {
+                        if ((labelProperty == "..") || (labelProperty == "Loading...")) {
                             playlistAdd.directoryHistory.pop();
                         }
                         else {
@@ -1139,12 +1139,25 @@ ApplicationWindow {
 
                         playlistAddSelectableItems.clear();
 
-                        playlistAddSelectableItems.append({
-                            pluginId: "LOADING",
-                            actions: "<i>--- please wait while getting data ---</i>",
-                            label: "Loading...",
-                            id: "LOADING",
-                        });
+                        if (playlistAdd.directoryHistory.length > 1) {
+                            var history = playlistAdd.directoryHistory[playlistAdd.directoryHistory.length - 2]
+                            if (history) {
+                                playlistAddSelectableItems.append({
+                                    pluginId: history.pluginId,
+                                    actions: "<i>--- <a href=\"open\">cancel</a> ---</i>",
+                                    label: "Loading...",
+                                    id: history.id
+                                });
+                            }
+                        }
+                        else {
+                            playlistAddSelectableItems.append({
+                                pluginId: "LOADING",
+                                actions: "<i>--- please wait while getting data ---</i>",
+                                label: "Loading...",
+                                id: "LOADING",
+                            });
+                        }
 
                         getOpenTracks(pluginIdProperty, idProperty);
                     }
