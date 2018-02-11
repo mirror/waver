@@ -44,6 +44,10 @@
 #include "../waver/pluginfactory.h"
 #include "../waver/API/pluginoutput_004.h"
 
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
+
 
 extern "C" WP_SOUNDOUTPUT_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 

@@ -44,7 +44,6 @@ RadioSource::RadioSource()
     readySent             = false;
     sendDiagnostics       = false;
     state                 = Idle;
-    lastReplacementTime   = 0;
 
     QFile::remove(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
     QFile::copy(":/images/wp_radiosource.png", QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
@@ -353,6 +352,22 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
         return;
     }
 
+    if (clientSqlIdentifier == SQL_STATION_UPDATED_PLAYLIST) {
+        QStringList notPlayed = clientIdentifier.split(',');
+
+        int playlistNotPlayed    = QString(notPlayed.at(0)).toInt();
+        int replacementNotPlayed = QString(notPlayed.at(1)).toInt();
+
+        if (playlistNotPlayed) {
+            getPlaylist(id, playlistNotPlayed);
+        }
+        for (int i = 1; i < replacementNotPlayed; i++) {
+            getReplacement(id);
+        }
+
+        return;
+    }
+
     if (clientSqlIdentifier == SQL_SEARCH_COUNT) {
         int counter = results.at(0).value("counter").toString().toInt();
         if (counter > SEARCH_TABLE_LIMIT) {
@@ -554,11 +569,8 @@ void RadioSource::getPlaylist(QUuid uniqueId, int trackCount)
         return;
     }
 
-    // how many to return
-    playlistReturnCount = trackCount;
-
     // select stations to return (these will be dealt with in the sql signal handler)
-    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_GET_PLAYLIST, "SELECT id, base, name, genre, url, logo FROM stations WHERE (banned = 0) AND (unable_to_start = 0) ORDER BY playcount, RANDOM() LIMIT ?", QVariantList({ bannedUrls.count() + unableToStartUrls.count() + playlistReturnCount }));
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_GET_PLAYLIST, "SELECT id, base, name, genre, url, logo FROM stations WHERE (banned = 0) AND (unable_to_start = 0) ORDER BY playcount, RANDOM() LIMIT ?", QVariantList({ trackCount }));
 
     return;
 }
@@ -571,12 +583,7 @@ void RadioSource::getReplacement(QUuid uniqueId)
         return;
     }
 
-    if ((QDateTime::currentMSecsSinceEpoch() - lastReplacementTime) < PLAYLIST_REQUEST_DELAY_MS) {
-        QThread::currentThread()->msleep(PLAYLIST_REQUEST_DELAY_MS);
-    }
-    lastReplacementTime = QDateTime::currentMSecsSinceEpoch();
-
-    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_GET_REPLACEMENT, "SELECT id, base, name, genre, url, logo FROM stations WHERE (banned = 0) AND (unable_to_start = 0) ORDER BY playcount, RANDOM() LIMIT ?", QVariantList({ bannedUrls.count() + unableToStartUrls.count() + 1 }));
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_GET_REPLACEMENT, "SELECT id, base, name, genre, url, logo FROM stations WHERE (banned = 0) AND (unable_to_start = 0) ORDER BY playcount, RANDOM() LIMIT 1", QVariantList());
 }
 
 
@@ -1061,7 +1068,6 @@ void RadioSource::tuneInStarter()
 {
     // already tuning in?
     if (state == TuneIn) {
-        // TODO increase replacement count
         return;
     }
 
@@ -1124,7 +1130,6 @@ void RadioSource::tuneIn()
             }
             if (station.destination == Replacement) {
                 emit replacement(id, trackInfo);
-                break;
             }
         }
         if (tracksInfo.count() > 0) {
@@ -1237,49 +1242,43 @@ void RadioSource::playlistFinished(QNetworkReply *reply)
     bool isBanned        = bannedUrls.contains(selectedUrl);
     bool isUnableToStart = selectedUrl.isEmpty() || isUnableToStartUrl(selectedUrl);
 
+    // update list
+    i                      = 0;
+    int deletedPlaylist    = 0;
+    int deletedReplacement = 0;
+    while (i < tuneInTemp.count()) {
+        if (tuneInTemp.at(i).id.compare(stationId) == 0) {
+            // must delete and if url can not be used
+            if (isBanned || isUnableToStart) {
+                if (tuneInTemp.at(i).destination == Playlist) {
+                    deletedPlaylist++;
+                    tuneInTemp.remove(i);
+                    continue;
+                }
+                if (tuneInTemp.at(i).destination == Replacement) {
+                    deletedReplacement++;
+                    tuneInTemp.remove(i);
+                    continue;
+                }
+            }
+
+            // otherwise it can be used
+            tuneInTemp[i].url = selectedUrl;
+        }
+        i++;
+    }
+
     // update database
     QVariantList values;
     values.append(selectedUrl.isEmpty() ? NULL : selectedUrl.toString());
     values.append(isBanned);
     values.append(isUnableToStart);
     values.append(stationId);
-    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET url = ?, banned = ?, unable_to_start = ? WHERE id = ?", values);
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, QString("%1,%2").arg(deletedPlaylist).arg(deletedReplacement), SQL_STATION_UPDATED_PLAYLIST, "UPDATE stations SET url = ?, banned = ?, unable_to_start = ? WHERE id = ?", values);
     QVariantList searchValues;
     searchValues.append(selectedUrl.isEmpty() ? NULL : selectedUrl.toString());
     searchValues.append(stationId);
     emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE search SET url = ? WHERE id = ?", searchValues);
-
-    // update list
-    i = 0;
-    while (i < tuneInTemp.count()) {
-        if (tuneInTemp.at(i).id.compare(stationId) == 0) {
-            // must delete if url can not be used
-            if (((tuneInTemp.at(i).destination == Playlist) || (tuneInTemp.at(i).destination == Replacement)) && (isBanned || isUnableToStart)) {
-                tuneInTemp.remove(i);
-                continue;
-            }
-            tuneInTemp[i].url = selectedUrl;
-        }
-        i++;
-    }
-
-    // check if there's enough playlist items with url (database query returned more to cover for banned and unable_to_start)
-    i = 0;
-    int playlistCount = 0;
-    while (i < tuneInTemp.count()) {
-        if ((tuneInTemp.at(i).destination == Playlist) || (tuneInTemp.at(i).destination == Replacement)) {
-            if (!tuneInTemp.at(i).url.isEmpty()) {
-                playlistCount++;
-                i++;
-                continue;
-            }
-            if (playlistCount >= (tuneInTemp.at(i).destination == Playlist ? playlistReturnCount : 1)) {
-                tuneInTemp.remove(i);
-                continue;
-            }
-        }
-        i++;
-    }
 
     // check the next station's URL after a bit of a delay so not to run too many requests rapidly
     QTimer::singleShot(PLAYLIST_REQUEST_DELAY_MS, this, SLOT(tuneIn()));

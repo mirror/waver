@@ -100,6 +100,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         static const int SQL_STATION_SEARCH_OPENING    = 20;
         static const int SQL_STATION_SEARCH_STATIONS   = 21;
         static const int SQL_STATION_SEARCH_PLAYLIST   = 22;
+        static const int SQL_STATION_UPDATED_PLAYLIST  = 23;
         static const int SQL_DIAGNOSTICS               = 90;
         static const int SQL_SEARCH_COUNT              = 91;
         static const int SQL_NO_RESULTS                = 99;
@@ -151,7 +152,6 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         bool    readySent;
         bool    sendDiagnostics;
         State   state;
-        qint64  lastReplacementTime;
 
         void setState(State state);
 
@@ -162,7 +162,6 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         QVector<UnableToStartUrl> unableToStartUrls;
         QHash<QString, QDateTime> stationsLoaded;
 
-        int                  playlistReturnCount;
         QVector<StationTemp> tuneInTemp;
 
         QVector<GenreSearchItem> genreSearchItems;
