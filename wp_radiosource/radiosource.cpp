@@ -225,6 +225,11 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
     }
 
     if (clientSqlIdentifier == SQL_GET_PLAYLIST) {
+        if (results.count() == lastPlaylistCount) {
+            maintenance(2, false);
+            return;
+        }
+
         foreach (QVariantHash result, results) {
             StationTemp stationTemp;
             stationTemp.id          = result.value("id").toString();
@@ -243,6 +248,11 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
     }
 
     if (clientSqlIdentifier == SQL_GET_REPLACEMENT) {
+        if (results.count() == 0) {
+            maintenance(0, true);
+            return;
+        }
+
         foreach (QVariantHash result, results) {
             StationTemp stationTemp;
             stationTemp.id          = result.value("id").toString();
@@ -568,6 +578,8 @@ void RadioSource::getPlaylist(QUuid uniqueId, int trackCount)
     if (uniqueId != id) {
         return;
     }
+
+    lastPlaylistCount = trackCount;
 
     // select stations to return (these will be dealt with in the sql signal handler)
     emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_GET_PLAYLIST, "SELECT id, base, name, genre, url, logo FROM stations WHERE (banned = 0) AND (unable_to_start = 0) ORDER BY playcount, RANDOM() LIMIT ?", QVariantList({ trackCount }));
@@ -1141,33 +1153,7 @@ void RadioSource::tuneIn()
         setState(Idle);
 
         // this is a good place to do some maintenance because here it's reasonable to expect that the plugin will be idle for a while
-
-        // make sure search table doesn't grow out of control
-        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_SEARCH_COUNT, "SELECT COUNT(*) AS counter FROM search", QVariantList());
-
-        // let's see if there are expired genres
-        QStringList stationsToBeReloaded;
-        foreach (QString genreName, stationsLoaded.keys()) {
-            if (stationsLoaded.value(genreName).secsTo(QDateTime::currentDateTime()) > (GENRE_EXPIRY_HOURS * 60 * 60)) {
-                stationsToBeReloaded.append(genreName);
-            }
-        }
-        foreach (QString genreName, stationsToBeReloaded) {
-            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "DELETE FROM stations WHERE genre = ?", QVariantList({ genreName }));
-            stationsLoaded.remove(genreName);
-        }
-
-        // let's see if there's a genre that needs to be loaded
-        QStringList genresToBeLoaded;
-        foreach (QString selectedGenre, selectedGenres) {
-            if (!stationsLoaded.contains(selectedGenre)) {
-                genresToBeLoaded.append(selectedGenre);
-            }
-        }
-        if (genresToBeLoaded.count() > 0) {
-            genreSearchItems.append({ genresToBeLoaded.at(qrand() % genresToBeLoaded.count()), StationList });
-            genreSearch();
-        }
+        maintenance(0, false);
 
         return;
     }
@@ -1323,6 +1309,45 @@ bool RadioSource::isUnableToStartUrl(QUrl url)
     }
 
     return returnValue;
+}
+
+
+// helper
+void RadioSource::maintenance(int playlistRequest, bool replaceRequest)
+{
+    // make sure search table doesn't grow out of control
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_SEARCH_COUNT, "SELECT COUNT(*) AS counter FROM search", QVariantList());
+
+    // let's see if there are expired genres
+    QStringList stationsToBeReloaded;
+    foreach (QString genreName, stationsLoaded.keys()) {
+        if (stationsLoaded.value(genreName).secsTo(QDateTime::currentDateTime()) > (GENRE_EXPIRY_HOURS * 60 * 60)) {
+            stationsToBeReloaded.append(genreName);
+        }
+    }
+    foreach (QString genreName, stationsToBeReloaded) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "DELETE FROM stations WHERE genre = ?", QVariantList({ genreName }));
+        stationsLoaded.remove(genreName);
+    }
+
+    // let's see if there's a genre that needs to be loaded
+    QStringList genresToBeLoaded;
+    foreach (QString selectedGenre, selectedGenres) {
+        if (!stationsLoaded.contains(selectedGenre)) {
+            genresToBeLoaded.append(selectedGenre);
+        }
+    }
+    if (genresToBeLoaded.count() > 0) {
+        genreSearchItems.append({ genresToBeLoaded.at(qrand() % genresToBeLoaded.count()), StationList });
+        genreSearch();
+    }
+
+    if (playlistRequest) {
+        getPlaylist(id, playlistRequest);
+    }
+    if (replaceRequest) {
+        getReplacement(id);
+    }
 }
 
 

@@ -150,6 +150,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         QString userAgent;
         QString key;
         bool    readySent;
+        int     lastPlaylistCount;
         bool    sendDiagnostics;
         State   state;
 
@@ -181,6 +182,8 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
         void removeExpiredUnableToStartUrls();
         bool isUnableToStartUrl(QUrl url);
+
+        void maintenance(int playlistRequest, bool replaceRequest);
 
         void sendDiagnosticsData();
 
