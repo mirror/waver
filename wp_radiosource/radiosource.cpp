@@ -225,8 +225,8 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
     }
 
     if (clientSqlIdentifier == SQL_GET_PLAYLIST) {
-        if (results.count() == lastPlaylistCount) {
-            maintenance(2, false);
+        if (results.count() == 0) {
+            maintenance(lastPlaylistCount, false);
             return;
         }
 
@@ -1342,12 +1342,14 @@ void RadioSource::maintenance(int playlistRequest, bool replaceRequest)
         genreSearch();
     }
 
-    if (playlistRequest) {
+    /*  This causes infinitve loop because of a genre that contains no stations - will have to create limit of how many times to try a genre
+        if (playlistRequest) {
         getPlaylist(id, playlistRequest);
-    }
-    if (replaceRequest) {
+        }
+        if (replaceRequest) {
         getReplacement(id);
-    }
+        }
+    */
 }
 
 
