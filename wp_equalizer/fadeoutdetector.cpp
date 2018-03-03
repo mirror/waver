@@ -136,6 +136,10 @@ void FadeOutDetector::filterCallback(double *sample, int channelIndex)
 
 qint64 FadeOutDetector::getFadeOutStartPoisitionMSec()
 {
+    if (envelope.count() < 1) {
+        return std::numeric_limits <qint64>::max();
+    }
+
     qint64 retval   = envelope.last().positionUSec / 1000;
     double previous = 0.0;
 
@@ -157,6 +161,10 @@ qint64 FadeOutDetector::getFadeOutStartPoisitionMSec()
 
 qint64 FadeOutDetector::getFadeOutEndPoisitionMSec()
 {
+    if (envelope.count() < 1) {
+        return std::numeric_limits <qint64>::max();
+    }
+
     return envelope.last().positionUSec / 1000;
 }
 
@@ -175,6 +183,10 @@ qint64 FadeOutDetector::getLastNonSilentMSec()
 
 qint64 FadeOutDetector::getFadeInEndPoisitionMSec()
 {
+    if (envelope.count() < 1) {
+        return 0;
+    }
+
     qint64 retval   = envelope.first().positionUSec / 1000;
     double previous = 0.0;
 

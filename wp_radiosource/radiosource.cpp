@@ -226,7 +226,7 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
 
     if (clientSqlIdentifier == SQL_GET_PLAYLIST) {
         if (results.count() == 0) {
-            maintenance(lastPlaylistCount, false);
+            maintenance();
             return;
         }
 
@@ -249,7 +249,7 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
 
     if (clientSqlIdentifier == SQL_GET_REPLACEMENT) {
         if (results.count() == 0) {
-            maintenance(0, true);
+            maintenance();
             return;
         }
 
@@ -1153,7 +1153,7 @@ void RadioSource::tuneIn()
         setState(Idle);
 
         // this is a good place to do some maintenance because here it's reasonable to expect that the plugin will be idle for a while
-        maintenance(0, false);
+        maintenance();
 
         return;
     }
@@ -1313,7 +1313,7 @@ bool RadioSource::isUnableToStartUrl(QUrl url)
 
 
 // helper
-void RadioSource::maintenance(int playlistRequest, bool replaceRequest)
+void RadioSource::maintenance()
 {
     // make sure search table doesn't grow out of control
     emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_SEARCH_COUNT, "SELECT COUNT(*) AS counter FROM search", QVariantList());
@@ -1341,15 +1341,6 @@ void RadioSource::maintenance(int playlistRequest, bool replaceRequest)
         genreSearchItems.append({ genresToBeLoaded.at(qrand() % genresToBeLoaded.count()), StationList });
         genreSearch();
     }
-
-    /*  This causes infinitve loop because of a genre that contains no stations - will have to create limit of how many times to try a genre
-        if (playlistRequest) {
-        getPlaylist(id, playlistRequest);
-        }
-        if (replaceRequest) {
-        getReplacement(id);
-        }
-    */
 }
 
 

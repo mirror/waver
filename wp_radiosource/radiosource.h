@@ -183,7 +183,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         void removeExpiredUnableToStartUrls();
         bool isUnableToStartUrl(QUrl url);
 
-        void maintenance(int playlistRequest, bool replaceRequest);
+        void maintenance();
 
         void sendDiagnosticsData();
 
