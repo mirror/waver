@@ -26,6 +26,7 @@
 
 #include "wp_albumart_global.h"
 
+#include <QDateTime>
 #include <QImage>
 #include <QJsonArray>
 #include <QJsonDocument>
@@ -60,6 +61,8 @@ class WP_ALBUMART_EXPORT AlbumArt : public PluginInfo_004 {
 
     public:
 
+        static const int ALREADY_FAILED_EXPIRY_DAYS = 30;
+
         explicit AlbumArt();
         ~AlbumArt();
 
@@ -75,9 +78,10 @@ class WP_ALBUMART_EXPORT AlbumArt : public PluginInfo_004 {
 
     private:
 
-        struct PerformerAlbum {
+        struct Failed {
             QString performer;
             QString album;
+            qint64  timestamp;
         };
 
         enum State {
@@ -91,16 +95,17 @@ class WP_ALBUMART_EXPORT AlbumArt : public PluginInfo_004 {
             NotFound
         };
 
-        QUuid                    id;
-        QString                  userAgent;
-        TrackInfo                trackInfo;
-        TrackInfo                requestedTrackInfo;
-        QVector<PerformerAlbum>  alreadyFailed;
-        QNetworkAccessManager   *networkAccessManager;
+        QUuid                  id;
+        QString                userAgent;
+        TrackInfo              trackInfo;
+        TrackInfo              requestedTrackInfo;
+        QVector<Failed>        alreadyFailed;
+        QNetworkAccessManager *networkAccessManager;
 
-        bool  sendDiagnostics;
-        State state;
-        bool  exact;
+        bool      sendDiagnostics;
+        State     state;
+        bool      exact;
+        QDateTime nextCheck;
 
         QJsonDocument configToJsonGlobal();
         void          jsonToConfigGlobal(QJsonDocument jsonDocument);

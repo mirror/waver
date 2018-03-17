@@ -50,7 +50,7 @@ QString AlbumArt::pluginName()
 // global method
 int AlbumArt::pluginVersion()
 {
-    return 1;
+    return 2;
 }
 
 
@@ -92,7 +92,7 @@ void AlbumArt::setUserAgent(QString userAgent)
 // constructor
 AlbumArt::AlbumArt()
 {
-    id = QUuid("{1AEC5C13-454B-48BB-AA2A-93246243EC87}");
+    id = QUuid("{1AEC5C13-454B-48B8-AA2A-93246243EC87}");
 
     networkAccessManager = NULL;
     state                = NotStartedYet;
@@ -153,17 +153,14 @@ void AlbumArt::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configura
     int  i     = 0;
     while (!found && (i < alreadyFailed.count())) {
         if ((requestedTrackInfo.performer.compare(alreadyFailed.at(i).performer, Qt::CaseInsensitive) == 0) && (requestedTrackInfo.album.compare(alreadyFailed.at(i).album, Qt::CaseInsensitive) == 0)) {
-            found = true;
+            state     = InAlreadyFailed;
+            nextCheck = QDateTime::fromMSecsSinceEpoch(alreadyFailed.at(i).timestamp).addDays(ALREADY_FAILED_EXPIRY_DAYS);
+            if (sendDiagnostics) {
+                sendDiagnosticsData();
+            }
+            return;
         }
         i++;
-    }
-    if (found) {
-        // diagnostics
-        state = InAlreadyFailed;
-        if (sendDiagnostics) {
-            sendDiagnosticsData();
-        }
-        return;
     }
 
     // diagnostics
@@ -290,7 +287,7 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
     if (reply->url().host().compare("musicbrainz.org") == 0) {
         if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) != 200) {
             // update configuration
-            alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album });
+            alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album, QDateTime::currentMSecsSinceEpoch() });
             emit saveGlobalConfiguration(id, configToJsonGlobal());
 
             // diagnostics
@@ -377,7 +374,7 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
         // not found?
         if (releaseGroupId.isEmpty()) {
             // update configuration
-            alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album });
+            alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album, QDateTime::currentMSecsSinceEpoch() });
             emit saveGlobalConfiguration(id, configToJsonGlobal());
 
             // diagnostics
@@ -405,7 +402,7 @@ void AlbumArt::networkFinished(QNetworkReply *reply)
     // can not check the host because of the redirection, but must check the status
     if (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute) != 200) {
         // update configuration
-        alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album });
+        alreadyFailed.append({ requestedTrackInfo.performer, requestedTrackInfo.album, QDateTime::currentMSecsSinceEpoch() });
         emit saveGlobalConfiguration(id, configToJsonGlobal());
 
         // diagnostics
@@ -457,8 +454,8 @@ void AlbumArt::signalTimer()
 QJsonDocument AlbumArt::configToJsonGlobal()
 {
     QJsonArray jsonArray;
-    foreach (PerformerAlbum performerAlbum, alreadyFailed) {
-        jsonArray.append(QJsonArray({ performerAlbum.performer, performerAlbum.album }));
+    foreach (Failed failed, alreadyFailed) {
+        jsonArray.append(QJsonArray({ failed.performer, failed.album, failed.timestamp }));
     }
 
     QJsonObject jsonObject;
@@ -478,7 +475,11 @@ void AlbumArt::jsonToConfigGlobal(QJsonDocument jsonDocument)
         alreadyFailed.clear();
         foreach (QJsonValue jsonValue, jsonDocument.object().value("already_failed").toArray()) {
             QJsonArray value = jsonValue.toArray();
-            alreadyFailed.append({ value.at(0).toString(), value.at(1).toString() });
+
+            if (QDateTime::fromMSecsSinceEpoch((qint64)value.at(2).toDouble()).daysTo(QDateTime::currentDateTime()) > ALREADY_FAILED_EXPIRY_DAYS) {
+                continue;
+            }
+            alreadyFailed.append({ value.at(0).toString(), value.at(1).toString(), (qint64)value.at(2).toDouble() });
         }
     }
 }
@@ -501,6 +502,7 @@ void AlbumArt::sendDiagnosticsData()
             break;
         case InAlreadyFailed:
             diagnosticData.append({ "Status", "Already checked and not found" });
+            diagnosticData.append({ "Next check", QString("On or after %1").arg(nextCheck.toString("yyyy/MM/dd")) });
             break;
         case CheckStarted:
             diagnosticData.append({ "Status", "Checking..." });
