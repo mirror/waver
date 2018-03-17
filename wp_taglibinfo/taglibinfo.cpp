@@ -130,7 +130,7 @@ void TagLibInfo::run()
 
     TagLib::FileRef fileRef(QFile::encodeName(url.toLocalFile()).constData());
 
-    if (!fileRef.tag()->isEmpty()) {
+    if (!fileRef.isNull() && !fileRef.tag()->isEmpty()) {
         trackInfo.title     = TStringToQString(fileRef.tag()->title());
         trackInfo.performer = TStringToQString(fileRef.tag()->artist());
         trackInfo.album     = TStringToQString(fileRef.tag()->album());
