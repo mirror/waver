@@ -460,13 +460,11 @@ void WaverApplication::updateUITrackInfo(QJsonDocument jsonDocument)
 
     QStringList actions;
     if (trackInfo.cast) {
-        actions.append("<a href=\"play_more\">More</a>");
-        actions.append("<a href=\"play_forever\">Infinite</a>");
+        actions.append("<a href=\"s~play_more\">More</a>");
+        actions.append("<a href=\"s~play_forever\">Infinite</a>");
     }
-    QVector<int> actionKeys(trackInfo.actions.keys().toVector());
-    qSort(actionKeys);
-    foreach (int actionKey, actionKeys) {
-        actions.append(QString("<a href=\"%1\">%2</a>").arg(actionKey).arg(trackInfo.actions.value(actionKey)));
+    foreach (TrackAction trackAction, trackInfo.actions) {
+        actions.append(QString("<a href=\"%1~%2\">%3</a>").arg(trackAction.pluginId.toString()).arg(trackAction.id).arg(trackAction.label));
     }
     emit uiActions(actions.join(" "));
 }
@@ -513,17 +511,16 @@ void WaverApplication::updateUIPlaylist(QJsonDocument jsonDocument)
         QStringList actions;
 
         if (i > 0) {
-            actions.append("<a href=\"up\">Up</a>");
+            actions.append("<a href=\"s~up\">Up</a>");
         }
         if (i < (playlist.count() - 1)) {
-            actions.append("<a href=\"down\">Down</a>");
+            actions.append("<a href=\"s~down\">Down</a>");
         }
-        actions.append("<a href=\"remove\">Remove</a>");
+        actions.append("<a href=\"s~remove\">Remove</a>");
 
-        QVector<int> actionKeys(trackInfo.actions.keys().toVector());
-        qSort(actionKeys);
-        foreach (int actionKey, actionKeys) {
-            actions.append(QString("<a href=\"%1\">%2</a>").arg(actionKey).arg(trackInfo.actions.value(actionKey)));
+        foreach (TrackAction trackAction, trackInfo.actions) {
+            // TODO UI should also handle track action pluginId
+            actions.append(QString("<a href=\"%1~%2\">%3</a>").arg(trackAction.pluginId.toString()).arg(trackAction.id).arg(trackAction.label));
         }
 
         emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "images/waver.png"), trackInfo.title.simplified(), trackInfo.performer.simplified(), actions.join(" "), (i == contextShowTrackIndex));
@@ -582,6 +579,16 @@ void WaverApplication::showPluginUI(QJsonDocument jsonDocument)
     QString      header   = data.value("header").toString();
 
     emit uiDisplayPluginUI(pluginId, uiQml, header);
+}
+
+
+// open url in browser
+void WaverApplication::openUrl(QJsonDocument jsonDocument)
+{
+    QVariantHash data = jsonDocument.object().toVariantHash();
+    QString      url  = data.value("url").toString();
+
+    QDesktopServices::openUrl(QUrl(url));
 }
 
 
@@ -745,6 +752,10 @@ void WaverApplication::ipcMessage(IpcMessageUtils::IpcMessages message, QJsonDoc
 
         case IpcMessageUtils::OpenTracks:
             updateUIOpenTracksList(jsonDocument);
+            break;
+
+        case IpcMessageUtils::OpenUrl:
+            openUrl(jsonDocument);
             break;
 
         case IpcMessageUtils::Pause:

@@ -629,25 +629,29 @@ void WaverServer::handleTrackActionsRequest(QJsonDocument jsonDocument)
         return;
     }
 
-    // numeric actions are in the source plugin
-    bool OK;
-    int  actionInt = action.toInt(&OK);
-    if (OK) {
-        emit trackAction(track->getSourcePluginId(), actionInt, track->getTrackInfo().url);
-        return;
-    }
+    // action is plugin id and action id concatenated
+    QStringList ids = action.split('~');
 
     // handle built-in actions
-    if ((action.compare("down") == 0) || (action.compare("up") == 0) || (action.compare("remove") == 0)) {
-        if (action.compare("down") == 0) {
+    if (ids.at(0).compare("s") == 0) {
+        if (ids.at(1).compare("play_more") == 0) {
+            track->addMoreToCastPlaytime();
+            return;
+        }
+        if (ids.at(1).compare("play_forever") == 0) {
+            track->addALotToCastPlaytime();
+            return;
+        }
+
+        if (ids.at(1).compare("down") == 0) {
             playlistTracks.move(index, index + 1);
             sendPlaylistToClients(index + 1);
         }
-        if (action.compare("up") == 0) {
+        if (ids.at(1).compare("up") == 0) {
             playlistTracks.move(index, index - 1);
             sendPlaylistToClients(index - 1);
         }
-        if (action.compare("remove") == 0) {
+        if (ids.at(1).compare("remove") == 0) {
             Track *toBeRemoved = playlistTracks.at(index);
             playlistTracks.remove(index);
             delete toBeRemoved;
@@ -656,17 +660,26 @@ void WaverServer::handleTrackActionsRequest(QJsonDocument jsonDocument)
 
         // order has changed, must reassign fade in times based on previous track's request
         reassignFadeIns();
+        return;
+    }
 
+    QUuid pluginId = QUuid(ids.at(0));
+
+    bool OK;
+    int  actionInt = ids.at(1).toInt(&OK);
+    if (!OK) {
+        // this should never happen
         return;
     }
-    if (action.compare("play_more") == 0) {
-        track->addMoreToCastPlaytime();
+
+    // is it for the source plugin?
+    if (pluginId == track->getSourcePluginId()) {
+        emit trackAction(pluginId, actionInt, track->getTrackInfo().url);
         return;
     }
-    if (action.compare("play_forever") == 0) {
-        track->addALotToCastPlaytime();
-        return;
-    }
+
+    // it's for some other plugin, pas it to the track
+    emit trackTrackAction(pluginId, actionInt, track->getTrackInfo().url);
 }
 
 
@@ -1316,17 +1329,15 @@ void WaverServer::pluginInfoMessage(QUuid uniqueId, QString message)
 // source plugin signal handler
 void WaverServer::pluginUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo)
 {
-    Q_UNUSED(uniqueId);
-
     if ((previousTrack != NULL) && (previousTrack->getTrackInfo().url == trackInfo.url)) {
-        previousTrack->infoUpdateTrackInfo(QUuid(), trackInfo);
+        previousTrack->infoUpdateTrackInfo(uniqueId, trackInfo);
     }
     if ((currentTrack != NULL) && (currentTrack->getTrackInfo().url == trackInfo.url)) {
-        currentTrack->infoUpdateTrackInfo(QUuid(), trackInfo);
+        currentTrack->infoUpdateTrackInfo(uniqueId, trackInfo);
     }
     foreach (Track *track, playlistTracks) {
         if (track->getTrackInfo().url == trackInfo.url) {
-            track->infoUpdateTrackInfo(QUuid(), trackInfo);
+            track->infoUpdateTrackInfo(uniqueId, trackInfo);
         }
     }
 }
@@ -1562,6 +1573,7 @@ Track *WaverServer::createTrack(TrackInfo trackInfo, QUuid pluginId)
     connect(this,  SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),                       track, SLOT(executedPluginSqlError(QUuid, bool, QString, int, QString)));
     connect(this,  SIGNAL(startDiagnostics(QUuid)),                                                    track, SLOT(startPluginDiagnostics(QUuid)));
     connect(this,  SIGNAL(stopDiagnostics(QUuid)),                                                     track, SLOT(stopPluginDiagnostics(QUuid)));
+    connect(this,  SIGNAL(trackTrackAction(QUuid, int, QUrl)),                                         track, SLOT(trackActionRequest(QUuid, int, QUrl)));
     connect(track, SIGNAL(savePluginSettings(QUuid, QJsonDocument)),                                   this,  SLOT(saveConfiguration(QUuid, QJsonDocument)));
     connect(track, SIGNAL(savePluginGlobalSettings(QUuid, QJsonDocument)),                             this,  SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
     connect(track, SIGNAL(loadPluginSettings(QUuid)),                                                  this,  SLOT(loadConfiguration(QUuid)));
@@ -1578,6 +1590,7 @@ Track *WaverServer::createTrack(TrackInfo trackInfo, QUuid pluginId)
     connect(track, SIGNAL(loadedPlugins(Track::PluginList)),                                           this,  SLOT(trackLoadedPlugins(Track::PluginList)));
     connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginList)),                                     this,  SLOT(trackLoadedPluginsWithUI(Track::PluginList)));
     connect(track, SIGNAL(pluginDiagnostics(QUuid, QUrl, DiagnosticData)),                             this,  SLOT(pluginDiagnostics(QUuid, QUrl, DiagnosticData)));
+    connect(track, SIGNAL(openUrl(QUrl, QUrl)),                                                        this,  SLOT(trackOpenUrl(QUrl, QUrl)));
 
     return track;
 }
@@ -1872,6 +1885,16 @@ void WaverServer::trackInfoUpdated(QUrl url)
 
     // must be somewhere in the playlist
     sendPlaylistToClients();
+}
+
+
+// track signal handler
+void WaverServer::trackOpenUrl(QUrl url, QUrl urlToOpen)
+{
+    Q_UNUSED(url);
+
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::OpenUrl, QJsonDocument(QJsonObject({{ "url", urlToOpen.toString() }}))));
 }
 
 

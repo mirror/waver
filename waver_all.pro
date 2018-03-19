@@ -7,7 +7,8 @@ SUBDIRS +=                                 \
    wp_soundoutput/wp_soundoutput.pro       \
    wp_taglibinfo/wp_taglibinfo.pro         \
    wp_albumart/wp_albumart.pro             \
-   wp_fmasource
+   wp_fmasource                            \
+   wp_lyrics
 
 unix:!android {
     SUBDIRS +=                                  \

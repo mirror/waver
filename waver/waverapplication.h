@@ -24,6 +24,7 @@
 #ifndef WAVERAPPLICATION_H
 #define WAVERAPPLICATION_H
 
+#include <QDesktopServices>
 #include <QGuiApplication>
 #include <QJsonArray>
 #include <QObject>
@@ -88,6 +89,7 @@ class WaverApplication : public QGuiApplication {
         void updateUIDiagnosticsMessage(QJsonDocument jsonDocument);
         void updateUISourcePriorities(QJsonDocument jsonDocument);
         void showPluginUI(QJsonDocument jsonDocument);
+        void openUrl(QJsonDocument jsonDocument);
 
 
     signals:

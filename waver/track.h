@@ -199,6 +199,7 @@ class Track : public QObject {
         void requestFadeInForNextTrack(QUrl url, qint64 lengthMilliseconds);
         void requestAboutToFinishSendForPreviousTrack(QUrl url, qint64 posBeforeEndMilliseconds);
         void trackInfoUpdated(QUrl url);
+        void openUrl(QUrl url, QUrl urlToOpen);
 
         // for internal receivers
 
@@ -229,6 +230,7 @@ class Track : public QObject {
         void messageFromDspPrePlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value);
 
         void getInfo(QUuid uniqueId, TrackInfo trackInfo);
+        void trackAction(QUuid uniqueId, int actionKey, TrackInfo trackInfo);
 
 
     public slots:
@@ -242,6 +244,7 @@ class Track : public QObject {
         void receivedPluginUiResults(QUuid uniqueId, QJsonDocument results);
         void startPluginDiagnostics(QUuid uniquedId);
         void stopPluginDiagnostics(QUuid uniquedId);
+        void trackActionRequest(QUuid uniquedId, int actionKey, QUrl url);
 
         void infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo);
 
@@ -277,6 +280,7 @@ class Track : public QObject {
         void dspPreMessageToDspPlugin(QUuid uniqueId, QUuid destinationUniqueId, int messageId, QVariant value);
 
         void infoAddInfoHtml(QUuid uniqueId, QString info);
+        void infoOpenUrl(QUrl url);
 
 };
 

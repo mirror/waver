@@ -1129,10 +1129,10 @@ void RadioSource::tuneIn()
             trackInfo.year      = 0;
             trackInfo.pictures.append(station.logo.isEmpty() ? QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png" : station.logo);
             if (bannedUrls.contains(station.url)) {
-                trackInfo.actions.insert(1, "Remove ban");
+                trackInfo.actions.append({ id, 1, "Remove ban" });
             }
             else {
-                trackInfo.actions.insert(0, "Ban");
+                trackInfo.actions.append({ id, 0, "Ban" });
             }
 
             emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET playcount = playcount + 1 WHERE url = ?", QVariantList({ station.url.toString() }));

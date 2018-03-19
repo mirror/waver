@@ -4,22 +4,28 @@
 #include <QAudioBuffer>
 #include <QHash>
 #include <QUrl>
+#include <QUuid>
 #include <QVariant>
 #include <QVariantHash>
 #include <QVector>
 
 typedef QVector<QAudioBuffer *> BufferQueue;
 
+struct TrackAction {
+    QUuid   pluginId;
+    int     id;
+    QString label;
+};
 struct TrackInfo {
-    QUrl                url;
-    bool                cast;
-    QVector<QUrl>       pictures;
-    QString             title;
-    QString             performer;
-    QString             album;
-    int                 year;
-    int                 track;
-    QHash<int, QString> actions;
+    QUrl                 url;
+    bool                 cast;
+    QVector<QUrl>        pictures;
+    QString              title;
+    QString              performer;
+    QString              album;
+    int                  year;
+    int                  track;
+    QVector<TrackAction> actions;
 };
 typedef QVector<TrackInfo> TracksInfo;
 

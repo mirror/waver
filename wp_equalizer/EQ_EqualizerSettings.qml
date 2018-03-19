@@ -58,7 +58,7 @@ Item {
         anchors.topMargin: 12
         anchors.bottom: doneButton.top
         anchors.bottomMargin: 6
-        contentHeight: (gain_31.height + 6) * 10
+        contentHeight: ((gain_31.height + 6) * 10) + (reset_button.height + 24)
         clip: true
 
         ScrollBar.vertical: ScrollBar { }
@@ -280,6 +280,28 @@ Item {
                 value: replace_gain_16000_value
                 from: -12
                 to: 12
+            }
+        }
+
+        Button {
+            id: reset_button
+            text: qsTr("Reset")
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: gain_16000_row.bottom
+            anchors.topMargin: 12
+
+            onClicked: {
+                pre_amp.value    = 3;
+                gain_31.value    = 6;
+                gain_62.value    = 3;
+                gain_125.value   = 1.5;
+                gain_250.value   = 0;
+                gain_500.value   = -1.5;
+                gain_1000.value  = 0;
+                gain_2500.value  = 3;
+                gain_5000.value  = 6;
+                gain_10000.value = 9;
+                gain_16000.value = 12;
             }
         }
     }

@@ -269,8 +269,8 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
             trackInfo.track     = result.value("track").toInt();
             trackInfo.url       = QUrl(result.value("url").toString());
             trackInfo.year      = result.value("year").toInt();
-            trackInfo.actions.insert(0, "Ban");
-            trackInfo.actions.insert(1, "Ban album");
+            trackInfo.actions.append({ id, 0, "Ban" });
+            trackInfo.actions.append({ id, 1, "Ban album" });
             trackInfo.pictures.append(QUrl(result.value("picture_url").toString().toUtf8()));
 
             tracksInfo.append(trackInfo);
@@ -294,8 +294,8 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
             trackInfo.track     = results.at(0).value("track").toInt();
             trackInfo.url       = QUrl(results.at(0).value("url").toString());
             trackInfo.year      = results.at(0).value("year").toInt();
-            trackInfo.actions.insert(0, "Ban");
-            trackInfo.actions.insert(1, "Ban album");
+            trackInfo.actions.append({ id, 0, "Ban"});
+            trackInfo.actions.append({ id, 1, "Ban album" });
             trackInfo.pictures.append(QUrl(results.at(0).value("picture_url").toString().toUtf8()));
 
             emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "UPDATE tracks SET playcount = playcount + 1 WHERE id = ?", QVariantList({ results.at(0).value("id").toInt() }));

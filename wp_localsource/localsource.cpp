@@ -700,8 +700,8 @@ void LocalSource::action(QUuid uniqueId, int actionKey, QUrl url)
 
         TrackInfo trackInfo;
         trackInfo.url = url;
-        trackInfo.actions.insert(0, "Ban");
-        trackInfo.actions.insert(2, "Unlove");
+        trackInfo.actions.append({ id, 0, "Ban" });
+        trackInfo.actions.append({ id, 2, "Unlove" });
         emit updateTrackInfo(id, trackInfo);
 
         reCalculateLoved = true;
@@ -717,8 +717,8 @@ void LocalSource::action(QUuid uniqueId, int actionKey, QUrl url)
 
         TrackInfo trackInfo;
         trackInfo.url = url;
-        trackInfo.actions.insert(0, "Ban");
-        trackInfo.actions.insert(1, "Love");
+        trackInfo.actions.append({ id, 0, "Ban" });
+        trackInfo.actions.append({ id, 1, "Love" });
         emit updateTrackInfo(id, trackInfo);
 
         reCalculateLoved = true;
@@ -976,12 +976,12 @@ TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
     trackInfo.year      = 0;
     trackInfo.track     = 0;
     trackInfo.pictures.append(pictures);
-    trackInfo.actions.insert(0, "Ban");
+    trackInfo.actions.append({ id, 0, "Ban" });
     if (lovedFileNames.contains(filePath)) {
-        trackInfo.actions.insert(2, "Unlove");
+        trackInfo.actions.append({ id, 2, "Unlove" });
     }
     else {
-        trackInfo.actions.insert(1, "Love");
+        trackInfo.actions.append({ id, 1, "Love" });
     }
 
     return trackInfo;

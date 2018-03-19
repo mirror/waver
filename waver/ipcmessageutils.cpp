@@ -46,6 +46,7 @@ IpcMessageUtils::IpcMessageUtils(QObject *parent) : QObject(parent)
     ipcMessagesToStrings[Next]                     = "next";
     ipcMessagesToStrings[OpenTracks]               = "open_tracks";
     ipcMessagesToStrings[OpenTracksSelected]       = "open_tracks_selected";
+    ipcMessagesToStrings[OpenUrl]                  = "open_url";
     ipcMessagesToStrings[Pause]                    = "pause";
     ipcMessagesToStrings[Playlist]                 = "playlist";
     ipcMessagesToStrings[PlayPauseState]           = "play_pause_state";
@@ -163,8 +164,11 @@ QJsonDocument IpcMessageUtils::trackInfoToJSONDocument(TrackInfo trackInfo)
     }
 
     QVariantHash actions;
-    foreach (int key, trackInfo.actions.keys()) {
-        actions.insert(QString("%1").arg(key), trackInfo.actions.value(key));
+    foreach (PLUGINGLOBALS_H::TrackAction trackAction, trackInfo.actions) {
+        QStringList ids;
+        ids.append(trackAction.pluginId.toString());
+        ids.append(QString("%1").arg(trackAction.id));
+        actions.insert(ids.join('~'), trackAction.label);
     }
 
     QJsonObject info;
@@ -207,7 +211,14 @@ TrackInfo IpcMessageUtils::jsonDocumentToTrackInfo(QJsonDocument jsonDocument)
     if (info.value("actions").isObject()) {
         QVariantHash actions = info.value("actions").toObject().toVariantHash();
         foreach (QString key, actions.keys()) {
-            trackInfo.actions.insert(key.toInt(), actions.value(key).toString());
+            QStringList ids = key.split('~');
+
+            PLUGINGLOBALS_H::TrackAction trackAction;
+            trackAction.pluginId = QUuid(ids.at(0));
+            trackAction.id       = ids.at(1).toInt();
+            trackAction.label    = actions.value(key).toString();
+
+            trackInfo.actions.append(trackAction);
         }
     }
 

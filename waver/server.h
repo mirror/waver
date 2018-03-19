@@ -208,6 +208,7 @@ class WaverServer : public QObject {
         void search(QUuid uniqueId, QString criteria);
         void resolveOpenTracks(QUuid uniqueId, QStringList selectedTrackIds);
         void trackAction(QUuid uniqueId, int actionKey, QUrl url);
+        void trackTrackAction(QUuid uniqueId, int actionKey, QUrl url);
 
         void requestPluginUi(QUuid uniqueId);
         void pluginUiResults(QUuid uniqueId, QJsonDocument results);
@@ -271,6 +272,7 @@ class WaverServer : public QObject {
         void trackAboutToFinish(QUrl url);
         void trackFinished(QUrl url);
         void trackInfoUpdated(QUrl url);
+        void trackOpenUrl(QUrl url, QUrl urlToOpen);
 
         void startNextTrackUISignal();
         void diagnosticsRefreshUI();

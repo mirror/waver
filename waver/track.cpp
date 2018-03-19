@@ -580,7 +580,6 @@ void Track::setupInfoPlugin(QObject *plugin)
     connect(plugin, SIGNAL(uiQml(QUuid, QString)),                     this,   SLOT(ui(QUuid, QString)));
     connect(plugin, SIGNAL(infoMessage(QUuid, QString)),               this,   SLOT(infoMessage(QUuid, QString)));
     connect(plugin, SIGNAL(updateTrackInfo(QUuid, TrackInfo)),         this,   SLOT(infoUpdateTrackInfo(QUuid, TrackInfo)));
-    connect(plugin, SIGNAL(addInfoHtml(QUuid, QString)),               this,   SLOT(infoAddInfoHtml(QUuid, QString)));
     connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
     connect(this,   SIGNAL(requestPluginUi(QUuid)),                    plugin, SLOT(getUiQml(QUuid)));
     connect(this,   SIGNAL(pluginUiResults(QUuid, QJsonDocument)),     plugin, SLOT(uiResults(QUuid, QJsonDocument)));
@@ -598,7 +597,17 @@ void Track::setupInfoPlugin(QObject *plugin)
         connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
-        connect(this,   SIGNAL(getInfo(QUuid, TrackInfo)),                                          plugin, SLOT(getInfo(QUuid, TrackInfo)));
+    }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
+        connect(this,   SIGNAL(trackAction(QUuid, int, TrackInfo)), plugin, SLOT(action(QUuid, int, TrackInfo)));
+        connect(plugin, SIGNAL(openUrl(QUrl)),                      this,   SLOT(infoOpenUrl(QUrl)));
+    }
+    else {
+        // deprecated, don't use
+        connect(plugin, SIGNAL(addInfoHtml(QUuid, QString)), this, SLOT(infoAddInfoHtml(QUuid, QString)));
+        if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
+            connect(this, SIGNAL(getInfo(QUuid, TrackInfo)), plugin, SLOT(getInfo(QUuid, TrackInfo)));
+        }
     }
 }
 
@@ -1031,6 +1040,17 @@ void Track::startPluginDiagnostics(QUuid uniquedId)
 void Track::stopPluginDiagnostics(QUuid uniquedId)
 {
     emit stopDiagnostics(uniquedId);
+}
+
+
+// server signal handler
+void Track::trackActionRequest(QUuid uniquedId, int actionKey, QUrl url)
+{
+    if (url != trackInfo.url) {
+        return;
+    }
+
+    emit trackAction(uniquedId, actionKey, trackInfo);
 }
 
 
@@ -1634,9 +1654,20 @@ void Track::infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo)
     }
 
     if (!trackInfo.actions.isEmpty()) {
+        QVector<TrackAction> temp;
+        foreach (TrackAction trackAction, this->trackInfo.actions) {
+            if (trackAction.pluginId == uniqueId) {
+                continue;
+            }
+            temp.append(trackAction);
+        }
         this->trackInfo.actions.clear();
-        foreach (int actionId, trackInfo.actions.keys()) {
-            this->trackInfo.actions.insert(actionId, trackInfo.actions.value(actionId));
+        foreach (TrackAction trackAction, temp) {
+            this->trackInfo.actions.append(trackAction);
+        }
+
+        foreach (TrackAction trackAction, trackInfo.actions) {
+            this->trackInfo.actions.append(trackAction);
         }
     }
 
@@ -1654,8 +1685,16 @@ void Track::infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo)
 }
 
 
-// info plugin signal handler
+// info plugin signal handler (deprecated, don't use)
 void Track::infoAddInfoHtml(QUuid uniqueId, QString info)
 {
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(info);
+}
 
+
+// info plugin signal handler
+void Track::infoOpenUrl(QUrl url)
+{
+    emit openUrl(trackInfo.url, url);
 }
