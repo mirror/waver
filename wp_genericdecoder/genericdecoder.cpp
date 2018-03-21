@@ -101,6 +101,13 @@ void GenericDecoder::setUserAgent(QString userAgent)
 }
 
 
+// global method
+QUrl GenericDecoder::menuImageURL()
+{
+    return QUrl();
+}
+
+
 // constructor
 GenericDecoder::GenericDecoder()
 {

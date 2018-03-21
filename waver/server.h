@@ -208,6 +208,7 @@ class WaverServer : public QObject {
         void search(QUuid uniqueId, QString criteria);
         void resolveOpenTracks(QUuid uniqueId, QStringList selectedTrackIds);
         void trackAction(QUuid uniqueId, int actionKey, QUrl url);
+        void trackAction(QUuid uniqueId, int actionKey, TrackInfo trackInfo);
         void trackTrackAction(QUuid uniqueId, int actionKey, QUrl url);
 
         void requestPluginUi(QUuid uniqueId);
@@ -262,6 +263,7 @@ class WaverServer : public QObject {
         void searchResults(QUuid uniqueId, OpenTracks openTracks);
         void requestedRemoveTracks(QUuid uniqueId);
         void requestedRemoveTrack(QUuid uniqueId, QUrl url);
+        void sourceOpenUrl(QUrl urlToOpen);
 
         void trackError(QUrl url, bool fatal, QString errorString);
         void trackLoadedPlugins(Track::PluginList pluginsWithUI);

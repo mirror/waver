@@ -51,7 +51,7 @@
 #include "filescanner.h"
 #include "../waver/pluginfactory.h"
 #include "../waver/pluginglobals.h"
-#include "../waver/API/pluginsource_004.h"
+#include "../waver/API/pluginsource_005.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -61,7 +61,7 @@
 extern "C" WP_LOCALSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_004 {
+class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_005 {
         Q_OBJECT
 
     public:
@@ -73,6 +73,7 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_004 {
         QUuid   persistentUniqueId()            override;
         bool    hasUI()                         override;
         void    setUserAgent(QString userAgent) override;
+        QUrl    menuImageURL()                  override;
 
         explicit LocalSource();
         ~LocalSource();
@@ -148,8 +149,8 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_004 {
         void getOpenTracks(QUuid uniqueId, QString parentId)                override;
         void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)  override;
 
-        void search(QUuid uniqueId, QString criteria)        override;
-        void action(QUuid uniqueId, int actionKey, QUrl url) override;
+        void search(QUuid uniqueId, QString criteria)                   override;
+        void action(QUuid uniqueId, int actionKey, TrackInfo trackInfo) override;
 
 
     private slots:

@@ -66,6 +66,7 @@ class WP_GENERICDECODER_EXPORT GenericDecoder : public PluginDecoder_005 {
         int     priority()                      override;
         void    setUrl(QUrl url)                override;
         void    setUserAgent(QString userAgent) override;
+        QUrl    menuImageURL()                  override;
 
         explicit GenericDecoder();
         ~GenericDecoder();

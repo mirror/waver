@@ -75,6 +75,12 @@ void LocalSource::setUserAgent(QString userAgent)
 
 
 // overrided virtual function
+QUrl LocalSource::menuImageURL()
+{
+    return QUrl();
+}
+
+// overrided virtual function
 int LocalSource::pluginType()
 {
     return PLUGIN_TYPE_SOURCE;
@@ -91,14 +97,14 @@ QString LocalSource::pluginName()
 // overrided virtual function
 int LocalSource::pluginVersion()
 {
-    return 3;
+    return 4;
 }
 
 
 // overrided virtual function
 QString LocalSource::waverVersionAPICompatibility()
 {
-    return "0.0.4";
+    return "0.0.5";
 }
 
 
@@ -283,7 +289,9 @@ void LocalSource::stopDiagnostics(QUuid uniqueId)
 void LocalSource::unableToStart(QUuid uniqueId, QUrl url)
 {
     // treat it like banned track
-    action(uniqueId, 0, url);
+    TrackInfo trackInfo;
+    trackInfo.url = url;
+    action(uniqueId, 0, trackInfo);
 }
 
 
@@ -673,7 +681,7 @@ void LocalSource::search(QUuid uniqueId, QString criteria)
 
 
 // user clicked action that was included in track info
-void LocalSource::action(QUuid uniqueId, int actionKey, QUrl url)
+void LocalSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
 {
     if (uniqueId != id) {
         return;
@@ -681,48 +689,57 @@ void LocalSource::action(QUuid uniqueId, int actionKey, QUrl url)
 
     if (actionKey == 0) {
         mutex.lock();
-        bannedFileNames.append(url.toLocalFile());
+        bannedFileNames.append(trackInfo.url.toLocalFile());
         mutex.unlock();
 
         emit saveGlobalConfiguration(id, configToJsonGlobal());
-        emit requestRemoveTrack(id, url);
-        return;
+        emit requestRemoveTrack(id, trackInfo.url);
     }
 
     if (actionKey == 1) {
         mutex.lock();
-        if (!lovedFileNames.contains(url.toLocalFile())) {
-            lovedFileNames.append(url.toLocalFile());
+        if (!lovedFileNames.contains(trackInfo.url.toLocalFile())) {
+            lovedFileNames.append(trackInfo.url.toLocalFile());
         }
         mutex.unlock();
 
         emit saveGlobalConfiguration(id, configToJsonGlobal());
 
-        TrackInfo trackInfo;
-        trackInfo.url = url;
-        trackInfo.actions.append({ id, 0, "Ban" });
-        trackInfo.actions.append({ id, 2, "Unlove" });
-        emit updateTrackInfo(id, trackInfo);
+        TrackInfo trackInfoTemp;
+        trackInfoTemp.url = trackInfo.url;
+        trackInfoTemp.actions.append({ id, 0, "Ban" });
+        trackInfoTemp.actions.append({ id, 2, "Unlove" });
+        trackInfoTemp.actions.append({ id, 10, "Lyrics search"});
+        trackInfoTemp.actions.append({ id, 11, "Band search"});
+        emit updateTrackInfo(id, trackInfoTemp);
 
         reCalculateLoved = true;
-        return;
     }
 
     if (actionKey == 2) {
         mutex.lock();
-        lovedFileNames.removeAll(url.toLocalFile());
+        lovedFileNames.removeAll(trackInfo.url.toLocalFile());
         mutex.unlock();
 
         emit saveGlobalConfiguration(id, configToJsonGlobal());
 
-        TrackInfo trackInfo;
-        trackInfo.url = url;
-        trackInfo.actions.append({ id, 0, "Ban" });
-        trackInfo.actions.append({ id, 1, "Love" });
-        emit updateTrackInfo(id, trackInfo);
+        TrackInfo trackInfoTemp;
+        trackInfoTemp.url = trackInfo.url;
+        trackInfoTemp.actions.append({ id, 0, "Ban" });
+        trackInfoTemp.actions.append({ id, 1, "Love" });
+        trackInfoTemp.actions.append({ id, 10, "Lyrics search"});
+        trackInfoTemp.actions.append({ id, 11, "Band search"});
+        emit updateTrackInfo(id, trackInfoTemp);
 
         reCalculateLoved = true;
-        return;
+    }
+
+    if (actionKey == 10) {
+        emit openUrl(QUrl(QString("http://google.com/search?q=%1 %2 lyrics").arg(trackInfo.performer).arg(trackInfo.title)));
+    }
+
+    if (actionKey == 11) {
+        emit openUrl(QUrl(QString("http://google.com/search?q=\"%1\" band").arg(trackInfo.performer)));
     }
 
     // diagnostics
@@ -983,6 +1000,8 @@ TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
     else {
         trackInfo.actions.append({ id, 1, "Love" });
     }
+    trackInfo.actions.append({ id, 10, "Lyrics search"});
+    trackInfo.actions.append({ id, 11, "Band search"});
 
     return trackInfo;
 }

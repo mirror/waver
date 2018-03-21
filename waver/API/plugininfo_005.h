@@ -41,7 +41,6 @@ class PluginInfo_005 : public PluginBase_005 {
     signals:
 
         void updateTrackInfo(QUuid uniqueId, TrackInfo trackInfo);
-        void openUrl(QUrl url);
 
 
     public slots:

@@ -259,6 +259,7 @@ class Track : public QObject {
         void ui(QUuid uniqueId, QString qml);
         void infoMessage(QUuid uniqueId, QString message);
         void diagnostics(QUuid id, DiagnosticData diagnosticData);
+        void openUrlRequest(QUrl url);
 
         void moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer);
 
@@ -280,8 +281,6 @@ class Track : public QObject {
         void dspPreMessageToDspPlugin(QUuid uniqueId, QUuid destinationUniqueId, int messageId, QVariant value);
 
         void infoAddInfoHtml(QUuid uniqueId, QString info);
-        void infoOpenUrl(QUrl url);
-
 };
 
 #endif // TRACK_H

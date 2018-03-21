@@ -256,6 +256,9 @@ void Track::setupDecoderPlugin(QObject *plugin, bool fromEasyPluginInstallDir, Q
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
+        connect(plugin, SIGNAL(openUrl(QUrl)), this, SLOT(openUrlRequest(QUrl)));
+    }
 }
 
 
@@ -346,6 +349,9 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
+        connect(plugin, SIGNAL(openUrl(QUrl)), this, SLOT(openUrlRequest(QUrl)));
+    }
 }
 
 
@@ -433,6 +439,9 @@ void Track::setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<
         connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
+    }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
+        connect(plugin, SIGNAL(openUrl(QUrl)), this, SLOT(openUrlRequest(QUrl)));
     }
 }
 
@@ -524,6 +533,9 @@ void Track::setupOutputPlugin(QObject *plugin)
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
+        connect(plugin, SIGNAL(openUrl(QUrl)), this, SLOT(openUrlRequest(QUrl)));
+    }
 }
 
 
@@ -600,7 +612,7 @@ void Track::setupInfoPlugin(QObject *plugin)
     }
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
         connect(this,   SIGNAL(trackAction(QUuid, int, TrackInfo)), plugin, SLOT(action(QUuid, int, TrackInfo)));
-        connect(plugin, SIGNAL(openUrl(QUrl)),                      this,   SLOT(infoOpenUrl(QUrl)));
+        connect(plugin, SIGNAL(openUrl(QUrl)),                      this,   SLOT(openUrlRequest(QUrl)));
     }
     else {
         // deprecated, don't use
@@ -1141,6 +1153,13 @@ void Track::infoMessage(QUuid uniqueId, QString message)
 void Track::diagnostics(QUuid id, DiagnosticData diagnosticData)
 {
     emit pluginDiagnostics(id, trackInfo.url, diagnosticData);
+}
+
+
+// plugin signal handler
+void Track::openUrlRequest(QUrl url)
+{
+    emit openUrl(trackInfo.url, url);
 }
 
 
@@ -1690,11 +1709,4 @@ void Track::infoAddInfoHtml(QUuid uniqueId, QString info)
 {
     Q_UNUSED(uniqueId);
     Q_UNUSED(info);
-}
-
-
-// info plugin signal handler
-void Track::infoOpenUrl(QUrl url)
-{
-    emit openUrl(trackInfo.url, url);
 }

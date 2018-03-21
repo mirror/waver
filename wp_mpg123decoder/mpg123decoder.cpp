@@ -70,6 +70,13 @@ void Mpg123Decoder::setUserAgent(QString userAgent)
 
 
 // global method
+QUrl Mpg123Decoder::menuImageURL()
+{
+    return QUrl();
+}
+
+
+// global method
 QUuid Mpg123Decoder::persistentUniqueId()
 {
     return id;

@@ -674,7 +674,12 @@ void WaverServer::handleTrackActionsRequest(QJsonDocument jsonDocument)
 
     // is it for the source plugin?
     if (pluginId == track->getSourcePluginId()) {
-        emit trackAction(pluginId, actionInt, track->getTrackInfo().url);
+        if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(pluginId).waverVersionAPICompatibility, "0.0.5")) {
+            emit trackAction(pluginId, actionInt, track->getTrackInfo());
+        }
+        else {
+            emit trackAction(pluginId, actionInt, track->getTrackInfo().url);
+        }
         return;
     }
 
@@ -974,7 +979,6 @@ void WaverServer::pluginLibsLoaded()
             connect(this,   SIGNAL(getOpenTracks(QUuid, QString)),                      plugin, SLOT(getOpenTracks(QUuid, QString)));
             connect(this,   SIGNAL(search(QUuid, QString)),                             plugin, SLOT(search(QUuid, QString)));
             connect(this,   SIGNAL(resolveOpenTracks(QUuid, QStringList)),              plugin, SLOT(resolveOpenTracks(QUuid, QStringList)));
-            connect(this,   SIGNAL(trackAction(QUuid, int, QUrl)),                      plugin, SLOT(action(QUuid, int, QUrl)));
             if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.3")) {
                 connect(plugin, SIGNAL(saveGlobalConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
                 connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
@@ -994,6 +998,13 @@ void WaverServer::pluginLibsLoaded()
                 connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
                 connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
                 connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
+            }
+            if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
+                connect(plugin, SIGNAL(openUrl(QUrl)),                      this,   SLOT(sourceOpenUrl(QUrl)));
+                connect(this,   SIGNAL(trackAction(QUuid, int, TrackInfo)), plugin, SLOT(action(QUuid, int, TrackInfo)));
+            }
+            else {
+                connect(this, SIGNAL(trackAction(QUuid, int, QUrl)), plugin, SLOT(action(QUuid, int, QUrl)));
             }
         }
     }
@@ -1655,6 +1666,12 @@ void WaverServer::requestedRemoveTrack(QUuid uniqueId, QUrl url)
     }
 }
 
+// source plugin signal handler
+void WaverServer::sourceOpenUrl(QUrl urlToOpen)
+{
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::OpenUrl, QJsonDocument(QJsonObject({{ "url", urlToOpen.toString() }}))));
+}
 
 // track signal handler
 void WaverServer::trackRequestFadeInForNextTrack(QUrl url, qint64 lengthMilliseconds)

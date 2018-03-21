@@ -27,10 +27,10 @@
 #include <QAudioBuffer>
 #include <QUrl>
 
-#include "pluginbase_004.h"
+#include "pluginbase_005.h"
 
 
-class PluginDecoder_005 : public PluginBase_004 {
+class PluginDecoder_005 : public PluginBase_005 {
         Q_OBJECT
 
 

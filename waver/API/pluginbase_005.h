@@ -56,13 +56,14 @@ class PluginBase_005 : public QObject {
         void saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void executeSql(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
         void executeGlobalSql(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
-        
 
         void uiQml(QUuid uniqueId, QString qmlString);
 
         void infoMessage(QUuid uniqueId, QString message);
-        
+
         void diagnostics(QUuid uniqueId, DiagnosticData data);
+
+        void openUrl(QUrl url);
 
 
     public slots:

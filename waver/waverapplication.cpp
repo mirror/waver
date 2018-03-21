@@ -463,6 +463,9 @@ void WaverApplication::updateUITrackInfo(QJsonDocument jsonDocument)
         actions.append("<a href=\"s~play_more\">More</a>");
         actions.append("<a href=\"s~play_forever\">Infinite</a>");
     }
+    qSort(trackInfo.actions.begin(), trackInfo.actions.end(), [](TrackAction a, TrackAction b) {
+        return ((a.pluginId < b.pluginId) || (a.id < b.id));
+    });
     foreach (TrackAction trackAction, trackInfo.actions) {
         actions.append(QString("<a href=\"%1~%2\">%3</a>").arg(trackAction.pluginId.toString()).arg(trackAction.id).arg(trackAction.label));
     }
@@ -518,8 +521,10 @@ void WaverApplication::updateUIPlaylist(QJsonDocument jsonDocument)
         }
         actions.append("<a href=\"s~remove\">Remove</a>");
 
+        qSort(trackInfo.actions.begin(), trackInfo.actions.end(), [](TrackAction a, TrackAction b) {
+            return ((a.pluginId < b.pluginId) || (a.id < b.id));
+        });
         foreach (TrackAction trackAction, trackInfo.actions) {
-            // TODO UI should also handle track action pluginId
             actions.append(QString("<a href=\"%1~%2\">%3</a>").arg(trackAction.pluginId.toString()).arg(trackAction.id).arg(trackAction.label));
         }
 
