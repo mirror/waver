@@ -42,6 +42,8 @@ HEADERS += localsource.h \
 RESOURCES += qml.qrc
 
 unix:!android {
+    LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -ltag
+
     target.path = /opt/waver/bin
     INSTALLS += target
 
@@ -50,3 +52,7 @@ unix:!android {
     QMAKE_EXTRA_TARGETS += install translatedestdir
 }
 
+windows {
+    INCLUDEPATH += $$PWD/taglib/win32/include
+    LIBS += -L$$PWD/taglib/win32/bin/ -ltag
+}

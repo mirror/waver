@@ -47,6 +47,8 @@
 #include <QUuid>
 #include <QVariant>
 #include <QVector>
+#include <taglib/fileref.h>
+#include <taglib/tstring.h>
 
 #include "filescanner.h"
 #include "../waver/pluginfactory.h"

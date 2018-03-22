@@ -687,6 +687,14 @@ void LocalSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         return;
     }
 
+    bool tagLibOK = false;
+    foreach (TrackAction trackAction, trackInfo.actions) {
+        if ((trackAction.id == 10) || (trackAction.id == 11)) {
+            tagLibOK = true;
+            break;
+        }
+    }
+
     if (actionKey == 0) {
         mutex.lock();
         bannedFileNames.append(trackInfo.url.toLocalFile());
@@ -709,8 +717,10 @@ void LocalSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         trackInfoTemp.url = trackInfo.url;
         trackInfoTemp.actions.append({ id, 0, "Ban" });
         trackInfoTemp.actions.append({ id, 2, "Unlove" });
-        trackInfoTemp.actions.append({ id, 10, "Lyrics search"});
-        trackInfoTemp.actions.append({ id, 11, "Band search"});
+        if (tagLibOK) {
+            trackInfoTemp.actions.append({ id, 10, "Lyrics search"});
+            trackInfoTemp.actions.append({ id, 11, "Band search"});
+        }
         emit updateTrackInfo(id, trackInfoTemp);
 
         reCalculateLoved = true;
@@ -727,8 +737,10 @@ void LocalSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         trackInfoTemp.url = trackInfo.url;
         trackInfoTemp.actions.append({ id, 0, "Ban" });
         trackInfoTemp.actions.append({ id, 1, "Love" });
-        trackInfoTemp.actions.append({ id, 10, "Lyrics search"});
-        trackInfoTemp.actions.append({ id, 11, "Band search"});
+        if (tagLibOK) {
+            trackInfoTemp.actions.append({ id, 10, "Lyrics search"});
+            trackInfoTemp.actions.append({ id, 11, "Band search"});
+        }
         emit updateTrackInfo(id, trackInfoTemp);
 
         reCalculateLoved = true;
@@ -945,54 +957,67 @@ bool LocalSource::isTrackFile(QFileInfo fileInfo)
 // helper
 TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
 {
-    // find track's base directory for track info discovery
-    QString trackDirectory;
-    foreach (QString directory, directories) {
-        if (filePath.startsWith(directory) && (directory.length() > trackDirectory.length())) {
-            trackDirectory = directory;
-        }
+    // defaults
+    TrackInfo trackInfo;
+    trackInfo.url   = QUrl::fromLocalFile(filePath);
+    trackInfo.cast  = false;
+    trackInfo.year  = 0;
+    trackInfo.track = 0;
+
+    // try taglib first
+    bool tagLibOK = true;
+    TagLib::FileRef fileRef(QFile::encodeName(filePath).constData());
+    if (!fileRef.isNull() && !fileRef.tag()->isEmpty()) {
+        trackInfo.title     = TStringToQString(fileRef.tag()->title());
+        trackInfo.performer = TStringToQString(fileRef.tag()->artist());
+        trackInfo.album     = TStringToQString(fileRef.tag()->album());
+        trackInfo.year      = fileRef.tag()->year();
+        trackInfo.track     = fileRef.tag()->track();
     }
 
-    // track info discovery
-    QString title     = "";
-    QString performer = "";
-    QString album     = "";
-    QStringList trackRelative = QString(filePath).remove(trackDirectory).split("/");
-    if (trackRelative.at(0).isEmpty()) {
-        trackRelative.removeFirst();
-    }
-    if (trackRelative.count() > 0) {
-        title = trackRelative.last().replace(".mp3", "", Qt::CaseInsensitive);
-        trackRelative.removeLast();
-    }
-    if (trackRelative.count() > 0) {
-        performer = trackRelative.first();
-        trackRelative.removeFirst();
-    }
-    if (trackRelative.count() > 0) {
-        album = trackRelative.join(" - ");
+    // figure out based on file path if taglib failed
+    if (trackInfo.title.isEmpty() || trackInfo.performer.isEmpty() || trackInfo.album.isEmpty()) {
+        tagLibOK = false;
+        // find track's base directory for track info discovery
+        QString trackDirectory;
+        foreach (QString directory, directories) {
+            if (filePath.startsWith(directory) && (directory.length() > trackDirectory.length())) {
+                trackDirectory = directory;
+            }
+        }
+
+        // track info discovery
+        QStringList trackRelative = QString(filePath).remove(trackDirectory).split("/");
+        if (trackRelative.at(0).isEmpty()) {
+            trackRelative.removeFirst();
+        }
+        if (trackRelative.count() > 0) {
+            if (trackInfo.title.isEmpty()) {
+                trackInfo.title = trackRelative.last().replace(".mp3", "", Qt::CaseInsensitive);
+            }
+            trackRelative.removeLast();
+        }
+        if (trackRelative.count() > 0) {
+            if (trackInfo.performer.isEmpty()) {
+                trackInfo.performer = trackRelative.first();
+            }
+            trackRelative.removeFirst();
+        }
+        if ((trackRelative.count() > 0) && (trackInfo.album.isEmpty())) {
+            trackInfo.album = trackRelative.join(" - ");
+        }
     }
 
     // search for pictures
     QVector<QUrl> pictures;
     QFileInfoList entries = QDir(filePath.left(filePath.lastIndexOf("/"))).entryInfoList();
     foreach (QFileInfo entry, entries) {
-        if (entry.exists() && entry.isFile() && !entry.isSymLink() && (entry.fileName().endsWith(".jpg", Qt::CaseInsensitive) ||
-                entry.fileName().endsWith(".png", Qt::CaseInsensitive))) {
+        if (entry.exists() && entry.isFile() && !entry.isSymLink() && (entry.fileName().endsWith(".jpg", Qt::CaseInsensitive) || entry.fileName().endsWith(".png", Qt::CaseInsensitive))) {
             pictures.append(QUrl::fromLocalFile(entry.absoluteFilePath()));
         }
     }
-
-    // add to playlist
-    TrackInfo trackInfo;
-    trackInfo.url       = QUrl::fromLocalFile(filePath);
-    trackInfo.cast      = false;
-    trackInfo.title     = title;
-    trackInfo.performer = performer;
-    trackInfo.album     = album;
-    trackInfo.year      = 0;
-    trackInfo.track     = 0;
     trackInfo.pictures.append(pictures);
+
     trackInfo.actions.append({ id, 0, "Ban" });
     if (lovedFileNames.contains(filePath)) {
         trackInfo.actions.append({ id, 2, "Unlove" });
@@ -1000,8 +1025,10 @@ TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
     else {
         trackInfo.actions.append({ id, 1, "Love" });
     }
-    trackInfo.actions.append({ id, 10, "Lyrics search"});
-    trackInfo.actions.append({ id, 11, "Band search"});
+    if (tagLibOK) {
+        trackInfo.actions.append({ id, 10, "Lyrics search"});
+        trackInfo.actions.append({ id, 11, "Band search"});
+    }
 
     return trackInfo;
 }
@@ -1010,7 +1037,7 @@ TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
 // helper
 int LocalSource::variationSettingId()
 {
-    QStringList variations({"Low", "Medium", "High", "Random" });
+    QStringList variations({ "Low", "Medium", "High", "Random" });
     return variations.indexOf(variationSetting);
 }
 

@@ -163,7 +163,6 @@ class Track : public QObject {
         qint64 decodedMilliseconds;
         qint64 decodedMillisecondsAtUnderrun;
         qint64 playedMilliseconds;
-        bool   tagsChecked;
         bool   replacable;
 
         void setupDecoderPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);

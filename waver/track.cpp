@@ -59,7 +59,6 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUui
     decodedMilliseconds                                 = 0;
     playedMilliseconds                                  = 0;
     dspInitialBufferCount                               = 0;
-    tagsChecked                                         = false;
     replacable                                          = true;
 
     // priority maps
@@ -595,6 +594,7 @@ void Track::setupInfoPlugin(QObject *plugin)
     connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
     connect(this,   SIGNAL(requestPluginUi(QUuid)),                    plugin, SLOT(getUiQml(QUuid)));
     connect(this,   SIGNAL(pluginUiResults(QUuid, QJsonDocument)),     plugin, SLOT(uiResults(QUuid, QJsonDocument)));
+    connect(plugin, SIGNAL(addInfoHtml(QUuid, QString)), this, SLOT(infoAddInfoHtml(QUuid, QString)));   // deprecated, don't use
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.3")) {
         connect(plugin, SIGNAL(saveGlobalConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
         connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
@@ -609,17 +609,7 @@ void Track::setupInfoPlugin(QObject *plugin)
         connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
-    }
-    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
-        connect(this,   SIGNAL(trackAction(QUuid, int, TrackInfo)), plugin, SLOT(action(QUuid, int, TrackInfo)));
-        connect(plugin, SIGNAL(openUrl(QUrl)),                      this,   SLOT(openUrlRequest(QUrl)));
-    }
-    else {
-        // deprecated, don't use
-        connect(plugin, SIGNAL(addInfoHtml(QUuid, QString)), this, SLOT(infoAddInfoHtml(QUuid, QString)));
-        if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.4")) {
-            connect(this, SIGNAL(getInfo(QUuid, TrackInfo)), plugin, SLOT(getInfo(QUuid, TrackInfo)));
-        }
+        connect(this,   SIGNAL(getInfo(QUuid, TrackInfo)),                                          plugin, SLOT(getInfo(QUuid, TrackInfo)));
     }
 }
 
@@ -682,10 +672,8 @@ void Track::setStatus(Status status)
         sendLoadedPluginsWithUI();
 
         // not sure which happens first (see also in infoUpdateTrackInfo)
-        if (tagsChecked) {
-            foreach (QUuid uniqueId, infoPlugins.keys()) {
-                emit getInfo(uniqueId, this->trackInfo);
-            }
+        foreach (QUuid uniqueId, infoPlugins.keys()) {
+            emit getInfo(uniqueId, this->trackInfo);
         }
 
         return;
@@ -724,10 +712,8 @@ void Track::setStatus(Status status)
         sendLoadedPluginsWithUI();
 
         // not sure which happens first (see also in infoUpdateTrackInfo)
-        if (tagsChecked) {
-            foreach (QUuid uniqueId, infoPlugins.keys()) {
-                emit getInfo(uniqueId, this->trackInfo);
-            }
+        foreach (QUuid uniqueId, infoPlugins.keys()) {
+            emit getInfo(uniqueId, this->trackInfo);
         }
 
         return;
@@ -1691,16 +1677,6 @@ void Track::infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo)
     }
 
     emit trackInfoUpdated(trackInfo.url);
-
-    // other information can be queried after tags are discovered, but do this only once when play begins (see also in setStatus)
-    if (uniqueId == QUuid("{51C91776-E385-4444-AF8D-A3A47E3FEFB8}")) {
-        tagsChecked = true;
-        if ((currentStatus == Playing) || (currentStatus == Paused)) {
-            foreach (QUuid uniqueId, infoPlugins.keys()) {
-                emit getInfo(uniqueId, this->trackInfo);
-            }
-        }
-    }
 }
 
 
