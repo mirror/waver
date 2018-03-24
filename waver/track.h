@@ -50,7 +50,7 @@ class Track : public QObject {
 
     public:
 
-        static const long CAST_PLAYTIME_MILLISECONDS = 450 * 1000;
+        static const long CAST_PLAYTIME_MILLISECONDS = 15 * 1000; // 450 * 1000;
         static const int INTERRUPT_FADE_SECONDS      = 4;
 
         typedef QHash<QUuid, QString> PluginList;
@@ -99,9 +99,9 @@ class Track : public QObject {
 
     private:
 
-        static const int    FADE_DIRECTION_NONE = 0;
-        static const int    FADE_DIRECTION_IN   = 1;
-        static const int    FADE_DIRECTION_OUT  = 2;
+        static const int FADE_DIRECTION_NONE = 0;
+        static const int FADE_DIRECTION_IN   = 1;
+        static const int FADE_DIRECTION_OUT  = 2;
 
         struct PluginNoQueue {
             QString name;
@@ -180,7 +180,6 @@ class Track : public QObject {
         void setupInfoPlugin(QObject *plugin);
         void sendLoadedPlugins();
         void sendLoadedPluginsWithUI();
-        void sendFinished();
         void applyFade(QAudioBuffer *buffer);
 
 
@@ -268,6 +267,7 @@ class Track : public QObject {
         void diagnostics(QUuid id, DiagnosticData diagnosticData);
 
         void moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer);
+        void sendFinished();
 
         void decoderFinished(QUuid uniqueId);
         void decoderError(QUuid uniqueId, QString errorMessage);

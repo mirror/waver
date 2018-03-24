@@ -1805,9 +1805,10 @@ void Track::applyFade(QAudioBuffer *buffer)
             if ((fadeDirection == FADE_DIRECTION_OUT) && (fadePercent > 0)) {
                 fadePercent--;
 
-                // after fade out, it is expected that track will stop, so keep it faded
+                // after fade out, the track will stop, but must be through a timer to make sure this loop exits clearly
                 if (fadePercent == 0) {
-                    sendFinished();
+                    QTimer::singleShot(50, this, SLOT(sendFinished()));
+                    break;
                 }
             }
         }
