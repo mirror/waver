@@ -42,8 +42,6 @@ SoundOutput::SoundOutput()
     notificationCounter = 0;
     audioOutput         = NULL;
     feeder              = NULL;
-    fadeDirection       = FADE_DIRECTION_NONE;
-    sendFadeComplete    = true;
     volume              = 1.0;
     sendDiagnostics     = false;
 }
@@ -85,14 +83,14 @@ QString SoundOutput::pluginName()
 // overrided virtual function
 int SoundOutput::SoundOutput::pluginVersion()
 {
-    return 2;
+    return 3;
 }
 
 
 // overrided virtual function
 QString SoundOutput::waverVersionAPICompatibility()
 {
-    return "0.0.4";
+    return "0.0.5";
 }
 
 
@@ -126,6 +124,13 @@ bool SoundOutput::hasUI()
     //return true;
 
     return false;
+}
+
+
+// overrided virtual function
+QUrl SoundOutput::menuImageURL()
+{
+    return QUrl();
 }
 
 
@@ -334,8 +339,7 @@ void SoundOutput::resume(QUuid uniqueId)
     }
 
     if (audioOutput != NULL) {
-        sendFadeComplete = false;
-        fadeIn(id, 2);
+        clearBuffers();
         audioIODevice = audioOutput->start();
         if (feeder != NULL) {
             feeder->setOutputDevice(audioIODevice);
@@ -344,34 +348,6 @@ void SoundOutput::resume(QUuid uniqueId)
             fillBytesToPlay();
         }
     }
-}
-
-
-// signal handler
-void SoundOutput::fadeIn(QUuid uniqueId, int seconds)
-{
-    if (uniqueId != id) {
-        return;
-    }
-
-    fadeDirection  = FADE_DIRECTION_IN;
-    fadePercent    = 0;
-    fadeSeconds    = seconds;
-    fadeFrameCount = 0;
-}
-
-
-// signal handler
-void SoundOutput::fadeOut(QUuid uniqueId, int seconds)
-{
-    if (uniqueId != id) {
-        return;
-    }
-
-    fadeDirection  = FADE_DIRECTION_OUT;
-    fadePercent    = 100;
-    fadeSeconds    = seconds;
-    fadeFrameCount = 0;
 }
 
 
@@ -443,11 +419,6 @@ void SoundOutput::fillBytesToPlay()
             sendDiagnosticsData();
         }
 
-        // fade in / out
-        if (fadeDirection != FADE_DIRECTION_NONE) {
-            applyFade();
-        }
-
         // so that it doesn't have to be called many times
         QAudioBuffer *buffer = bufferQueue->at(0);
 
@@ -474,142 +445,6 @@ void SoundOutput::fillBytesToPlay()
 
 
 // private method
-void SoundOutput::applyFade()
-{
-    // usual paranoia
-    if (bufferQueue->count() < 1) {
-        return;
-    }
-
-    // so that it doesn't have to be done many times
-    QAudioBuffer *buffer = bufferQueue->at(0);
-
-    // some variables that are needed
-    double framesPerPercent = buffer->format().framesForDuration(fadeSeconds * 1000000) / 100;
-    double framesPerSample  = 1.0 / buffer->format().channelCount();
-
-    // this is only to speed up things inside the loop
-    int dataType = 0;
-    if (buffer->format().sampleType() == QAudioFormat::SignedInt) {
-        if (buffer->format().sampleSize() == 8) {
-            dataType = 1;
-        }
-        else if (buffer->format().sampleSize() == 16) {
-            dataType = 2;
-        }
-        else if (buffer->format().sampleSize() == 32) {
-            dataType = 3;
-        }
-    }
-    else if (buffer->format().sampleType() == QAudioFormat::UnSignedInt) {
-        if (buffer->format().sampleSize() == 8) {
-            dataType = 4;
-        }
-        else if (buffer->format().sampleSize() == 16) {
-            dataType = 5;
-        }
-        else if (buffer->format().sampleSize() == 32) {
-            dataType = 6;
-        }
-    }
-
-    // only one of these will be used, depending on the data type
-    qint8   *int8;
-    qint16  *int16;
-    qint32  *int32;
-    quint8  *uint8;
-    quint16 *uint16;
-    quint32 *uint32;
-
-    // do the math sample by sample (simple linear fade)
-    char  *data      = (char *)buffer->data();
-    int    byteCount = 0;
-    while (byteCount < buffer->byteCount()) {
-        // not all formats supported, but most common ones are
-        if (dataType != 0) {
-            // calculation
-            switch (dataType) {
-                case 1:
-                    int8  = (qint8 *)data;
-                    *int8 = (fadePercent * *int8) / 100;
-                    data      += 1;
-                    byteCount += 1;
-                    break;
-                case 2:
-                    int16  = (qint16 *)data;
-                    *int16 = (fadePercent * *int16) / 100;
-                    data      += 2;
-                    byteCount += 2;
-                    break;
-                case 3:
-                    int32  = (qint32 *)data;
-                    *int32 = (fadePercent * *int32) / 100;
-                    data      += 4;
-                    byteCount += 4;
-                    break;
-                case 4:
-                    uint8  = (quint8 *)data;
-                    *uint8 = (fadePercent * *uint8) / 100;
-                    data      += 1;
-                    byteCount += 1;
-                    break;
-                case 5:
-                    uint16  = (quint16 *)data;
-                    *uint16 = (fadePercent * *uint16) / 100;
-                    data      += 2;
-                    byteCount += 2;
-                    break;
-                case 6:
-                    uint32  = (quint32 *)data;
-                    *uint32 = (fadePercent * *uint32) / 100;
-                    data      += 4;
-                    byteCount += 4;
-            }
-        }
-        else {
-            byteCount += buffer->format().sampleSize() / 8;
-        }
-
-        fadeFrameCount += framesPerSample;
-
-        // change percentage if it's time to do that
-        if (fadeFrameCount >= framesPerPercent) {
-            // reset counter for next percent
-            fadeFrameCount = 0;
-
-            // fade in
-            if ((fadeDirection == FADE_DIRECTION_IN) && (fadePercent < 100)) {
-                fadePercent++;
-
-                // after fade in, it is excepted that the track will play along, so stop fading when 100% is reached
-                if (fadePercent == 100) {
-                    fadeDirection = FADE_DIRECTION_NONE;
-
-                    if (sendFadeComplete) {
-                        emit fadeInComplete(id);
-                    }
-                    sendFadeComplete = true;
-                }
-            }
-
-            // fade out
-            if ((fadeDirection == FADE_DIRECTION_OUT) && (fadePercent > 0)) {
-                fadePercent--;
-
-                // after fade out, it is expected that track will stop, so keep it faded
-                if (fadePercent == 0) {
-                    if (sendFadeComplete) {
-                        emit fadeOutComplete(id);
-                    }
-                    sendFadeComplete = true;
-                }
-            }
-        }
-    }
-}
-
-
-// private method
 void SoundOutput::clearBuffers()
 {
     foreach (QAudioBuffer *buffer, *bufferQueue) {
@@ -626,16 +461,6 @@ void SoundOutput::clearBuffers()
 void SoundOutput::sendDiagnosticsData()
 {
     DiagnosticData diagnosticData;
-
-    if (fadeDirection == FADE_DIRECTION_IN) {
-        diagnosticData.append({ "Fade direction", "In" });
-    }
-    else if (fadeDirection == FADE_DIRECTION_OUT) {
-        diagnosticData.append({ "Fade direction", "Out" });
-    }
-    else {
-        diagnosticData.append({ "Fade direction", "None" });
-    }
 
     bytesToPlayMutex.lock();
     double bufferSize = (double) bytesToPlay.count();

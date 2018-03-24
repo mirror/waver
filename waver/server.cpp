@@ -1601,7 +1601,6 @@ Track *WaverServer::createTrack(TrackInfo trackInfo, QUuid pluginId)
     connect(track, SIGNAL(loadedPlugins(Track::PluginList)),                                           this,  SLOT(trackLoadedPlugins(Track::PluginList)));
     connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginList)),                                     this,  SLOT(trackLoadedPluginsWithUI(Track::PluginList)));
     connect(track, SIGNAL(pluginDiagnostics(QUuid, QUrl, DiagnosticData)),                             this,  SLOT(pluginDiagnostics(QUuid, QUrl, DiagnosticData)));
-    connect(track, SIGNAL(openUrl(QUrl, QUrl)),                                                        this,  SLOT(trackOpenUrl(QUrl, QUrl)));
 
     return track;
 }
@@ -1902,16 +1901,6 @@ void WaverServer::trackInfoUpdated(QUrl url)
 
     // must be somewhere in the playlist
     sendPlaylistToClients();
-}
-
-
-// track signal handler
-void WaverServer::trackOpenUrl(QUrl url, QUrl urlToOpen)
-{
-    Q_UNUSED(url);
-
-    IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::OpenUrl, QJsonDocument(QJsonObject({{ "url", urlToOpen.toString() }}))));
 }
 
 

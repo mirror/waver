@@ -42,7 +42,7 @@
 
 #include "feeder.h"
 #include "../waver/pluginfactory.h"
-#include "../waver/API/pluginoutput_004.h"
+#include "../waver/API/pluginoutput_005.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -55,7 +55,7 @@ extern "C" WP_SOUNDOUTPUT_EXPORT void wp_plugin_factory(int pluginTypesMask, Plu
 // TODO: QAudioOutput->setVolume somehow kills the output, it must be investigated. For now, volume control is disabled.
 
 
-class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_004 {
+class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_005 {
         Q_OBJECT
 
     public:
@@ -68,6 +68,7 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_004 {
         bool    isMainOutput()                                                     override;
         QUuid   persistentUniqueId()                                               override;
         bool    hasUI()                                                            override;
+        QUrl    menuImageURL()                                                     override;
 
         explicit SoundOutput();
         ~SoundOutput();
@@ -76,9 +77,6 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_004 {
     private:
 
         static const qint64 NOTIFICATION_INTERVAL_MILLISECONDS = 100;
-        static const int    FADE_DIRECTION_NONE                = 0;
-        static const int    FADE_DIRECTION_IN                  = 1;
-        static const int    FADE_DIRECTION_OUT                 = 2;
 
         QUuid id;
 
@@ -100,17 +98,11 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_004 {
         bool   timerWaits;
         qint64 notificationCounter;
 
-        int    fadeDirection;
-        qint64 fadePercent;
-        int    fadeSeconds;
-        double fadeFrameCount;
-        bool   sendFadeComplete;
         bool   sendDiagnostics;
 
         double volume;
 
         void fillBytesToPlay();
-        void applyFade();
         void clearBuffers();
 
         void sendDiagnosticsData();
@@ -135,10 +127,8 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_004 {
 
         void bufferAvailable(QUuid uniqueId) override;
 
-        void pause(QUuid uniqueId)                override;
-        void resume(QUuid uniqueId)               override;
-        void fadeIn(QUuid uniqueId, int seconds)  override;
-        void fadeOut(QUuid uniqueId, int seconds) override;
+        void pause(QUuid uniqueId)  override;
+        void resume(QUuid uniqueId) override;
 
 
     private slots:

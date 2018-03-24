@@ -55,6 +55,7 @@ class PluginSource_005 : public PluginBase_005 {
         void requestRemoveTracks(QUuid uniqueId);
         void requestRemoveTrack(QUuid uniqueId, QUrl url);
         void updateTrackInfo(QUuid uniqueId, TrackInfo trackInfo);
+        void openUrl(QUrl url);
 
 
     public slots:

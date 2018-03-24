@@ -99,6 +99,10 @@ class Track : public QObject {
 
     private:
 
+        static const int    FADE_DIRECTION_NONE = 0;
+        static const int    FADE_DIRECTION_IN   = 1;
+        static const int    FADE_DIRECTION_OUT  = 2;
+
         struct PluginNoQueue {
             QString name;
             int     version;
@@ -149,6 +153,10 @@ class Track : public QObject {
         bool   fadeInRequestedInternal;
         qint64 fadeInRequestedMilliseconds;
         qint64 fadeInRequestedInternalMilliseconds;
+        int    fadeDirection;
+        qint64 fadePercent;
+        int    fadeSeconds;
+        double fadeFrameCount;
         bool   interruptInProgress;
         qint64 interruptPosition;
         bool   interruptPositionWithFadeOut;
@@ -173,6 +181,7 @@ class Track : public QObject {
         void sendLoadedPlugins();
         void sendLoadedPluginsWithUI();
         void sendFinished();
+        void applyFade(QAudioBuffer *buffer);
 
 
     signals:
@@ -198,7 +207,6 @@ class Track : public QObject {
         void requestFadeInForNextTrack(QUrl url, qint64 lengthMilliseconds);
         void requestAboutToFinishSendForPreviousTrack(QUrl url, qint64 posBeforeEndMilliseconds);
         void trackInfoUpdated(QUrl url);
-        void openUrl(QUrl url, QUrl urlToOpen);
 
         // for internal receivers
 
@@ -258,7 +266,6 @@ class Track : public QObject {
         void ui(QUuid uniqueId, QString qml);
         void infoMessage(QUuid uniqueId, QString message);
         void diagnostics(QUuid id, DiagnosticData diagnosticData);
-        void openUrlRequest(QUrl url);
 
         void moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer);
 

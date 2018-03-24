@@ -45,6 +45,7 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUui
     fadeInRequestedInternal                             = false;
     fadeInRequestedMilliseconds                         = 0;
     fadeInRequestedInternalMilliseconds                 = 0;
+    fadeDirection                                       = FADE_DIRECTION_NONE;
     interruptInProgress                                 = false;
     interruptPosition                                   = 0;
     interruptPositionWithFadeOut                        = true;
@@ -255,9 +256,6 @@ void Track::setupDecoderPlugin(QObject *plugin, bool fromEasyPluginInstallDir, Q
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
-    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
-        connect(plugin, SIGNAL(openUrl(QUrl)), this, SLOT(openUrlRequest(QUrl)));
-    }
 }
 
 
@@ -348,9 +346,6 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
-    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
-        connect(plugin, SIGNAL(openUrl(QUrl)), this, SLOT(openUrlRequest(QUrl)));
-    }
 }
 
 
@@ -439,9 +434,6 @@ void Track::setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
-    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
-        connect(plugin, SIGNAL(openUrl(QUrl)), this, SLOT(openUrlRequest(QUrl)));
-    }
 }
 
 
@@ -506,8 +498,6 @@ void Track::setupOutputPlugin(QObject *plugin)
     connect(plugin, SIGNAL(bufferDone(QUuid, QAudioBuffer *)),         this,   SLOT(moveBufferInQueue(QUuid, QAudioBuffer *)));
     connect(plugin, SIGNAL(positionChanged(QUuid, qint64)),            this,   SLOT(outputPositionChanged(QUuid, qint64)));
     connect(plugin, SIGNAL(bufferUnderrun(QUuid)),                     this,   SLOT(outputBufferUnderrun(QUuid)));
-    connect(plugin, SIGNAL(fadeInComplete(QUuid)),                     this,   SLOT(outputFadeInComplete(QUuid)));
-    connect(plugin, SIGNAL(fadeOutComplete(QUuid)),                    this,   SLOT(outputFadeOutComplete(QUuid)));
     connect(plugin, SIGNAL(error(QUuid, QString)),                     this,   SLOT(outputError(QUuid, QString)));
     connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
     connect(this,   SIGNAL(requestPluginUi(QUuid)),                    plugin, SLOT(getUiQml(QUuid)));
@@ -515,8 +505,6 @@ void Track::setupOutputPlugin(QObject *plugin)
     connect(this,   SIGNAL(bufferAvailable(QUuid)),                    plugin, SLOT(bufferAvailable(QUuid)));
     connect(this,   SIGNAL(pause(QUuid)),                              plugin, SLOT(pause(QUuid)));
     connect(this,   SIGNAL(resume(QUuid)),                             plugin, SLOT(resume(QUuid)));
-    connect(this,   SIGNAL(fadeIn(QUuid, int)),                        plugin, SLOT(fadeIn(QUuid, int)));
-    connect(this,   SIGNAL(fadeOut(QUuid, int)),                       plugin, SLOT(fadeOut(QUuid, int)));
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.3")) {
         connect(plugin, SIGNAL(saveGlobalConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
         connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
@@ -532,8 +520,11 @@ void Track::setupOutputPlugin(QObject *plugin)
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
-    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
-        connect(plugin, SIGNAL(openUrl(QUrl)), this, SLOT(openUrlRequest(QUrl)));
+    if (!PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
+        connect(plugin, SIGNAL(fadeInComplete(QUuid)),  this,   SLOT(outputFadeInComplete(QUuid)));
+        connect(plugin, SIGNAL(fadeOutComplete(QUuid)), this,   SLOT(outputFadeOutComplete(QUuid)));
+        connect(this,   SIGNAL(fadeIn(QUuid, int)),     plugin, SLOT(fadeIn(QUuid, int)));
+        connect(this,   SIGNAL(fadeOut(QUuid, int)),    plugin, SLOT(fadeOut(QUuid, int)));
     }
 }
 
@@ -661,9 +652,10 @@ void Track::setStatus(Status status)
         }
 
         if (trackInfo.cast || fadeInRequested) {
-            foreach (QUuid outputPluginId, outputPlugins.keys()) {
-                emit fadeIn(outputPluginId, (fadeInRequestedMilliseconds == 0 ? INTERRUPT_FADE_SECONDS : fadeInRequestedMilliseconds / 1000));
-            }
+            fadeDirection  = FADE_DIRECTION_IN;
+            fadePercent    = 0;
+            fadeSeconds    = (fadeInRequestedMilliseconds == 0 ? INTERRUPT_FADE_SECONDS : fadeInRequestedMilliseconds / 1000);
+            fadeFrameCount = 0;
         }
 
         currentStatus = Playing;
@@ -688,9 +680,10 @@ void Track::setStatus(Status status)
         }
 
         if (trackInfo.cast || fadeInRequested) {
-            foreach (QUuid outputPluginId, outputPlugins.keys()) {
-                emit fadeIn(outputPluginId, (fadeInRequestedMilliseconds == 0 ? INTERRUPT_FADE_SECONDS : fadeInRequestedMilliseconds / 1000));
-            }
+            fadeDirection  = FADE_DIRECTION_IN;
+            fadePercent    = 0;
+            fadeSeconds    = (fadeInRequestedMilliseconds == 0 ? INTERRUPT_FADE_SECONDS : fadeInRequestedMilliseconds / 1000);
+            fadeFrameCount = 0;
         }
 
         if (dspPlugins.count() > 0) {
@@ -730,6 +723,10 @@ void Track::setStatus(Status status)
 
     if ((status == Playing) && (currentStatus == Paused)) {
         foreach (QUuid pluginId, outputPlugins.keys()) {
+            fadeDirection  = FADE_DIRECTION_IN;
+            fadePercent    = 0;
+            fadeSeconds    = 2;
+            fadeFrameCount = 0;
             emit resume(pluginId);
         }
 
@@ -886,9 +883,10 @@ void Track::interrupt()
     if ((currentStatus == Playing) && (!interruptInProgress)) {
         interruptInProgress = true;
 
-        foreach (QUuid pluginId, outputPlugins.keys()) {
-            emit fadeOut(pluginId, INTERRUPT_FADE_SECONDS);
-        }
+        fadeDirection  = FADE_DIRECTION_OUT;
+        fadePercent    = 100;
+        fadeSeconds    = INTERRUPT_FADE_SECONDS;
+        fadeFrameCount = 0;
 
         return;
     }
@@ -1143,13 +1141,6 @@ void Track::diagnostics(QUuid id, DiagnosticData diagnosticData)
 
 
 // plugin signal handler
-void Track::openUrlRequest(QUrl url)
-{
-    emit openUrl(trackInfo.url, url);
-}
-
-
-// plugin signal handler
 void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
 {
     // buffer just got available from decoder
@@ -1202,6 +1193,11 @@ void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
         // are there any output plugins?
         else if (outputPlugins.count() > 0) {
 
+            // fade
+            if (fadeDirection != FADE_DIRECTION_NONE) {
+                applyFade(buffer);
+            }
+
             // initialize done counter for this buffer (this will determine if all outputs are done with this buffer)
             bufferOuputDoneCounters[buffer] = 0;
 
@@ -1244,6 +1240,7 @@ void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
             emit bufferAvailable(nextDspPrePluginId);
         }
 
+        // are there any dsp plugins?
         else if (dspPlugins.count() > 0) {
 
             // is this track just starting?
@@ -1270,6 +1267,11 @@ void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
 
         // are there any output plugins?
         else if (outputPlugins.count() > 0) {
+
+            // fade
+            if (fadeDirection != FADE_DIRECTION_NONE) {
+                applyFade(buffer);
+            }
 
             // initialize done counter for this buffer (this will determine if all outputs are done with this buffer)
             bufferOuputDoneCounters[buffer] = 0;
@@ -1319,6 +1321,11 @@ void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
 
         // are there any output plugins?
         else if (outputPlugins.count() > 0) {
+
+            // fade
+            if (fadeDirection != FADE_DIRECTION_NONE) {
+                applyFade(buffer);
+            }
 
             // initialize done counter for this buffer (this will determine if all outputs are done with this buffer)
             bufferOuputDoneCounters[buffer] = 0;
@@ -1685,4 +1692,124 @@ void Track::infoAddInfoHtml(QUuid uniqueId, QString info)
 {
     Q_UNUSED(uniqueId);
     Q_UNUSED(info);
+}
+
+
+// private method
+void Track::applyFade(QAudioBuffer *buffer)
+{
+    // some variables that are needed
+    double framesPerPercent = buffer->format().framesForDuration(fadeSeconds * 1000000) / 100;
+    double framesPerSample  = 1.0 / buffer->format().channelCount();
+
+    // this is only to speed up things inside the loop
+    int dataType = 0;
+    if (buffer->format().sampleType() == QAudioFormat::SignedInt) {
+        if (buffer->format().sampleSize() == 8) {
+            dataType = 1;
+        }
+        else if (buffer->format().sampleSize() == 16) {
+            dataType = 2;
+        }
+        else if (buffer->format().sampleSize() == 32) {
+            dataType = 3;
+        }
+    }
+    else if (buffer->format().sampleType() == QAudioFormat::UnSignedInt) {
+        if (buffer->format().sampleSize() == 8) {
+            dataType = 4;
+        }
+        else if (buffer->format().sampleSize() == 16) {
+            dataType = 5;
+        }
+        else if (buffer->format().sampleSize() == 32) {
+            dataType = 6;
+        }
+    }
+
+    // only one of these will be used, depending on the data type
+    qint8   *int8;
+    qint16  *int16;
+    qint32  *int32;
+    quint8  *uint8;
+    quint16 *uint16;
+    quint32 *uint32;
+
+    // do the math sample by sample (simple linear fade)
+    char  *data      = (char *)buffer->data();
+    int    byteCount = 0;
+    while (byteCount < buffer->byteCount()) {
+        // not all formats supported, but most common ones are
+        if (dataType != 0) {
+            // calculation
+            switch (dataType) {
+                case 1:
+                    int8  = (qint8 *)data;
+                    *int8 = (fadePercent * *int8) / 100;
+                    data      += 1;
+                    byteCount += 1;
+                    break;
+                case 2:
+                    int16  = (qint16 *)data;
+                    *int16 = (fadePercent * *int16) / 100;
+                    data      += 2;
+                    byteCount += 2;
+                    break;
+                case 3:
+                    int32  = (qint32 *)data;
+                    *int32 = (fadePercent * *int32) / 100;
+                    data      += 4;
+                    byteCount += 4;
+                    break;
+                case 4:
+                    uint8  = (quint8 *)data;
+                    *uint8 = (fadePercent * *uint8) / 100;
+                    data      += 1;
+                    byteCount += 1;
+                    break;
+                case 5:
+                    uint16  = (quint16 *)data;
+                    *uint16 = (fadePercent * *uint16) / 100;
+                    data      += 2;
+                    byteCount += 2;
+                    break;
+                case 6:
+                    uint32  = (quint32 *)data;
+                    *uint32 = (fadePercent * *uint32) / 100;
+                    data      += 4;
+                    byteCount += 4;
+            }
+        }
+        else {
+            byteCount += buffer->format().sampleSize() / 8;
+        }
+
+        fadeFrameCount += framesPerSample;
+
+        // change percentage if it's time to do that
+        if (fadeFrameCount >= framesPerPercent) {
+            // reset counter for next percent
+            fadeFrameCount = 0;
+
+            // fade in
+            if ((fadeDirection == FADE_DIRECTION_IN) && (fadePercent < 100)) {
+                fadePercent++;
+
+                // after fade in, it is excepted that the track will play along, so stop fading when 100% is reached
+                if (fadePercent == 100) {
+                    fadeDirection = FADE_DIRECTION_NONE;
+                }
+            }
+
+            // fade out
+            if ((fadeDirection == FADE_DIRECTION_OUT) && (fadePercent > 0)) {
+                fadePercent--;
+
+                // after fade out, it is expected that track will stop, so keep it faded
+                if (fadePercent == 0) {
+                    sendFinished();
+                }
+            }
+        }
+    }
 }

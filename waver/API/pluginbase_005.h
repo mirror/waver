@@ -63,8 +63,6 @@ class PluginBase_005 : public QObject {
 
         void diagnostics(QUuid uniqueId, DiagnosticData data);
 
-        void openUrl(QUrl url);
-
 
     public slots:
 

@@ -274,7 +274,6 @@ class WaverServer : public QObject {
         void trackAboutToFinish(QUrl url);
         void trackFinished(QUrl url);
         void trackInfoUpdated(QUrl url);
-        void trackOpenUrl(QUrl url, QUrl urlToOpen);
 
         void startNextTrackUISignal();
         void diagnosticsRefreshUI();
