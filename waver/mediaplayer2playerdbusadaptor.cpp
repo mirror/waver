@@ -15,6 +15,12 @@ MediaPlayer2PlayerDBusAdaptor::MediaPlayer2PlayerDBusAdaptor(QObject *parent, Wa
 
 MediaPlayer2PlayerDBusAdaptor::~MediaPlayer2PlayerDBusAdaptor()
 {
+    if (notificationId != 0) {
+        QDBusMessage notificationMessage = QDBusMessage::createMethodCall("org.freedesktop.Notifications", "/org/freedesktop/Notifications", "org.freedesktop.Notifications", "CloseNotification");
+        notificationMessage << notificationId;
+        QDBusConnection::sessionBus().call(notificationMessage);
+    }
+
     delete this->ipcMessageUtils;
 }
 
