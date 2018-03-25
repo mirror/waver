@@ -371,7 +371,7 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
         if (playlistNotPlayed) {
             getPlaylist(id, playlistNotPlayed);
         }
-        for (int i = 1; i < replacementNotPlayed; i++) {
+        for (int i = 0; i < replacementNotPlayed; i++) {
             getReplacement(id);
         }
 
