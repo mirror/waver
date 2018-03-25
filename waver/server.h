@@ -129,6 +129,8 @@ class WaverServer : public QObject {
 
         QVector<ErrorLogItem> errorLog;
 
+        int  trackCountForLoved;
+        int  trackCountForSimilar;
         int  unableToStartCount;
         bool waitingForLocalSource;
         bool waitingForLocalSourceTimerStarted;
@@ -202,7 +204,8 @@ class WaverServer : public QObject {
         void executedSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
         void executedGlobalSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
         void executedSqlError(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error);
-        void getPlaylist(QUuid uniqueId, int trackCount);
+        void getPlaylist(QUuid uniqueId, int trackCountForLoved);
+        void getPlaylist(QUuid uniqueId, int trackCountForLoved, int mode);
         void getReplacement(QUuid uniqueId);
         void getOpenTracks(QUuid uniqueId, QString parentId);
         void search(QUuid uniqueId, QString criteria);

@@ -102,11 +102,6 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_005 {
         int     variationSetCountSinceHigh;
         int     variationSetCountSinceLow;
 
-        bool        reCalculateLoved;
-        int         tracksSinceLoved;
-        QStringList lovedInCurrentCollection;
-        int         lovedFrequency;
-
         bool sendDiagnostics;
 
         QMimeDatabase mimeDatabase;
@@ -146,7 +141,7 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_005 {
 
         void unableToStart(QUuid uniqueId, QUrl url)                        override;
         void castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds) override;
-        void getPlaylist(QUuid uniqueId, int trackCount)                    override;
+        void getPlaylist(QUuid uniqueId, int trackCount, int mode)          override;
         void getReplacement(QUuid uniqueId)                                 override;
         void getOpenTracks(QUuid uniqueId, QString parentId)                override;
         void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)  override;

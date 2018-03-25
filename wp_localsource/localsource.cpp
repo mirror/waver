@@ -38,10 +38,6 @@ LocalSource::LocalSource()
     id           = QUuid("{187C9046-4801-4DB2-976C-128761F25BD8}");
     readyEmitted = false;
 
-    tracksSinceLoved = 0;
-    lovedFrequency   = 0;
-    reCalculateLoved = true;
-
     variationSetting           = "Medium";
     variationSetCountSinceHigh = 0;
     variationSetCountSinceLow  = 0;
@@ -305,13 +301,11 @@ void LocalSource::castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds)
 
 
 // request for playlist entries
-void LocalSource::getPlaylist(QUuid uniqueId, int trackCount)
+void LocalSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
 {
     if (uniqueId != id) {
         return;
     }
-
-    TracksInfo returnValue;
 
     // can't do anything if there aren't any files
     if (trackFileNames.count() < 1) {
@@ -344,6 +338,59 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount)
         return;
     }
 
+    TracksInfo returnValue;
+
+    // add loved or similar if asked for
+    if (mode != PLAYLIST_MODE_NORMAL) {
+        // get loved files
+        mutex.lock();
+        QStringList lovedInCurrentCollection;
+        foreach (QString lovedFileName, lovedFileNames) {
+            if (trackFileNames.contains(lovedFileName) || alreadyPlayedTrackFileNames.contains(lovedFileName)) {
+                lovedInCurrentCollection.append(lovedFileName);
+            }
+        }
+        mutex.unlock();
+
+        // double check that loved (or similar) tracks were found at all
+        if (lovedInCurrentCollection.count() > 0) {
+            // select a random track from loved
+            int     lovedIndex    = qrand() % lovedInCurrentCollection.count();
+            QString lovedFileName = lovedInCurrentCollection.at(lovedIndex);
+
+            // similar mode, must select from the same dir as loved (and its subdirs), but not the loved itself
+            if (mode == PLAYLIST_MODE_LOVED_SIMILAR) {
+                QStringList similar;
+                QString path = lovedFileName.left(lovedFileName.lastIndexOf('/'));
+
+                mutex.lock();
+                foreach (QString trackFileName, trackFileNames) {
+                    if ((trackFileName.compare(lovedFileName) != 0) && trackFileName.startsWith(path)) {
+                        similar.append(trackFileName);
+                    }
+                }
+                foreach (QString trackFileName, alreadyPlayedTrackFileNames) {
+                    if ((trackFileName.compare(lovedFileName) != 0) && trackFileName.startsWith(path)) {
+                        similar.append(trackFileName);
+                    }
+                }
+                mutex.unlock();
+
+                if (similar.count() > 0) {
+                    lovedIndex    = qrand() % similar.count();
+                    lovedFileName = similar.at(lovedIndex);
+                }
+            }
+
+            // add to return value
+            TrackInfo trackInfo = trackInfoFromFilePath(lovedFileName);
+            returnValue.append(trackInfo);
+
+            // playlist should be one less now
+            trackCount--;
+        }
+    }
+
     // random select some tracks according to variation
     for (int i = 1; i <= trackCount; i++) {
         // make sure we didn't run out of tracks
@@ -361,91 +408,61 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount)
         if (variationRemaining == 0) {
             // set variatioon variables
             variationSetCurrentRemainingDir();
+        }
 
-            // maybe it's time to throw in a loved track
-            if (lovedFileNames.count() > 0) {
-                if (reCalculateLoved) {
-                    lovedInCurrentCollection.clear();
-                    lovedFrequency = 0;
+        // first try a simple filter
+        foreach (QString trackFileName, trackFileNames) {
+            // this will append everything is variationDir is empty
+            if (trackFileName.startsWith(variationDir)) {
+                variationSelection.append(trackFileName);
+            }
+        }
 
-                    foreach (QString lovedFileName, lovedFileNames) {
-                        if (trackFileNames.contains(lovedFileName) || alreadyPlayedTrackFileNames.contains(lovedFileName)) {
-                            lovedInCurrentCollection.append(lovedFileName);
-                        }
-                    }
+        // if there are no more tracks in current variation directory and variation is Low, then we have to try parent dir
+        if ((variationSelection.count() < 1) && (variationCurrent == 0)) {
+            QString currentVariationDir = variationDir;
 
-                    if (lovedInCurrentCollection.count() > 0) {
-                        lovedFrequency = qMax(qMin((trackFileNames.count() + alreadyPlayedTrackFileNames.count()) / lovedInCurrentCollection.count(), 15), 3);
-                    }
-
-                    reCalculateLoved = false;
+            // find the base directory
+            currentVariationDir.append("/");
+            QString baseDirectory;
+            foreach (QString directory, directories) {
+                if (currentVariationDir.startsWith(directory) && (directory.length() > baseDirectory.length())) {
+                    baseDirectory = directory;
                 }
-                if ((lovedFrequency > 0) && (tracksSinceLoved >= lovedFrequency)) {
-                    tracksSinceLoved   = 0;
-                    variationSelection = lovedInCurrentCollection;
+            }
+            if (baseDirectory.endsWith("/")) {
+                baseDirectory = baseDirectory.left(baseDirectory.length() - 1);
+            }
+
+            // get parent directory path
+            while (currentVariationDir.endsWith("/")) {
+                currentVariationDir = currentVariationDir.left(currentVariationDir.length() - 1);
+            }
+            currentVariationDir = (currentVariationDir.contains("/") ? currentVariationDir.left(currentVariationDir.lastIndexOf("/")) : "");
+
+            // make sure there is a parent directory
+            if ((currentVariationDir.length() > 0) && (currentVariationDir.compare(baseDirectory) != 0)) {
+                // set current variation directory to parent
+                variationDir = currentVariationDir;
+
+                // filter again
+                foreach (QString trackFileName, trackFileNames) {
+                    if (trackFileName.startsWith(variationDir)) {
+                        variationSelection.append(trackFileName);
+                    }
                 }
             }
         }
 
-        // no loved tracks now
+        // there are no more tracks in variation directory (or its parent if variation is Low)
         if (variationSelection.count() < 1) {
-            // first try a simple filter
+            // set a new variation (directory will be empty, don't have to filter on it)
+            variationSetCurrentRemainingDir();
+
+            // copy without filter
             foreach (QString trackFileName, trackFileNames) {
-                // this will append everything is variationDir is empty
-                if (trackFileName.startsWith(variationDir)) {
-                    variationSelection.append(trackFileName);
-                }
+                variationSelection.append(trackFileName);
             }
-
-            // if there are no more tracks in current variation directory and variation is Low, then we have to try parent dir
-            if ((variationSelection.count() < 1) && (variationCurrent == 0)) {
-                QString currentVariationDir = variationDir;
-
-                // find the base directory
-                currentVariationDir.append("/");
-                QString baseDirectory;
-                foreach (QString directory, directories) {
-                    if (currentVariationDir.startsWith(directory) && (directory.length() > baseDirectory.length())) {
-                        baseDirectory = directory;
-                    }
-                }
-                if (baseDirectory.endsWith("/")) {
-                    baseDirectory = baseDirectory.left(baseDirectory.length() - 1);
-                }
-
-                // get parent directory path
-                while (currentVariationDir.endsWith("/")) {
-                    currentVariationDir = currentVariationDir.left(currentVariationDir.length() - 1);
-                }
-                currentVariationDir = (currentVariationDir.contains("/") ? currentVariationDir.left(currentVariationDir.lastIndexOf("/")) : "");
-
-                // make sure there is a parent directory
-                if ((currentVariationDir.length() > 0) && (currentVariationDir.compare(baseDirectory) != 0)) {
-                    // set current variation directory to parent
-                    variationDir = currentVariationDir;
-
-                    // filter again
-                    foreach (QString trackFileName, trackFileNames) {
-                        if (trackFileName.startsWith(variationDir)) {
-                            variationSelection.append(trackFileName);
-                        }
-                    }
-                }
-            }
-
-            // there are no more tracks in variation directory (or its parent if variation is Low)
-            if (variationSelection.count() < 1) {
-                // set a new variation (directory will be empty, don't have to filter on it)
-                variationSetCurrentRemainingDir();
-
-                // copy without filter
-                foreach (QString trackFileName, trackFileNames) {
-                    variationSelection.append(trackFileName);
-                }
-            }
-
-            // adjust counter
-            tracksSinceLoved++;
         }
 
         // this should never happen
@@ -722,8 +739,6 @@ void LocalSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
             trackInfoTemp.actions.append({ id, 11, "Band search"});
         }
         emit updateTrackInfo(id, trackInfoTemp);
-
-        reCalculateLoved = true;
     }
 
     if (actionKey == 2) {
@@ -742,8 +757,6 @@ void LocalSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
             trackInfoTemp.actions.append({ id, 11, "Band search"});
         }
         emit updateTrackInfo(id, trackInfoTemp);
-
-        reCalculateLoved = true;
     }
 
     if (actionKey == 10) {
@@ -793,8 +806,6 @@ void LocalSource::readyTimer()
 // scanner signal handler
 void LocalSource::scannerFinished()
 {
-    reCalculateLoved = true;
-
     // get the scanner that sent this signal
     FileScanner *sender = (FileScanner *) QObject::sender();
 
@@ -1090,7 +1101,6 @@ void LocalSource::sendDiagnosticsData()
     diagnosticData.append({ "Already played",     QString("%1").arg(alreadyPlayedTrackFileNames.count()) });
     diagnosticData.append({ "Banned",             QString("%1").arg(bannedFileNames.count()) });
     diagnosticData.append({ "Loved",              QString("%1").arg(lovedFileNames.count()) });
-    diagnosticData.append({ "Tracks 'till loved", (lovedFrequency - tracksSinceLoved > 0 ? QString("Approx. %1").arg(lovedFrequency - tracksSinceLoved) : "Unknown") });
 
     emit diagnostics(id, diagnosticData);
 }

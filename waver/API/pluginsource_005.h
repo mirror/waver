@@ -62,7 +62,7 @@ class PluginSource_005 : public PluginBase_005 {
 
         virtual void unableToStart(QUuid uniqueId, QUrl url)                         = 0;
         virtual void castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds)  = 0;
-        virtual void getPlaylist(QUuid uniqueId, int trackCount)                     = 0;
+        virtual void getPlaylist(QUuid uniqueId, int trackCount, int mode)           = 0;
         virtual void getReplacement(QUuid uniqueId)                                  = 0;
         virtual void getOpenTracks(QUuid uniqueId, QString parentId)                 = 0;
         virtual void resolveOpenTracks(QUuid uniqueId, QStringList selectedTrackIds) = 0;

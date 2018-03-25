@@ -38,6 +38,8 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     // initializations
     previousTrack                     = NULL;
     currentTrack                      = NULL;
+    trackCountForLoved                = 0;
+    trackCountForSimilar              = 0;
     currentCollection                 = "";
     unableToStartCount                = 0;
     waitingForLocalSource             = true;
@@ -296,7 +298,21 @@ void WaverServer::requestPlaylist()
     }
 
     // emit signal
-    emit getPlaylist(readyPlugins.at(pluginIndex), sourcePlugins.value(readyPlugins.at(pluginIndex)).priority);
+    if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(readyPlugins.at(pluginIndex)).waverVersionAPICompatibility, "0.0.5")) {
+        int mode = PLAYLIST_MODE_NORMAL;
+        if (trackCountForLoved >= 8) {
+            mode = PLAYLIST_MODE_LOVED;
+            trackCountForLoved = 0;
+        }
+        else if (trackCountForSimilar >= 4) {
+            mode = PLAYLIST_MODE_LOVED_SIMILAR;
+            trackCountForSimilar = 0;
+        }
+        emit getPlaylist(readyPlugins.at(pluginIndex), sourcePlugins.value(readyPlugins.at(pluginIndex)).priority, mode);
+    }
+    else {
+        emit getPlaylist(readyPlugins.at(pluginIndex), sourcePlugins.value(readyPlugins.at(pluginIndex)).priority);
+    }
     lastPlaylistPlugin = readyPlugins.at(pluginIndex);
 }
 
@@ -975,7 +991,6 @@ void WaverServer::pluginLibsLoaded()
             connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),          plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
             connect(this,   SIGNAL(requestPluginUi(QUuid)),                             plugin, SLOT(getUiQml(QUuid)));
             connect(this,   SIGNAL(pluginUiResults(QUuid, QJsonDocument)),              plugin, SLOT(uiResults(QUuid, QJsonDocument)));
-            connect(this,   SIGNAL(getPlaylist(QUuid, int)),                            plugin, SLOT(getPlaylist(QUuid, int)));
             connect(this,   SIGNAL(getOpenTracks(QUuid, QString)),                      plugin, SLOT(getOpenTracks(QUuid, QString)));
             connect(this,   SIGNAL(search(QUuid, QString)),                             plugin, SLOT(search(QUuid, QString)));
             connect(this,   SIGNAL(resolveOpenTracks(QUuid, QStringList)),              plugin, SLOT(resolveOpenTracks(QUuid, QStringList)));
@@ -1001,9 +1016,11 @@ void WaverServer::pluginLibsLoaded()
             }
             if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
                 connect(plugin, SIGNAL(openUrl(QUrl)),                      this,   SLOT(sourceOpenUrl(QUrl)));
+                connect(this,   SIGNAL(getPlaylist(QUuid, int, int)),       plugin, SLOT(getPlaylist(QUuid, int, int)));
                 connect(this,   SIGNAL(trackAction(QUuid, int, TrackInfo)), plugin, SLOT(action(QUuid, int, TrackInfo)));
             }
             else {
+                connect(this,   SIGNAL(getPlaylist(QUuid, int)),     plugin, SLOT(getPlaylist(QUuid, int)));
                 connect(this, SIGNAL(trackAction(QUuid, int, QUrl)), plugin, SLOT(action(QUuid, int, QUrl)));
             }
         }
@@ -1523,6 +1540,13 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo)
     foreach (TrackInfo trackInfo, tracksInfo) {
         // create track
         Track *track = createTrack(trackInfo, uniqueId);
+
+        // for loved tracks inclusion
+        if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(uniqueId).waverVersionAPICompatibility, "0.0.5")) {
+            trackCountForLoved++;
+            trackCountForSimilar++;
+
+        }
 
         // add to playlist
         playlistTracks.append(track);

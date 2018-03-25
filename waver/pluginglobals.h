@@ -61,4 +61,8 @@ static const int PLUGIN_TYPE_ALL     =
 
 static const int CACHE_BUFFER_COUNT = 3;
 
+static const int PLAYLIST_MODE_NORMAL        = 0;
+static const int PLAYLIST_MODE_LOVED         = 1;
+static const int PLAYLIST_MODE_LOVED_SIMILAR = 2;
+
 #endif // PLUGINGLOBALS_H

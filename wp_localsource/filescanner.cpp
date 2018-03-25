@@ -63,8 +63,7 @@ void FileScanner::scan(QString startDir)
         }
 
 
-        if (entry.isFile() && !entry.isSymLink() && (entry.fileName().endsWith(".mp3", Qt::CaseInsensitive) ||
-                mimeDatabase.mimeTypeForFile(entry).name().startsWith("audio", Qt::CaseInsensitive))) {
+        if (entry.isFile() && !entry.isSymLink() && (entry.fileName().endsWith(".mp3", Qt::CaseInsensitive) || mimeDatabase.mimeTypeForFile(entry).name().startsWith("audio", Qt::CaseInsensitive))) {
             mutex->lock();
             if (!exclude->contains(entry.absoluteFilePath()) && !ban->contains(entry.absoluteFilePath())) {
                 results->append(entry.absoluteFilePath());
