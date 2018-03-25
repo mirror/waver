@@ -72,14 +72,14 @@ QString FMASource::pluginName()
 // overridden virtual function
 int FMASource::pluginVersion()
 {
-    return 1;
+    return 2;
 }
 
 
 // overrided virtual function
 QString FMASource::waverVersionAPICompatibility()
 {
-    return "0.0.4";
+    return "0.0.5";
 }
 
 
@@ -100,6 +100,13 @@ void FMASource::setUserAgent(QString userAgent)
 QUuid FMASource::persistentUniqueId()
 {
     return id;
+}
+
+
+// overridden virtual function
+QUrl FMASource::menuImageURL()
+{
+    return QUrl();
 }
 
 
@@ -182,6 +189,11 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
     }
 
     if (clientSqlIdentifier == SQL_CREATETABLE_BANNED) {
+        emit executeGlobalSql(id, false, "", SQL_CREATETABLE_LOVED, "CREATE TABLE IF NOT EXISTS loved (track_id INT PRIMARY KEY)", QVariantList());
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_CREATETABLE_LOVED) {
         emit executeGlobalSql(id, false, "", SQL_STARTUPCHECK_GENRECOUNT, "SELECT count(*) AS counter FROM genres", QVariantList());
         return;
     }
@@ -258,8 +270,44 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
         return;
     }
 
+    if (clientSqlIdentifier == SQL_GET_LOVED) {
+        if (results.count() > 0) {
+            lovedTemp.album     = results.at(0).value("album").toString();
+            lovedTemp.cast      = false;
+            lovedTemp.performer = (results.at(0).value("performer").toString().compare(results.at(0).value("album_performer").toString()) == 0 ? results.at(0).value("performer").toString() : results.at(0).value("performer").toString() + "\n(" + results.at(0).value("album_performer").toString() + ")");
+            lovedTemp.title     = results.at(0).value("title").toString();
+            lovedTemp.track     = results.at(0).value("track").toInt();
+            lovedTemp.url       = QUrl(results.at(0).value("url").toString());
+            lovedTemp.year      = results.at(0).value("year").toInt();
+            lovedTemp.actions.append({ id, 0, "Ban" });
+            lovedTemp.actions.append({ id, 1, "Ban album" });
+            if (results.at(0).value("loved_track_id").toString().isEmpty()) {
+                lovedTemp.actions.append({ id, 10, "Love" });
+            }
+            else  {
+                lovedTemp.actions.append({ id, 11, "Unlove" });
+            }
+            lovedTemp.pictures.append(QUrl(results.at(0).value("picture_url").toString().toUtf8()));
+
+            lovedLeft--;
+        }
+
+        QString      binds;
+        QVariantList values;
+        selectedGenresBinds(&binds, &values);
+        values.append(lovedLeft);
+        emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT ?", values);
+    }
+
+
     if (clientSqlIdentifier == SQL_GET_PLAYLIST) {
         TracksInfo tracksInfo;
+
+        if (!lovedTemp.url.isEmpty()) {
+            tracksInfo.append(lovedTemp);
+            lovedTemp.url = QUrl();
+        }
+
         foreach (QVariantHash result, results) {
             TrackInfo trackInfo;
             trackInfo.album     = result.value("album").toString();
@@ -271,6 +319,12 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
             trackInfo.year      = result.value("year").toInt();
             trackInfo.actions.append({ id, 0, "Ban" });
             trackInfo.actions.append({ id, 1, "Ban album" });
+            if (result.value("loved_track_id").toString().isEmpty()) {
+                trackInfo.actions.append({ id, 10, "Love" });
+            }
+            else  {
+                trackInfo.actions.append({ id, 11, "Unlove" });
+            }
             trackInfo.pictures.append(QUrl(result.value("picture_url").toString().toUtf8()));
 
             tracksInfo.append(trackInfo);
@@ -296,6 +350,12 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
             trackInfo.year      = results.at(0).value("year").toInt();
             trackInfo.actions.append({ id, 0, "Ban"});
             trackInfo.actions.append({ id, 1, "Ban album" });
+            if (results.at(0).value("loved_track_id").toString().isEmpty()) {
+                trackInfo.actions.append({ id, 10, "Love" });
+            }
+            else  {
+                trackInfo.actions.append({ id, 11, "Unlove" });
+            }
             trackInfo.pictures.append(QUrl(results.at(0).value("picture_url").toString().toUtf8()));
 
             emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "UPDATE tracks SET playcount = playcount + 1 WHERE id = ?", QVariantList({ results.at(0).value("id").toInt() }));
@@ -653,18 +713,32 @@ void FMASource::castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds)
 
 
 // reuest for playlist entries
-void FMASource::getPlaylist(QUuid uniqueId, int trackCount)
+void FMASource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
 {
     if (uniqueId != id) {
         return;
     }
 
-    // select tracks to return (these will be dealt with in the sql signal handler)
+    lovedTemp.url = QUrl();
+    lovedLeft     = trackCount;
+
     QString      binds;
     QVariantList values;
     selectedGenresBinds(&binds, &values);
+
+    if (mode == PLAYLIST_MODE_LOVED) {
+        emit executeGlobalSql(id, false, "", SQL_GET_LOVED, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id IN (SELECT track_id FROM loved)) ORDER BY RANDOM() LIMIT 1", values);
+        return;
+    }
+
+    if (mode == PLAYLIST_MODE_LOVED_SIMILAR) {
+        emit executeGlobalSql(id, false, "", SQL_GET_LOVED, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id NOT IN (SELECT track_id FROM loved)) AND (tracks.album_id IN (SELECT DISTINCT album_id FROM tracks AS album_lookup WHERE album_lookup.id IN (SELECT track_id FROM loved))) ORDER BY RANDOM() LIMIT 1", values);
+        return;
+    }
+
+    // select tracks to return (these will be dealt with in the sql signal handler)
     values.append(trackCount);
-    emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT ?", values);
+    emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT ?", values);
 
     return;
 }
@@ -680,8 +754,9 @@ void FMASource::getReplacement(QUuid uniqueId)
     QString      binds;
     QVariantList values;
     selectedGenresBinds(&binds, &values);
-    emit executeGlobalSql(id, false, "", SQL_GET_REPLACEMENT, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT 1", values);
+    emit executeGlobalSql(id, false, "", SQL_GET_REPLACEMENT, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT 1", values);
 }
+
 
 // client wants to dispaly open dialog
 void FMASource::getOpenTracks(QUuid uniqueId, QString parentId)
@@ -746,7 +821,7 @@ void FMASource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
     }
 
     if (values.count() > 0) {
-        emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id WHERE tracks.id IN (" + binds.join(",") + ")", values);
+        emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE tracks.id IN (" + binds.join(",") + ")", values);
     }
 }
 
@@ -765,20 +840,42 @@ void FMASource::search(QUuid uniqueId, QString criteria)
 
 
 // user clicked action that was included in track info
-void FMASource::action(QUuid uniqueId, int actionKey, QUrl url)
+void FMASource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
 {
     if (uniqueId != id) {
         return;
     }
 
     if (actionKey == 0) {
-        emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO banned (track_id) SELECT id FROM tracks WHERE url = ?", QVariantList({ url.toString() }));
-        emit requestRemoveTrack(id, url);
+        emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO banned (track_id) SELECT id FROM tracks WHERE url = ?", QVariantList({ trackInfo.url.toString() }));
+        emit requestRemoveTrack(id, trackInfo.url);
     }
 
     if (actionKey == 1) {
-        emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO banned (track_id) SELECT id FROM tracks WHERE album_id = (SELECT album_id FROM tracks WHERE url = ?)", QVariantList({ url.toString() }));
-        emit executeGlobalSql(id, false, "", SQL_TO_BE_REMOVED, "SELECT url FROM tracks WHERE album_id = (SELECT album_id FROM tracks WHERE url = ?)", QVariantList({ url.toString() }));
+        emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO banned (track_id) SELECT id FROM tracks WHERE album_id = (SELECT album_id FROM tracks WHERE url = ?)", QVariantList({ trackInfo.url.toString() }));
+        emit executeGlobalSql(id, false, "", SQL_TO_BE_REMOVED, "SELECT url FROM tracks WHERE album_id = (SELECT album_id FROM tracks WHERE url = ?)", QVariantList({ trackInfo.url.toString() }));
+    }
+
+    if (actionKey == 10) {
+        emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO loved (track_id) SELECT id FROM tracks WHERE url = ?", QVariantList({ trackInfo.url.toString() }));
+
+        TrackInfo trackInfoTemp;
+        trackInfoTemp.url = trackInfo.url;
+        trackInfoTemp.actions.append({ id, 0, "Ban" });
+        trackInfoTemp.actions.append({ id, 1, "Ban album" });
+        trackInfoTemp.actions.append({ id, 11, "Unlove" });
+        emit updateTrackInfo(id, trackInfoTemp);
+    }
+
+    if (actionKey == 11) {
+        emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "DELETE FROM loved WHERE track_id IN (SELECT id FROM tracks WHERE url = ?)", QVariantList({ trackInfo.url.toString() }));
+
+        TrackInfo trackInfoTemp;
+        trackInfoTemp.url = trackInfo.url;
+        trackInfoTemp.actions.append({ id, 0, "Ban" });
+        trackInfoTemp.actions.append({ id, 1, "Ban album" });
+        trackInfoTemp.actions.append({ id, 10, "Love" });
+        emit updateTrackInfo(id, trackInfoTemp);
     }
 
     if (sendDiagnostics) {
