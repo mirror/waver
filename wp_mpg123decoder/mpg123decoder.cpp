@@ -529,7 +529,7 @@ void Mpg123Decoder::sendDiagnosticsData()
             default:
                 type = "unknown";
         }
-        diagnosticData.append({ "PCM format", formatFormat(audioBuffers.last()->format(), false) });
+        //diagnosticData.append({ "PCM format", formatFormat(audioBuffers.last()->format(), false) });
     }
 
     emit diagnostics(id, diagnosticData);
