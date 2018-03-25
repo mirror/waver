@@ -50,7 +50,7 @@ class Track : public QObject {
 
     public:
 
-        static const long CAST_PLAYTIME_MILLISECONDS = 15 * 1000; // 450 * 1000;
+        static const long CAST_PLAYTIME_MILLISECONDS = 450 * 1000;
         static const int INTERRUPT_FADE_SECONDS      = 4;
 
         typedef QHash<QUuid, QString> PluginList;
