@@ -101,6 +101,7 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_004 {
         static const int SQL_OPEN_TRACKS_LOADED           = 38;
         static const int SQL_SEARCH                       = 40;
         static const int SQL_UIQML_GENRELIST              = 41;
+        static const int SQL_TO_BE_REMOVED                = 50;
         static const int SQL_DIAGNOSTICS                  = 90;
         static const int SQL_NO_RESULTS                   = 99;
 

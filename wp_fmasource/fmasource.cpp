@@ -461,6 +461,13 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
         return;
     }
 
+    if (clientSqlIdentifier == SQL_TO_BE_REMOVED) {
+        foreach (QVariantHash result, results) {
+            emit requestRemoveTrack(id, QUrl(result.value("url").toString()));
+        }
+        return;
+    }
+
     if (clientSqlIdentifier == SQL_DIAGNOSTICS) {
         DiagnosticData diagnosticData;
 
@@ -771,7 +778,7 @@ void FMASource::action(QUuid uniqueId, int actionKey, QUrl url)
 
     if (actionKey == 1) {
         emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO banned (track_id) SELECT id FROM tracks WHERE album_id = (SELECT album_id FROM tracks WHERE url = ?)", QVariantList({ url.toString() }));
-        emit requestRemoveTrack(id, url);
+        emit executeGlobalSql(id, false, "", SQL_TO_BE_REMOVED, "SELECT url FROM tracks WHERE album_id = (SELECT album_id FROM tracks WHERE url = ?)", QVariantList({ url.toString() }));
     }
 
     if (sendDiagnostics) {
