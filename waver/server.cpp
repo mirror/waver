@@ -300,7 +300,7 @@ void WaverServer::requestPlaylist()
     // emit signal
     if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(readyPlugins.at(pluginIndex)).waverVersionAPICompatibility, "0.0.5")) {
         int mode = PLAYLIST_MODE_NORMAL;
-        if (trackCountForLoved >= 8) {
+        if (trackCountForLoved >= 7) {
             mode = PLAYLIST_MODE_LOVED;
             trackCountForLoved = 0;
         }
@@ -1545,7 +1545,6 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo)
         if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(uniqueId).waverVersionAPICompatibility, "0.0.5")) {
             trackCountForLoved++;
             trackCountForSimilar++;
-
         }
 
         // add to playlist

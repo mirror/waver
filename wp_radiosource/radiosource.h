@@ -51,7 +51,7 @@
 #include <QXmlStreamReader>
 
 #include "../waver/pluginfactory.h"
-#include "../waver/API/pluginsource_004.h"
+#include "../waver/API/pluginsource_005.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -61,7 +61,7 @@
 extern "C" WP_RADIOSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
+class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_005 {
         Q_OBJECT
 
     public:
@@ -73,6 +73,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         QUuid   persistentUniqueId()            override;
         bool    hasUI()                         override;
         void    setUserAgent(QString userAgent) override;
+        QUrl    menuImageURL()                  override;
 
         explicit RadioSource();
         ~RadioSource();
@@ -93,10 +94,11 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         static const int SQL_CREATE_TABLE_SEARCH       = 2;
         static const int SQL_GENRE_SEARCH_STATION_LIST = 10;
         static const int SQL_GET_PLAYLIST              = 11;
-        static const int SQL_GET_REPLACEMENT           = 12;
-        static const int SQL_GENRE_SEARCH_OPENING      = 13;
-        static const int SQL_OPEN_GENRE_STATIONS       = 14;
-        static const int SQL_OPEN_PLAYLIST             = 15;
+        static const int SQL_GET_LOVED                 = 12;
+        static const int SQL_GET_REPLACEMENT           = 13;
+        static const int SQL_GENRE_SEARCH_OPENING      = 14;
+        static const int SQL_OPEN_GENRE_STATIONS       = 15;
+        static const int SQL_OPEN_PLAYLIST             = 16;
         static const int SQL_STATION_SEARCH_OPENING    = 20;
         static const int SQL_STATION_SEARCH_STATIONS   = 21;
         static const int SQL_STATION_SEARCH_PLAYLIST   = 22;
@@ -150,7 +152,6 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         QString userAgent;
         QString key;
         bool    readySent;
-        int     lastPlaylistCount;
         bool    sendDiagnostics;
         State   state;
 
@@ -160,6 +161,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
         QDateTime                 genresLoaded;
         QStringList               selectedGenres;
         QVector<QUrl>             bannedUrls;
+        QVector<QUrl>             lovedUrls;
         QVector<UnableToStartUrl> unableToStartUrls;
         QHash<QString, QDateTime> stationsLoaded;
 
@@ -207,13 +209,13 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_004 {
 
         void unableToStart(QUuid uniqueId, QUrl url)                        override;
         void castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds) override;
-        void getPlaylist(QUuid uniqueId, int trackCount)                    override;
+        void getPlaylist(QUuid uniqueId, int trackCount, int mode)          override;
         void getReplacement(QUuid uniqueId)                                 override;
         void getOpenTracks(QUuid uniqueId, QString parentId)                override;
         void resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)  override;
 
-        void search(QUuid uniqueId, QString criteria)        override;
-        void action(QUuid uniqueId, int actionKey, QUrl url) override;
+        void search(QUuid uniqueId, QString criteria)                   override;
+        void action(QUuid uniqueId, int actionKey, TrackInfo trackInfo) override;
 
 
     private slots:

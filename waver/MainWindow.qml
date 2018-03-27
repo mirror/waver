@@ -1002,6 +1002,7 @@ ApplicationWindow {
                     source: imageSource
                     width: 48
                     height: 48
+                    onStatusChanged: if (playlistElementImage.status == Image.Error) playlistElementImage.source = "images/waver.png"
                 }
 
                 MouseArea {
@@ -1616,6 +1617,7 @@ ApplicationWindow {
                     anchors.left: artArea.left
                     anchors.top: artArea.top
                     anchors.bottom: artArea.bottom
+                    onStatusChanged: if (art1.status == Image.Error) art1.source = "images/waver.png"
                 }
 
                 BrightnessContrast {
@@ -1637,6 +1639,7 @@ ApplicationWindow {
                     anchors.left: artArea.left
                     anchors.top: artArea.top
                     anchors.bottom: artArea.bottom
+                    onStatusChanged: if (art2.status == Image.Error) art2.source = "images/waver.png"
                 }
 
                 BrightnessContrast {

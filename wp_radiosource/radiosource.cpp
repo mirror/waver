@@ -79,14 +79,14 @@ QString RadioSource::pluginName()
 // overridden virtual function
 int RadioSource::pluginVersion()
 {
-    return 3;
+    return 4;
 }
 
 
 // overrided virtual function
 QString RadioSource::waverVersionAPICompatibility()
 {
-    return "0.0.4";
+    return "0.0.5";
 }
 
 
@@ -102,6 +102,14 @@ void RadioSource::setUserAgent(QString userAgent)
 {
     this->userAgent = userAgent;
 }
+
+
+// overrided virtual function
+QUrl RadioSource::menuImageURL()
+{
+    return QUrl();
+}
+
 
 // overridden virtual function
 QUuid RadioSource::persistentUniqueId()
@@ -122,7 +130,7 @@ void RadioSource::run()
     connect(playlistAccessManager, SIGNAL(finished(QNetworkReply *)), this, SLOT(playlistFinished(QNetworkReply *)));
 
     // temporary db
-    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_CREATE_TABLE_STATIONS, "CREATE TABLE stations (id UNIQUE, base, name, genre, url DEFAULT NULL, logo, banned INT DEFAULT 0, unable_to_start INT DEFAULT 0, playcount INT DEFAULT 0)", QVariantList());
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_CREATE_TABLE_STATIONS, "CREATE TABLE stations (id UNIQUE, base, name, genre, url DEFAULT NULL, logo, banned INT DEFAULT 0, loved INT DEFAULT 0, unable_to_start INT DEFAULT 0, playcount INT DEFAULT 0)", QVariantList());
 }
 
 
@@ -227,6 +235,53 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
     if (clientSqlIdentifier == SQL_GET_PLAYLIST) {
         if (results.count() == 0) {
             maintenance();
+            return;
+        }
+
+        foreach (QVariantHash result, results) {
+            StationTemp stationTemp;
+            stationTemp.id          = result.value("id").toString();
+            stationTemp.base        = result.value("base").toString();
+            stationTemp.name        = result.value("name").toString();
+            stationTemp.genre       = result.value("genre").toString();
+            stationTemp.url         = QUrl(result.value("url").toString());
+            stationTemp.logo        = QUrl(result.value("logo").toString());
+            stationTemp.destination = Playlist;
+
+            tuneInTemp.append(stationTemp);
+        }
+
+        tuneInStarter();
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_GET_LOVED) {
+        if (results.count() == 0) {
+            QUrl lovedUrl = lovedUrls.at(qrand() % lovedUrls.count());
+
+            TrackInfo trackInfo;
+            trackInfo.album     = "";
+            trackInfo.cast      = true;
+            trackInfo.performer = "Online Radio";
+            trackInfo.title     = "Station You Love\n(name currently not available)";
+            trackInfo.track     = 0;
+            trackInfo.url       = lovedUrl;
+            trackInfo.year      = 0;
+            trackInfo.pictures.append(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
+            if (bannedUrls.contains(lovedUrl)) {
+                trackInfo.actions.append({ id, 1, "Remove ban" });
+            }
+            else {
+                trackInfo.actions.append({ id, 0, "Ban" });
+            }
+            trackInfo.actions.append({ id, 11, "Unlove" });
+
+            TracksInfo tracksInfo;
+            tracksInfo.append(trackInfo);
+            emit playlist(id, tracksInfo);
+
+            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET playcount = playcount + 1 WHERE url = ?", QVariantList({ lovedUrl.toString() }));
+
             return;
         }
 
@@ -369,7 +424,7 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
         int replacementNotPlayed = QString(notPlayed.at(1)).toInt();
 
         if (playlistNotPlayed) {
-            getPlaylist(id, playlistNotPlayed);
+            getPlaylist(id, playlistNotPlayed, PLAYLIST_MODE_NORMAL);
         }
         for (int i = 0; i < replacementNotPlayed; i++) {
             getReplacement(id);
@@ -411,10 +466,8 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
         }
 
 
-        DiagnosticItem diagnosticItem;
-        diagnosticItem.label   = "Banned stations";
-        diagnosticItem.message = QString("%1").arg(bannedUrls.count());
-        diagnosticData.append(diagnosticItem);
+        diagnosticData.append({ "Banned stations", QString("%1").arg(bannedUrls.count()) });
+        diagnosticData.append({ "Loved stations", QString("%1").arg(lovedUrls.count()) });
 
         foreach (QVariantHash result, results) {
             DiagnosticItem stationCount;
@@ -573,16 +626,22 @@ void RadioSource::castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds)
 
 
 // reuest for playlist entries
-void RadioSource::getPlaylist(QUuid uniqueId, int trackCount)
+void RadioSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
 {
     if (uniqueId != id) {
         return;
     }
 
-    lastPlaylistCount = trackCount;
+    // loved and similar is handled the same, after all these are radio stations
+    if ((mode != PLAYLIST_MODE_NORMAL) && (lovedUrls.count() > 0)) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_GET_LOVED, "SELECT id, base, name, genre, url, logo FROM stations WHERE (banned = 0) AND (unable_to_start = 0) AND (loved <> 0) ORDER BY playcount, RANDOM() LIMIT 1", QVariantList());
+        trackCount--;
+    }
 
     // select stations to return (these will be dealt with in the sql signal handler)
-    emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_GET_PLAYLIST, "SELECT id, base, name, genre, url, logo FROM stations WHERE (banned = 0) AND (unable_to_start = 0) ORDER BY playcount, RANDOM() LIMIT ?", QVariantList({ trackCount }));
+    if (trackCount > 0) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_GET_PLAYLIST, "SELECT id, base, name, genre, url, logo FROM stations WHERE (banned = 0) AND (unable_to_start = 0) ORDER BY playcount, RANDOM() LIMIT ?", QVariantList({ trackCount }));
+    }
 
     return;
 }
@@ -688,27 +747,69 @@ void RadioSource::search(QUuid uniqueId, QString criteria)
 
 
 // user clicked action that was included in track info
-void RadioSource::action(QUuid uniqueId, int actionKey, QUrl url)
+void RadioSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
 {
     if (uniqueId != id) {
         return;
     }
 
     if (actionKey == 0) {
-        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET banned = 1 WHERE url = ?", QVariantList({ url.toString() }));
-        if (!bannedUrls.contains(url.toString())) {
-            bannedUrls.append(url.toString());
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET banned = 1 WHERE url = ?", QVariantList({ trackInfo.url.toString() }));
+        if (!bannedUrls.contains(trackInfo.url)) {
+            bannedUrls.append(trackInfo.url);
             emit saveGlobalConfiguration(id, configToJsonGlobal());
         }
-        emit requestRemoveTrack(id, url);
+        emit requestRemoveTrack(id, trackInfo.url);
     }
 
     if (actionKey == 1) {
-        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET banned = 0 WHERE url = ?", QVariantList({ url.toString() }));
-        if (bannedUrls.contains(url.toString())) {
-            bannedUrls.removeAll(url.toString());
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET banned = 0 WHERE url = ?", QVariantList({ trackInfo.url.toString() }));
+        if (bannedUrls.contains(trackInfo.url)) {
+            bannedUrls.removeAll(trackInfo.url);
             emit saveGlobalConfiguration(id, configToJsonGlobal());
         }
+    }
+
+    if (actionKey == 10) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET loved = 1 WHERE url = ?", QVariantList({ trackInfo.url.toString() }));
+        if (!lovedUrls.contains(trackInfo.url)) {
+            lovedUrls.append(trackInfo.url);
+            emit saveGlobalConfiguration(id, configToJsonGlobal());
+        }
+
+        TrackInfo trackInfoTemp;
+        trackInfoTemp.track = 0;
+        trackInfoTemp.year  = 0;
+        trackInfoTemp.url   = trackInfo.url;
+        if (bannedUrls.contains(trackInfo.url)) {
+            trackInfoTemp.actions.append({ id, 1, "Remove ban" });
+        }
+        else {
+            trackInfoTemp.actions.append({ id, 0, "Ban" });
+        }
+        trackInfoTemp.actions.append({ id, 11, "Unlove" });
+        emit updateTrackInfo(id, trackInfoTemp);
+    }
+
+    if (actionKey == 11) {
+        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET loved = 0 WHERE url = ?", QVariantList({ trackInfo.url.toString() }));
+        if (lovedUrls.contains(trackInfo.url)) {
+            lovedUrls.removeAll(trackInfo.url);
+            emit saveGlobalConfiguration(id, configToJsonGlobal());
+        }
+
+        TrackInfo trackInfoTemp;
+        trackInfoTemp.track = 0;
+        trackInfoTemp.year  = 0;
+        trackInfoTemp.url   = trackInfo.url;
+        if (bannedUrls.contains(trackInfo.url)) {
+            trackInfoTemp.actions.append({ id, 1, "Remove ban" });
+        }
+        else {
+            trackInfoTemp.actions.append({ id, 0, "Ban" });
+        }
+        trackInfoTemp.actions.append({ id, 10, "Love" });
+        emit updateTrackInfo(id, trackInfoTemp);
     }
 
     if (sendDiagnostics) {
@@ -743,6 +844,11 @@ QJsonDocument RadioSource::configToJsonGlobal()
         jsonArrayBanned.append(bannedUrl.toString());
     }
 
+    QJsonArray jsonArrayLoved;
+    foreach (QUrl lovedUrl, lovedUrls) {
+        jsonArrayLoved.append(lovedUrl.toString());
+    }
+
     QJsonArray jsonArrayUnableToStart;
     foreach (UnableToStartUrl unableToStartUrl, unableToStartUrls) {
         jsonArrayUnableToStart.append(QJsonArray({ unableToStartUrl.url.toString(), unableToStartUrl.timestamp }));
@@ -753,6 +859,7 @@ QJsonDocument RadioSource::configToJsonGlobal()
     jsonObject.insert("genre_list", jsonArrayGenres);
     jsonObject.insert("genre_list_timestamp", genresLoaded.toMSecsSinceEpoch());
     jsonObject.insert("banned", jsonArrayBanned);
+    jsonObject.insert("loved", jsonArrayLoved);
     jsonObject.insert("unable_to_start", jsonArrayUnableToStart);
 
     QJsonDocument returnValue;
@@ -811,6 +918,12 @@ void RadioSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
         bannedUrls.clear();
         foreach (QJsonValue jsonValue, jsonDocument.object().value("banned").toArray()) {
             bannedUrls.append(QUrl(jsonValue.toString()));
+        }
+    }
+    if (jsonDocument.object().contains("loved")) {
+        lovedUrls.clear();
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("loved").toArray()) {
+            lovedUrls.append(QUrl(jsonValue.toString()));
         }
     }
     if (jsonDocument.object().contains("unable_to_start")) {
@@ -1134,6 +1247,12 @@ void RadioSource::tuneIn()
             else {
                 trackInfo.actions.append({ id, 0, "Ban" });
             }
+            if (lovedUrls.contains(station.url)) {
+                trackInfo.actions.append({ id, 11, "Unlove" });
+            }
+            else {
+                trackInfo.actions.append({ id, 10, "Love" });
+            }
 
             emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET playcount = playcount + 1 WHERE url = ?", QVariantList({ station.url.toString() }));
 
@@ -1258,9 +1377,10 @@ void RadioSource::playlistFinished(QNetworkReply *reply)
     QVariantList values;
     values.append(selectedUrl.isEmpty() ? NULL : selectedUrl.toString());
     values.append(isBanned);
+    values.append(lovedUrls.contains(selectedUrl));
     values.append(isUnableToStart);
     values.append(stationId);
-    emit executeGlobalSql(id, SQL_TEMPORARY_DB, QString("%1,%2").arg(deletedPlaylist).arg(deletedReplacement), SQL_STATION_UPDATED_PLAYLIST, "UPDATE stations SET url = ?, banned = ?, unable_to_start = ? WHERE id = ?", values);
+    emit executeGlobalSql(id, SQL_TEMPORARY_DB, QString("%1,%2").arg(deletedPlaylist).arg(deletedReplacement), SQL_STATION_UPDATED_PLAYLIST, "UPDATE stations SET url = ?, banned = ?, loved = ?, unable_to_start = ? WHERE id = ?", values);
     QVariantList searchValues;
     searchValues.append(selectedUrl.isEmpty() ? NULL : selectedUrl.toString());
     searchValues.append(stationId);

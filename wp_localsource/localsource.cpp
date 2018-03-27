@@ -731,7 +731,9 @@ void LocalSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         emit saveGlobalConfiguration(id, configToJsonGlobal());
 
         TrackInfo trackInfoTemp;
-        trackInfoTemp.url = trackInfo.url;
+        trackInfoTemp.track = 0;
+        trackInfoTemp.year  = 0;
+        trackInfoTemp.url   = trackInfo.url;
         trackInfoTemp.actions.append({ id, 0, "Ban" });
         trackInfoTemp.actions.append({ id, 2, "Unlove" });
         if (tagLibOK) {
@@ -749,7 +751,9 @@ void LocalSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         emit saveGlobalConfiguration(id, configToJsonGlobal());
 
         TrackInfo trackInfoTemp;
-        trackInfoTemp.url = trackInfo.url;
+        trackInfoTemp.track = 0;
+        trackInfoTemp.year  = 0;
+        trackInfoTemp.url   = trackInfo.url;
         trackInfoTemp.actions.append({ id, 0, "Ban" });
         trackInfoTemp.actions.append({ id, 1, "Love" });
         if (tagLibOK) {
