@@ -287,6 +287,7 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
             else  {
                 lovedTemp.actions.append({ id, 11, "Unlove" });
             }
+            lovedTemp.actions.append({ id, 20, "Track info" });
             lovedTemp.pictures.append(QUrl(results.at(0).value("picture_url").toString().toUtf8()));
 
             lovedLeft--;
@@ -329,6 +330,7 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
             else  {
                 trackInfo.actions.append({ id, 11, "Unlove" });
             }
+            trackInfo.actions.append({ id, 20, "Track info" });
             trackInfo.pictures.append(QUrl(result.value("picture_url").toString().toUtf8()));
 
             tracksInfo.append(trackInfo);
@@ -360,6 +362,7 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
             else  {
                 trackInfo.actions.append({ id, 11, "Unlove" });
             }
+            trackInfo.actions.append({ id, 20, "Track info" });
             trackInfo.pictures.append(QUrl(results.at(0).value("picture_url").toString().toUtf8()));
 
             emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "UPDATE tracks SET playcount = playcount + 1 WHERE id = ?", QVariantList({ results.at(0).value("id").toInt() }));
@@ -872,6 +875,7 @@ void FMASource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         trackInfoTemp.actions.append({ id, 0, "Ban" });
         trackInfoTemp.actions.append({ id, 1, "Ban album" });
         trackInfoTemp.actions.append({ id, 11, "Unlove" });
+        trackInfoTemp.actions.append({ id, 20, "Track info" });
         emit updateTrackInfo(id, trackInfoTemp);
     }
 
@@ -885,7 +889,12 @@ void FMASource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         trackInfoTemp.actions.append({ id, 0, "Ban" });
         trackInfoTemp.actions.append({ id, 1, "Ban album" });
         trackInfoTemp.actions.append({ id, 10, "Love" });
+        trackInfoTemp.actions.append({ id, 20, "Track info" });
         emit updateTrackInfo(id, trackInfoTemp);
+    }
+
+    if (actionKey == 20) {
+        emit openUrl(QUrl(trackInfo.url.toString().replace(QRegExp("/download$"), "")));
     }
 
     if (sendDiagnostics) {
