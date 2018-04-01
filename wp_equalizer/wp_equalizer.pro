@@ -28,6 +28,11 @@ DEFINES += WP_EQUALIZER_LIBRARY
 
 CONFIG += c++11
 
+CONFIG(debug, debug|release) {
+    QMAKE_LFLAGS += -rdynamic
+}
+
+
 SOURCES += equalizer.cpp \
     analyzer.cpp \
     main.cpp \

@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/images">
+    <qresource prefix="/radio_images">
         <file>wp_radiosource.png</file>
     </qresource>
 </RCC>

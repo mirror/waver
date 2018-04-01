@@ -156,7 +156,7 @@ QString IpcMessageUtils::processedRaw(int index)
 
 
 // convenience method
-QJsonDocument IpcMessageUtils::trackInfoToJSONDocument(TrackInfo trackInfo)
+QJsonDocument IpcMessageUtils::trackInfoToJSONDocument(TrackInfo trackInfo, QVariantHash additionalInfo)
 {
     QStringList pictures;
     foreach (QUrl url, trackInfo.pictures) {
@@ -172,15 +172,16 @@ QJsonDocument IpcMessageUtils::trackInfoToJSONDocument(TrackInfo trackInfo)
     }
 
     QJsonObject info;
-    info.insert("url",       QJsonValue(trackInfo.url.toString()));
-    info.insert("cast",      QJsonValue(trackInfo.cast));
-    info.insert("pictures",  QJsonArray::fromStringList(pictures));
-    info.insert("title",     QJsonValue(trackInfo.title));
-    info.insert("performer", QJsonValue(trackInfo.performer));
-    info.insert("album",     QJsonValue(trackInfo.album));
-    info.insert("year",      QJsonValue(trackInfo.year));
-    info.insert("track",     QJsonValue(trackInfo.track));
-    info.insert("actions",   QJsonObject::fromVariantHash(actions));
+    info.insert("url",            QJsonValue(trackInfo.url.toString()));
+    info.insert("cast",           QJsonValue(trackInfo.cast));
+    info.insert("pictures",       QJsonArray::fromStringList(pictures));
+    info.insert("title",          QJsonValue(trackInfo.title));
+    info.insert("performer",      QJsonValue(trackInfo.performer));
+    info.insert("album",          QJsonValue(trackInfo.album));
+    info.insert("year",           QJsonValue(trackInfo.year));
+    info.insert("track",          QJsonValue(trackInfo.track));
+    info.insert("actions",        QJsonObject::fromVariantHash(actions));
+    info.insert("additionalInfo", QJsonObject::fromVariantHash(additionalInfo));
 
     return QJsonDocument(info);
 }
@@ -223,4 +224,18 @@ TrackInfo IpcMessageUtils::jsonDocumentToTrackInfo(QJsonDocument jsonDocument)
     }
 
     return trackInfo;
+}
+
+
+// convenience method
+QVariantHash IpcMessageUtils::jsonDocumentToAdditionalInfo(QJsonDocument jsonDocument)
+{
+    QVariantHash additionalInfo;
+
+    QJsonObject info = jsonDocument.object();
+    if (info.value("additionalInfo").isObject()) {
+        additionalInfo = info.value("additionalInfo").toObject().toVariantHash();
+    }
+
+    return additionalInfo;
 }

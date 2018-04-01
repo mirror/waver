@@ -71,7 +71,7 @@ class Track : public QObject {
             return pluginInfo.name;
         }
 
-        explicit Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUuid sourcePliginId, QObject *parent = 0);
+        explicit Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QVariantHash additionalInfo,  QUuid sourcePluginId, QObject *parent = 0);
         ~Track();
 
         Status status();
@@ -86,15 +86,16 @@ class Track : public QObject {
         void   setReplacable(bool replacable);
         bool   isReplacable();
 
-        TrackInfo getTrackInfo();
-        void      addPictures(QVector<QUrl> pictures);
-        QUuid     getSourcePluginId();
-        bool      getFadeInRequested();
-        qint64    getFadeInRequestedMilliseconds();
-        bool      getNextTrackFadeInRequested();
-        qint64    getNextTrackFadeInRequestedMilliseconds();
-        bool      getPreviousTrackAboutToFinishSendRequested();
-        qint64    getPreviousTrackAboutToFinishSendRequestedMilliseconds();
+        TrackInfo    getTrackInfo();
+        QVariantHash getAdditionalInfo();
+        void         addPictures(QVector<QUrl> pictures);
+        QUuid        getSourcePluginId();
+        bool         getFadeInRequested();
+        qint64       getFadeInRequestedMilliseconds();
+        bool         getNextTrackFadeInRequested();
+        qint64       getNextTrackFadeInRequestedMilliseconds();
+        bool         getPreviousTrackAboutToFinishSendRequested();
+        qint64       getPreviousTrackAboutToFinishSendRequestedMilliseconds();
 
 
     private:
@@ -121,8 +122,9 @@ class Track : public QObject {
         };
         typedef QHash<QUuid, PluginWithQueue> PluginsWithQueue;
 
-        TrackInfo trackInfo;
-        QUuid     sourcePliginId;
+        TrackInfo    trackInfo;
+        QVariantHash additionalInfo;
+        QUuid        sourcePluginId;
 
         QThread decoderThread;
         QThread dspPreThread;

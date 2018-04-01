@@ -31,6 +31,11 @@ DEFINES += WP_GENERICDECODER_LIBRARY
 
 CONFIG += c++11
 
+CONFIG(debug, debug|release) {
+    QMAKE_LFLAGS += -rdynamic
+}
+
+
 SOURCES += genericdecoder.cpp \
     networkdownloader.cpp
 

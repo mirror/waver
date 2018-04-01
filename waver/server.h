@@ -89,6 +89,9 @@ class WaverServer : public QObject {
 
         static const int  GIVE_UP_TRACKS_COUNT          = 12;
         static const long START_DECODE_PRE_MILLISECONDS = 45 * 1000;
+        static const int  LOVE_RARE                     = 6;
+        static const int  LOVE_NORMAL                   = 4;
+        static const int  LOVE_FREQUENT                 = 2;
 
         struct SourcePlugin {
             QString name;
@@ -105,6 +108,11 @@ class WaverServer : public QObject {
             QString   title;
             bool      fatal;
             QString   message;
+        };
+
+        struct LoveCounter {
+            int  counter;
+            bool similarOnly;
         };
 
         QStringList arguments;
@@ -129,14 +137,15 @@ class WaverServer : public QObject {
 
         QVector<ErrorLogItem> errorLog;
 
-        int  trackCountForLoved;
-        int  trackCountForSimilar;
         int  unableToStartCount;
         bool waitingForLocalSource;
         bool waitingForLocalSourceTimerStarted;
         long positionSeconds;
         bool showPreviousTime;
         long previousPositionSeconds;
+
+        int                       loveMode;
+        QHash<QUuid, LoveCounter> loveCounter;
 
         bool                        sendErrorLogDiagnostics;
         bool                        diagnosticsChanged;
@@ -159,7 +168,7 @@ class WaverServer : public QObject {
         void          reassignFadeIns();
         QVariantHash  positionToElapsedRemaining(bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
         QString       findTitleFromUrl(QUrl url);
-        Track        *createTrack(TrackInfo trackInfo, QUuid pluginId);
+        Track        *createTrack(TrackInfo trackInfo, QVariantHash additionalInfo, QUuid pluginId);
         void          stopAllDiagnostics();
 
         void handleCollectionMenuChange(QJsonDocument jsonDocument);
@@ -261,6 +270,7 @@ class WaverServer : public QObject {
         void executeGlobalSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
 
         void playlist(QUuid uniqueId, TracksInfo tracksInfo);
+        void playlist(QUuid uniqueId, TracksInfo tracksInfo, ExtraInfo extraInfo);
         void replacement(QUuid uniqueId, TrackInfo trackInfo);
         void openTracksResults(QUuid uniqueId, OpenTracks openTracks);
         void searchResults(QUuid uniqueId, OpenTracks openTracks);

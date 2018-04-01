@@ -141,6 +141,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_005 {
             QString                genre;
             QUrl                   url;
             QUrl                   logo;
+            int                    lovedMode;
         };
 
         struct UnableToStartUrl {

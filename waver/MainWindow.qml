@@ -48,6 +48,9 @@ ApplicationWindow {
     readonly property int  plugins_id_start: 1000
     readonly property int  plugins_id_end: 1999
     readonly property int  tracks_per_source: 4
+    readonly property int  loved_normal: 0;
+    readonly property int  loved_loved: 1;
+    readonly property int  loved_similar: 2;
 
     property bool active: true
 
@@ -133,7 +136,7 @@ ApplicationWindow {
 
     // now playing page
 
-    function updateTrackInfo(title, performer, album, year, track)
+    function updateTrackInfo(title, performer, album, year, track, loved)
     {
         trackInfoOut.start();
         trackInfoChange.newTitle = title;
@@ -141,6 +144,7 @@ ApplicationWindow {
         trackInfoChange.newAlbum = album;
         trackInfoChange.newYear = year;
         trackInfoChange.newTrack = track;
+        trackInfoChange.loved = loved;
         trackInfoChange.start();
 
         nowPlayingActions.visible = false
@@ -179,7 +183,7 @@ ApplicationWindow {
         playlistAddButton.enabled = true;
     }
 
-    function addToPlaylist(pictureUrl, title, performer, actions, showActions)
+    function addToPlaylist(pictureUrl, title, performer, actions, showActions, loved)
     {
         if (title.length < 1) {
             return;
@@ -190,7 +194,8 @@ ApplicationWindow {
             labelPerformer: performer,
             labelActions: actions,
             imageSource: pictureUrl,
-            initialShowActions: showActions
+            initialShowActions: showActions,
+            loved: loved
         });
 
         playlistAddButton.enabled = (playlistItems.count < 25);
@@ -593,6 +598,28 @@ ApplicationWindow {
                 track.text = newTrack;
             }
 
+            if (loved == loved_normal) {
+                title.color = "#000000";
+                performer.color = "#000000";
+                album.color = "#000000";
+                year.color = "#000000";
+                track.color = "#000000";
+            }
+            else if (loved == loved_loved) {
+                title.color = "#440000";
+                performer.color = "#440000";
+                album.color = "#440000";
+                year.color = "#440000";
+                track.color = "#440000";
+            }
+            else if (loved == loved_similar) {
+                title.color = "#000044";
+                performer.color = "#000044";
+                album.color = "#000044";
+                year.color = "#000044";
+                track.color = "#000044";
+            }
+
             trackInfoIn.start();
         }
 
@@ -601,6 +628,7 @@ ApplicationWindow {
         property string newAlbum
         property string newYear
         property string newTrack
+        property int    loved
     }
 
 
@@ -966,6 +994,7 @@ ApplicationWindow {
             labelActions: "<a href=\"action\">Action</a>"
             imageSource: "images/waver.png"
             initialShowActions: true
+            loved: 0
         }
     }
 
@@ -1043,6 +1072,7 @@ ApplicationWindow {
                         anchors.rightMargin: 3
                         text: labelTitle
                         font.bold: true
+                        color: (loved == loved_loved) ? "#440000" : (loved == loved_similar) ? "#000044" : "#000000"
                     }
 
                     PlatformLabel {
@@ -1052,6 +1082,7 @@ ApplicationWindow {
                         anchors.leftMargin: 6
                         anchors.rightMargin: 3
                         text: labelPerformer
+                        color: (loved == loved_loved) ? "#440000" : (loved == loved_similar) ? "#000044" : "#000000"
                     }
                 }
             }

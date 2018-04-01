@@ -97,8 +97,9 @@ class IpcMessageUtils : public QObject {
         QJsonDocument processedIpcData(int index);
         QString       processedRaw(int index);
 
-        QJsonDocument trackInfoToJSONDocument(TrackInfo trackInfo);
+        QJsonDocument trackInfoToJSONDocument(TrackInfo trackInfo, QVariantHash additionalInfo);
         TrackInfo     jsonDocumentToTrackInfo(QJsonDocument jsonDocument);
+        QVariantHash  jsonDocumentToAdditionalInfo(QJsonDocument jsonDocument);
 
 
     private:

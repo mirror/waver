@@ -29,6 +29,8 @@ struct TrackInfo {
 };
 typedef QVector<TrackInfo> TracksInfo;
 
+typedef QHash<QUrl, QVariantHash> ExtraInfo;
+
 struct OpenTrack {
     QString id;
     QString label;

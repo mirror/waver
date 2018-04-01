@@ -28,6 +28,11 @@ DEFINES += WP_RADIOSOURCE_LIBRARY
 
 CONFIG += c++11
 
+CONFIG(debug, debug|release) {
+    QMAKE_LFLAGS += -rdynamic
+}
+
+
 SOURCES += radiosource.cpp
 
 HEADERS += radiosource.h\

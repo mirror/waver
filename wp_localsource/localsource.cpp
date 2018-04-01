@@ -339,6 +339,7 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
     }
 
     TracksInfo returnValue;
+    ExtraInfo  returnExtra;
 
     // add loved or similar if asked for
     if (mode != PLAYLIST_MODE_NORMAL) {
@@ -354,6 +355,8 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
 
         // double check that loved (or similar) tracks were found at all
         if (lovedInCurrentCollection.count() > 0) {
+            bool isSimilar = false;
+
             // select a random track from loved
             int     lovedIndex    = qrand() % lovedInCurrentCollection.count();
             QString lovedFileName = lovedInCurrentCollection.at(lovedIndex);
@@ -377,6 +380,7 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
                 mutex.unlock();
 
                 if (similar.count() > 0) {
+                    isSimilar     = true;
                     lovedIndex    = qrand() % similar.count();
                     lovedFileName = similar.at(lovedIndex);
                 }
@@ -385,6 +389,7 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
             // add to return value
             TrackInfo trackInfo = trackInfoFromFilePath(lovedFileName);
             returnValue.append(trackInfo);
+            returnExtra.insert(trackInfo.url, {{ "loved", isSimilar ? PLAYLIST_MODE_LOVED_SIMILAR : PLAYLIST_MODE_LOVED }});
 
             // playlist should be one less now
             trackCount--;
@@ -505,7 +510,7 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
     }
 
     // send them back to the server
-    emit playlist(id, returnValue);
+    emit playlist(id, returnValue, returnExtra);
 
     // must save updated configuration
     emit saveConfiguration(id, configToJson());
@@ -637,11 +642,12 @@ void LocalSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
 
     // this doesn't count in the already played tracks, so this is simple here
     TracksInfo returnValue;
+    ExtraInfo  returnExtra;
     foreach (QString file, fileList) {
         returnValue.append(trackInfoFromFilePath(file));
     }
 
-    emit playlist(id, returnValue);
+    emit playlist(id, returnValue, returnExtra);
 }
 
 

@@ -45,8 +45,9 @@ RadioSource::RadioSource()
     sendDiagnostics       = false;
     state                 = Idle;
 
-    QFile::remove(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
-    QFile::copy(":/images/wp_radiosource.png", QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
+    // TODO since I updated Qt, copy below does't work for some reason
+    //QFile::remove(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
+    QFile::copy(":/radio_images/wp_radiosource.png", QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
 }
 
 
@@ -246,6 +247,7 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
             stationTemp.genre       = result.value("genre").toString();
             stationTemp.url         = QUrl(result.value("url").toString());
             stationTemp.logo        = QUrl(result.value("logo").toString());
+            stationTemp.lovedMode   = PLAYLIST_MODE_NORMAL;
             stationTemp.destination = Playlist;
 
             tuneInTemp.append(stationTemp);
@@ -277,8 +279,10 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
             trackInfo.actions.append({ id, 11, "Unlove" });
 
             TracksInfo tracksInfo;
+            ExtraInfo  extraInfo;
             tracksInfo.append(trackInfo);
-            emit playlist(id, tracksInfo);
+            extraInfo.insert(trackInfo.url, {{ "loved", PLAYLIST_MODE_LOVED }});
+            emit playlist(id, tracksInfo, extraInfo);
 
             emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET playcount = playcount + 1 WHERE url = ?", QVariantList({ lovedUrl.toString() }));
 
@@ -293,6 +297,7 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
             stationTemp.genre       = result.value("genre").toString();
             stationTemp.url         = QUrl(result.value("url").toString());
             stationTemp.logo        = QUrl(result.value("logo").toString());
+            stationTemp.lovedMode   = PLAYLIST_MODE_LOVED;
             stationTemp.destination = Playlist;
 
             tuneInTemp.append(stationTemp);
@@ -316,6 +321,7 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
             stationTemp.genre       = result.value("genre").toString();
             stationTemp.url         = QUrl(result.value("url").toString());
             stationTemp.logo        = QUrl(result.value("logo").toString());
+            stationTemp.lovedMode   = PLAYLIST_MODE_NORMAL;
             stationTemp.destination = Replacement;
 
             tuneInTemp.append(stationTemp);
@@ -359,6 +365,7 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
             stationTemp.genre       = result.value("genre").toString();
             stationTemp.url         = QUrl(result.value("url").toString());
             stationTemp.logo        = QUrl(result.value("logo").toString());
+            stationTemp.lovedMode   = PLAYLIST_MODE_NORMAL;
             stationTemp.destination = Open;
 
             tuneInTemp.append(stationTemp);
@@ -408,6 +415,7 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
             stationTemp.genre       = result.value("genre").toString();
             stationTemp.url         = QUrl(result.value("url").toString());
             stationTemp.logo        = "";
+            stationTemp.lovedMode   = PLAYLIST_MODE_NORMAL;
             stationTemp.destination = Search;
 
             tuneInTemp.append(stationTemp);
@@ -1231,6 +1239,7 @@ void RadioSource::tuneIn()
     if (tuneInTempIndex < 0) {
         // send stations to player
         TracksInfo tracksInfo;
+        ExtraInfo  extraInfo;
         foreach (StationTemp station, tuneInTemp) {
             TrackInfo trackInfo;
             trackInfo.album     = station.genre;
@@ -1258,13 +1267,14 @@ void RadioSource::tuneIn()
 
             if ((station.destination == Playlist) || (station.destination == Open) || (station.destination == Search)) {
                 tracksInfo.append(trackInfo);
+                extraInfo.insert(trackInfo.url, { { "loved", station.lovedMode } });
             }
             if (station.destination == Replacement) {
                 emit replacement(id, trackInfo);
             }
         }
         if (tracksInfo.count() > 0) {
-            emit playlist(id, tracksInfo);
+            emit playlist(id, tracksInfo, extraInfo);
         }
 
         tuneInTemp.clear();

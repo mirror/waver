@@ -25,6 +25,12 @@ TEMPLATE = lib
 
 DEFINES += WP_MPG123DECODER_LIBRARY
 
+CONFIG += c++11
+
+CONFIG(debug, debug|release) {
+    QMAKE_LFLAGS += -rdynamic
+}
+
 SOURCES += mpg123decoder.cpp \
     feed.cpp
 

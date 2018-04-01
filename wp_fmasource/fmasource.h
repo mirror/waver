@@ -179,6 +179,7 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_005 {
         QString            searchCriteria;
 
         TrackInfo lovedTemp;
+        int       lovedMode;
         int       lovedLeft;
 
         void setState(State state);

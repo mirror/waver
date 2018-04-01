@@ -305,9 +305,12 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
 
     if (clientSqlIdentifier == SQL_GET_PLAYLIST) {
         TracksInfo tracksInfo;
+        ExtraInfo  extraInfo;
 
         if (!lovedTemp.url.isEmpty()) {
             tracksInfo.append(lovedTemp);
+            extraInfo.insert(lovedTemp.url, { { "loved", lovedMode } });
+
             lovedTemp.url = QUrl();
             lovedTemp.actions.clear();
             lovedTemp.pictures.clear();
@@ -337,7 +340,7 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
 
             emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "UPDATE tracks SET playcount = playcount + 1 WHERE id = ?", QVariantList({ result.value("id").toInt() }));
         }
-        emit playlist(id, tracksInfo);
+        emit playlist(id, tracksInfo, extraInfo);
 
         loadMore();
 
@@ -729,7 +732,8 @@ void FMASource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
     lovedTemp.url = QUrl();
     lovedTemp.actions.clear();
     lovedTemp.pictures.clear();
-    lovedLeft     = trackCount;
+    lovedLeft = trackCount;
+    lovedMode = mode;
 
     QString      binds;
     QVariantList values;

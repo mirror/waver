@@ -25,7 +25,7 @@
 
 
 // constructor
-Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUuid sourcePliginId, QObject *parent) : QObject(parent)
+Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QVariantHash additionalInfo, QUuid sourcePliginId, QObject *parent) : QObject(parent)
 {
     // to make debugging easier
     decoderThread.setObjectName("decoder");
@@ -36,7 +36,8 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QUui
 
     // remember track info
     this->trackInfo      = trackInfo;
-    this->sourcePliginId = sourcePliginId;
+    this->additionalInfo = additionalInfo;
+    this->sourcePluginId = sourcePliginId;
 
     // initializations
     currentStatus                                       = Idle;
@@ -744,6 +745,13 @@ TrackInfo Track::getTrackInfo()
 
 
 // public method
+QVariantHash Track::getAdditionalInfo()
+{
+    return additionalInfo;
+}
+
+
+// public method
 void Track::addPictures(QVector<QUrl> pictures)
 {
     foreach (QUrl url, pictures) {
@@ -757,7 +765,7 @@ void Track::addPictures(QVector<QUrl> pictures)
 // public method
 QUuid Track::getSourcePluginId()
 {
-    return sourcePliginId;
+    return sourcePluginId;
 }
 
 

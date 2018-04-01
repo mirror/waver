@@ -35,6 +35,10 @@ android {
 
 CONFIG += c++11
 
+CONFIG(debug, debug|release) {
+    QMAKE_LFLAGS += -rdynamic
+}
+
 
 HEADERS += \
     globals.h \

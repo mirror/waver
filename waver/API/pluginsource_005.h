@@ -48,7 +48,7 @@ class PluginSource_005 : public PluginBase_005 {
 
         void ready(QUuid uniqueId);
         void unready(QUuid uniqueId);
-        void playlist(QUuid uniqueId, TracksInfo tracksInfo);
+        void playlist(QUuid uniqueId, TracksInfo tracksInfo, ExtraInfo extraInfo);
         void replacement(QUuid uniqueId, TrackInfo trackInfo);
         void openTracksResults(QUuid uniqueId, OpenTracks openTracks);
         void searchResults(QUuid uniqueId, OpenTracks openTracks);

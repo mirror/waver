@@ -105,12 +105,12 @@ class WaverApplication : public QGuiApplication {
         void uiPaused();
         void uiResumed();
         void uiCollections(QVariant collections, QVariant currentIndex);
-        void uiTrackInfo(QVariant title, QVariant performer, QVariant album, QVariant year, QVariant track);
+        void uiTrackInfo(QVariant title, QVariant performer, QVariant album, QVariant year, QVariant track, QVariant loved);
         void uiPicture(QVariant url);
         void uiPosition(QVariant elapsed, QVariant remaining);
         void uiActions(QVariant linksText);
         void uiClearPlaylist();
-        void uiAddToPlaylist(QVariant pictureUrl, QVariant title, QVariant performer, QVariant actions, QVariant showActions);
+        void uiAddToPlaylist(QVariant pictureUrl, QVariant title, QVariant performer, QVariant actions, QVariant showActions, QVariant loved);
         void uiSetPlaylistIndex(QVariant index);
         void uiClearDiagnosticsSelectorList();
         void uiAddToDiagnosticsSelectorList(QVariant id, QVariant label);

@@ -32,14 +32,17 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     pluginLibsLoaderThread.setObjectName("pluginlibs_loader");
     sourcesThread.setObjectName("sources");
 
+    #ifdef QT_DEBUG
+    qSetMessagePattern("%{if-fatal}\n%{endif}%{if-category}%{category}: %{endif}%{message}%{if-fatal}\n%{backtrace depth=7 separator=\"\n\"}%{endif}");
+    #endif
+
     // save argument
     this->arguments.append(arguments);
 
     // initializations
     previousTrack                     = NULL;
     currentTrack                      = NULL;
-    trackCountForLoved                = 0;
-    trackCountForSimilar              = 0;
+    loveMode                          = LOVE_NORMAL;
     currentCollection                 = "";
     unableToStartCount                = 0;
     waitingForLocalSource             = true;
@@ -57,6 +60,7 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     qRegisterMetaType<IpcMessageUtils::IpcMessages>("IpcMessageUtils::IpcMessages");
     qRegisterMetaType<TrackInfo>("TrackInfo");
     qRegisterMetaType<TracksInfo>("TracksInfo");
+    qRegisterMetaType<ExtraInfo>("ExtraInfo");
     qRegisterMetaType<OpenTrack>("OpenTrack");
     qRegisterMetaType<OpenTracks>("OpenTracks");
     qRegisterMetaType<DiagnosticItem>("DiagnosticItem");
@@ -267,9 +271,13 @@ void WaverServer::requestPlaylist()
 {
     // enumerate ready source plugins
     QVector<QUuid> readyPlugins;
+    QVector<QUuid> readyLovingPlugins;
     foreach (QUuid pluginId, sourcePlugins.keys()) {
         if (sourcePlugins.value(pluginId).ready) {
             readyPlugins.append(pluginId);
+            if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(pluginId).waverVersionAPICompatibility, "0.0.5")) {
+                readyLovingPlugins.append(pluginId);
+            }
         }
     }
     if (readyPlugins.count() < 1) {
@@ -297,23 +305,31 @@ void WaverServer::requestPlaylist()
         }
     }
 
+    QUuid pluginId = readyPlugins.at(pluginIndex);
+
     // emit signal
-    if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(readyPlugins.at(pluginIndex)).waverVersionAPICompatibility, "0.0.5")) {
-        int mode = PLAYLIST_MODE_NORMAL;
-        if (trackCountForLoved >= 7) {
-            mode = PLAYLIST_MODE_LOVED;
-            trackCountForLoved = 0;
+    if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(pluginId).waverVersionAPICompatibility, "0.0.5")) {
+        if (!loveCounter.contains(pluginId)) {
+            loveCounter.insert(pluginId, { 0, true });
         }
-        else if (trackCountForSimilar >= 4) {
-            mode = PLAYLIST_MODE_LOVED_SIMILAR;
-            trackCountForSimilar = 0;
+
+        int trackCount = qMin(sourcePlugins.value(pluginId).priority, loveMode - loveCounter.value(pluginId).counter);
+        if (trackCount > 0) {
+            emit getPlaylist(pluginId, trackCount, PLAYLIST_MODE_NORMAL);
+            loveCounter[pluginId].counter += trackCount;
         }
-        emit getPlaylist(readyPlugins.at(pluginIndex), sourcePlugins.value(readyPlugins.at(pluginIndex)).priority, mode);
+        while (trackCount < sourcePlugins.value(pluginId).priority) {
+            int count = qMin(sourcePlugins.value(pluginId).priority - trackCount, loveMode);
+            emit getPlaylist(pluginId, count, loveCounter.value(pluginId).similarOnly ? PLAYLIST_MODE_LOVED_SIMILAR : PLAYLIST_MODE_LOVED);
+            trackCount += count;
+            loveCounter[pluginId].counter = count;
+            loveCounter[pluginId].similarOnly = !loveCounter.value(pluginId).similarOnly;
+        }
     }
     else {
-        emit getPlaylist(readyPlugins.at(pluginIndex), sourcePlugins.value(readyPlugins.at(pluginIndex)).priority);
+        emit getPlaylist(pluginId, sourcePlugins.value(pluginId).priority);
     }
-    lastPlaylistPlugin = readyPlugins.at(pluginIndex);
+    lastPlaylistPlugin = pluginId;
 }
 
 
@@ -368,7 +384,7 @@ void WaverServer::startNextTrackUISignal()
     sendPlaylistToClients();
 
     IpcMessageUtils ipcMessageUtils;
-    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo(), currentTrack->getAdditionalInfo())));
 }
 
 
@@ -802,7 +818,7 @@ void WaverServer::sendPlaylistToClients(int contextShowTrackIndex)
     QJsonArray      playlist;
 
     foreach (Track *track, playlistTracks) {
-        QJsonDocument info = ipcMessageUtils.trackInfoToJSONDocument(track->getTrackInfo());
+        QJsonDocument info = ipcMessageUtils.trackInfoToJSONDocument(track->getTrackInfo(), track->getAdditionalInfo());
         playlist.append(info.object());
     }
 
@@ -983,7 +999,6 @@ void WaverServer::pluginLibsLoaded()
             connect(plugin, SIGNAL(loadConfiguration(QUuid)),                           this,   SLOT(loadConfiguration(QUuid)));
             connect(plugin, SIGNAL(uiQml(QUuid, QString)),                              this,   SLOT(pluginUi(QUuid, QString)));
             connect(plugin, SIGNAL(infoMessage(QUuid, QString)),                        this,   SLOT(pluginInfoMessage(QUuid, QString)));
-            connect(plugin, SIGNAL(playlist(QUuid, TracksInfo)),                        this,   SLOT(playlist(QUuid, TracksInfo)));
             connect(plugin, SIGNAL(requestRemoveTracks(QUuid)),                         this,   SLOT(requestedRemoveTracks(QUuid)));
             connect(plugin, SIGNAL(openTracksResults(QUuid, OpenTracks)),               this,   SLOT(openTracksResults(QUuid, OpenTracks)));
             connect(plugin, SIGNAL(searchResults(QUuid, OpenTracks)),                   this,   SLOT(searchResults(QUuid, OpenTracks)));
@@ -1015,13 +1030,15 @@ void WaverServer::pluginLibsLoaded()
                 connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
             }
             if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.5")) {
-                connect(plugin, SIGNAL(openUrl(QUrl)),                      this,   SLOT(sourceOpenUrl(QUrl)));
-                connect(this,   SIGNAL(getPlaylist(QUuid, int, int)),       plugin, SLOT(getPlaylist(QUuid, int, int)));
-                connect(this,   SIGNAL(trackAction(QUuid, int, TrackInfo)), plugin, SLOT(action(QUuid, int, TrackInfo)));
+                connect(plugin, SIGNAL(playlist(QUuid, TracksInfo, ExtraInfo)), this,   SLOT(playlist(QUuid, TracksInfo, ExtraInfo)));
+                connect(plugin, SIGNAL(openUrl(QUrl)),                          this,   SLOT(sourceOpenUrl(QUrl)));
+                connect(this,   SIGNAL(getPlaylist(QUuid, int, int)),           plugin, SLOT(getPlaylist(QUuid, int, int)));
+                connect(this,   SIGNAL(trackAction(QUuid, int, TrackInfo)),     plugin, SLOT(action(QUuid, int, TrackInfo)));
             }
             else {
-                connect(this,   SIGNAL(getPlaylist(QUuid, int)),     plugin, SLOT(getPlaylist(QUuid, int)));
-                connect(this, SIGNAL(trackAction(QUuid, int, QUrl)), plugin, SLOT(action(QUuid, int, QUrl)));
+                connect(plugin, SIGNAL(playlist(QUuid, TracksInfo)),   this,   SLOT(playlist(QUuid, TracksInfo)));
+                connect(this,   SIGNAL(getPlaylist(QUuid, int)),       plugin, SLOT(getPlaylist(QUuid, int)));
+                connect(this,   SIGNAL(trackAction(QUuid, int, QUrl)), plugin, SLOT(action(QUuid, int, QUrl)));
             }
         }
     }
@@ -1160,7 +1177,7 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
 
         case IpcMessageUtils::TrackInfos:
             if (currentTrack != NULL) {
-                emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
+                emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo(), currentTrack->getAdditionalInfo())));
             }
             break;
 
@@ -1535,17 +1552,25 @@ void WaverServer::executeGlobalSql(QUuid uniqueId, bool temporary, QString clien
 // source plugin signal handler
 void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo)
 {
+    ExtraInfo extraInfo;
+    playlist(uniqueId, tracksInfo, extraInfo);
+}
+
+
+// source plugin signal handler
+void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo, ExtraInfo extraInfo)
+{
     Globals::consoleOutput(QString("Received %1 tracks from %2").arg(tracksInfo.count()).arg(sourcePlugins.value(uniqueId).name), false);
 
     foreach (TrackInfo trackInfo, tracksInfo) {
-        // create track
-        Track *track = createTrack(trackInfo, uniqueId);
-
-        // for loved tracks inclusion
-        if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(uniqueId).waverVersionAPICompatibility, "0.0.5")) {
-            trackCountForLoved++;
-            trackCountForSimilar++;
+        // handle extra info
+        QVariantHash additionalInfo;
+        if (extraInfo.contains(trackInfo.url)) {
+            additionalInfo = extraInfo.value(trackInfo.url);
         }
+
+        // create track
+        Track *track = createTrack(trackInfo, additionalInfo, uniqueId);
 
         // add to playlist
         playlistTracks.append(track);
@@ -1576,7 +1601,7 @@ void WaverServer::replacement(QUuid uniqueId, TrackInfo trackInfo)
     Globals::consoleOutput(QString("Received replacement track from %1").arg(sourcePlugins.value(uniqueId).name), false);
 
     // create track
-    Track *track = createTrack(trackInfo, uniqueId);
+    Track *track = createTrack(trackInfo, QVariantHash(), uniqueId);
 
     // find the position to insert
     int insertPosition = 0;
@@ -1596,9 +1621,9 @@ void WaverServer::replacement(QUuid uniqueId, TrackInfo trackInfo)
 
 
 // helper
-Track *WaverServer::createTrack(TrackInfo trackInfo, QUuid pluginId)
+Track *WaverServer::createTrack(TrackInfo trackInfo, QVariantHash additionalInfo, QUuid pluginId)
 {
-    Track *track = new Track(&loadedLibs, trackInfo, pluginId, this);
+    Track *track = new Track(&loadedLibs, trackInfo, additionalInfo, pluginId, this);
 
     connect(this,  SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),                                  track, SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
     connect(this,  SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)),                            track, SLOT(loadedPluginGlobalSettings(QUuid, QJsonDocument)));
@@ -1905,7 +1930,7 @@ void WaverServer::trackInfoUpdated(QUrl url)
     if ((currentTrack != NULL) && (url == currentTrack->getTrackInfo().url)) {
         // update current track UI
         IpcMessageUtils ipcMessageUtils;
-        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo())));
+        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo(), currentTrack->getAdditionalInfo())));
 
         // see if picture must be shared with other tracks
         TrackInfo currentTrackInfo = currentTrack->getTrackInfo();
