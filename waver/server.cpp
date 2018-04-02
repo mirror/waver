@@ -322,7 +322,7 @@ void WaverServer::requestPlaylist()
             int count = qMin(sourcePlugins.value(pluginId).priority - trackCount, loveMode);
             emit getPlaylist(pluginId, count, loveCounter.value(pluginId).similarOnly ? PLAYLIST_MODE_LOVED_SIMILAR : PLAYLIST_MODE_LOVED);
             trackCount += count;
-            loveCounter[pluginId].counter = count;
+            loveCounter[pluginId].counter = count - 1;
             loveCounter[pluginId].similarOnly = !loveCounter.value(pluginId).similarOnly;
         }
     }
