@@ -272,74 +272,34 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
 
     if (clientSqlIdentifier == SQL_GET_LOVED) {
         if (results.count() > 0) {
-            lovedTemp.album     = results.at(0).value("album").toString();
-            lovedTemp.cast      = false;
-            lovedTemp.performer = (results.at(0).value("performer").toString().compare(results.at(0).value("album_performer").toString()) == 0 ? results.at(0).value("performer").toString() : results.at(0).value("performer").toString() + "\n(" + results.at(0).value("album_performer").toString() + ")");
-            lovedTemp.title     = results.at(0).value("title").toString();
-            lovedTemp.track     = results.at(0).value("track").toInt();
-            lovedTemp.url       = QUrl(results.at(0).value("url").toString());
-            lovedTemp.year      = results.at(0).value("year").toInt();
-            lovedTemp.actions.append({ id, 0, "Ban" });
-            lovedTemp.actions.append({ id, 1, "Ban album" });
-            if (results.at(0).value("loved_track_id").toString().isEmpty()) {
-                lovedTemp.actions.append({ id, 10, "Love" });
-            }
-            else  {
-                lovedTemp.actions.append({ id, 11, "Unlove" });
-            }
-            lovedTemp.actions.append({ id, 20, "Track info" });
-            lovedTemp.pictures.append(QUrl(results.at(0).value("picture_url").toString().toUtf8()));
+            // it's always LIMIT 1, no loop needed
+            TrackInfo lovedTrack = sqlResultToTrackInfo(results.at(0));
 
-            lovedLeft--;
-        }
+            TracksInfo tracksInfo;
+            tracksInfo.append(lovedTrack);
 
-        if (lovedLeft > 0) {
-            QString      binds;
-            QVariantList values;
-            selectedGenresBinds(&binds, &values);
-            values.append(lovedLeft);
-            emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT ?", values);
+            ExtraInfo  extraInfo;
+            extraInfo.insert(lovedTrack.url, { { "loved", results.at(0).value("mode").toInt() } });
+
+            emit playlist(id, tracksInfo, extraInfo);
         }
+        else {
+            getPlaylist(id, 1, PLAYLIST_MODE_NORMAL);
+        }
+        return;
     }
-
 
     if (clientSqlIdentifier == SQL_GET_PLAYLIST) {
         TracksInfo tracksInfo;
         ExtraInfo  extraInfo;
 
-        if (!lovedTemp.url.isEmpty()) {
-            tracksInfo.append(lovedTemp);
-            extraInfo.insert(lovedTemp.url, { { "loved", lovedMode } });
-
-            lovedTemp.url = QUrl();
-            lovedTemp.actions.clear();
-            lovedTemp.pictures.clear();
-        }
-
         foreach (QVariantHash result, results) {
-            TrackInfo trackInfo;
-            trackInfo.album     = result.value("album").toString();
-            trackInfo.cast      = false;
-            trackInfo.performer = (result.value("performer").toString().compare(result.value("album_performer").toString()) == 0 ? result.value("performer").toString() : result.value("performer").toString() + "\n(" + result.value("album_performer").toString() + ")");
-            trackInfo.title     = result.value("title").toString();
-            trackInfo.track     = result.value("track").toInt();
-            trackInfo.url       = QUrl(result.value("url").toString());
-            trackInfo.year      = result.value("year").toInt();
-            trackInfo.actions.append({ id, 0, "Ban" });
-            trackInfo.actions.append({ id, 1, "Ban album" });
-            if (result.value("loved_track_id").toString().isEmpty()) {
-                trackInfo.actions.append({ id, 10, "Love" });
-            }
-            else  {
-                trackInfo.actions.append({ id, 11, "Unlove" });
-            }
-            trackInfo.actions.append({ id, 20, "Track info" });
-            trackInfo.pictures.append(QUrl(result.value("picture_url").toString().toUtf8()));
-
+            TrackInfo trackInfo = sqlResultToTrackInfo(result);
             tracksInfo.append(trackInfo);
 
             emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "UPDATE tracks SET playcount = playcount + 1 WHERE id = ?", QVariantList({ result.value("id").toInt() }));
         }
+
         emit playlist(id, tracksInfo, extraInfo);
 
         loadMore();
@@ -638,6 +598,32 @@ void FMASource::selectedGenresBinds(QString *binds, QVariantList *values)
 }
 
 
+// helper
+TrackInfo FMASource::sqlResultToTrackInfo(QVariantHash sqlResult)
+{
+    TrackInfo returnValue;
+
+    returnValue.album     = sqlResult.value("album").toString();
+    returnValue.cast      = false;
+    returnValue.performer = (sqlResult.value("performer").toString().compare(sqlResult.value("album_performer").toString()) == 0 ? sqlResult.value("performer").toString() : sqlResult.value("performer").toString() + "\n(" + sqlResult.value("album_performer").toString() + ")");
+    returnValue.title     = sqlResult.value("title").toString();
+    returnValue.track     = sqlResult.value("track").toInt();
+    returnValue.url       = QUrl(sqlResult.value("url").toString());
+    returnValue.year      = sqlResult.value("year").toInt();
+    returnValue.actions.append({ id, 0, "Ban" });
+    returnValue.actions.append({ id, 1, "Ban album" });
+    if (sqlResult.value("loved_track_id").toString().isEmpty()) {
+        returnValue.actions.append({ id, 10, "Love" });
+    }
+    else  {
+        returnValue.actions.append({ id, 11, "Unlove" });
+    }
+    returnValue.actions.append({ id, 20, "Track info" });
+    returnValue.pictures.append(QUrl(sqlResult.value("picture_url").toString().toUtf8()));
+
+    return returnValue;
+}
+
 // configuration
 void FMASource::sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)
 {
@@ -729,29 +715,25 @@ void FMASource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
         return;
     }
 
-    lovedTemp.url = QUrl();
-    lovedTemp.actions.clear();
-    lovedTemp.pictures.clear();
-    lovedLeft = trackCount;
-    lovedMode = mode;
-
     QString      binds;
     QVariantList values;
     selectedGenresBinds(&binds, &values);
 
     if (mode == PLAYLIST_MODE_LOVED) {
-        emit executeGlobalSql(id, false, "", SQL_GET_LOVED, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id IN (SELECT track_id FROM loved)) ORDER BY RANDOM() LIMIT 1", values);
-        return;
+        values.prepend(mode);
+        emit executeGlobalSql(id, false, "", SQL_GET_LOVED, "SELECT ? AS mode, tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id IN (SELECT track_id FROM loved)) ORDER BY RANDOM() LIMIT 1", values);
+        trackCount--;
+    }
+    else if (mode == PLAYLIST_MODE_LOVED_SIMILAR) {
+        values.prepend(mode);
+        emit executeGlobalSql(id, false, "", SQL_GET_LOVED, "SELECT ? AS mode, tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id NOT IN (SELECT track_id FROM loved)) AND (tracks.album_id IN (SELECT DISTINCT album_id FROM tracks AS album_lookup WHERE album_lookup.id IN (SELECT track_id FROM loved))) ORDER BY RANDOM() LIMIT 1", values);
+        trackCount--;
     }
 
-    if (mode == PLAYLIST_MODE_LOVED_SIMILAR) {
-        emit executeGlobalSql(id, false, "", SQL_GET_LOVED, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id NOT IN (SELECT track_id FROM loved)) AND (tracks.album_id IN (SELECT DISTINCT album_id FROM tracks AS album_lookup WHERE album_lookup.id IN (SELECT track_id FROM loved))) ORDER BY RANDOM() LIMIT 1", values);
-        return;
+    if (trackCount > 0)    {
+        values.append(trackCount);
+        emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT ?", values);
     }
-
-    // select tracks to return (these will be dealt with in the sql signal handler)
-    values.append(trackCount);
-    emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT ?", values);
 
     return;
 }

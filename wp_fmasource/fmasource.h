@@ -178,10 +178,6 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_005 {
         int                openingId;
         QString            searchCriteria;
 
-        TrackInfo lovedTemp;
-        int       lovedMode;
-        int       lovedLeft;
-
         void setState(State state);
 
         QVector<int> selectedGenres;
@@ -201,6 +197,7 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_005 {
         bool stringToInt(QString str, int *num);
         void sortGenres(QVector<Genre> genres, int parentId, QVector<GenreDisplay> *sorted, int level);
         void selectedGenresBinds(QString *binds, QVariantList *values);
+        TrackInfo sqlResultToTrackInfo(QVariantHash sqlResult);
 
         void sendDiagnosticsData();
 
