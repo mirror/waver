@@ -715,23 +715,31 @@ void FMASource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
         return;
     }
 
-    QString      binds;
-    QVariantList values;
-    selectedGenresBinds(&binds, &values);
-
     if (mode == PLAYLIST_MODE_LOVED) {
+        QString      binds;
+        QVariantList values;
+        selectedGenresBinds(&binds, &values);
         values.prepend(mode);
+
         emit executeGlobalSql(id, false, "", SQL_GET_LOVED, "SELECT ? AS mode, tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id IN (SELECT track_id FROM loved)) ORDER BY RANDOM() LIMIT 1", values);
         trackCount--;
     }
     else if (mode == PLAYLIST_MODE_LOVED_SIMILAR) {
+        QString      binds;
+        QVariantList values;
+        selectedGenresBinds(&binds, &values);
         values.prepend(mode);
+
         emit executeGlobalSql(id, false, "", SQL_GET_LOVED, "SELECT ? AS mode, tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id NOT IN (SELECT track_id FROM loved)) AND (tracks.album_id IN (SELECT DISTINCT album_id FROM tracks AS album_lookup WHERE album_lookup.id IN (SELECT track_id FROM loved))) ORDER BY RANDOM() LIMIT 1", values);
         trackCount--;
     }
 
     if (trackCount > 0)    {
+        QString      binds;
+        QVariantList values;
+        selectedGenresBinds(&binds, &values);
         values.append(trackCount);
+
         emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT ?", values);
     }
 
