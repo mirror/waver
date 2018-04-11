@@ -40,6 +40,7 @@ Item {
         anchors.topMargin: 6
 
         Label {
+            id: pre_amp_label
             text: "pre-Amp"
             anchors.verticalCenter: pre_amp.verticalCenter
         }
@@ -48,6 +49,7 @@ Item {
             value: replace_pre_amp_value
             from: -12
             to: 6
+            width: pre_amp_row.width - pre_amp_label.width
         }
     }
 
@@ -74,7 +76,7 @@ Item {
 
             Label {
                 text: "31 Hz"
-                width: 50
+                width: 75
                 anchors.verticalCenter: gain_31.verticalCenter
             }
             Slider {
@@ -82,6 +84,7 @@ Item {
                 value: replace_gain_31_value
                 from: -12
                 to: 12
+                width: gain_31_row.width - 75
             }
         }
 
@@ -96,7 +99,7 @@ Item {
 
             Label {
                 text: "62 Hz"
-                width: 50
+                width: 75
                 anchors.verticalCenter: gain_62.verticalCenter
             }
             Slider {
@@ -104,6 +107,7 @@ Item {
                 value: replace_gain_62_value
                 from: -12
                 to: 12
+                width: gain_62_row.width - 75
             }
         }
 
@@ -118,7 +122,7 @@ Item {
 
             Label {
                 text: "125 Hz"
-                width: 50
+                width: 75
                 anchors.verticalCenter: gain_125.verticalCenter
             }
             Slider {
@@ -126,6 +130,7 @@ Item {
                 value: replace_gain_125_value
                 from: -12
                 to: 12
+                width: gain_125_row.width - 75
             }
         }
 
@@ -140,7 +145,7 @@ Item {
 
             Label {
                 text: "250 Hz"
-                width: 50
+                width: 75
                 anchors.verticalCenter: gain_250.verticalCenter
             }
             Slider {
@@ -148,6 +153,7 @@ Item {
                 value: replace_gain_250_value
                 from: -12
                 to: 12
+                width: gain_250_row.width - 75
             }
         }
 
@@ -162,7 +168,7 @@ Item {
 
             Label {
                 text: "500 Hz"
-                width: 50
+                width: 75
                 anchors.verticalCenter: gain_500.verticalCenter
             }
             Slider {
@@ -170,6 +176,7 @@ Item {
                 value: replace_gain_500_value
                 from: -12
                 to: 12
+                width: gain_500_row.width - 75
             }
         }
 
@@ -184,7 +191,7 @@ Item {
 
             Label {
                 text: "1 kHz"
-                width: 50
+                width: 75
                 anchors.verticalCenter: gain_1000.verticalCenter
             }
             Slider {
@@ -192,6 +199,7 @@ Item {
                 value: replace_gain_1000_value
                 from: -12
                 to: 12
+                width: gain_1000_row.width - 75
             }
         }
 
@@ -206,7 +214,7 @@ Item {
 
             Label {
                 text: "2.5 kHz"
-                width: 50
+                width: 75
                 anchors.verticalCenter: gain_2500.verticalCenter
             }
             Slider {
@@ -214,6 +222,7 @@ Item {
                 value: replace_gain_2500_value
                 from: -12
                 to: 12
+                width: gain_2500_row.width - 75
             }
         }
 
@@ -228,7 +237,7 @@ Item {
 
             Label {
                 text: "5 kHz"
-                width: 50
+                width: 75
                 anchors.verticalCenter: gain_5000.verticalCenter
             }
             Slider {
@@ -236,6 +245,7 @@ Item {
                 value: replace_gain_5000_value
                 from: -12
                 to: 12
+                width: gain_5000_row.width - 75
             }
         }
 
@@ -250,7 +260,7 @@ Item {
 
             Label {
                 text: "10 kHz"
-                width: 50
+                width: 75
                 anchors.verticalCenter: gain_10000.verticalCenter
             }
             Slider {
@@ -258,6 +268,7 @@ Item {
                 value: replace_gain_10000_value
                 from: -12
                 to: 12
+                width: gain_10000_row.width - 75
             }
         }
 
@@ -272,7 +283,7 @@ Item {
 
             Label {
                 text: "16 kHz"
-                width: 50
+                width: 75
                 anchors.verticalCenter: gain_16000.verticalCenter
             }
             Slider {
@@ -280,6 +291,7 @@ Item {
                 value: replace_gain_16000_value
                 from: -12
                 to: 12
+                width: gain_16000_row.width - 75
             }
         }
 

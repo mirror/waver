@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>LS_DirsSettings.qml</file>
-    </qresource>
-</RCC>

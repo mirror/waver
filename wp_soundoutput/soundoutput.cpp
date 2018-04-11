@@ -214,7 +214,7 @@ void SoundOutput::getUiQml(QUuid uniqueId)
         return;
     }
 
-    QFile settingsFile("://SO_Settings.qml");
+    QFile settingsFile("://SOSettings.qml");
     settingsFile.open(QFile::ReadOnly);
     QString settings = settingsFile.readAll();
     settingsFile.close();

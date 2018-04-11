@@ -44,8 +44,8 @@ HEADERS += \
     ../waver/API/pluginsource_005.h \
     ../waver/pluginfactory.h \
 
-RESOURCES += misc.qrc \
-    qml.qrc
+RESOURCES += \
+    resources.qrc
 
 unix:!android {
     target.path = /opt/waver/bin

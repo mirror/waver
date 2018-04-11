@@ -459,7 +459,7 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
             marginTotal += (genreDisplay.isTopLevel ? 36 : 6);
         }
 
-        QFile settingsFile("://FMA_CategorySettings.qml");
+        QFile settingsFile("://FMASettings.qml");
         settingsFile.open(QFile::ReadOnly);
         QString settings = settingsFile.readAll();
         settingsFile.close();

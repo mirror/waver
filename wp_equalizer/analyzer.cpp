@@ -182,7 +182,7 @@ void Analyzer::getUiQml(QUuid uniqueId)
         return;
     }
 
-    QFile settingsFile("://EQ_AnalyzerSettings.qml");
+    QFile settingsFile("://AnalyzerSettings.qml");
     settingsFile.open(QFile::ReadOnly);
     QString settings = settingsFile.readAll();
     settingsFile.close();

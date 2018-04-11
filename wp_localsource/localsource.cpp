@@ -225,7 +225,7 @@ void LocalSource::getUiQml(QUuid uniqueId)
         return;
     }
 
-    QFile settingsFile("://LS_DirsSettings.qml");
+    QFile settingsFile("://LSSettings.qml");
     settingsFile.open(QFile::ReadOnly);
     QString settings = settingsFile.readAll();
     settingsFile.close();

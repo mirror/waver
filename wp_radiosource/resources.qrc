@@ -1,5 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>rs_key</file>
+        <file>RSSettings.qml</file>
+        <file>wp_radiosource.png</file>
     </qresource>
 </RCC>

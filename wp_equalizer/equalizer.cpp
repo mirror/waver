@@ -238,7 +238,7 @@ void Equalizer::getUiQml(QUuid uniqueId)
         return;
     }
 
-    QFile settingsFile("://EQ_EqualizerSettings.qml");
+    QFile settingsFile("://EqualizerSettings.qml");
     settingsFile.open(QFile::ReadOnly);
     QString settings = settingsFile.readAll();
     settingsFile.close();

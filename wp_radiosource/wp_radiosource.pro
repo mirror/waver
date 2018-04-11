@@ -51,9 +51,7 @@ unix:!android {
 }
 
 RESOURCES += \
-    qml.qrc \
-    misc.qrc \
-    visual.qrc
+    resources.qrc
 
 DISTFILES +=
 

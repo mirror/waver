@@ -68,4 +68,4 @@ unix:!android {
 }
 
 RESOURCES += \
-    qml.qrc
+    resources.qrc

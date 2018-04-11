@@ -46,8 +46,8 @@ RadioSource::RadioSource()
     state                 = Idle;
 
     // TODO since I updated Qt, copy below does't work for some reason
-    //QFile::remove(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
-    QFile::copy(":/radio_images/wp_radiosource.png", QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
+    QFile::remove(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
+    QFile::copy(":/wp_radiosource.png", QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
 }
 
 
@@ -512,7 +512,7 @@ void RadioSource::getUiQml(QUuid uniqueId)
         return;
     }
 
-    QFile settingsFile("://RS_CategorySettings.qml");
+    QFile settingsFile("://RSSettings.qml");
     settingsFile.open(QFile::ReadOnly);
     QString settings = settingsFile.readAll();
     settingsFile.close();

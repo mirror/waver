@@ -44,7 +44,8 @@ HEADERS += localsource.h \
     ../waver/pluginfactory.h \
     filescanner.h
 
-RESOURCES += qml.qrc
+RESOURCES += \
+    resources.qrc
 
 unix:!android {
     LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -ltag

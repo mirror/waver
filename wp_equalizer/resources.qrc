@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>AnalyzerSettings.qml</file>
+        <file>EqualizerSettings.qml</file>
+    </qresource>
+</RCC>

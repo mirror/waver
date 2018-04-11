@@ -1,5 +1,5 @@
 <RCC>
     <qresource prefix="/">
-        <file>fma_key</file>
+        <file>LSSettings.qml</file>
     </qresource>
 </RCC>
