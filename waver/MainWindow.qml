@@ -393,12 +393,13 @@ ApplicationWindow {
         sourcePrioritiesItems.clear();
     }
 
-    function addToSourcePrioritiesList(id, name, priority)
+    function addToSourcePrioritiesList(id, name, priority, recurring)
     {
         sourcePrioritiesItems.append({
-            pluginId      : id,
-            pluginName    : name,
-            pluginPriority: priority,
+            pluginId       : id,
+            pluginName     : name,
+            pluginPriority : priority,
+            pluginRecurring: recurring,
         });
     }
 
@@ -1403,9 +1404,22 @@ ApplicationWindow {
                 anchors.verticalCenter: sourcePrioritySlider.verticalCenter
             }
 
+            RadioButton {
+                id: sourcePriorityRecurring
+                anchors.left: parent.horizontalCenter
+                ButtonGroup.group: radios
+                checked: pluginRecurring
+                onClicked: {
+                    for(var i = 0; i < sourcePrioritiesItems.count; i++) {
+                        sourcePrioritiesItems.get(i).pluginRecurring = false;
+                    }
+                    pluginRecurring = checked;
+                }
+            }
+
             Slider {
                 id: sourcePrioritySlider
-                anchors.left: parent.horizontalCenter
+                anchors.left: sourcePriorityRecurring.right
                 anchors.right: sourcePriorityFeedback.left
                 value: pluginPriority
                 from: 1
@@ -2302,6 +2316,48 @@ ApplicationWindow {
             anchors.fill: sourcePriorities
         }
 
+        ButtonGroup {
+            id: radios
+        }
+
+        Item {
+            id: sourcePriorityNoRecurringContainer
+            anchors.top: parent.top
+            anchors.left: parent.left
+            anchors.topMargin: 6
+            anchors.leftMargin: 6
+            height: sourcePriorityNoRecurring.height
+            width: sourcePrioritiesList.width
+
+            Rectangle {
+                anchors.fill: parent
+                border.color: "#666666"
+                color: "#EEEEEE"
+                radius: 3
+            }
+
+            PlatformLabel {
+                text: "No recurring plugin"
+                anchors.left: parent.left
+                anchors.leftMargin: 6
+                anchors.right: parent.horizontalCenter
+                anchors.verticalCenter: sourcePriorityNoRecurring.verticalCenter
+            }
+
+            RadioButton {
+                id: sourcePriorityNoRecurring
+                anchors.left: parent.horizontalCenter
+                anchors.top: parent.top
+                ButtonGroup.group: radios
+                checked: true
+                onClicked: {
+                    for(var i = 0; i < sourcePrioritiesItems.count; i++) {
+                        sourcePrioritiesItems.get(i).pluginRecurring = false;
+                    }
+                }
+            }
+        }
+
         ListView {
             id: sourcePrioritiesList
             model: sourcePrioritiesItems
@@ -2310,7 +2366,7 @@ ApplicationWindow {
             anchors.leftMargin: 6
             anchors.right: sourcePrioritiesBackground.right
             anchors.rightMargin: 6
-            anchors.top: sourcePrioritiesBackground.top
+            anchors.top: sourcePriorityNoRecurringContainer.bottom
             anchors.topMargin: 6
             anchors.bottom: sourcePrioritiesDone.top
             anchors.bottomMargin: 6
@@ -2330,7 +2386,8 @@ ApplicationWindow {
                 for(var i = 0; i < sourcePrioritiesItems.count; i++) {
                     retval.push({
                          id: sourcePrioritiesItems.get(i).pluginId,
-                         priority: sourcePrioritiesItems.get(i).pluginPriority
+                         priority: sourcePrioritiesItems.get(i).pluginPriority,
+                         recurring: sourcePrioritiesItems.get(i).pluginRecurring
                     });
                 }
                 sourcePrioritiesDialogResults(JSON.stringify(retval));

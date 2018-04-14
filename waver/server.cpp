@@ -164,6 +164,7 @@ QJsonDocument WaverServer::configToJson()
 
     QJsonObject jsonObject;
     jsonObject.insert("source_priorities", sourcePriorities);
+    jsonObject.insert("recurring_source", recurringPlugin.toString());
 
     QJsonDocument returnValue;
     returnValue.setObject(jsonObject);
@@ -203,6 +204,10 @@ void WaverServer::jsonToConfig(QJsonDocument jsonDocument)
                 sourcePlugins[pluginId].priority = (priority > 10 ? 4 : priority);
             }
         }
+    }
+
+    if (jsonDocument.object().contains("recurring_source")) {
+        recurringPlugin = QUuid(jsonDocument.object().value("recurring_source").toString());
     }
 }
 
@@ -271,13 +276,9 @@ void WaverServer::requestPlaylist()
 {
     // enumerate ready source plugins
     QVector<QUuid> readyPlugins;
-    QVector<QUuid> readyLovingPlugins;
     foreach (QUuid pluginId, sourcePlugins.keys()) {
         if (sourcePlugins.value(pluginId).ready) {
             readyPlugins.append(pluginId);
-            if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(pluginId).waverVersionAPICompatibility, "0.0.5")) {
-                readyLovingPlugins.append(pluginId);
-            }
         }
     }
     if (readyPlugins.count() < 1) {
@@ -291,9 +292,20 @@ void WaverServer::requestPlaylist()
     }
 
     // which plugin to use
-    int pluginIndex = readyPlugins.indexOf(lastPlaylistPlugin) + 1;
-    if (pluginIndex >= readyPlugins.count()) {
-        pluginIndex = 0;
+    int pluginIndex;
+    if (!recurringPlugin.isNull() && readyPlugins.contains(recurringPlugin) && (lastPlaylistPlugin != recurringPlugin)) {
+        // must choose recurring
+        pluginIndex = readyPlugins.indexOf(recurringPlugin);
+    }
+    else {
+        // don't choose the recurring plugin if it's there (nothing happens if not)
+        readyPlugins.removeAll(recurringPlugin);
+
+        // select next plugin
+        pluginIndex = readyPlugins.indexOf(lastPlaylistPlugin == recurringPlugin ? lastPlaylistPluginNotRecurring : lastPlaylistPlugin) + 1;
+        if (pluginIndex >= readyPlugins.count()) {
+            pluginIndex = 0;
+        }
     }
 
     // give priority to local files at startup
@@ -329,7 +341,11 @@ void WaverServer::requestPlaylist()
     else {
         emit getPlaylist(pluginId, sourcePlugins.value(pluginId).priority);
     }
+
     lastPlaylistPlugin = pluginId;
+    if (pluginId != recurringPlugin) {
+        lastPlaylistPluginNotRecurring = pluginId;
+    }
 }
 
 
@@ -772,6 +788,9 @@ void WaverServer::handleSourcePrioritiesRequest(QJsonDocument jsonDocument)
             },
             {
                 "priority", sourcePlugins.value(pluginId).priority
+            },
+            {
+                "recurring", (recurringPlugin == pluginId)
             }
         })));
     }
@@ -784,10 +803,15 @@ void WaverServer::handleSourcePrioritiesRequest(QJsonDocument jsonDocument)
 // private method
 void WaverServer::handleSourcePrioritiesResult(QJsonDocument jsonDocument)
 {
+    recurringPlugin = QUuid();
+
     QVariantList data = jsonDocument.array().toVariantList();
     foreach (QVariant dataItem, data) {
         QVariantMap sourcePriority = dataItem.toMap();
         sourcePlugins[QUuid(sourcePriority.value("id").toString())].priority = sourcePriority.value("priority").toInt();
+        if (sourcePriority.value("recurring").toBool()) {
+            recurringPlugin = QUuid(sourcePriority.value("id").toString());
+        }
     }
 
     emit saveWaverSettings(currentCollection, configToJson());

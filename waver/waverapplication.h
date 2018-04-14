@@ -122,7 +122,7 @@ class WaverApplication : public QGuiApplication {
         void uiAbout(QVariant data);
         void uiDisplayDiagnosticsMessage(QVariant pluginId, QVariant text);
         void uiClearSourcePrioritiesList();
-        void uiAddToSourcePrioritiesList(QVariant id, QVariant name, QVariant priority);
+        void uiAddToSourcePrioritiesList(QVariant id, QVariant name, QVariant priority, QVariant recurring);
 
 
     public slots:

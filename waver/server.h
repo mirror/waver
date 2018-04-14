@@ -121,7 +121,9 @@ class WaverServer : public QObject {
 
         PluginLibsLoader::LoadedLibs loadedLibs;
         SourcePlugins                sourcePlugins;
+        QUuid                        recurringPlugin;
         QUuid                        lastPlaylistPlugin;
+        QUuid                        lastPlaylistPluginNotRecurring;
 
         QThread serverTcpThread;
         QThread settingsThread;

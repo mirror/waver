@@ -100,7 +100,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(this,         SIGNAL(uiAbout(QVariant)),                                                       uiMainWindow, SLOT(aboutDialog(QVariant)));
         disconnect(this,         SIGNAL(uiDisplayDiagnosticsMessage(QVariant, QVariant)),                         uiMainWindow, SLOT(displayDiagnosticsMessage(QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiClearSourcePrioritiesList()),                                           uiMainWindow, SLOT(clearSourcePrioritiesList()));
-        disconnect(this,         SIGNAL(uiAddToSourcePrioritiesList(QVariant, QVariant, QVariant)),               uiMainWindow, SLOT(addToSourcePrioritiesList(QVariant, QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiAddToSourcePrioritiesList(QVariant, QVariant, QVariant, QVariant)),     uiMainWindow, SLOT(addToSourcePrioritiesList(QVariant, QVariant, QVariant, QVariant)));
         disconnect(uiMainWindow, SIGNAL(menuPause()),                                                             this,         SLOT(menuPause()));
         disconnect(uiMainWindow, SIGNAL(menuResume()),                                                            this,         SLOT(menuResume()));
         disconnect(uiMainWindow, SIGNAL(menuNext()),                                                              this,         SLOT(menuNext()));
@@ -145,7 +145,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(this,         SIGNAL(uiAbout(QVariant)),                                                           uiMainWindow, SLOT(aboutDialog(QVariant)));
     connect(this,         SIGNAL(uiDisplayDiagnosticsMessage(QVariant, QVariant)),                             uiMainWindow, SLOT(displayDiagnosticsMessage(QVariant, QVariant)));
     connect(this,         SIGNAL(uiClearSourcePrioritiesList()),                                               uiMainWindow, SLOT(clearSourcePrioritiesList()));
-    connect(this,         SIGNAL(uiAddToSourcePrioritiesList(QVariant, QVariant, QVariant)),                   uiMainWindow, SLOT(addToSourcePrioritiesList(QVariant, QVariant, QVariant)));
+    connect(this,         SIGNAL(uiAddToSourcePrioritiesList(QVariant, QVariant, QVariant, QVariant)),         uiMainWindow, SLOT(addToSourcePrioritiesList(QVariant, QVariant, QVariant, QVariant)));
     connect(uiMainWindow, SIGNAL(menuPause()),                                                                 this,         SLOT(menuPause()));
     connect(uiMainWindow, SIGNAL(menuResume()),                                                                this,         SLOT(menuResume()));
     connect(uiMainWindow, SIGNAL(menuNext()),                                                                  this,         SLOT(menuNext()));
@@ -726,7 +726,7 @@ void WaverApplication::updateUISourcePriorities(QJsonDocument jsonDocument)
     QVariantList data = jsonDocument.array().toVariantList();
     foreach (QVariant dataItem, data) {
         QVariantMap sourcePriority = dataItem.toMap();
-        emit uiAddToSourcePrioritiesList(sourcePriority.value("id"), sourcePriority.value("name"), sourcePriority.value("priority"));
+        emit uiAddToSourcePrioritiesList(sourcePriority.value("id"), sourcePriority.value("name"), sourcePriority.value("priority"), sourcePriority.value("recurring"));
     }
 }
 
