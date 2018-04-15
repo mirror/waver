@@ -107,14 +107,17 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_005 {
         static const int SQL_TO_BE_REMOVED                = 50;
         static const int SQL_DIAGNOSTICS                  = 90;
         static const int SQL_NO_RESULTS                   = 99;
-
+        static const int SQL_U1_CHECK                     = 1010;
+        static const int SQL_U1_CREATETABLE_TRACKSGENRES  = 1011;
+        static const int SQL_U1_EMPTY_ALBUMS              = 1012;
+        static const int SQL_U1_EMPTY_TRACKS              = 1013;
 
         enum ParseElement {
             Unknown,
             Page, TotalPages,
             GenreId, GenreHandle, GenreParentId, GenreTitle,
             AlbumId, AlbumTitle, AlbumDateReleased, ArtistName, AlbumImages,
-            TrackId, TrackTitle, TrackArtistName, TrackUrl, TrackImageFile, TrackNumber, TrackGenres
+            TrackId, TrackTitle, TrackArtistName, TrackUrl, TrackImageFile, TrackNumber, TrackGenres, TrackGenre
         };
 
         enum State {
@@ -181,6 +184,7 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_005 {
         void setState(State state);
 
         QVector<int> selectedGenres;
+        QVector<int> deniedGenres;
 
         QVector<GenreSearchItem> genreSearchItems;
         QVector<AlbumSearchItem> albumSearchItems;
@@ -197,6 +201,7 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_005 {
         bool stringToInt(QString str, int *num);
         void sortGenres(QVector<Genre> genres, int parentId, QVector<GenreDisplay> *sorted, int level);
         void selectedGenresBinds(QString *binds, QVariantList *values);
+        void deniedGenresBinds(QString *binds, QVariantList *values);
         TrackInfo sqlResultToTrackInfo(QVariantHash sqlResult);
 
         void sendDiagnosticsData();

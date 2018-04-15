@@ -55,7 +55,10 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 6
         onClicked: {
-            var retval = [];
+            var retval = {
+                selected: [],
+                denied: []
+            };
             replace_checkboxes_to_retval;
             done(JSON.stringify(retval));
         }

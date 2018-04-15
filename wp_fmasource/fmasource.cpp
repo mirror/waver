@@ -194,6 +194,31 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
     }
 
     if (clientSqlIdentifier == SQL_CREATETABLE_LOVED) {
+        emit executeGlobalSql(id, false, "", SQL_U1_CHECK, "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'tracks_genres'", QVariantList());
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_U1_CHECK) {
+        if (results.count() > 0) {
+            emit executeGlobalSql(id, false, "", SQL_STARTUPCHECK_GENRECOUNT, "SELECT count(*) AS counter FROM genres", QVariantList());
+            return;
+        }
+
+        emit executeGlobalSql(id, false, "", SQL_U1_CREATETABLE_TRACKSGENRES, "CREATE TABLE tracks_genres (track_id INT, genre_id INT, PRIMARY KEY (track_id, genre_id))", QVariantList());
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_U1_CREATETABLE_TRACKSGENRES) {
+        emit executeGlobalSql(id, false, "", SQL_U1_EMPTY_ALBUMS, "DELETE FROM albums", QVariantList());
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_U1_EMPTY_ALBUMS) {
+        emit executeGlobalSql(id, false, "", SQL_U1_EMPTY_TRACKS, "DELETE FROM tracks", QVariantList());
+        return;
+    }
+
+    if (clientSqlIdentifier == SQL_U1_EMPTY_TRACKS) {
         emit executeGlobalSql(id, false, "", SQL_STARTUPCHECK_GENRECOUNT, "SELECT count(*) AS counter FROM genres", QVariantList());
         return;
     }
@@ -471,16 +496,16 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
         QString checkboxesToRetval;
         for (int i = 0; i < sorted.count(); i++) {
             checkboxes.append(
-                QString("CheckBox { id: %1; text: \"%2\"; tristate: false; checked: %3; anchors.top: %4; anchors.topMargin: %5; anchors.left: parent.left; anchors.leftMargin: %6; foreignId: %7; property int foreignId; }")
+                QString("CheckBox { id: %1; text: \"%2\"; tristate: true; checkState: %3; anchors.top: %4; anchors.topMargin: %5; anchors.left: parent.left; anchors.leftMargin: %6; foreignId: %7; property int foreignId; }")
                 .arg(QString("cb_%1").arg(i))
                 .arg(sorted.at(i).isTopLevel ? "<b>" + sorted.at(i).name + "</b>" : sorted.at(i).name)
-                .arg(selectedGenres.contains(sorted.at(i).id) ? "true" : "false")
+                .arg(selectedGenres.contains(sorted.at(i).id) ? "Qt.Checked" : deniedGenres.contains(sorted.at(i).id) ? "Qt.PartiallyChecked" : "Qt.Unchecked")
                 .arg(i > 0 ? QString("cb_%1.bottom").arg(i - 1) : "parent.top")
                 .arg((i > 0) && sorted.at(i).isTopLevel ? "36" : "6")
                 .arg(6 + (sorted.at(i).indent * 36))
                 .arg(sorted.at(i).id));
             checkboxesToAll.append(QString("%1.checked = allCheck.checked; ").arg(QString("cb_%1").arg(i)));
-            checkboxesToRetval.append(QString("if (%1.checked) { retval.push(%1.foreignId); } ").arg(QString("cb_%1").arg(i)));
+            checkboxesToRetval.append(QString("if (%1.checkState == Qt.Checked) { retval.selected.push(%1.foreignId); }; if (%1.checkState == Qt.PartiallyChecked) { retval.denied.push(%1.foreignId); };").arg(QString("cb_%1").arg(i)));
         }
         settings.replace("CheckBox {}", checkboxes);
         settings.replace("replace_checkboxes_to_all", checkboxesToAll);
@@ -584,14 +609,25 @@ void FMASource::loadMore()
 // helper
 void FMASource::selectedGenresBinds(QString *binds, QVariantList *values)
 {
-    binds->clear();
-    values->clear();
-
     QStringList bindsList;
 
     foreach (int selectedGenre, selectedGenres) {
         bindsList.append("?");
         values->append(selectedGenre);
+    }
+
+    binds->append(bindsList.join(","));
+}
+
+
+// helper
+void FMASource::deniedGenresBinds(QString *binds, QVariantList *values)
+{
+    QStringList bindsList;
+
+    foreach (int deniedGenre, deniedGenres) {
+        bindsList.append("?");
+        values->append(deniedGenre);
     }
 
     binds->append(bindsList.join(","));
@@ -658,9 +694,18 @@ void FMASource::uiResults(QUuid uniqueId, QJsonDocument results)
     }
 
     selectedGenres.clear();
-    foreach (QJsonValue jsonValue, results.array()) {
+    deniedGenres.clear();
+
+    QJsonArray selected = results.object().value("selected").toArray();
+    QJsonArray denied   = results.object().value("denied").toArray();
+
+    foreach (QJsonValue jsonValue, selected) {
         selectedGenres.append(jsonValue.toInt());
     }
+    foreach (QJsonValue jsonValue, denied) {
+        deniedGenres.append(jsonValue.toInt());
+    }
+
     emit saveConfiguration(id, configToJson());
     emit requestRemoveTracks(id);
 
@@ -716,31 +761,37 @@ void FMASource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
     }
 
     if (mode == PLAYLIST_MODE_LOVED) {
-        QString      binds;
+        QString      selectedBinds;
+        QString      deniedBinds;
         QVariantList values;
-        selectedGenresBinds(&binds, &values);
+        selectedGenresBinds(&selectedBinds, &values);
+        deniedGenresBinds(&deniedBinds, &values);
         values.prepend(mode);
 
-        emit executeGlobalSql(id, false, "", SQL_GET_LOVED, "SELECT ? AS mode, tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id IN (SELECT track_id FROM loved)) ORDER BY RANDOM() LIMIT 1", values);
+        emit executeGlobalSql(id, false, "", SQL_GET_LOVED, "SELECT ? AS mode, tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + selectedBinds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id IN (SELECT track_id FROM loved)) AND (tracks.id NOT IN (SELECT track_id FROM tracks_genres WHERE (track_id = tracks.id) AND (genre_id IN (" + deniedBinds + ")))) ORDER BY RANDOM() LIMIT 1", values);
         trackCount--;
     }
     else if (mode == PLAYLIST_MODE_LOVED_SIMILAR) {
-        QString      binds;
+        QString      selectedBinds;
+        QString      deniedBinds;
         QVariantList values;
-        selectedGenresBinds(&binds, &values);
+        selectedGenresBinds(&selectedBinds, &values);
+        deniedGenresBinds(&deniedBinds, &values);
         values.prepend(mode);
 
-        emit executeGlobalSql(id, false, "", SQL_GET_LOVED, "SELECT ? AS mode, tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id NOT IN (SELECT track_id FROM loved)) AND (tracks.album_id IN (SELECT DISTINCT album_id FROM tracks AS album_lookup WHERE album_lookup.id IN (SELECT track_id FROM loved))) ORDER BY RANDOM() LIMIT 1", values);
+        emit executeGlobalSql(id, false, "", SQL_GET_LOVED, "SELECT ? AS mode, tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + selectedBinds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id NOT IN (SELECT track_id FROM loved)) AND (tracks.album_id IN (SELECT DISTINCT album_id FROM tracks AS album_lookup WHERE album_lookup.id IN (SELECT track_id FROM loved))) AND (tracks.id NOT IN (SELECT track_id FROM tracks_genres WHERE (track_id = tracks.id) AND (genre_id IN (" + deniedBinds + ")))) ORDER BY RANDOM() LIMIT 1", values);
         trackCount--;
     }
 
     if (trackCount > 0)    {
-        QString      binds;
+        QString      selectedBinds;
+        QString      deniedBinds;
         QVariantList values;
-        selectedGenresBinds(&binds, &values);
+        selectedGenresBinds(&selectedBinds, &values);
+        deniedGenresBinds(&deniedBinds, &values);
         values.append(trackCount);
 
-        emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + binds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) ORDER BY playcount, RANDOM() LIMIT ?", values);
+        emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + selectedBinds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id NOT IN (SELECT track_id FROM tracks_genres WHERE (track_id = tracks.id) AND (genre_id IN (" + deniedBinds + ")))) ORDER BY playcount, RANDOM() LIMIT ?", values);
     }
 
     return;
@@ -983,13 +1034,19 @@ void FMASource::albumSearch()
 // configuration conversion
 QJsonDocument FMASource::configToJson()
 {
+    QJsonObject jsonObject;
+
     QVariantList variantList;
     foreach (int selectedGenre, selectedGenres) {
         variantList.append(selectedGenre);
     }
-
-    QJsonObject jsonObject;
     jsonObject.insert("selected_genres", QJsonArray::fromVariantList(variantList));
+
+    variantList.clear();
+    foreach (int deniedGenre, deniedGenres) {
+        variantList.append(deniedGenre);
+    }
+    jsonObject.insert("denied_genres", QJsonArray::fromVariantList(variantList));
 
     QJsonDocument returnValue;
     returnValue.setObject(jsonObject);
@@ -1002,6 +1059,7 @@ QJsonDocument FMASource::configToJson()
 void FMASource::jsonToConfig(QJsonDocument jsonDocument)
 {
     selectedGenres.clear();
+    deniedGenres.clear();
 
     if (jsonDocument.object().contains("selected_genres")) {
         foreach (QJsonValue jsonValue, jsonDocument.object().value("selected_genres").toArray()) {
@@ -1010,6 +1068,12 @@ void FMASource::jsonToConfig(QJsonDocument jsonDocument)
     }
     else {
         emit executeGlobalSql(id, false, "", SQL_COLLECTIONCHECK_GENRE, "SELECT id FROM genres ORDER BY RANDOM() LIMIT 1", QVariantList());
+    }
+
+    if (jsonDocument.object().contains("denied_genres")) {
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("denied_genres").toArray()) {
+            deniedGenres.append(jsonValue.toInt());
+        }
     }
 }
 
@@ -1040,6 +1104,8 @@ void FMASource::networkFinished(QNetworkReply *reply)
     Track        trackTemp;
     QStringList  binds;
     QVariantList values;
+    QStringList  trackGenreBinds;
+    QVariantList trackGenreValues;
 
     QXmlStreamReader xmlStreamReader(reply);
     while (!xmlStreamReader.atEnd()) {
@@ -1128,6 +1194,9 @@ void FMASource::networkFinished(QNetworkReply *reply)
                 if (xmlStreamReader.name().toString().compare("track_genres") == 0) {
                     parseElement = TrackGenres;
                 }
+                if ((parseElement == TrackGenres) && (xmlStreamReader.name().toString().compare("genre_id") == 0)) {
+                    parseElement = TrackGenre;
+                }
             }
         }
 
@@ -1185,6 +1254,19 @@ void FMASource::networkFinished(QNetworkReply *reply)
                 case TrackNumber:
                     stringToInt(text, &trackTemp.track);
                     break;
+                case TrackGenre:
+                    // this assumes by now track id is known, which is the case in every XML seen
+                    int temp;
+                    if ((trackTemp.id != 0) && (stringToInt(text, &temp))) {
+                        trackGenreBinds.append("(?,?)");
+                        trackGenreValues.append(trackTemp.id);
+                        trackGenreValues.append(temp);
+
+                        if (trackGenreValues.count() > 750) {
+                            emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO tracks_genres (track_id, genre_id) VALUES " + trackGenreBinds.join(","), trackGenreValues);
+                        }
+                    }
+                    break;
 
                 default:
                     break;
@@ -1195,6 +1277,11 @@ void FMASource::networkFinished(QNetworkReply *reply)
             if (parseElement == TrackGenres) {
                 if (xmlStreamReader.name().toString().compare("track_genres") == 0) {
                     parseElement = Unknown;
+                }
+            }
+            else if (parseElement == TrackGenre) {
+                if (xmlStreamReader.name().toString().compare("genre_id") == 0) {
+                    parseElement = TrackGenres;
                 }
             }
             else if (parseElement == AlbumImages) {
@@ -1279,6 +1366,9 @@ void FMASource::networkFinished(QNetworkReply *reply)
         if ((state == TrackList) || (state == OpeningTracks)) {
             emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO tracks (id, album_id, title, performer, url, picture_url, track) VALUES " + binds.join(","), values);
         }
+    }
+    if (trackGenreValues.count() > 0) {
+        emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "INSERT OR IGNORE INTO tracks_genres (track_id, genre_id) VALUES " + trackGenreBinds.join(","), trackGenreValues);
     }
 
     // let's get every page
