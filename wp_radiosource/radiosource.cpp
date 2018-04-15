@@ -281,7 +281,7 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
             TracksInfo tracksInfo;
             ExtraInfo  extraInfo;
             tracksInfo.append(trackInfo);
-            extraInfo.insert(trackInfo.url, {{ "loved", PLAYLIST_MODE_LOVED }});
+            extraInfo.insert(trackInfo.url, { { "loved", PLAYLIST_MODE_LOVED }, { "loved_longplay", 1 } });
             emit playlist(id, tracksInfo, extraInfo);
 
             emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_NO_RESULTS, "UPDATE stations SET playcount = playcount + 1 WHERE url = ?", QVariantList({ lovedUrl.toString() }));
@@ -1241,6 +1241,8 @@ void RadioSource::tuneIn()
         TracksInfo tracksInfo;
         ExtraInfo  extraInfo;
         foreach (StationTemp station, tuneInTemp) {
+            int lovedLongplay = 0;
+
             TrackInfo trackInfo;
             trackInfo.album     = station.genre;
             trackInfo.cast      = true;
@@ -1258,6 +1260,7 @@ void RadioSource::tuneIn()
             }
             if (lovedUrls.contains(station.url)) {
                 trackInfo.actions.append({ id, 11, "Unlove" });
+                lovedLongplay = 1;
             }
             else {
                 trackInfo.actions.append({ id, 10, "Love" });
@@ -1267,7 +1270,7 @@ void RadioSource::tuneIn()
 
             if ((station.destination == Playlist) || (station.destination == Open) || (station.destination == Search)) {
                 tracksInfo.append(trackInfo);
-                extraInfo.insert(trackInfo.url, { { "loved", station.lovedMode } });
+                extraInfo.insert(trackInfo.url, { {"loved", station.lovedMode}, {"loved_longplay", lovedLongplay} });
             }
             if (station.destination == Replacement) {
                 emit replacement(id, trackInfo);

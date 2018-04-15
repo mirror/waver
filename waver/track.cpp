@@ -39,9 +39,15 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QVar
     this->additionalInfo = additionalInfo;
     this->sourcePluginId = sourcePliginId;
 
+    // starting out with this long playtime (if cast)
+    long castStartingPlaytime = CAST_PLAYTIME_MILLISECONDS;
+    if (additionalInfo.contains("loved_longplay") && additionalInfo.value("loved_longplay").toInt()) {
+        castStartingPlaytime = castStartingPlaytime * 2;
+    }
+
     // initializations
     currentStatus                                       = Idle;
-    currentCastPlaytimeMilliseconds                     = CAST_PLAYTIME_MILLISECONDS;
+    currentCastPlaytimeMilliseconds                     = castStartingPlaytime;
     fadeInRequested                                     = false;
     fadeInRequestedInternal                             = false;
     fadeInRequestedMilliseconds                         = 0;
