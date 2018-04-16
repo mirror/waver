@@ -89,8 +89,8 @@ windows {
 }
 
 
-RESOURCES += qml.qrc \
-    visual.qrc
+RESOURCES += \
+    res.qrc
 
 
 unix:!android {

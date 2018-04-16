@@ -25,6 +25,7 @@
 
 #include <QByteArray>
 #include <QCommandLineParser>
+#include <QFont>
 #include <QObject>
 #include <QProcess>
 #include <QQmlApplicationEngine>
@@ -162,6 +163,13 @@ int main(int argc, char *argv[])
     application.setApplicationName(Globals::appName());
     application.setApplicationVersion(Globals::appVersion());
 
+    // set font to be consistent through OS versions
+    QFont appFont;
+    appFont.setFamily("SansSerif");
+    appFont.setStyleHint(QFont::SansSerif);
+    appFont.setPointSize(10);
+    application.setFont(appFont);
+
     // parse command line (this also automatically handles help and errors) (QGuiApplication inherits from QCoreApplication)
     QCommandLineParser commandLineParser;
     initializeCommandLineParser(&commandLineParser);
@@ -186,7 +194,7 @@ int main(int argc, char *argv[])
 
     // start user interface
     QQmlApplicationEngine engine;
-    engine.load(QUrl(QLatin1String("qrc:/MainWindow.qml")));
+    engine.load(QUrl(QLatin1String("qrc:/qml/MainWindow.qml")));
     application.setQmlApplicationEngine(&engine);
     return application.exec();
 }

@@ -35,6 +35,8 @@ ApplicationWindow {
     title: "Waver"
 
 
+    readonly property real fontLargeMul: 1.75
+    readonly property real fontSmallMul: .75
     readonly property int  duration_visible_before_fadeout: 5000
     readonly property int  duration_fadeout: 250
     readonly property int  duration_art_transition: 750
@@ -239,7 +241,7 @@ ApplicationWindow {
 
         menuItems.append({
             labelText: label,
-            imageSource: "images/plugin_settings.png",
+            imageSource: "/images/plugin_settings.png",
             clickId: lastId + 1,
             foreignId: id
         });
@@ -903,6 +905,10 @@ ApplicationWindow {
         text: "Át a gyárakon"
     }
 
+    FontLoader {
+        id: decorativeFont
+        source: "/ttf/RockSalt.ttf"
+    }
 
     // menu
 
@@ -911,28 +917,28 @@ ApplicationWindow {
 
         ListElement {
             labelText: "Collections"
-            imageSource: "images/collections.png"
+            imageSource: "/images/collections.png"
             clickId: 1
             foreignId: "N/A"
         }
 
         ListElement {
             labelText: "Source priorities"
-            imageSource: "images/collections.png"
+            imageSource: "/images/collections.png"
             clickId: 2
             foreignId: "N/A"
         }
 
         ListElement {
             labelText: "Diagnostics"
-            imageSource: "images/diagnostics.png"
+            imageSource: "/images/diagnostics.png"
             clickId: 3
             foreignId: "N/A"
         }
 
         ListElement {
             labelText: "About"
-            imageSource: "images/about.png"
+            imageSource: "/images/about.png"
             clickId: 4
             foreignId: "N/A"
         }
@@ -969,13 +975,13 @@ ApplicationWindow {
                     source: imageSource
                 }
 
-                PlatformLabel {
+                Label {
                     id: menuElementLabel
                     text: labelText
                     anchors.verticalCenter: menuElementImage.verticalCenter
                 }
 
-                PlatformLabel {
+                Label {
                     text: " "
                     anchors.verticalCenter: menuElementImage.verticalCenter
                 }
@@ -993,7 +999,7 @@ ApplicationWindow {
             labelTitle: "Title"
             labelPerformer: "Performer"
             labelActions: "<a href=\"action\">Action</a>"
-            imageSource: "images/waver.png"
+            imageSource: "/images/waver.png"
             initialShowActions: true
             loved: 0
         }
@@ -1032,7 +1038,7 @@ ApplicationWindow {
                     source: imageSource
                     width: 48
                     height: 48
-                    onStatusChanged: if (playlistElementImage.status == Image.Error) playlistElementImage.source = "images/waver.png"
+                    onStatusChanged: if (playlistElementImage.status == Image.Error) playlistElementImage.source = "/images/waver.png"
                 }
 
                 MouseArea {
@@ -1060,12 +1066,12 @@ ApplicationWindow {
 
                 Column {
                     id: playlistElementLabels
-                    spacing: 6
+                    spacing: -3
                     anchors.left: playlistElementImage.right
                     anchors.right: playlistElementInner.right
                     anchors.verticalCenter: playlistElementImage.verticalCenter
 
-                    PlatformLabel {
+                    Label {
                         id: playlistElementTitle
                         anchors.left: playlistElementLabels.left
                         anchors.right: playlistElementLabels.right
@@ -1073,16 +1079,22 @@ ApplicationWindow {
                         anchors.rightMargin: 3
                         text: labelTitle
                         font.bold: true
+                        font.family: decorativeFont.name
+                        font.pointSize: userMessage.font.pointSize * fontSmallMul
+                        elide: Text.ElideRight
                         color: (loved == loved_loved) ? "#440000" : (loved == loved_similar) ? "#000044" : "#000000"
                     }
 
-                    PlatformLabel {
+                    Label {
                         id: playlistElementPerformer
                         anchors.left: playlistElementLabels.left
                         anchors.right: playlistElementLabels.right
                         anchors.leftMargin: 6
                         anchors.rightMargin: 3
                         text: labelPerformer
+                        font.family: decorativeFont.name
+                        font.pointSize: userMessage.font.pointSize * fontSmallMul
+                        elide: Text.ElideRight
                         color: (loved == loved_loved) ? "#440000" : (loved == loved_similar) ? "#000044" : "#000000"
                     }
                 }
@@ -1099,7 +1111,7 @@ ApplicationWindow {
                 color: "#FFFFFF"
             }
 
-            PlatformLabel {
+            Label {
                 id: playlistActions
                 anchors.left: parent.left
                 anchors.bottom: playlistElementBorder.bottom
@@ -1137,7 +1149,7 @@ ApplicationWindow {
                 cursorShape: Qt.PointingHandCursor
             }
 
-            PlatformLabel {
+            Label {
                 id: addElementLabel
                 text: label
                 elide: Text.ElideLeft
@@ -1149,7 +1161,7 @@ ApplicationWindow {
                 bottomPadding: 3
             }
 
-            PlatformLabel {
+            Label {
                 id: elementActions
                 text: actions
                 anchors.top: addElementLabel.bottom
@@ -1254,7 +1266,7 @@ ApplicationWindow {
                 cursorShape: Qt.PointingHandCursor
             }
 
-            PlatformLabel {
+            Label {
                 id: searchElementLabel
                 text: label
                 elide: Text.ElideLeft
@@ -1266,7 +1278,7 @@ ApplicationWindow {
                 bottomPadding: 3
             }
 
-            PlatformLabel {
+            Label {
                 id: elementActions
                 text: actions
                 anchors.top: searchElementLabel.bottom
@@ -1338,7 +1350,7 @@ ApplicationWindow {
                 cursorShape: (String(label).localeCompare(String("Default")) ? Qt.PointingHandCursor : Qt.ArrowCursor)
             }
 
-            PlatformLabel {
+            Label {
                 id: collectionsLabel
                 text: label
                 elide: Text.ElideLeft
@@ -1350,7 +1362,7 @@ ApplicationWindow {
                 bottomPadding: 3
             }
 
-            PlatformLabel {
+            Label {
                 id: elementActions
                 text: (String(label).localeCompare(String("Default")) ? "<a href=\"delete\">Delete</a>" : "<i>--- can not be deleted ---</i>")
                 anchors.top: collectionsLabel.bottom
@@ -1396,8 +1408,9 @@ ApplicationWindow {
                 radius: 3
             }
 
-            PlatformLabel {
+            Label {
                 text: pluginName
+                elide: Text.ElideRight
                 anchors.left: parent.left
                 anchors.leftMargin: 6
                 anchors.right: parent.horizontalCenter
@@ -1429,7 +1442,7 @@ ApplicationWindow {
                 }
             }
 
-            PlatformLabel {
+            Label {
                 id: sourcePriorityFeedback
                 anchors.right: parent.right
                 anchors.rightMargin: 6
@@ -1454,8 +1467,9 @@ ApplicationWindow {
     Component {
         id: diagnosticsSelectorElement
 
-        PlatformLabel {
+        Label {
             text: labelText
+            elide: Text.ElideRight
         }
     }
 
@@ -1469,7 +1483,7 @@ ApplicationWindow {
     ToolButton {
         id: menuButton
         background: Image {
-            source: "images/menu.png"
+            source: "/images/menu.png"
             fillMode: Image.PreserveAspectFit
             anchors.verticalCenter: menuButton.verticalCenter
         }
@@ -1518,7 +1532,7 @@ ApplicationWindow {
     ToolButton {
         id: pauseButton
         background: Image {
-            source: "images/pause.png"
+            source: "/images/pause.png"
             fillMode: Image.PreserveAspectFit
             anchors.verticalCenter: pauseButton.verticalCenter
             anchors.horizontalCenter: pauseButton.horizontalCenter
@@ -1532,7 +1546,7 @@ ApplicationWindow {
     ToolButton {
         id: resumeButton
         background: Image {
-            source: "images/resume.png"
+            source: "/images/resume.png"
             fillMode: Image.PreserveAspectFit
             anchors.verticalCenter: resumeButton.verticalCenter
             anchors.horizontalCenter: resumeButton.horizontalCenter
@@ -1547,7 +1561,7 @@ ApplicationWindow {
     ToolButton {
         id: nextButton
         background: Image {
-            source: "images/next.png"
+            source: "/images/next.png"
             fillMode: Image.PreserveAspectFit
             anchors.verticalCenter: nextButton.verticalCenter
             anchors.horizontalCenter: nextButton.horizontalCenter
@@ -1561,7 +1575,7 @@ ApplicationWindow {
     ToolButton {
         id: quitButton
         background: Image {
-            source: "images/quit.png"
+            source: "/images/quit.png"
             fillMode: Image.PreserveAspectFit
             anchors.verticalCenter: quitButton.verticalCenter
         }
@@ -1655,14 +1669,14 @@ ApplicationWindow {
                 Image {
                     id: art1
                     asynchronous: true
-                    source: "images/waver.png"
+                    source: "/images/waver.png"
                     smooth: true
                     visible: false
                     anchors.right: artArea.right
                     anchors.left: artArea.left
                     anchors.top: artArea.top
                     anchors.bottom: artArea.bottom
-                    onStatusChanged: if (art1.status == Image.Error) art1.source = "images/waver.png"
+                    onStatusChanged: if (art1.status == Image.Error) art1.source = "/images/waver.png"
                 }
 
                 BrightnessContrast {
@@ -1677,14 +1691,14 @@ ApplicationWindow {
                 Image {
                     id: art2
                     asynchronous: true
-                    source: "images/waver.png"
+                    source: "/images/waver.png"
                     smooth: true
                     visible: false
                     anchors.right: artArea.right
                     anchors.left: artArea.left
                     anchors.top: artArea.top
                     anchors.bottom: artArea.bottom
-                    onStatusChanged: if (art2.status == Image.Error) art2.source = "images/waver.png"
+                    onStatusChanged: if (art2.status == Image.Error) art2.source = "/images/waver.png"
                 }
 
                 BrightnessContrast {
@@ -1726,7 +1740,7 @@ ApplicationWindow {
                 visible: false
             }
 
-            PlatformLabel {
+            Label {
                 id: nowPlayingActions
                 text: "<a href=\"action\">Action</a>"
                 horizontalAlignment: Text.AlignHCenter
@@ -1761,28 +1775,29 @@ ApplicationWindow {
                 }
             }
 
-            PlatformLabel {
+            Label {
                 id: title
                 text: "Title"
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-                font.pointSize: userMessage.font.pointSize * largeMul
+                font.family: decorativeFont.name
+                font.pointSize: userMessage.font.pointSize * fontLargeMul
                 font.bold: true
-                style: Text.Outline
-                styleColor: "#FFFFFF"
                 anchors.right: parent.right
                 anchors.rightMargin: 9
                 anchors.left: parent.left
                 anchors.leftMargin: 9
                 anchors.bottom: performer.top
+                anchors.bottomMargin: -12
             }
 
-            PlatformLabel {
+            Label {
                 id: performer
                 text: "Performer"
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-                font.pointSize: userMessage.font.pointSize * largeMul
+                font.family: decorativeFont.name
+                font.pointSize: userMessage.font.pointSize * fontLargeMul
                 anchors.right: parent.right
                 anchors.rightMargin: 9
                 anchors.left: parent.left
@@ -1791,30 +1806,31 @@ ApplicationWindow {
                 anchors.bottomMargin: 3
             }
 
-            PlatformLabel {
+            Label {
                 id: album
                 text: "Album"
-                font.pointSize: userMessage.font.pointSize * smallMul
+                elide: Text.ElideRight
+                font.pointSize: userMessage.font.pointSize * fontSmallMul
                 anchors.left: parent.left
                 anchors.leftMargin: 9
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 3
                 width: label_bkg.width * 0.85
             }
-            PlatformLabel {
+            Label {
                 id: track
                 text: "Track"
-                font.pointSize: userMessage.font.pointSize * smallMul
+                font.pointSize: userMessage.font.pointSize * fontSmallMul
                 font.italic: true
                 anchors.right: year.left
                 anchors.rightMargin: 6
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 3
             }
-            PlatformLabel {
+            Label {
                 id: year
                 text: "Year"
-                font.pointSize: userMessage.font.pointSize * smallMul
+                font.pointSize: userMessage.font.pointSize * fontSmallMul
                 anchors.right: parent.right
                 anchors.rightMargin: 9
                 anchors.bottom: parent.bottom
@@ -1914,20 +1930,20 @@ ApplicationWindow {
 
     // bottom row, playing times and page selector
 
-    PlatformLabel {
+    Label {
         id: position_elapsed
         text: "00:00"
-        font.pointSize: userMessage.font.pointSize * smallMul
+        font.pointSize: userMessage.font.pointSize * fontSmallMul
         anchors.left: parent.left
         anchors.leftMargin: 6
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 4
     }
 
-    PlatformLabel {
+    Label {
         id: position_remaining
         text: "00:00"
-        font.pointSize: userMessage.font.pointSize * smallMul
+        font.pointSize: userMessage.font.pointSize * fontSmallMul
         anchors.right: parent.right
         anchors.rightMargin: 6
         anchors.bottom: parent.bottom
@@ -1946,7 +1962,7 @@ ApplicationWindow {
 
 
     // error messages and warnings - in the center of the screen, normally invisible
-    PlatformLabel {
+    Label {
         id: userMessage
         text: ""
         wrapMode: Text.Wrap
@@ -2169,7 +2185,7 @@ ApplicationWindow {
             anchors.fill: pluginUIOuter
         }
 
-        PlatformLabel {
+        Label {
             id: pluginUIHeader
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
@@ -2336,8 +2352,9 @@ ApplicationWindow {
                 radius: 3
             }
 
-            PlatformLabel {
+            Label {
                 text: "No recurring plugin"
+                elide: Text.ElideRight
                 anchors.left: parent.left
                 anchors.leftMargin: 6
                 anchors.right: parent.horizontalCenter
@@ -2461,9 +2478,9 @@ ApplicationWindow {
             contentHeight: diagnosticsText.height
             clip: true
 
-            PlatformLabel {
+            Label {
                 id: diagnosticsText
-                font.pointSize: userMessage.font.pointSize * smallMul
+                font.pointSize: userMessage.font.pointSize * fontSmallMul
             }
         }
 
@@ -2505,16 +2522,16 @@ ApplicationWindow {
             anchors.fill: about
         }
 
-        PlatformLabel {
+        Label {
             id: aboutName
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: parent.top
             anchors.topMargin: 6
-            font.pointSize: userMessage.font.pointSize * largeMul
+            font.pointSize: userMessage.font.pointSize * fontLargeMul
             font.bold: true
         }
 
-        PlatformLabel {
+        Label {
             id: aboutDescription
             anchors.left: parent.left
             anchors.leftMargin: 6
@@ -2523,7 +2540,7 @@ ApplicationWindow {
             font.italic: true
         }
 
-        PlatformLabel {
+        Label {
             id: aboutVersionLabel
             anchors.right: aboutVersion.left
             anchors.rightMargin: 6
@@ -2532,7 +2549,7 @@ ApplicationWindow {
             text: "version"
         }
 
-        PlatformLabel {
+        Label {
             id: aboutVersion
             anchors.right: parent.right
             anchors.rightMargin: 6
@@ -2540,7 +2557,7 @@ ApplicationWindow {
             anchors.topMargin: 12
         }
 
-        PlatformLabel {
+        Label {
             id: aboutCopyright
             anchors.left: parent.left
             anchors.leftMargin: 6
@@ -2548,7 +2565,7 @@ ApplicationWindow {
             anchors.topMargin: 12
         }
 
-        PlatformLabel {
+        Label {
             id: aboutEmail
             anchors.right: parent.right
             anchors.rightMargin: 6
@@ -2557,7 +2574,7 @@ ApplicationWindow {
             onLinkActivated: Qt.openUrlExternally(link);
         }
 
-        PlatformLabel {
+        Label {
             id: aboutLink
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: aboutCopyright.bottom
@@ -2579,11 +2596,11 @@ ApplicationWindow {
             contentHeight: aboutFlickableText.height
             clip: true
 
-            PlatformLabel {
+            Label {
                 id: aboutFlickableText
                 wrapMode: Text.WordWrap
                 width: aboutFlickable.width
-                font.pointSize: userMessage.font.pointSize * smallMul
+                font.pointSize: userMessage.font.pointSize * fontSmallMul
                 onLinkActivated: Qt.openUrlExternally(link);
             }
         }

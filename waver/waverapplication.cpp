@@ -450,7 +450,7 @@ void WaverApplication::updateUITrackInfo(QJsonDocument jsonDocument)
     emit uiTrackInfo(trackInfo.title, trackInfo.performer, trackInfo.album, trackInfo.year, trackInfo.track, loved);
 
     if (trackInfo.pictures.count() < 1) {
-        emit uiPicture("images/waver.png");
+        emit uiPicture("/images/waver.png");
     }
     else {
         emit uiPicture(trackInfo.pictures.at(0).toString());
@@ -540,7 +540,7 @@ void WaverApplication::updateUIPlaylist(QJsonDocument jsonDocument)
             loved = additionalInfo.value("loved").toInt();
         }
 
-        emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "images/waver.png"), trackInfo.title.simplified(), trackInfo.performer.simplified(), actions.join(" "), (i == contextShowTrackIndex), loved);
+        emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "/images/waver.png"), trackInfo.title.simplified(), trackInfo.performer.simplified(), actions.join(" "), (i == contextShowTrackIndex), loved);
     }
 
     if (contextShowTrackIndex >= 0) {
