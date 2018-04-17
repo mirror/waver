@@ -1770,7 +1770,7 @@ ApplicationWindow {
                 radius: 3
                 gradient: Gradient {
                     GradientStop { position: 0.0; color: "#AAAAAA" }
-                    GradientStop { position: 0.39; color: "transparent" }
+                    GradientStop { position: 0.475; color: "transparent" }
                     GradientStop { position: 1.0; color: "#AAAAAA" }
                 }
             }
@@ -1781,14 +1781,16 @@ ApplicationWindow {
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 font.family: decorativeFont.name
-                font.pointSize: userMessage.font.pointSize * fontLargeMul
                 font.bold: true
+                font.pointSize: userMessage.font.pointSize * fontLargeMul
+                lineHeight: .5
+                lineHeightMode: Text.ProportionalHeight
                 anchors.right: parent.right
                 anchors.rightMargin: 9
                 anchors.left: parent.left
                 anchors.leftMargin: 9
                 anchors.bottom: performer.top
-                anchors.bottomMargin: -12
+                anchors.bottomMargin: 12
             }
 
             Label {
@@ -1798,12 +1800,14 @@ ApplicationWindow {
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 font.family: decorativeFont.name
                 font.pointSize: userMessage.font.pointSize * fontLargeMul
+                lineHeight: .5
+                lineHeightMode: Text.ProportionalHeight
                 anchors.right: parent.right
                 anchors.rightMargin: 9
                 anchors.left: parent.left
                 anchors.leftMargin: 9
                 anchors.bottom: album.top
-                anchors.bottomMargin: 3
+                anchors.bottomMargin: 18
             }
 
             Label {
@@ -1966,9 +1970,9 @@ ApplicationWindow {
         id: userMessage
         text: ""
         wrapMode: Text.Wrap
-        width: app.width
+        width: app.width - 12;
         horizontalAlignment: Text.AlignHCenter
-        font.bold: true
+        //font.bold: true
         style: Text.Outline
         color: "#800000"
         styleColor: "#F2F2F2"
