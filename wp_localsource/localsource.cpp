@@ -343,10 +343,22 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
 
     // add loved or similar if asked for
     if (mode != PLAYLIST_MODE_NORMAL) {
+        // reduce loved with already played loved
+        QStringList lovedRemaining;
+        foreach (QString lovedFileName, lovedFileNames) {
+            if (!alreadyPlayedLovedFileNames.contains(lovedFileName)) {
+                lovedRemaining.append(lovedFileName);
+            }
+        }
+        if (lovedRemaining.count() < 1) {
+            lovedRemaining.append(lovedFileNames);
+            alreadyPlayedLovedFileNames.clear();
+        }
+
         // get loved files
         mutex.lock();
         QStringList lovedInCurrentCollection;
-        foreach (QString lovedFileName, lovedFileNames) {
+        foreach (QString lovedFileName, lovedRemaining) {
             if (trackFileNames.contains(lovedFileName) || alreadyPlayedTrackFileNames.contains(lovedFileName)) {
                 lovedInCurrentCollection.append(lovedFileName);
             }
@@ -360,6 +372,12 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
             // select a random track from loved
             int     lovedIndex    = qrand() % lovedInCurrentCollection.count();
             QString lovedFileName = lovedInCurrentCollection.at(lovedIndex);
+
+            // loved mode, must update global configuration
+            if (mode == PLAYLIST_MODE_LOVED) {
+                alreadyPlayedLovedFileNames.append(lovedFileName);
+                emit saveGlobalConfiguration(id, configToJsonGlobal());
+            }
 
             // similar mode, must select from the same dir as loved (and its subdirs), but not the loved itself
             if (mode == PLAYLIST_MODE_LOVED_SIMILAR) {
@@ -889,6 +907,7 @@ QJsonDocument LocalSource::configToJsonGlobal()
     mutex.lock();
     jsonObject.insert("bannedFileNames", QJsonValue(QJsonArray::fromStringList(bannedFileNames)));
     jsonObject.insert("lovedFileNames", QJsonValue(QJsonArray::fromStringList(lovedFileNames)));
+    jsonObject.insert("alreadyPlayedLovedFileNames", QJsonValue(QJsonArray::fromStringList(alreadyPlayedLovedFileNames)));
     mutex.unlock();
 
     QJsonDocument returnValue;
@@ -942,11 +961,17 @@ void LocalSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
     mutex.lock();
 
     lovedFileNames.clear();
+    alreadyPlayedLovedFileNames.clear();
     bannedFileNames.clear();
 
     if (jsonDocument.object().contains("lovedFileNames")) {
         foreach (QJsonValue jsonValue, jsonDocument.object().value("lovedFileNames").toArray()) {
             lovedFileNames.append(jsonValue.toString());
+        }
+    }
+    if (jsonDocument.object().contains("alreadyPlayedLovedFileNames")) {
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("alreadyPlayedLovedFileNames").toArray()) {
+            alreadyPlayedLovedFileNames.append(jsonValue.toString());
         }
     }
 

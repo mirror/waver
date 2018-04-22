@@ -94,6 +94,7 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_005 {
         QStringList alreadyPlayedTrackFileNames;
         QStringList bannedFileNames;
         QStringList lovedFileNames;
+        QStringList alreadyPlayedLovedFileNames;
 
         QString variationSetting;
         int     variationCurrent;
