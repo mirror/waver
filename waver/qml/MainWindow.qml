@@ -34,7 +34,6 @@ ApplicationWindow {
     height: 525
     title: "Waver"
 
-
     readonly property real fontLargeMul: 1.75
     readonly property real fontSmallMul: .75
     readonly property int  duration_visible_before_fadeout: 5000
@@ -54,7 +53,8 @@ ApplicationWindow {
     readonly property int  loved_loved: 1;
     readonly property int  loved_similar: 2;
 
-    property bool active: true
+    property bool active : true
+    property int  openUpY: 0;
 
     // these signals are processed by C++ (WaverApplication class)
     signal menuPause()
@@ -324,7 +324,7 @@ ApplicationWindow {
             id: id
         });
 
-        playlistAddSelectables.contentY = 0;
+        playlistAddSelectables.contentY = openUpY;
     }
 
 
@@ -1173,13 +1173,16 @@ ApplicationWindow {
                 onLinkActivated: {
                     if (link == "open") {
                         if ((labelProperty == "..") || (labelProperty == "Loading...")) {
-                            playlistAdd.directoryHistory.pop();
+                            var historyY = playlistAdd.directoryHistory.pop();
+                            openUpY = historyY.y
                         }
                         else {
                             playlistAdd.directoryHistory.push({
                                 pluginId: pluginIdProperty,
-                                id: idProperty
+                                id: idProperty,
+                                y: playlistAddSelectables.contentY
                             });
+                            openUpY = 0;
                         }
 
                         playlistAddSelectableItems.clear();
@@ -1877,14 +1880,17 @@ ApplicationWindow {
                     playlistAdd.directoryHistory = [];
                     playlistAdd.directoryHistory.push({
                         pluginId: "",
-                        id: ""
+                        id: "",
+                        y: 0
                     });
-
+                    openUpY = 0;
 
                     getOpenTracks("", "");
 
                     playlistAdd.visible = true;
                     playlistAddIn.start();
+
+                    playlistAddSelectables.focus = true;
                 }
             }
 
@@ -2018,6 +2024,20 @@ ApplicationWindow {
             clip: true
 
             ScrollBar.vertical: ScrollBar { }
+
+            Keys.onPressed: {
+                var index = -1;
+                var i     = 1;
+                while ((i < playlistAddSelectableItems.count) && (index < 0)) {
+                    if (playlistAddSelectableItems.get(i).label.toLowerCase().charAt(0) == event.text.toLowerCase().charAt(0)) {
+                        index = i;
+                    }
+                    i++;
+                }
+                if (index > -1) {
+                    playlistAddSelectables.positionViewAtIndex(index, ListView.Beginning);
+                }
+            }
         }
 
         ListView {
