@@ -309,8 +309,9 @@ void Mpg123Decoder::feedReady()
     size_t output_size;
 
     // loop until it's done
-    bool done     = false;
-    bool wasError = false;
+    bool done      = false;
+    bool wasError  = false;
+    bool didDecode = false;
     while (!done && !wasError && !QThread::currentThread()->isInterruptionRequested()) {
         // try to read from file/internet
         input_size = feed->read(&input[0], INPUT_SIZE);
@@ -416,6 +417,7 @@ void Mpg123Decoder::feedReady()
 
             // remember buffer so it can be deleted later
             audioBuffers.append(audioBuffer);
+            didDecode = true;
 
             // diagnostics
             if (sendDiagnostics) {
@@ -469,6 +471,9 @@ void Mpg123Decoder::feedReady()
     mpg123Handle = NULL;
 
     if (done) {
+        if (!didDecode) {
+            emit error(id, "Did not decode anything");
+        }
         emit finished(id);
     }
 }

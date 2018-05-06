@@ -32,6 +32,9 @@
 #include <QStringList>
 #include <QThread>
 
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
 
 class FileScanner : public QThread {
         Q_OBJECT
