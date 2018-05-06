@@ -105,13 +105,6 @@ void RadioSource::setUserAgent(QString userAgent)
 }
 
 
-// overrided virtual function
-QUrl RadioSource::menuImageURL()
-{
-    return QUrl();
-}
-
-
 // overridden virtual function
 QUuid RadioSource::persistentUniqueId()
 {

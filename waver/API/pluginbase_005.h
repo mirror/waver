@@ -45,7 +45,6 @@ class PluginBase_005 : public QObject {
         Q_INVOKABLE virtual QString waverVersionAPICompatibility() = 0;
         Q_INVOKABLE virtual QUuid   persistentUniqueId()           = 0;
         Q_INVOKABLE virtual bool    hasUI()                        = 0;
-        Q_INVOKABLE virtual QUrl    menuImageURL()                 = 0;
 
 
     signals:

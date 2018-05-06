@@ -70,7 +70,6 @@ class WP_FMASOURCE_EXPORT FMASource : public PluginSource_005 {
         QUuid   persistentUniqueId()            override;
         bool    hasUI()                         override;
         void    setUserAgent(QString userAgent) override;
-        QUrl    menuImageURL()                  override;
 
         explicit FMASource();
         ~FMASource();

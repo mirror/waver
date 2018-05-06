@@ -127,13 +127,6 @@ bool SoundOutput::hasUI()
 }
 
 
-// overrided virtual function
-QUrl SoundOutput::menuImageURL()
-{
-    return QUrl();
-}
-
-
 // thread entry point
 void SoundOutput::run()
 {

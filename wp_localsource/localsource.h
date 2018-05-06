@@ -75,7 +75,6 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_005 {
         QUuid   persistentUniqueId()            override;
         bool    hasUI()                         override;
         void    setUserAgent(QString userAgent) override;
-        QUrl    menuImageURL()                  override;
 
         explicit LocalSource();
         ~LocalSource();

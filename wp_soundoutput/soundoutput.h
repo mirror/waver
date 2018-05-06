@@ -68,7 +68,6 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_005 {
         bool    isMainOutput()                                                     override;
         QUuid   persistentUniqueId()                                               override;
         bool    hasUI()                                                            override;
-        QUrl    menuImageURL()                                                     override;
 
         explicit SoundOutput();
         ~SoundOutput();

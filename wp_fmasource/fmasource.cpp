@@ -103,13 +103,6 @@ QUuid FMASource::persistentUniqueId()
 }
 
 
-// overridden virtual function
-QUrl FMASource::menuImageURL()
-{
-    return QUrl();
-}
-
-
 // thread entry
 void FMASource::run()
 {

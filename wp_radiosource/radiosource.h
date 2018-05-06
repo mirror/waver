@@ -73,7 +73,6 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_005 {
         QUuid   persistentUniqueId()            override;
         bool    hasUI()                         override;
         void    setUserAgent(QString userAgent) override;
-        QUrl    menuImageURL()                  override;
 
         explicit RadioSource();
         ~RadioSource();

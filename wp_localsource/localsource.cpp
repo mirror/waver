@@ -71,12 +71,6 @@ void LocalSource::setUserAgent(QString userAgent)
 
 
 // overrided virtual function
-QUrl LocalSource::menuImageURL()
-{
-    return QUrl();
-}
-
-// overrided virtual function
 int LocalSource::pluginType()
 {
     return PLUGIN_TYPE_SOURCE;
