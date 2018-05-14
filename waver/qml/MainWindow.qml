@@ -395,13 +395,14 @@ ApplicationWindow {
         sourcePrioritiesItems.clear();
     }
 
-    function addToSourcePrioritiesList(id, name, priority, recurring)
+    function addToSourcePrioritiesList(id, name, priority, recurring, love)
     {
         sourcePrioritiesItems.append({
             pluginId       : id,
             pluginName     : name,
             pluginPriority : priority,
             pluginRecurring: recurring,
+            pluginLove     : love,
         });
     }
 
@@ -1401,7 +1402,7 @@ ApplicationWindow {
         id: sourcePrioritiesElement
 
         Item {
-            height: sourcePrioritySlider.height
+            height: sourcePrioritySlider.height + sourceLovedFrequency.height + 18
             width: sourcePrioritiesList.width
 
             Rectangle {
@@ -1413,6 +1414,7 @@ ApplicationWindow {
 
             Label {
                 text: pluginName
+                font.bold: true
                 elide: Text.ElideRight
                 anchors.left: parent.left
                 anchors.leftMargin: 6
@@ -1420,22 +1422,9 @@ ApplicationWindow {
                 anchors.verticalCenter: sourcePrioritySlider.verticalCenter
             }
 
-            RadioButton {
-                id: sourcePriorityRecurring
-                anchors.left: parent.horizontalCenter
-                ButtonGroup.group: radios
-                checked: pluginRecurring
-                onClicked: {
-                    for(var i = 0; i < sourcePrioritiesItems.count; i++) {
-                        sourcePrioritiesItems.get(i).pluginRecurring = false;
-                    }
-                    pluginRecurring = checked;
-                }
-            }
-
             Slider {
                 id: sourcePrioritySlider
-                anchors.left: sourcePriorityRecurring.right
+                anchors.left: parent.horizontalCenter
                 anchors.right: sourcePriorityFeedback.left
                 value: pluginPriority
                 from: 1
@@ -1452,9 +1441,66 @@ ApplicationWindow {
                 text: pluginPriority
                 anchors.verticalCenter: sourcePrioritySlider.verticalCenter
             }
+
+            Label {
+                id: sourceLovedFrequencyLabel
+                anchors.verticalCenter: sourceLovedFrequency.verticalCenter
+                anchors.left: parent.left
+                anchors.leftMargin: 12
+                text: "Loved:"
+            }
+
+            ComboBox {
+                id: sourceLovedFrequency
+                anchors.top: sourcePrioritySlider.bottom
+                anchors.topMargin: 12
+                anchors.left: sourceLovedFrequencyLabel.right
+                anchors.right: parent.horizontalCenter
+                anchors.leftMargin: 6
+                background: Rectangle {
+                    color: "transparent"
+                    border.width: 1
+                    border.color: "#CCCCCC"
+                }
+                model: ListModel {
+                    ListElement { text: "Rare" }
+                    ListElement { text: "Normal" }
+                    ListElement { text: "Frequent" }
+                }
+                Component.onCompleted: {
+                    currentIndex = find(pluginLove)
+                }
+                onActivated: {
+                    pluginLove = currentText
+                }
+            }
+
+            Label {
+                id: sourcePriorityRecurringLabel
+                anchors.verticalCenter: sourceLovedFrequency.verticalCenter
+                anchors.right: sourcePriorityRecurring.left
+                text: "Recurring:"
+            }
+
+            RadioButton {
+                id: sourcePriorityRecurring
+                anchors.verticalCenter: sourceLovedFrequency.verticalCenter
+                anchors.right: parent.right
+                anchors.rightMargin: 12
+                ButtonGroup.group: radios
+                checked: pluginRecurring
+                onClicked: {
+                    for(var i = 0; i < sourcePrioritiesItems.count; i++) {
+                        sourcePrioritiesItems.get(i).pluginRecurring = false;
+                    }
+                    pluginRecurring = checked;
+                    if (!checked) {
+                        sourcePriorityNoRecurring.checked = true;
+                    }
+                }
+            }
         }
     }
-
 
     // diagnostics
 
@@ -1978,10 +2024,10 @@ ApplicationWindow {
         wrapMode: Text.Wrap
         width: app.width - 12;
         horizontalAlignment: Text.AlignHCenter
-        //font.bold: true
+        font.bold: true
         style: Text.Outline
         color: "#800000"
-        styleColor: "#F2F2F2"
+        styleColor: "#E0B0B0"
         anchors.horizontalCenter: app.contentItem.horizontalCenter
         anchors.verticalCenter: app.contentItem.verticalCenter
     }
@@ -2387,7 +2433,8 @@ ApplicationWindow {
 
             RadioButton {
                 id: sourcePriorityNoRecurring
-                anchors.left: parent.horizontalCenter
+                anchors.right: parent.right
+                anchors.rightMargin: 12
                 anchors.top: parent.top
                 ButtonGroup.group: radios
                 checked: true
@@ -2428,7 +2475,8 @@ ApplicationWindow {
                     retval.push({
                          id: sourcePrioritiesItems.get(i).pluginId,
                          priority: sourcePrioritiesItems.get(i).pluginPriority,
-                         recurring: sourcePrioritiesItems.get(i).pluginRecurring
+                         recurring: sourcePrioritiesItems.get(i).pluginRecurring,
+                         lovedMode: sourcePrioritiesItems.get(i).pluginLove
                     });
                 }
                 sourcePrioritiesDialogResults(JSON.stringify(retval));

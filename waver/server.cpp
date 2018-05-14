@@ -42,7 +42,6 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     // initializations
     previousTrack                     = NULL;
     currentTrack                      = NULL;
-    loveMode                          = LOVE_NORMAL;
     currentCollection                 = "";
     unableToStartCount                = 0;
     waitingForLocalSource             = true;
@@ -158,12 +157,15 @@ void WaverServer::finish(QString errorMessage)
 QJsonDocument WaverServer::configToJson()
 {
     QJsonArray sourcePriorities;
+    QJsonArray sourceLovedModes;
     foreach (QUuid pluginId, sourcePlugins.keys()) {
         sourcePriorities.append(QJsonArray({ pluginId.toString(), sourcePlugins.value(pluginId).priority }));
+        sourceLovedModes.append(QJsonArray({ pluginId.toString(), sourcePlugins.value(pluginId).lovedMode }));
     }
 
     QJsonObject jsonObject;
     jsonObject.insert("source_priorities", sourcePriorities);
+    jsonObject.insert("source_loved_modes", sourceLovedModes);
     jsonObject.insert("recurring_source", recurringPlugin.toString());
 
     QJsonDocument returnValue;
@@ -202,6 +204,18 @@ void WaverServer::jsonToConfig(QJsonDocument jsonDocument)
             if (sourcePlugins.contains(pluginId)) {
                 int priority = sourcePriority.at(1).toInt();
                 sourcePlugins[pluginId].priority = (priority > 10 ? 4 : priority);
+            }
+        }
+    }
+
+    if (jsonDocument.object().contains("source_loved_modes")) {
+        foreach (QJsonValue dataItem, jsonDocument.object().value("source_loved_modes").toArray()) {
+            QVariantList sourceLovedMode = dataItem.toArray().toVariantList();
+
+            QUuid pluginId(sourceLovedMode.at(0).toString());
+            if (sourcePlugins.contains(pluginId)) {
+                int lovedMode = sourceLovedMode.at(1).toInt();
+                sourcePlugins[pluginId].lovedMode = lovedMode;
             }
         }
     }
@@ -325,13 +339,13 @@ void WaverServer::requestPlaylist()
             loveCounter.insert(pluginId, { 0, true });
         }
 
-        int trackCount = qMin(sourcePlugins.value(pluginId).priority, loveMode - loveCounter.value(pluginId).counter);
+        int trackCount = qMin(sourcePlugins.value(pluginId).priority, sourcePlugins.value(pluginId).lovedMode - loveCounter.value(pluginId).counter);
         if (trackCount > 0) {
             emit getPlaylist(pluginId, trackCount, PLAYLIST_MODE_NORMAL);
             loveCounter[pluginId].counter += trackCount;
         }
         while (trackCount < sourcePlugins.value(pluginId).priority) {
-            int count = qMin(sourcePlugins.value(pluginId).priority - trackCount, loveMode);
+            int count = qMin(sourcePlugins.value(pluginId).priority - trackCount, sourcePlugins.value(pluginId).lovedMode);
             emit getPlaylist(pluginId, count, loveCounter.value(pluginId).similarOnly ? PLAYLIST_MODE_LOVED_SIMILAR : PLAYLIST_MODE_LOVED);
             trackCount += count;
             loveCounter[pluginId].counter = count - 1;
@@ -790,6 +804,9 @@ void WaverServer::handleSourcePrioritiesRequest(QJsonDocument jsonDocument)
                 "priority", sourcePlugins.value(pluginId).priority
             },
             {
+                "lovedMode", formatLovedMode(sourcePlugins.value(pluginId).lovedMode)
+            },
+            {
                 "recurring", (recurringPlugin == pluginId)
             }
         })));
@@ -808,7 +825,8 @@ void WaverServer::handleSourcePrioritiesResult(QJsonDocument jsonDocument)
     QVariantList data = jsonDocument.array().toVariantList();
     foreach (QVariant dataItem, data) {
         QVariantMap sourcePriority = dataItem.toMap();
-        sourcePlugins[QUuid(sourcePriority.value("id").toString())].priority = sourcePriority.value("priority").toInt();
+        sourcePlugins[QUuid(sourcePriority.value("id").toString())].priority  = sourcePriority.value("priority").toInt();
+        sourcePlugins[QUuid(sourcePriority.value("id").toString())].lovedMode = lovedModeFromString(sourcePriority.value("lovedMode").toString());
         if (sourcePriority.value("recurring").toBool()) {
             recurringPlugin = QUuid(sourcePriority.value("id").toString());
         }
@@ -986,8 +1004,9 @@ void WaverServer::pluginLibsLoaded()
 
             // remember some info about the plugin
             SourcePlugin pluginData;
-            pluginData.ready    = false;
-            pluginData.priority = 4;
+            pluginData.ready     = false;
+            pluginData.priority  = 4;
+            pluginData.lovedMode = LOVE_NORMAL;
             if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
                 finish("Failed to invoke method on plugin");
             }
@@ -2134,4 +2153,30 @@ double WaverServer::notificationsHelper_Volume()
 {
     // TODO implemet this, until then just return 80%
     return 0.8;
+}
+
+
+// helper
+QString WaverServer::formatLovedMode(int lovedMode)
+{
+    if (lovedMode == LOVE_FREQUENT) {
+        return "Frequent";
+    }
+    if (lovedMode == LOVE_RARE) {
+        return "Rare";
+    }
+    return "Normal";
+}
+
+
+// helper
+int WaverServer::lovedModeFromString(QString str)
+{
+    if (str.compare("Frequent", Qt::CaseInsensitive) == 0) {
+        return LOVE_FREQUENT;
+    }
+    if (str.compare("Rare", Qt::CaseInsensitive) == 0) {
+        return LOVE_RARE;
+    }
+    return LOVE_NORMAL;
 }

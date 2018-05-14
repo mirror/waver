@@ -100,6 +100,7 @@ class WaverServer : public QObject {
             bool    hasUI;
             bool    ready;
             int     priority;
+            int     lovedMode;
         };
         typedef QHash<QUuid, SourcePlugin> SourcePlugins;
 
@@ -146,7 +147,6 @@ class WaverServer : public QObject {
         bool showPreviousTime;
         long previousPositionSeconds;
 
-        int                       loveMode;
         QHash<QUuid, LoveCounter> loveCounter;
 
         bool                        sendErrorLogDiagnostics;
@@ -172,6 +172,9 @@ class WaverServer : public QObject {
         QString       findTitleFromUrl(QUrl url);
         Track        *createTrack(TrackInfo trackInfo, QVariantHash additionalInfo, QUuid pluginId);
         void          stopAllDiagnostics();
+
+        QString formatLovedMode(int lovedMode);
+        int     lovedModeFromString(QString str);
 
         void handleCollectionMenuChange(QJsonDocument jsonDocument);
         void handleCollectionsDialogResults(QJsonDocument jsonDocument);
