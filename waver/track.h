@@ -49,9 +49,8 @@ class Track : public QObject {
         Q_OBJECT
 
     public:
-
-        static const long CAST_PLAYTIME_MILLISECONDS = 450 * 1000;
-        static const int INTERRUPT_FADE_SECONDS      = 4;
+        static const int CAST_ADD_PLAYTIME      = 5 * 60 * 1000;
+        static const int INTERRUPT_FADE_SECONDS = 4;
 
         typedef QHash<QUuid, QString> PluginList;
 
@@ -71,7 +70,7 @@ class Track : public QObject {
             return pluginInfo.name;
         }
 
-        explicit Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QVariantHash additionalInfo,  QUuid sourcePluginId, QObject *parent = 0);
+        explicit Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QVariantHash additionalInfo, int castPlaytimeMilliseconds, int lovedCastPlaytimeMilliseconds, QUuid sourcePluginId,  QObject *parent = 0);
         ~Track();
 
         Status status();

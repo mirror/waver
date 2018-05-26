@@ -47,6 +47,8 @@ IpcMessageUtils::IpcMessageUtils(QObject *parent) : QObject(parent)
     ipcMessagesToStrings[OpenTracks]               = "open_tracks";
     ipcMessagesToStrings[OpenTracksSelected]       = "open_tracks_selected";
     ipcMessagesToStrings[OpenUrl]                  = "open_url";
+    ipcMessagesToStrings[Options]                  = "options";
+    ipcMessagesToStrings[OptionsResults]           = "options_results";
     ipcMessagesToStrings[Pause]                    = "pause";
     ipcMessagesToStrings[Playlist]                 = "playlist";
     ipcMessagesToStrings[PlayPauseState]           = "play_pause_state";

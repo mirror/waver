@@ -53,6 +53,9 @@ ApplicationWindow {
     readonly property int  loved_loved: 1;
     readonly property int  loved_similar: 2;
 
+    readonly property var playtimeTexts: ["3 minutes", "5 minutes", "7.5 minutes", "10 minutes", "15 minutes", "30 minutes"]
+    readonly property var playtimeValues: [180000, 300000, 450000, 600000, 900000, 1800000]
+
     property bool active : true
     property int  openUpY: 0;
 
@@ -61,12 +64,14 @@ ApplicationWindow {
     signal menuResume()
     signal menuNext()
     signal menuCollection(variant collectionLabel)
+    signal menuOptions()
     signal menuSourcePriorities()
     signal menuPlugin(variant foreignId)
     signal menuAbout()
     signal menuQuit()
     signal collectionsDialogResults(variant collectionsArray)
     signal sourcePrioritiesDialogResults(variant priorities)
+    signal optionsDialogResults(variant options)
     signal pluginUIResults(variant foreignId, variant results)
     signal getOpenTracks(variant pluginId, variant parentId)
     signal startSearch(variant criteria)
@@ -407,6 +412,34 @@ ApplicationWindow {
     }
 
 
+    // options
+
+    function optionsData(streamPlayTime, lovedStreamPlayTime)
+    {
+        var index = -1;
+        for (var i = 0; i < playtimeValues.length; ++i) {
+            if (playtimeValues[i] == streamPlayTime) {
+                index = i;
+            }
+        }
+        if (index < 0) {
+            index = 2;
+        }
+        castPlayTime.value = index;
+
+        index = -1;
+        for (var i = 0; i < playtimeValues.length; ++i) {
+            if (playtimeValues[i] == lovedStreamPlayTime) {
+                index = i;
+            }
+        }
+        if (index < 0) {
+            index = 2;
+        }
+        castLovedPlayTime.value = index;
+    }
+
+
     // about dialog
     function aboutDialog(data)
     {
@@ -465,12 +498,19 @@ ApplicationWindow {
             break;
 
         case 3:
+            options.visible = true;
+            optionsIn.start();
+
+            menuOptions();
+            break;
+
+        case 4:
             diagnostics.visible = true;
             diagnosticsIn.start();
             getDiagnostics(diagnosticsSelectorItems.get(diagnosticsSelector.currentIndex).foreignId);
             break;
 
-        case 4:
+        case 5:
             menuAbout();
             break;
         }
@@ -478,8 +518,26 @@ ApplicationWindow {
 
 
     /*****
+     helpers
+    *****/
+
+    function playTimeTextFromValue(value) {
+        return playtimeTexts[value];
+    }
+
+    function playTimeValueFromText(text) {
+        for (var i = 0; i < playtimeTexts.length; ++i) {
+            if (playtimeTexts[i].toLowerCase().indexOf(text.toLowerCase()) === 0) {
+                return i;
+            }
+        }
+        return "7.5 minutes";
+    }
+
+
+    /*****
      animation definitions
-    ****/
+    *****/
 
     // activation
 
@@ -839,6 +897,35 @@ ApplicationWindow {
     }
 
 
+    // options dialog transitions
+
+    NumberAnimation {
+        id: optionsIn
+        target: options
+        property: "opacity"
+        from: opacity_transparent
+        to: opacity_opaque
+        duration: duration_fadeout
+    }
+
+    NumberAnimation {
+        id: optionsOut
+        target: options
+        property: "opacity"
+        from: opacity_opaque
+        to: opacity_transparent
+        duration: duration_fadeout
+    }
+
+    Timer {
+        id: optionsOutVisibility
+        interval: duration_fadeout + 25
+        onTriggered: {
+            options.visible = false;
+        }
+    }
+
+
     // diagnostics dialog transitions
 
     NumberAnimation {
@@ -869,7 +956,6 @@ ApplicationWindow {
 
 
     // about dialog transitions
-    // playlist add dialog transitions
 
     NumberAnimation {
         id: aboutIn
@@ -931,16 +1017,23 @@ ApplicationWindow {
         }
 
         ListElement {
+            labelText: "Options"
+            imageSource: "/images/collections.png"
+            clickId: 3
+            foreignId: "N/A"
+        }
+
+        ListElement {
             labelText: "Diagnostics"
             imageSource: "/images/diagnostics.png"
-            clickId: 3
+            clickId: 4
             foreignId: "N/A"
         }
 
         ListElement {
             labelText: "About"
             imageSource: "/images/about.png"
-            clickId: 4
+            clickId: 5
             foreignId: "N/A"
         }
     }
@@ -2495,6 +2588,126 @@ ApplicationWindow {
             onClicked: {
                 sourcePrioritiesOut.start();
                 sourcePrioritiesOutVisibility.start();
+            }
+        }
+    }
+
+
+    /*****
+     options dialog
+    *****/
+
+    Item {
+        id: options
+        anchors.fill: parent
+        opacity: opacity_transparent
+        visible: false
+
+        MouseArea {
+            anchors.fill: options
+        }
+
+        Rectangle {
+            id: optionsBackground
+            anchors.fill: options
+        }
+
+        Item {
+            id: castPlayTimeItem
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.top: parent.top
+            anchors.topMargin: 6
+            height: castPlayTime.height
+
+            Label {
+                anchors.left: parent.left
+                anchors.verticalCenter: castPlayTime.verticalCenter
+                text: "Stream play time"
+            }
+            SpinBox {
+                id: castPlayTime
+                anchors.right: parent.right
+                anchors.left: parent.horizontalCenter
+                anchors.top:parent.top
+                from: 0
+                to: items.length - 1
+
+                property var items: playtimeTexts
+
+                textFromValue: function(value) {
+                    return playTimeTextFromValue(value);
+                }
+
+                valueFromText: function(text) {
+                    return playTimeValueFromText(text);
+                }
+            }
+        }
+
+        Item {
+            id: castLovedPlayTimeItem
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.top: castPlayTimeItem.bottom
+            anchors.topMargin: 6
+            height: castLovedPlayTime.height
+
+            Label {
+                anchors.left: parent.left
+                anchors.verticalCenter: castLovedPlayTime.verticalCenter
+                text: "Loved stream play time"
+            }
+            SpinBox {
+                id: castLovedPlayTime
+                anchors.right: parent.right
+                anchors.left: parent.horizontalCenter
+                anchors.top:parent.top
+                from: 0
+                to: items.length - 1
+
+                property var items: playtimeTexts
+
+                textFromValue: function(value) {
+                    return playTimeTextFromValue(value);
+                }
+
+                valueFromText: function(text) {
+                    return playTimeValueFromText(text);
+                }
+            }
+        }
+
+        Button {
+            id: optionsDone
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 6
+            text: "Done"
+            onClicked: {
+                var retval = { castPlayTime: playtimeValues[castPlayTime.value], castLovedPlayTime: playtimeValues[castLovedPlayTime.value] };
+
+                optionsDialogResults(JSON.stringify(retval));
+
+                optionsOut.start();
+                optionsOutVisibility.start();
+            }
+        }
+
+        Button {
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 6
+            text: "Cancel"
+            onClicked: {
+                optionsOut.start();
+                optionsOutVisibility.start();
             }
         }
     }

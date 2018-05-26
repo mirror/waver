@@ -25,7 +25,7 @@
 
 
 // constructor
-Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QVariantHash additionalInfo, QUuid sourcePliginId, QObject *parent) : QObject(parent)
+Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QVariantHash additionalInfo, int castPlaytimeMilliseconds, int lovedCastPlaytimeMilliseconds, QUuid sourcePliginId, QObject *parent) : QObject(parent)
 {
     // to make debugging easier
     decoderThread.setObjectName("decoder");
@@ -40,9 +40,9 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QVar
     this->sourcePluginId = sourcePliginId;
 
     // starting out with this long playtime (if cast)
-    long castStartingPlaytime = CAST_PLAYTIME_MILLISECONDS;
+    long castStartingPlaytime = castPlaytimeMilliseconds;
     if (additionalInfo.contains("loved_longplay") && additionalInfo.value("loved_longplay").toInt()) {
-        castStartingPlaytime = castStartingPlaytime * 2;
+        castStartingPlaytime = lovedCastPlaytimeMilliseconds;
     }
 
     // initializations
@@ -864,8 +864,8 @@ void Track::resetAboutToFinishSend()
 // public method
 void Track::addMoreToCastPlaytime()
 {
-    if (currentCastPlaytimeMilliseconds < ((24 * 60 * 60 * 1000) - CAST_PLAYTIME_MILLISECONDS)) {
-        currentCastPlaytimeMilliseconds += CAST_PLAYTIME_MILLISECONDS;
+    if (currentCastPlaytimeMilliseconds < ((24 * 60 * 60 * 1000) - CAST_ADD_PLAYTIME)) {
+        currentCastPlaytimeMilliseconds += CAST_ADD_PLAYTIME;
     }
 }
 

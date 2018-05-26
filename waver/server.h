@@ -146,6 +146,8 @@ class WaverServer : public QObject {
         long positionSeconds;
         bool showPreviousTime;
         long previousPositionSeconds;
+        int  streamPlayTime;
+        int  lovedStreamPlayTime;
 
         QHash<QUuid, LoveCounter> loveCounter;
 
@@ -188,6 +190,8 @@ class WaverServer : public QObject {
         void handleDiagnostics(QJsonDocument jsonDocument);
         void handleSourcePrioritiesRequest(QJsonDocument jsonDocument);
         void handleSourcePrioritiesResult(QJsonDocument jsonDocument);
+        void handleOptionsRequest(QJsonDocument jsonDocument);
+        void handleOptionsResult(QJsonDocument jsonDocument);
         void sendCollectionListToClients();
         void sendPlaylistToClients(int contextShowTrackIndex);
         void sendPlaylistToClients();

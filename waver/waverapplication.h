@@ -88,6 +88,7 @@ class WaverApplication : public QGuiApplication {
         void updateUISearchList(QJsonDocument jsonDocument);
         void updateUIDiagnosticsMessage(QJsonDocument jsonDocument);
         void updateUISourcePriorities(QJsonDocument jsonDocument);
+        void updateUIOptions(QJsonDocument jsonDocument);
         void showPluginUI(QJsonDocument jsonDocument);
         void openUrl(QJsonDocument jsonDocument);
 
@@ -123,6 +124,7 @@ class WaverApplication : public QGuiApplication {
         void uiDisplayDiagnosticsMessage(QVariant pluginId, QVariant text);
         void uiClearSourcePrioritiesList();
         void uiAddToSourcePrioritiesList(QVariant id, QVariant name, QVariant priority, QVariant recurring, QVariant love);
+        void uiOptions(QVariant streamPlayTime, QVariant lovedStreamPlayTime);
 
 
     public slots:
@@ -133,6 +135,7 @@ class WaverApplication : public QGuiApplication {
         void menuCollection(QVariant collection);
         void menuPlugin(QVariant id);
         void menuSourcePriorities();
+        void menuOptions();
         void menuAbout();
         void menuQuit();
         void collectionsDialogResults(QVariant collectionsArray);
@@ -144,6 +147,7 @@ class WaverApplication : public QGuiApplication {
         void getDiagnostics(QVariant id);
         void doneDiagnostics();
         void sourcePrioritiesDialogResults(QVariant results);
+        void optionsDialogResults(QVariant results);
 
 
     private slots:

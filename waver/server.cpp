@@ -51,6 +51,8 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     previousPositionSeconds           = 0;
     sendErrorLogDiagnostics           = false;
     diagnosticsChanged                = false;
+    streamPlayTime                    = 450 * 1000;
+    lovedStreamPlayTime               = 450 * 1000 * 2;
 
     diagnosticsTimer.setInterval(1000 / 20);
     connect(&diagnosticsTimer, SIGNAL(timeout()), this, SLOT(diagnosticsRefreshUI()));
@@ -167,6 +169,8 @@ QJsonDocument WaverServer::configToJson()
     jsonObject.insert("source_priorities", sourcePriorities);
     jsonObject.insert("source_loved_modes", sourceLovedModes);
     jsonObject.insert("recurring_source", recurringPlugin.toString());
+    jsonObject.insert("streamPlayTime", streamPlayTime);
+    jsonObject.insert("lovedStreamPlayTime", lovedStreamPlayTime);
 
     QJsonDocument returnValue;
     returnValue.setObject(jsonObject);
@@ -222,6 +226,13 @@ void WaverServer::jsonToConfig(QJsonDocument jsonDocument)
 
     if (jsonDocument.object().contains("recurring_source")) {
         recurringPlugin = QUuid(jsonDocument.object().value("recurring_source").toString());
+    }
+
+    if (jsonDocument.object().contains("streamPlayTime")) {
+        streamPlayTime = jsonDocument.object().value("streamPlayTime").toInt();
+    }
+    if (jsonDocument.object().contains("lovedStreamPlayTime")) {
+        lovedStreamPlayTime = jsonDocument.object().value("lovedStreamPlayTime").toInt();
     }
 }
 
@@ -837,6 +848,35 @@ void WaverServer::handleSourcePrioritiesResult(QJsonDocument jsonDocument)
 
 
 // private method
+void WaverServer::handleOptionsRequest(QJsonDocument jsonDocument)
+{
+    Q_UNUSED(jsonDocument);
+
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Options, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
+        {
+            "streamPlayTime", streamPlayTime
+        },
+        {
+            "lovedStreamPlayTime", lovedStreamPlayTime
+        }
+    })))));
+}
+
+
+// private method
+void WaverServer::handleOptionsResult(QJsonDocument jsonDocument)
+{
+    QVariantHash data = jsonDocument.object().toVariantHash();
+
+    streamPlayTime      = data.value("castPlayTime").toInt();
+    lovedStreamPlayTime = data.value("castLovedPlayTime").toInt();
+
+    emit saveWaverSettings(currentCollection, configToJson());
+}
+
+
+// private method
 void WaverServer::sendCollectionListToClients()
 {
     QJsonArray collectionArray = QJsonArray::fromStringList(collections);
@@ -1212,6 +1252,14 @@ void WaverServer::ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJson
 
         case IpcMessageUtils::SourcePriorityResults:
             handleSourcePrioritiesResult(jsonDocument);
+            break;
+
+        case IpcMessageUtils::Options:
+            handleOptionsRequest(jsonDocument);
+            break;
+
+        case IpcMessageUtils::OptionsResults:
+            handleOptionsResult(jsonDocument);
             break;
 
         case IpcMessageUtils::TrackAction:
@@ -1666,7 +1714,7 @@ void WaverServer::replacement(QUuid uniqueId, TrackInfo trackInfo)
 // helper
 Track *WaverServer::createTrack(TrackInfo trackInfo, QVariantHash additionalInfo, QUuid pluginId)
 {
-    Track *track = new Track(&loadedLibs, trackInfo, additionalInfo, pluginId, this);
+    Track *track = new Track(&loadedLibs, trackInfo, additionalInfo, streamPlayTime, lovedStreamPlayTime, pluginId, this);
 
     connect(this,  SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),                                  track, SLOT(loadedPluginSettings(QUuid, QJsonDocument)));
     connect(this,  SIGNAL(loadedGlobalConfiguration(QUuid, QJsonDocument)),                            track, SLOT(loadedPluginGlobalSettings(QUuid, QJsonDocument)));

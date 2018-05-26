@@ -65,6 +65,8 @@ class IpcMessageUtils : public QObject {
             OpenTracks,
             OpenTracksSelected,
             OpenUrl,
+            Options,
+            OptionsResults,
             Pause,
             Playlist,
             PlayPauseState,
