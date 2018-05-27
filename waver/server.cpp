@@ -1665,6 +1665,9 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo, ExtraInfo extr
 
     bool stopCurrentTrack  = false;
     int  addBeginningIndex = 0;
+    if ((playlistTracks.count() > 0) && (playlistTracks.at(0)->getTrackInfo().cast) && (playlistTracks.at(0)->status() != Track::Idle)) {
+        addBeginningIndex = 1;
+    }
     foreach (TrackInfo trackInfo, tracksInfo) {
         // handle extra info
         QVariantHash additionalInfo;
