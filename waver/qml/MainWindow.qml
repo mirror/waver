@@ -55,6 +55,7 @@ ApplicationWindow {
 
     readonly property var playtimeTexts: ["3 minutes", "5 minutes", "7.5 minutes", "10 minutes", "15 minutes", "30 minutes"]
     readonly property var playtimeValues: [180000, 300000, 450000, 600000, 900000, 1800000]
+    readonly property var playlistAddTypes: ["End", "Beginning", "Immediate"]
 
     property bool active : true
     property int  openUpY: 0;
@@ -414,7 +415,7 @@ ApplicationWindow {
 
     // options
 
-    function optionsData(streamPlayTime, lovedStreamPlayTime)
+    function optionsData(streamPlayTime, lovedStreamPlayTime, playlistAddMode)
     {
         var index = -1;
         for (var i = 0; i < playtimeValues.length; ++i) {
@@ -437,6 +438,8 @@ ApplicationWindow {
             index = 2;
         }
         castLovedPlayTime.value = index;
+
+        playlistAddType.value = playlistAddMode
     }
 
 
@@ -2682,6 +2685,45 @@ ApplicationWindow {
             }
         }
 
+        Item {
+            id: playlistAddTypeItem
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.top: castLovedPlayTimeItem.bottom
+            anchors.topMargin: 6
+            height: playlistAddType.height
+
+            Label {
+                anchors.left: parent.left
+                anchors.verticalCenter: playlistAddType.verticalCenter
+                text: "Add to playlist"
+            }
+            SpinBox {
+                id: playlistAddType
+                anchors.right: parent.right
+                anchors.left: parent.horizontalCenter
+                anchors.top:parent.top
+                from: 0
+                to: items.length - 1
+
+                property var items: playlistAddTypes
+
+                textFromValue: function(value) {
+                    return playlistAddTypes[value];
+                }
+
+                valueFromText: function(text) {
+                    for (var i = 0; i < items.length; ++i) {
+                        if (playlistAddTypes[i].toLowerCase().indexOf(text.toLowerCase()) === 0)
+                            return i;
+                        }
+                        return 0;
+                }
+            }
+        }
+
         Button {
             id: optionsDone
             anchors.right: parent.right
@@ -2690,7 +2732,7 @@ ApplicationWindow {
             anchors.bottomMargin: 6
             text: "Done"
             onClicked: {
-                var retval = { castPlayTime: playtimeValues[castPlayTime.value], castLovedPlayTime: playtimeValues[castLovedPlayTime.value] };
+                var retval = { castPlayTime: playtimeValues[castPlayTime.value], castLovedPlayTime: playtimeValues[castLovedPlayTime.value], playlistAddMode: playlistAddType.value };
 
                 optionsDialogResults(JSON.stringify(retval));
 

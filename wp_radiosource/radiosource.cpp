@@ -1263,8 +1263,14 @@ void RadioSource::tuneIn()
 
             if ((station.destination == Playlist) || (station.destination == Open) || (station.destination == Search)) {
                 tracksInfo.append(trackInfo);
+            }
+            if (station.destination == Playlist) {
                 extraInfo.insert(trackInfo.url, { {"loved", station.lovedMode}, {"loved_longplay", lovedLongplay} });
             }
+            if ((station.destination == Open) || (station.destination == Search)) {
+                extraInfo.insert(trackInfo.url, { {"loved", station.lovedMode}, {"loved_longplay", lovedLongplay}, { "resolved_open_track", 1 } });
+            }
+
             if (station.destination == Replacement) {
                 emit replacement(id, trackInfo);
             }
@@ -1359,7 +1365,7 @@ void RadioSource::playlistFinished(QNetworkReply *reply)
     int deletedReplacement = 0;
     while (i < tuneInTemp.count()) {
         if (tuneInTemp.at(i).id.compare(stationId) == 0) {
-            // must delete and if url can not be used
+            // must delete if url can not be used
             if (isBanned || isUnableToStart) {
                 if (tuneInTemp.at(i).destination == Playlist) {
                     deletedPlaylist++;

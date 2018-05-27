@@ -124,7 +124,7 @@ class WaverApplication : public QGuiApplication {
         void uiDisplayDiagnosticsMessage(QVariant pluginId, QVariant text);
         void uiClearSourcePrioritiesList();
         void uiAddToSourcePrioritiesList(QVariant id, QVariant name, QVariant priority, QVariant recurring, QVariant love);
-        void uiOptions(QVariant streamPlayTime, QVariant lovedStreamPlayTime);
+        void uiOptions(QVariant streamPlayTime, QVariant lovedStreamPlayTime, QVariant playlistAddMode);
 
 
     public slots:

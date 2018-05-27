@@ -656,7 +656,9 @@ void LocalSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
     TracksInfo returnValue;
     ExtraInfo  returnExtra;
     foreach (QString file, fileList) {
-        returnValue.append(trackInfoFromFilePath(file));
+        TrackInfo trackInfo = trackInfoFromFilePath(file);
+        returnValue.append(trackInfo);
+        returnExtra.insert(trackInfo.url, {{ "resolved_open_track", 1 }});
     }
 
     emit playlist(id, returnValue, returnExtra);

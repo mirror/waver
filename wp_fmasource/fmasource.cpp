@@ -314,6 +314,7 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
         foreach (QVariantHash result, results) {
             TrackInfo trackInfo = sqlResultToTrackInfo(result);
             tracksInfo.append(trackInfo);
+            extraInfo.insert(trackInfo.url, { { "resolved_open_track", result.value("resolved_open_track").toInt() } });
 
             emit executeGlobalSql(id, false, "", SQL_NO_RESULTS, "UPDATE tracks SET playcount = playcount + 1 WHERE id = ?", QVariantList({ result.value("id").toInt() }));
         }
@@ -784,7 +785,7 @@ void FMASource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
         deniedGenresBinds(&deniedBinds, &values);
         values.append(trackCount);
 
-        emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + selectedBinds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id NOT IN (SELECT track_id FROM tracks_genres WHERE (track_id = tracks.id) AND (genre_id IN (" + deniedBinds + ")))) ORDER BY playcount, RANDOM() LIMIT ?", values);
+        emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT 0 AS resolved_open_track, tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE (genre_id IN (" + selectedBinds + ")) AND (tracks.id NOT IN (SELECT track_id FROM banned)) AND (tracks.id NOT IN (SELECT track_id FROM tracks_genres WHERE (track_id = tracks.id) AND (genre_id IN (" + deniedBinds + ")))) ORDER BY playcount, RANDOM() LIMIT ?", values);
     }
 
     return;
@@ -868,7 +869,7 @@ void FMASource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
     }
 
     if (values.count() > 0) {
-        emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE tracks.id IN (" + binds.join(",") + ")", values);
+        emit executeGlobalSql(id, false, "", SQL_GET_PLAYLIST, "SELECT 1 AS resolved_open_track, tracks.id, albums.performer AS album_performer, tracks.performer, album, title, url, picture_url, track, year, loved.track_id AS loved_track_id FROM tracks LEFT JOIN albums ON tracks.album_id = albums.id LEFT JOIN loved ON tracks.id = loved.track_id WHERE tracks.id IN (" + binds.join(",") + ")", values);
     }
 }
 

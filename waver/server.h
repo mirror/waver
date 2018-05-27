@@ -87,11 +87,14 @@ class WaverServer : public QObject {
 
     private:
 
-        static const int  GIVE_UP_TRACKS_COUNT          = 12;
-        static const long START_DECODE_PRE_MILLISECONDS = 45 * 1000;
-        static const int  LOVE_RARE                     = 6;
-        static const int  LOVE_NORMAL                   = 4;
-        static const int  LOVE_FREQUENT                 = 2;
+        static const int  GIVE_UP_TRACKS_COUNT           = 12;
+        static const long START_DECODE_PRE_MILLISECONDS  = 45 * 1000;
+        static const int  LOVE_RARE                      = 6;
+        static const int  LOVE_NORMAL                    = 4;
+        static const int  LOVE_FREQUENT                  = 2;
+        static const int  PLAYLIST_ADD_END               = 0;
+        static const int  PLAYLIST_ADD_BEGINNING         = 1;
+        static const int  PLAYLIST_ADD_START_IMMEDIATELY = 2;
 
         struct SourcePlugin {
             QString name;
@@ -148,6 +151,7 @@ class WaverServer : public QObject {
         long previousPositionSeconds;
         int  streamPlayTime;
         int  lovedStreamPlayTime;
+        int  playlistAddMode;
 
         QHash<QUuid, LoveCounter> loveCounter;
 

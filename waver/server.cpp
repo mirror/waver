@@ -53,6 +53,7 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     diagnosticsChanged                = false;
     streamPlayTime                    = 450 * 1000;
     lovedStreamPlayTime               = 450 * 1000 * 2;
+    playlistAddMode                   = PLAYLIST_ADD_END;
 
     diagnosticsTimer.setInterval(1000 / 20);
     connect(&diagnosticsTimer, SIGNAL(timeout()), this, SLOT(diagnosticsRefreshUI()));
@@ -169,8 +170,9 @@ QJsonDocument WaverServer::configToJson()
     jsonObject.insert("source_priorities", sourcePriorities);
     jsonObject.insert("source_loved_modes", sourceLovedModes);
     jsonObject.insert("recurring_source", recurringPlugin.toString());
-    jsonObject.insert("streamPlayTime", streamPlayTime);
-    jsonObject.insert("lovedStreamPlayTime", lovedStreamPlayTime);
+    jsonObject.insert("stream_play_time", streamPlayTime);
+    jsonObject.insert("loved_stream_play_time", lovedStreamPlayTime);
+    jsonObject.insert("playlist_add_mode", playlistAddMode);
 
     QJsonDocument returnValue;
     returnValue.setObject(jsonObject);
@@ -228,11 +230,15 @@ void WaverServer::jsonToConfig(QJsonDocument jsonDocument)
         recurringPlugin = QUuid(jsonDocument.object().value("recurring_source").toString());
     }
 
-    if (jsonDocument.object().contains("streamPlayTime")) {
-        streamPlayTime = jsonDocument.object().value("streamPlayTime").toInt();
+    if (jsonDocument.object().contains("stream_play_time")) {
+        streamPlayTime = jsonDocument.object().value("stream_play_time").toInt();
     }
-    if (jsonDocument.object().contains("lovedStreamPlayTime")) {
-        lovedStreamPlayTime = jsonDocument.object().value("lovedStreamPlayTime").toInt();
+    if (jsonDocument.object().contains("loved_stream_play_time")) {
+        lovedStreamPlayTime = jsonDocument.object().value("loved_stream_play_time").toInt();
+    }
+
+    if (jsonDocument.object().contains("playlist_add_mode")) {
+        playlistAddMode = jsonDocument.object().value("playlist_add_mode").toInt();
     }
 }
 
@@ -859,6 +865,9 @@ void WaverServer::handleOptionsRequest(QJsonDocument jsonDocument)
         },
         {
             "lovedStreamPlayTime", lovedStreamPlayTime
+        },
+        {
+            "playlistAddMode", playlistAddMode
         }
     })))));
 }
@@ -871,6 +880,7 @@ void WaverServer::handleOptionsResult(QJsonDocument jsonDocument)
 
     streamPlayTime      = data.value("castPlayTime").toInt();
     lovedStreamPlayTime = data.value("castLovedPlayTime").toInt();
+    playlistAddMode     = data.value("playlistAddMode").toInt();
 
     emit saveWaverSettings(currentCollection, configToJson());
 }
@@ -1653,6 +1663,8 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo, ExtraInfo extr
 {
     Globals::consoleOutput(QString("Received %1 tracks from %2").arg(tracksInfo.count()).arg(sourcePlugins.value(uniqueId).name), false);
 
+    bool stopCurrentTrack  = false;
+    int  addBeginningIndex = 0;
     foreach (TrackInfo trackInfo, tracksInfo) {
         // handle extra info
         QVariantHash additionalInfo;
@@ -1664,7 +1676,23 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo, ExtraInfo extr
         Track *track = createTrack(trackInfo, additionalInfo, uniqueId);
 
         // add to playlist
-        playlistTracks.append(track);
+        if (extraInfo.contains(trackInfo.url) && extraInfo.value(trackInfo.url).contains("resolved_open_track") && extraInfo.value(trackInfo.url).value("resolved_open_track").toInt()) {
+            if (playlistAddMode == PLAYLIST_ADD_BEGINNING) {
+                playlistTracks.insert(addBeginningIndex, track);
+                addBeginningIndex++;
+            }
+            else if (playlistAddMode == PLAYLIST_ADD_START_IMMEDIATELY) {
+                playlistTracks.insert(addBeginningIndex, track);
+                addBeginningIndex++;
+                stopCurrentTrack = true;
+            }
+            else {
+                playlistTracks.append(track);
+            }
+        }
+        else {
+            playlistTracks.append(track);
+        }
     }
 
     // diagnostics?
@@ -1683,6 +1711,11 @@ void WaverServer::playlist(QUuid uniqueId, TracksInfo tracksInfo, ExtraInfo extr
 
     // this will not do anything if a track is already playing
     startNextTrack();
+
+    // start immediately mode
+    if (stopCurrentTrack && (currentTrack != NULL)) {
+        currentTrack->interrupt();
+    }
 }
 
 
