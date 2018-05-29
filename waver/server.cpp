@@ -1956,12 +1956,12 @@ void WaverServer::trackFinished(QUrl url)
     // is this the previous track?
     if ((previousTrack != NULL) && (url == previousTrack->getTrackInfo().url)) {
         // send message to source if cast finished too early
-        if ((previousTrack->getTrackInfo().cast) && (previousPositionSeconds < 180)) {
+        if ((previousTrack->getTrackInfo().cast) && (previousPositionSeconds < CAST_EARLY_SECONDS)) {
             emit castFinishedEarly(previousTrack->getSourcePluginId(), url, previousPositionSeconds);
         }
 
         // get replacement if needed
-        if (previousTrack->isReplacable() && (readySources > 0) && ((previousPositionSeconds < 1) || ((previousTrack->getTrackInfo().cast) && (previousPositionSeconds < 180)))) {
+        if (previousTrack->isReplacable() && (readySources > 0) && ((previousPositionSeconds < 1) || ((previousTrack->getTrackInfo().cast) && (previousPositionSeconds < CAST_EARLY_SECONDS)))) {
             emit getReplacement(previousTrack->getSourcePluginId());
         }
 
@@ -1984,7 +1984,7 @@ void WaverServer::trackFinished(QUrl url)
         }
 
         // send message to source if cast finished too early
-        if ((currentTrack->getTrackInfo().cast) && (positionSeconds < 180)) {
+        if ((currentTrack->getTrackInfo().cast) && (positionSeconds < CAST_EARLY_SECONDS)) {
             emit castFinishedEarly(currentTrack->getSourcePluginId(), url, positionSeconds);
             if (playlistTracks.count() > 0) {
                 playlistTracks.at(0)->startWithoutFadeIn();
@@ -1992,7 +1992,7 @@ void WaverServer::trackFinished(QUrl url)
         }
 
         // get replacement if needed
-        if (currentTrack->isReplacable() && (readySources > 0) && ((positionSeconds < 1) || ((currentTrack->getTrackInfo().cast) && (positionSeconds < 180)))) {
+        if (currentTrack->isReplacable() && (readySources > 0) && ((positionSeconds < 1) || ((currentTrack->getTrackInfo().cast) && (positionSeconds < CAST_EARLY_SECONDS)))) {
             emit getReplacement(currentTrack->getSourcePluginId());
         }
 

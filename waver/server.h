@@ -95,6 +95,7 @@ class WaverServer : public QObject {
         static const int  PLAYLIST_ADD_END               = 0;
         static const int  PLAYLIST_ADD_BEGINNING         = 1;
         static const int  PLAYLIST_ADD_START_IMMEDIATELY = 2;
+        static const int  CAST_EARLY_SECONDS             = 178;
 
         struct SourcePlugin {
             QString name;
