@@ -415,8 +415,18 @@ ApplicationWindow {
 
     // options
 
-    function optionsData(streamPlayTime, lovedStreamPlayTime, playlistAddMode)
+    function optionsData(streamPlayTime, lovedStreamPlayTime, playlistAddMode, startColl)
     {
+        var colls = collection.model;
+        colls.unshift("--- last used ---");
+        startCollection.model = colls;
+
+        for(var i = 0; i < colls.length; i++) {
+            if (colls[i] == startColl) {
+                startCollection.currentIndex = i;
+            }
+        }
+
         var index = -1;
         for (var i = 0; i < playtimeValues.length; ++i) {
             if (playtimeValues[i] == streamPlayTime) {
@@ -2615,13 +2625,58 @@ ApplicationWindow {
             anchors.fill: options
         }
 
+        Label {
+            id: globalOptionsLabel
+            text: "Global Options"
+            font.bold: true
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.top: parent.top
+            anchors.topMargin: 6
+        }
+
+        Item {
+            id: startCollectionItem
+            anchors.left: parent.left
+            anchors.leftMargin: 12
+            anchors.right: parent.right
+            anchors.rightMargin: 6
+            anchors.top: globalOptionsLabel.bottom
+            anchors.topMargin: 6
+            height: startCollection.height
+
+            Label {
+                id: startCollectionLabel
+                anchors.left: parent.left
+                anchors.verticalCenter: startCollection.verticalCenter
+                text: "Start with collection"
+            }
+            ComboBox {
+                id: startCollection
+                anchors.right: parent.right
+                anchors.left: startCollectionLabel.right
+                anchors.leftMargin: 6
+                anchors.top:parent.top
+            }
+        }
+
+        Label {
+            id: collectionOptionsLabel
+            text: "Current Collection Options"
+            font.bold: true
+            anchors.left: parent.left
+            anchors.leftMargin: 6
+            anchors.top: startCollectionItem.bottom
+            anchors.topMargin: 24
+        }
+
         Item {
             id: castPlayTimeItem
             anchors.left: parent.left
-            anchors.leftMargin: 6
+            anchors.leftMargin: 12
             anchors.right: parent.right
             anchors.rightMargin: 6
-            anchors.top: parent.top
+            anchors.top: collectionOptionsLabel.bottom
             anchors.topMargin: 6
             height: castPlayTime.height
 
@@ -2653,7 +2708,7 @@ ApplicationWindow {
         Item {
             id: castLovedPlayTimeItem
             anchors.left: parent.left
-            anchors.leftMargin: 6
+            anchors.leftMargin: 12
             anchors.right: parent.right
             anchors.rightMargin: 6
             anchors.top: castPlayTimeItem.bottom
@@ -2688,7 +2743,7 @@ ApplicationWindow {
         Item {
             id: playlistAddTypeItem
             anchors.left: parent.left
-            anchors.leftMargin: 6
+            anchors.leftMargin: 12
             anchors.right: parent.right
             anchors.rightMargin: 6
             anchors.top: castLovedPlayTimeItem.bottom
@@ -2732,7 +2787,7 @@ ApplicationWindow {
             anchors.bottomMargin: 6
             text: "Done"
             onClicked: {
-                var retval = { castPlayTime: playtimeValues[castPlayTime.value], castLovedPlayTime: playtimeValues[castLovedPlayTime.value], playlistAddMode: playlistAddType.value };
+                var retval = { castPlayTime: playtimeValues[castPlayTime.value], castLovedPlayTime: playtimeValues[castLovedPlayTime.value], playlistAddMode: playlistAddType.value, startupCollection: startCollection.currentText };
 
                 optionsDialogResults(JSON.stringify(retval));
 

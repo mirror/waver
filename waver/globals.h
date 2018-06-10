@@ -52,6 +52,7 @@ class Globals : public QObject {
         static QString privacy();
 
         static QString userAgent();
+        static QString lastUsedCollectionOption();
 
         static void consoleOutput(QString text, bool error);
 

@@ -123,6 +123,7 @@ class WaverServer : public QObject {
         QStringList arguments;
         QStringList collections;
         QString     currentCollection;
+        QString     startupCollection;
 
         PluginLibsLoader::LoadedLibs loadedLibs;
         SourcePlugins                sourcePlugins;

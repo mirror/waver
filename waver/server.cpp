@@ -43,6 +43,7 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     previousTrack                     = NULL;
     currentTrack                      = NULL;
     currentCollection                 = "";
+    startupCollection                 = "";
     unableToStartCount                = 0;
     waitingForLocalSource             = true;
     waitingForLocalSourceTimerStarted = false;
@@ -187,6 +188,7 @@ QJsonDocument WaverServer::configToJsonGlobal()
     QJsonObject jsonObject;
     jsonObject.insert("collections", QJsonArray::fromStringList(collections));
     jsonObject.insert("current_collection", currentCollection);
+    jsonObject.insert("startup_collection", startupCollection);
 
     QJsonDocument returnValue;
     returnValue.setObject(jsonObject);
@@ -264,6 +266,14 @@ void WaverServer::jsonToConfigGlobal(QJsonDocument jsonDocument)
     if (currentCollection.isEmpty()) {
         currentCollection = SettingsHandler::DEFAULT_COLLECTION_NAME;
     }
+
+    startupCollection.clear();
+    if (jsonDocument.object().contains("startup_collection")) {
+        startupCollection = jsonDocument.object().value("startup_collection").toString();
+    }
+    if (startupCollection.isEmpty()) {
+        startupCollection = Globals::lastUsedCollectionOption();
+    }
 }
 
 
@@ -329,8 +339,10 @@ void WaverServer::requestPlaylist()
         pluginIndex = readyPlugins.indexOf(recurringPlugin);
     }
     else {
-        // don't choose the recurring plugin if it's there (nothing happens if not)
-        readyPlugins.removeAll(recurringPlugin);
+        // don't choose the recurring plugin if it's there (nothing happens if not), but only if there other plugins too
+        if (readyPlugins.count() > 1) {
+            readyPlugins.removeAll(recurringPlugin);
+        }
 
         // select next plugin
         pluginIndex = readyPlugins.indexOf(lastPlaylistPlugin == recurringPlugin ? lastPlaylistPluginNotRecurring : lastPlaylistPlugin) + 1;
@@ -868,6 +880,9 @@ void WaverServer::handleOptionsRequest(QJsonDocument jsonDocument)
         },
         {
             "playlistAddMode", playlistAddMode
+        },
+        {
+            "startupCollection", startupCollection
         }
     })))));
 }
@@ -877,6 +892,10 @@ void WaverServer::handleOptionsRequest(QJsonDocument jsonDocument)
 void WaverServer::handleOptionsResult(QJsonDocument jsonDocument)
 {
     QVariantHash data = jsonDocument.object().toVariantHash();
+
+    startupCollection = data.value("startupCollection").toString();
+
+    emit saveWaverSettings("", configToJsonGlobal());
 
     streamPlayTime      = data.value("castPlayTime").toInt();
     lovedStreamPlayTime = data.value("castLovedPlayTime").toInt();
@@ -1318,6 +1337,16 @@ void WaverServer::loadedWaverGlobalSettings(QJsonDocument settings)
 
     // settings storage sends this signal right after it just started at server startup
     if (justStarted) {
+        // figure which collection to use
+        if (startupCollection.compare(Globals::lastUsedCollectionOption()) != 0) {
+            if (collections.contains(startupCollection)) {
+                currentCollection = startupCollection;
+            }
+            else {
+                currentCollection = SettingsHandler::DEFAULT_COLLECTION_NAME;
+            }
+        }
+
         // instantiate, set up, and start plugin library loader (it sends finished right after plugins are loaded)
 
         PluginLibsLoader *pluginLibsLoader = new PluginLibsLoader(NULL, &loadedLibs);

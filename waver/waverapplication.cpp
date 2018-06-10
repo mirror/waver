@@ -101,7 +101,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(this,         SIGNAL(uiDisplayDiagnosticsMessage(QVariant, QVariant)),                               uiMainWindow, SLOT(displayDiagnosticsMessage(QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiClearSourcePrioritiesList()),                                                 uiMainWindow, SLOT(clearSourcePrioritiesList()));
         disconnect(this,         SIGNAL(uiAddToSourcePrioritiesList(QVariant, QVariant, QVariant, QVariant, QVariant)), uiMainWindow, SLOT(addToSourcePrioritiesList(QVariant, QVariant, QVariant, QVariant, QVariant)));
-        disconnect(this,         SIGNAL(uiOptions(QVariant, QVariant, QVariant)),                                       uiMainWindow, SLOT(optionsData(QVariant, QVariant, QVariant)));
+        disconnect(this,         SIGNAL(uiOptions(QVariant, QVariant, QVariant, QVariant)),                             uiMainWindow, SLOT(optionsData(QVariant, QVariant, QVariant, QVariant)));
         disconnect(uiMainWindow, SIGNAL(menuPause()),                                                                   this,         SLOT(menuPause()));
         disconnect(uiMainWindow, SIGNAL(menuResume()),                                                                  this,         SLOT(menuResume()));
         disconnect(uiMainWindow, SIGNAL(menuNext()),                                                                    this,         SLOT(menuNext()));
@@ -149,7 +149,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(this,         SIGNAL(uiDisplayDiagnosticsMessage(QVariant, QVariant)),                               uiMainWindow, SLOT(displayDiagnosticsMessage(QVariant, QVariant)));
     connect(this,         SIGNAL(uiClearSourcePrioritiesList()),                                                 uiMainWindow, SLOT(clearSourcePrioritiesList()));
     connect(this,         SIGNAL(uiAddToSourcePrioritiesList(QVariant, QVariant, QVariant, QVariant, QVariant)), uiMainWindow, SLOT(addToSourcePrioritiesList(QVariant, QVariant, QVariant, QVariant, QVariant)));
-    connect(this,         SIGNAL(uiOptions(QVariant, QVariant, QVariant)),                                       uiMainWindow, SLOT(optionsData(QVariant, QVariant, QVariant)));
+    connect(this,         SIGNAL(uiOptions(QVariant, QVariant, QVariant, QVariant)),                             uiMainWindow, SLOT(optionsData(QVariant, QVariant, QVariant, QVariant)));
     connect(uiMainWindow, SIGNAL(menuPause()),                                                                   this,         SLOT(menuPause()));
     connect(uiMainWindow, SIGNAL(menuResume()),                                                                  this,         SLOT(menuResume()));
     connect(uiMainWindow, SIGNAL(menuNext()),                                                                    this,         SLOT(menuNext()));
@@ -756,11 +756,12 @@ void WaverApplication::updateUIOptions(QJsonDocument jsonDocument)
 {
     QVariantHash data = jsonDocument.object().toVariantHash();
 
-    int streamPlayTime      = data.value("streamPlayTime").toInt();
-    int lovedStreamPlayTime = data.value("lovedStreamPlayTime").toInt();
-    int playlistAddMode     = data.value("playlistAddMode").toInt();
+    int     streamPlayTime      = data.value("streamPlayTime").toInt();
+    int     lovedStreamPlayTime = data.value("lovedStreamPlayTime").toInt();
+    int     playlistAddMode     = data.value("playlistAddMode").toInt();
+    QString startupCollection   = data.value("startupCollection").toString();
 
-    emit uiOptions(streamPlayTime, lovedStreamPlayTime, playlistAddMode);
+    emit uiOptions(streamPlayTime, lovedStreamPlayTime, playlistAddMode, startupCollection);
 }
 
 

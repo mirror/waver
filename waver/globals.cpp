@@ -99,6 +99,12 @@ QString Globals::userAgent()
 }
 
 
+QString Globals::lastUsedCollectionOption()
+{
+    return "--- last used ---";
+}
+
+
 // simple helper console output
 void Globals::consoleOutput(QString text, bool error)
 {
