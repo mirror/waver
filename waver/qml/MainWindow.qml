@@ -2940,27 +2940,25 @@ ApplicationWindow {
         }
 
         Label {
-            id: aboutCopyright
-            anchors.left: parent.left
-            anchors.leftMargin: 6
+            id: aboutLink
+            anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: aboutDescription.bottom
-            anchors.topMargin: 12
-        }
-
-        Label {
-            id: aboutEmail
-            anchors.right: parent.right
-            anchors.rightMargin: 6
-            anchors.top: aboutVersion.bottom
             anchors.topMargin: 12
             onLinkActivated: Qt.openUrlExternally(link);
         }
 
         Label {
-            id: aboutLink
+            id: aboutCopyright
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.top: aboutLink.bottom
+            anchors.topMargin: 18
+        }
+
+        Label {
+            id: aboutEmail
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.top: aboutCopyright.bottom
-            anchors.topMargin: 18
+            anchors.topMargin: 6
             onLinkActivated: Qt.openUrlExternally(link);
         }
 
@@ -2970,7 +2968,7 @@ ApplicationWindow {
             anchors.leftMargin: 6
             anchors.right: parent.right
             anchors.rightMargin: 6
-            anchors.top: aboutLink.bottom
+            anchors.top: aboutEmail.bottom
             anchors.topMargin: 24
             anchors.bottom: aboutOK.top
             anchors.bottomMargin: 12

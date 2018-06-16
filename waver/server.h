@@ -156,6 +156,7 @@ class WaverServer : public QObject {
         int  playlistAddMode;
 
         QHash<QUuid, LoveCounter> loveCounter;
+        QHash<QUuid, bool>        okToSaveConfig;
 
         bool                        sendErrorLogDiagnostics;
         bool                        diagnosticsChanged;

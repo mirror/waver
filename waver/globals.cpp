@@ -34,7 +34,7 @@ QString Globals::appName()
 QString Globals::appVersion()
 {
     // don't forget to update the android manifest and debian changelog too
-    return "0.0.4";
+    return "0.0.5";
 }
 
 
@@ -72,7 +72,7 @@ QString Globals::website(bool linkOk)
 
 QString Globals::copyright()
 {
-    return "Copyright (C) 2017 Peter Papp";
+    return "Copyright (C) 2017-2018 Peter Papp";
 }
 
 

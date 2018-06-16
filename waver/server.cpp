@@ -554,6 +554,11 @@ void WaverServer::handleCollectionMenuChange(QJsonDocument jsonDocument)
         return;
     }
 
+    // source plugins aren't allowed to save collection-specific settings during collection change
+    foreach (QUuid sourceId, okToSaveConfig.keys()) {
+        okToSaveConfig[sourceId] = false;
+    }
+
     currentCollection = newCurrentCollection;
     emit saveWaverSettings("", configToJsonGlobal());
 
@@ -1071,6 +1076,8 @@ void WaverServer::pluginLibsLoaded()
                 continue;
             }
 
+            okToSaveConfig.insert(persistentUniqueId, false);
+
             // remember some info about the plugin
             SourcePlugin pluginData;
             pluginData.ready     = false;
@@ -1379,6 +1386,9 @@ void WaverServer::loadedPluginSettings(QUuid uniqueId, QJsonDocument settings)
 {
     // nothing much to do, just re-emit for sources and tracks
     emit loadedConfiguration(uniqueId, settings);
+
+    // it's OK now for sources to save configuration
+    okToSaveConfig[uniqueId] = true;
 }
 
 
@@ -1632,6 +1642,10 @@ void WaverServer::saveConfiguration(QUuid uniqueId, QJsonDocument configuration)
 {
     // parameter check
     if (configuration.isEmpty()) {
+        return;
+    }
+    if (okToSaveConfig.contains(uniqueId) && !okToSaveConfig.value(uniqueId)) {
+        outputError(QString("Denied saving collection specific configuration of %1").arg(sourcePlugins.value(uniqueId).name), "Server info", false);
         return;
     }
 
