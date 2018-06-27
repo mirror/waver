@@ -338,34 +338,33 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
     // add loved or similar if asked for
     if (mode != PLAYLIST_MODE_NORMAL) {
         // reduce loved with already played loved
-        QStringList lovedRemaining;
-        foreach (QString lovedFileName, lovedFileNames) {
-            if (!alreadyPlayedLovedFileNames.contains(lovedFileName)) {
-                lovedRemaining.append(lovedFileName);
-            }
-        }
-        if (lovedRemaining.count() < 1) {
-            lovedRemaining.append(lovedFileNames);
-            alreadyPlayedLovedFileNames.clear();
-        }
-
-        // get loved files
-        mutex.lock();
         QStringList lovedInCurrentCollection;
-        foreach (QString lovedFileName, lovedRemaining) {
+        QStringList lovedRemainingInCurrentCollection;
+        mutex.lock();
+        foreach (QString lovedFileName, lovedFileNames) {
             if (trackFileNames.contains(lovedFileName) || alreadyPlayedTrackFileNames.contains(lovedFileName)) {
                 lovedInCurrentCollection.append(lovedFileName);
+
+                if (!alreadyPlayedLovedFileNames.contains(lovedFileName)) {
+                    lovedRemainingInCurrentCollection.append(lovedFileName);
+                }
             }
         }
         mutex.unlock();
 
-        // double check that loved (or similar) tracks were found at all
-        if (lovedInCurrentCollection.count() > 0) {
+        // "roll over" loved if ran out of them
+        if ((lovedRemainingInCurrentCollection.count() < 1) && (lovedInCurrentCollection.count() > 0)) {
+            alreadyPlayedLovedFileNames.clear();
+            lovedRemainingInCurrentCollection.append(lovedInCurrentCollection);
+        }
+
+        // double check that loved tracks were found at all
+        if (lovedRemainingInCurrentCollection.count() > 0) {
             bool isSimilar = false;
 
             // select a random track from loved
-            int     lovedIndex    = qrand() % lovedInCurrentCollection.count();
-            QString lovedFileName = lovedInCurrentCollection.at(lovedIndex);
+            int     lovedIndex    = qrand() % lovedRemainingInCurrentCollection.count();
+            QString lovedFileName = lovedRemainingInCurrentCollection.at(lovedIndex);
 
             // loved mode, must update global configuration
             if (mode == PLAYLIST_MODE_LOVED) {
@@ -967,7 +966,10 @@ void LocalSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
     }
     if (jsonDocument.object().contains("alreadyPlayedLovedFileNames")) {
         foreach (QJsonValue jsonValue, jsonDocument.object().value("alreadyPlayedLovedFileNames").toArray()) {
-            alreadyPlayedLovedFileNames.append(jsonValue.toString());
+            QFileInfo fileInfo(jsonValue.toString());
+            if (fileInfo.exists()) {
+                alreadyPlayedLovedFileNames.append(jsonValue.toString());
+            }
         }
     }
 
