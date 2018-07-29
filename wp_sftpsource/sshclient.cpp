@@ -883,7 +883,7 @@ void SSHClient::dowloadNext()
         }
     }
 
-    // download file
+    // download audio file itself
     QString destination = localDir.absoluteFilePath(remoteFile.mid(remoteFile.lastIndexOf("/") + 1));
     if (download(remoteFile, destination)) {
         emit gotAudio(config.id, remoteFile, destination);
