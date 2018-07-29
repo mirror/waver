@@ -127,7 +127,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     // signal connections
     connect(this,         SIGNAL(uiActivated()),                                                                 uiMainWindow, SLOT(activated()));
     connect(this,         SIGNAL(uiInactivated()),                                                               uiMainWindow, SLOT(inactivated()));
-    connect(this,         SIGNAL(uiUserMessage(QVariant)),                                                       uiMainWindow, SLOT(displayUserMessage(QVariant)));
+    connect(this,         SIGNAL(uiUserMessage(QVariant, QVariant)),                                             uiMainWindow, SLOT(displayUserMessage(QVariant, QVariant)));
     connect(this,         SIGNAL(uiCollections(QVariant, QVariant)),                                             uiMainWindow, SLOT(fillCollectionsList(QVariant, QVariant)));
     connect(this,         SIGNAL(uiTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant, QVariant)),       uiMainWindow, SLOT(updateTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant, QVariant)));
     connect(this,         SIGNAL(uiPicture(QVariant)),                                                           uiMainWindow, SLOT(updateArt(QVariant)));
@@ -434,7 +434,7 @@ void WaverApplication::quitWithMessage(QString messageText)
     }
 
     // send message to main window
-    emit uiUserMessage(messageText);
+    emit uiUserMessage(messageText, "error");
 
     // wait a wile for user to have a chance to read the message, then quit
     QTimer::singleShot(uiMainWindow->property("duration_visible_before_fadeout").toInt() + uiMainWindow->property("duration_fadeout").toInt(), this, SLOT(quit()));
@@ -798,7 +798,7 @@ void WaverApplication::ipcMessage(IpcMessageUtils::IpcMessages message, QJsonDoc
             break;
 
         case IpcMessageUtils::InfoMessage:
-            emit uiUserMessage(jsonDocument.object().toVariantHash().value("message"));
+            emit uiUserMessage(jsonDocument.object().toVariantHash().value("message"), jsonDocument.object().toVariantHash().value("type"));
             break;
 
         case IpcMessageUtils::OpenTracks:
@@ -867,5 +867,5 @@ void WaverApplication::ipcMessage(IpcMessageUtils::IpcMessages message, QJsonDoc
 void WaverApplication::ipcError(bool fatal, QString error)
 {
     // TODO better error handling
-    emit uiUserMessage(error);
+    emit uiUserMessage(error, "error");
 }

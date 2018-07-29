@@ -102,7 +102,7 @@ class WaverApplication : public QGuiApplication {
 
         void uiActivated();
         void uiInactivated();
-        void uiUserMessage(QVariant messageText);
+        void uiUserMessage(QVariant messageText, QVariant type);
         void uiPaused();
         void uiResumed();
         void uiCollections(QVariant collections, QVariant currentIndex);

@@ -224,6 +224,7 @@ class WaverServer : public QObject {
 
         void unableToStart(QUuid uniqueId, QUrl url);
         void castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds);
+        void done(QUuid uniqueId, QUrl url);
         void loadedConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void executedSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);

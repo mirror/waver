@@ -307,6 +307,7 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
         emit unready(id);
         readyEmitted = false;
 
+        // TODO also check if scanners finished, otherwise just select tracks even if they have been played already
         if (alreadyPlayedTrackFileNames.count() > 0) {
             // all tracks have been played, start over
             mutex.lock();

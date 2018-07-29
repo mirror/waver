@@ -102,13 +102,23 @@ ApplicationWindow {
 
 
     // error messages and warnings
-    function displayUserMessage(messageText)
+    function displayUserMessage(messageText, type)
     {
         if (!messageText) {
             messageText = "Unknown Error";
         }
 
         userMessageFadeoutAnimation.stop()
+
+        if (type === "Info") {
+            userMessage.color= "#336600"
+            userMessage.styleColor= "#FFEE00"
+        }
+        else {
+            userMessage.color= "#800000"
+            userMessage.styleColor= "#E0B0B0"
+        }
+
         userMessage.text    = messageText;
         userMessage.opacity = 1;
         userMessageResetTimer.restart();
@@ -2132,8 +2142,6 @@ ApplicationWindow {
         horizontalAlignment: Text.AlignHCenter
         font.bold: true
         style: Text.Outline
-        color: "#800000"
-        styleColor: "#E0B0B0"
         anchors.horizontalCenter: app.contentItem.horizontalCenter
         anchors.verticalCenter: app.contentItem.verticalCenter
     }

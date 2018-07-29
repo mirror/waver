@@ -122,12 +122,15 @@ void WaverServer::finish()
 {
     // delete tracks
     if (previousTrack != NULL) {
+        emit done(previousTrack->getSourcePluginId(), previousTrack->getTrackInfo().url);
         delete previousTrack;
     }
     if (currentTrack != NULL) {
+        emit done(currentTrack->getSourcePluginId(), currentTrack->getTrackInfo().url);
         delete currentTrack;
     }
     foreach (Track *track, playlistTracks) {
+        emit done(track->getSourcePluginId(), track->getTrackInfo().url);
         delete track;
     }
 
@@ -280,34 +283,43 @@ void WaverServer::jsonToConfigGlobal(QJsonDocument jsonDocument)
 // helper
 void WaverServer::outputError(QString errorMessage, QString title, bool fatal)
 {
+    QString type = fatal ? "Fatal error" : "Error";
+    if (errorMessage.startsWith("<INFO>")) {
+        type = "Info";
+        errorMessage = errorMessage.replace("<INFO>", "");
+    }
+
     // print to error output
     if (title.isEmpty()) {
-        Globals::consoleOutput(QString("%1: %3").arg(fatal ? "Fatal error" : "Error", errorMessage), true);
+        Globals::consoleOutput(QString("%1: %2").arg(type, errorMessage), true);
     }
     else {
-        Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(fatal ? "Fatal error" : "Error", title, errorMessage), true);
+        Globals::consoleOutput(QString("%1 reported from track '%2': %3").arg(type, title, errorMessage), true);
     }
 
     // send message to UI
     QVariantHash messageHash;
     messageHash.insert("message", (title.isEmpty() ? errorMessage : title + "\n\n" + errorMessage));
+    messageHash.insert("type", type);
     IpcMessageUtils ipcMessageUtils;
     emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::InfoMessage, QJsonDocument(QJsonObject::fromVariantHash(messageHash))));
 
-    // add to error log
-    ErrorLogItem errorLogItem;
-    errorLogItem.fatal     = fatal;
-    errorLogItem.message   = errorMessage;
-    errorLogItem.timestamp = QDateTime::currentDateTime();
-    errorLogItem.title     = title;
-    while (errorLog.count() >= 100) {
-        errorLog.remove(0);
-    }
-    errorLog.append(errorLogItem);
+    if (type.compare("Info") != 0) {
+        // add to error log
+        ErrorLogItem errorLogItem;
+        errorLogItem.fatal     = fatal;
+        errorLogItem.message   = errorMessage;
+        errorLogItem.timestamp = QDateTime::currentDateTime();
+        errorLogItem.title     = title;
+        while (errorLog.count() >= 100) {
+            errorLog.remove(0);
+        }
+        errorLog.append(errorLogItem);
 
-    // send error log to UI
-    if (sendErrorLogDiagnostics) {
-        sendErrorLogDiagnosticsToClients();
+        // send error log to UI
+        if (sendErrorLogDiagnostics) {
+            sendErrorLogDiagnosticsToClients();
+        }
     }
 }
 
@@ -575,6 +587,7 @@ void WaverServer::handleCollectionMenuChange(QJsonDocument jsonDocument)
     tracksToBeDeleted.append(playlistTracks);
     foreach (Track *track, tracksToBeDeleted) {
         playlistTracks.removeAll(track);
+        emit done(track->getSourcePluginId(), track->getTrackInfo().url);
         delete track;
     }
 
@@ -750,6 +763,7 @@ void WaverServer::handleTrackActionsRequest(QJsonDocument jsonDocument)
         if (ids.at(1).compare("remove") == 0) {
             Track *toBeRemoved = playlistTracks.at(index);
             playlistTracks.remove(index);
+            emit done(toBeRemoved->getSourcePluginId(), toBeRemoved->getTrackInfo().url);
             delete toBeRemoved;
             sendPlaylistToClients();
         }
@@ -1158,6 +1172,9 @@ void WaverServer::pluginLibsLoaded()
                 connect(plugin, SIGNAL(playlist(QUuid, TracksInfo)),   this,   SLOT(playlist(QUuid, TracksInfo)));
                 connect(this,   SIGNAL(getPlaylist(QUuid, int)),       plugin, SLOT(getPlaylist(QUuid, int)));
                 connect(this,   SIGNAL(trackAction(QUuid, int, QUrl)), plugin, SLOT(action(QUuid, int, QUrl)));
+            }
+            if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.6")) {
+                connect(this, SIGNAL(done(QUuid, QUrl)), plugin, SLOT(done(QUuid, QUrl)));
             }
         }
     }
@@ -1850,6 +1867,7 @@ void WaverServer::requestedRemoveTracks(QUuid uniqueId)
     }
     foreach (Track *track, tracksToBeDeleted) {
         playlistTracks.removeAll(track);
+        emit done(track->getSourcePluginId(), track->getTrackInfo().url);
         delete track;
     }
     sendPlaylistToClients();
@@ -1873,6 +1891,7 @@ void WaverServer::requestedRemoveTrack(QUuid uniqueId, QUrl url)
     }
     foreach (Track *track, tracksToBeDeleted) {
         playlistTracks.removeAll(track);
+        emit done(track->getSourcePluginId(), track->getTrackInfo().url);
         delete track;
     }
     sendPlaylistToClients();
@@ -1974,6 +1993,7 @@ void WaverServer::trackAboutToFinish(QUrl url)
 
     // move current track to previous track
     if (previousTrack != NULL) {
+        emit done(previousTrack->getSourcePluginId(), previousTrack->getTrackInfo().url);
         delete previousTrack;
     }
     previousTrack           = currentTrack;
@@ -2009,6 +2029,7 @@ void WaverServer::trackFinished(QUrl url)
         }
 
         // housekeeping
+        emit done(previousTrack->getSourcePluginId(), previousTrack->getTrackInfo().url);
         delete previousTrack;
         previousTrack = NULL;
         previousPositionSeconds = 0;
@@ -2040,6 +2061,7 @@ void WaverServer::trackFinished(QUrl url)
         }
 
         // housekeeping
+        emit done(currentTrack->getSourcePluginId(), currentTrack->getTrackInfo().url);
         delete currentTrack;
         currentTrack = NULL;
 
@@ -2062,6 +2084,7 @@ void WaverServer::trackFinished(QUrl url)
     foreach (Track *track, tracksToBeDeleted) {
         unableToStartCount++;
         emit unableToStart(track->getSourcePluginId(), track->getTrackInfo().url);
+        emit done(track->getSourcePluginId(), track->getTrackInfo().url);
         playlistTracks.removeAll(track);
         delete track;
     }
