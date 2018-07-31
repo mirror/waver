@@ -962,7 +962,10 @@ void LocalSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
 
     if (jsonDocument.object().contains("lovedFileNames")) {
         foreach (QJsonValue jsonValue, jsonDocument.object().value("lovedFileNames").toArray()) {
-            lovedFileNames.append(jsonValue.toString());
+            QFileInfo fileInfo(jsonValue.toString());
+            if (fileInfo.exists()) {
+                lovedFileNames.append(jsonValue.toString());
+            }
         }
     }
     if (jsonDocument.object().contains("alreadyPlayedLovedFileNames")) {
@@ -976,7 +979,8 @@ void LocalSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
 
     if (jsonDocument.object().contains("bannedFileNames")) {
         foreach (QJsonValue jsonValue, jsonDocument.object().value("bannedFileNames").toArray()) {
-            if (!lovedFileNames.contains(jsonValue.toString())) {
+            QFileInfo fileInfo(jsonValue.toString());
+            if (fileInfo.exists() && !lovedFileNames.contains(jsonValue.toString())) {
                 bannedFileNames.append(jsonValue.toString());
             }
         }
