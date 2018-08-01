@@ -470,7 +470,7 @@ bool SSHClient::executeSSH(QString command)
     char    bufferRaw[65536];
 
     ssize_t readCount = libssh2_channel_read(channel, bufferRaw, sizeof(bufferRaw));
-    while (readCount > 0) {
+    while ((readCount > 0) && !QThread::currentThread()->isInterruptionRequested()) {
         tmp.append(QByteArray(bufferRaw, readCount));
         readCount = libssh2_channel_read(channel, bufferRaw, sizeof(bufferRaw));
     }
@@ -479,7 +479,7 @@ bool SSHClient::executeSSH(QString command)
     tmp.clear();
 
     readCount = libssh2_channel_read_stderr(channel, bufferRaw, sizeof(bufferRaw));
-    while (readCount > 0) {
+    while ((readCount > 0) && !QThread::currentThread()->isInterruptionRequested()) {
         tmp.append(QByteArray(bufferRaw, readCount));
         readCount = libssh2_channel_read_stderr(channel, bufferRaw, sizeof(bufferRaw));
     }
@@ -512,7 +512,7 @@ bool SSHClient::dirList(QString dir, DirList *contents)
     char                    buffer[256];
     LIBSSH2_SFTP_ATTRIBUTES attrs;
     int size = libssh2_sftp_readdir(sftpDirHandle, buffer, sizeof(buffer), &attrs);
-    while (size) {
+    while (size && !QThread::currentThread()->isInterruptionRequested()) {
         DirListItem dirListItem;
 
         dirListItem.isDir    = LIBSSH2_SFTP_S_ISDIR(attrs.permissions);
@@ -558,7 +558,7 @@ bool SSHClient::download(QString source, QString destination)
     char bufferRaw[65536];
 
     ssize_t readCount = libssh2_sftp_read(sftpHandle, bufferRaw, sizeof(bufferRaw));
-    while (readCount > 0) {
+    while ((readCount > 0) && !QThread::currentThread()->isInterruptionRequested()) {
         if (localOutput.writeRawData(bufferRaw, readCount) != readCount) {
             localFile.close();
             localFile.remove();
@@ -751,7 +751,7 @@ void SSHClient::dirSelectorResult(int id, bool openOnly, QString path)
         path.replace(path.lastIndexOf("/") + 1, 999999, "");
     }
 
-    // not done yet, needs to display contents of this dir
+    // user not done yet, needs to display contents of dir
     if (openOnly) {
         DirList dirContents;
         if (!dirList(path, &dirContents)) {

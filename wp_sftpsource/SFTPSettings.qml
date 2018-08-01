@@ -248,6 +248,11 @@ Item {
         anchors.rightMargin: 8
         anchors.top: removeButton.bottom
         anchors.topMargin: 8
-        onClicked: done(0);
+        onClicked: {
+            var retval = {
+                button: "cancel_all",
+            }
+            done(JSON.stringify(retval));
+        }
     }
 }

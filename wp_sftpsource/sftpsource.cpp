@@ -669,6 +669,7 @@ void SFTPSource::removeAllClients()
 {
     // TODO this must be faster when quitting
     foreach (SSHClient *client, clients) {
+        client->getConfig().thread->requestInterruption();
         client->getConfig().thread->quit();
         client->getConfig().thread->wait();
     }
@@ -981,17 +982,15 @@ TrackInfo SFTPSource::trackInfoFromFilePath(QString filePath, int clientId)
 
     // try taglib first
     bool tagLibOK = true;
-    // TODO taglib
-    /*
-        TagLib::FileRef fileRef(QFile::encodeName(filePath).constData());
-        if (!fileRef.isNull() && !fileRef.tag()->isEmpty()) {
+    TagLib::FileRef fileRef(QFile::encodeName(filePath).constData());
+    if (!fileRef.isNull() && !fileRef.tag()->isEmpty()) {
         trackInfo.title     = TStringToQString(fileRef.tag()->title());
         trackInfo.performer = TStringToQString(fileRef.tag()->artist());
         trackInfo.album     = TStringToQString(fileRef.tag()->album());
         trackInfo.year      = fileRef.tag()->year();
         trackInfo.track     = fileRef.tag()->track();
-        }
-    */
+    }
+
 
     // figure out based on file path if taglib failed
     if (trackInfo.title.isEmpty() || trackInfo.performer.isEmpty() || trackInfo.album.isEmpty()) {

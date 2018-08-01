@@ -44,9 +44,10 @@
 #include <QVariantHash>
 #include <QVector>
 #include <libssh2.h>
+#include <taglib/fileref.h>
+#include <taglib/tstring.h>
 
 #include "sshclient.h"
-
 #include "../waver/pluginfactory.h"
 #include "../waver/pluginglobals.h"
 #include "../waver/API/pluginsource_006.h"

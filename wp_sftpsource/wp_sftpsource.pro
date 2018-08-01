@@ -52,6 +52,7 @@ RESOURCES += \
 
 unix:!android {
     LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -lssh2
+    LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -ltag
 
     target.path = /opt/waver/bin
     INSTALLS += target
