@@ -106,12 +106,20 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         bool    sendDiagnostics;
 
         QString variationSetting;
+        int     variationSetCountSinceHigh;
+        int     variationSetCountSinceLow;
 
         QVector<SSHClient *> clients;
         QVector<QString>     uiQueue;
 
         QHash<int, QStringList> audioFiles;
-        QVector<PlaylistItem> futurePlaylist;
+        QVector<PlaylistItem>   futurePlaylist;
+        QVector<PlaylistItem>   lovedPlaylist;
+        QVector<PlaylistItem>   similarPlaylist;
+        QStringList             alreadyPlayed;
+        QStringList             banned;
+        QStringList             loved;
+        QStringList             alreadyPlayedLoved;
 
         void       addClient(SSHClient::SSHClientConfig config);
         void       removeAllClients();
@@ -123,10 +131,13 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         void removeFromUIQueue();
         void displayNextUIQueue();
 
-        void appendToPlaylist();
+        void    appendToPlaylist();
+        QString formatTrackForLists(int clientId, QString filePath);
 
         QJsonDocument configToJson();
         void          jsonToConfig(QJsonDocument jsonDocument);
+        QJsonDocument configToJsonGlobal();
+        void          jsonToConfigGlobal(QJsonDocument jsonDocument);
         int           variationSettingId();
 
         void setState(State state);

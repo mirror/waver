@@ -38,9 +38,11 @@ SFTPSource::SFTPSource()
 {
     id  = QUuid("{7F95124F-8AE5-4CDA-AAE9-13136DCD4897}");
 
-    variationSetting     = "Medium";
-    readySent            = false;
-    sendDiagnostics      = false;
+    variationSetting           = "Medium";
+    variationSetCountSinceHigh = 0;
+    variationSetCountSinceLow  = 0;
+    readySent                  = false;
+    sendDiagnostics            = false;
 
     if (libssh2_init(0)) {
         emit infoMessage(id, "Unable to initialize libssh2");
@@ -150,7 +152,7 @@ void SFTPSource::run()
 // timer slot
 void SFTPSource::delayStartup()
 {
-    emit loadConfiguration(id);
+    emit loadGlobalConfiguration(id);
 }
 
 
@@ -172,8 +174,17 @@ void SFTPSource::loadedConfiguration(QUuid uniqueId, QJsonDocument configuration
 // slot receiving configuration
 void SFTPSource::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
 {
-    Q_UNUSED(uniqueId);
-    Q_UNUSED(configuration);
+    if (uniqueId != id) {
+        return;
+    }
+
+    jsonToConfigGlobal(configuration);
+
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
+
+    emit loadConfiguration(id);
 }
 
 
@@ -370,9 +381,28 @@ void SFTPSource::done(QUuid uniqueId, QUrl url)
         return;
     }
 
+    // check if it's loved or similar
+    bool lovedOrSimilar = false;
+    int i               = 0;
+    while ((i < lovedPlaylist.count()) && !lovedOrSimilar) {
+        if (lovedPlaylist.at(i).cachePath == url) {
+            lovedOrSimilar = true;
+        }
+        i++;
+    }
+    i = 0;
+    while ((i < similarPlaylist.count()) && !lovedOrSimilar) {
+        if (similarPlaylist.at(i).cachePath == url) {
+            lovedOrSimilar = true;
+        }
+        i++;
+    }
+
     // remove from cache
-    QFile file(url.toLocalFile());
-    file.remove();
+    if (!lovedOrSimilar) {
+        QFile file(url.toLocalFile());
+        file.remove();
+    }
 }
 
 // server's request for playlist entries
@@ -385,12 +415,68 @@ void SFTPSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
     TracksInfo returnValue;
     ExtraInfo  returnExtra;
 
-    // TODO loved
+    // loved
     if (mode == PLAYLIST_MODE_LOVED) {
-        //returnExtra.insert(trackInfo.url, {{ "loved", PLAYLIST_MODE_LOVED }});
+        // see which loved was not played yet
+        QVector<PlaylistItem> remaining;
+        foreach (PlaylistItem playlistItem, lovedPlaylist) {
+            if (!alreadyPlayedLoved.contains(formatTrackForLists(playlistItem.clientId, playlistItem.remotePath))) {
+                remaining.append(playlistItem);
+            }
+        }
+        // "turn around" if all was played already
+        if (remaining.count() < 1) {
+            alreadyPlayedLoved.clear();
+            remaining.append(lovedPlaylist);
+        }
+
+        if (remaining.count() > 0) {
+            // let's see which is downloaded already
+            QVector<PlaylistItem> downloaded;
+            foreach (PlaylistItem playlistItem, remaining) {
+                if (playlistItem.cachePath.isValid()) {
+                    downloaded.append(playlistItem);
+                }
+            }
+            if (downloaded.count() > 0) {
+                // select a loved track
+                int index = qrand() % downloaded.count();
+
+                // update global configuration
+                alreadyPlayedLoved.append(formatTrackForLists(downloaded.at(index).clientId, downloaded.at(index).remotePath));
+                emit saveGlobalConfiguration(id, configToJsonGlobal());
+
+                // add to return value
+                TrackInfo trackInfo = trackInfoFromFilePath(downloaded.at(index).cachePath.toLocalFile(), downloaded.at(index).clientId);
+                returnValue.append(trackInfo);
+                returnExtra.insert(trackInfo.url, {{ "loved", PLAYLIST_MODE_LOVED }});
+
+                // playlist should be one less now
+                trackCount--;
+            }
+        }
     }
     else if (mode == PLAYLIST_MODE_LOVED_SIMILAR) {
-        //returnExtra.insert(trackInfo.url, {{ "loved", PLAYLIST_MODE_LOVED_SIMILAR }});
+        // let's see which is downloaded already
+        QVector<PlaylistItem> downloaded;
+        foreach (PlaylistItem playlistItem, similarPlaylist) {
+            if (playlistItem.cachePath.isValid()) {
+                downloaded.append(playlistItem);
+            }
+        }
+
+        if (downloaded.count() > 0) {
+            // select a loved track
+            int index = qrand() % downloaded.count();
+
+            // add to return value
+            TrackInfo trackInfo = trackInfoFromFilePath(downloaded.at(index).cachePath.toLocalFile(), downloaded.at(index).clientId);
+            returnValue.append(trackInfo);
+            returnExtra.insert(trackInfo.url, {{ "loved", PLAYLIST_MODE_LOVED_SIMILAR }});
+
+            // playlist should be one less now
+            trackCount--;
+        }
     }
 
     // just send from predetermined playlist
@@ -412,11 +498,11 @@ void SFTPSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
             }
 
             // add to return value
-            TrackInfo trackInfo = trackInfoFromFilePath(futurePlaylist.at(i).cachePath.toLocalFile(), futurePlaylist.at(i).clientId);
+            TrackInfo trackInfo = trackInfoFromFilePath(futurePlaylist.at(index).cachePath.toLocalFile(), futurePlaylist.at(index).clientId);
             returnValue.append(trackInfo);
 
             // remove from predetermined playlist
-            futurePlaylist.remove(i);
+            futurePlaylist.remove(index);
 
             count++;
         }
@@ -496,7 +582,72 @@ void SFTPSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         return;
     }
 
-    // TODO this
+    int clientId = actionKey / 1000;
+    actionKey    = actionKey % 1000;
+
+    bool tagLibOK = false;
+    foreach (TrackAction trackAction, trackInfo.actions) {
+        if ((trackAction.id == 10) || (trackAction.id == 11)) {
+            tagLibOK = true;
+            break;
+        }
+    }
+
+    QString remotePath        = trackInfo.url.toLocalFile().replace(clientFromId(clientId)->getConfig().cacheDir + "/", clientFromId(clientId)->getConfig().dir);
+    QString formattedForLists = formatTrackForLists(clientId, remotePath);
+
+    if (actionKey == 0) {
+        banned.append(formattedForLists);
+
+        emit saveGlobalConfiguration(id, configToJsonGlobal());
+        emit requestRemoveTrack(id, trackInfo.url);
+    }
+
+    if (actionKey == 1) {
+        if (!loved.contains(formattedForLists)) {
+            loved.append(formattedForLists);
+        }
+
+        emit saveGlobalConfiguration(id, configToJsonGlobal());
+
+        TrackInfo trackInfoTemp;
+        trackInfoTemp.track = 0;
+        trackInfoTemp.year  = 0;
+        trackInfoTemp.url   = trackInfo.url;
+        trackInfoTemp.actions.append({ id, 0, "Ban" });
+        trackInfoTemp.actions.append({ id, 2, "Unlove" });
+        if (tagLibOK) {
+            trackInfoTemp.actions.append({ id, 10, "Lyrics search"});
+            trackInfoTemp.actions.append({ id, 11, "Band search"});
+        }
+        emit updateTrackInfo(id, trackInfoTemp);
+    }
+
+    if (actionKey == 2) {
+        loved.removeAll(formattedForLists);
+
+        emit saveGlobalConfiguration(id, configToJsonGlobal());
+
+        TrackInfo trackInfoTemp;
+        trackInfoTemp.track = 0;
+        trackInfoTemp.year  = 0;
+        trackInfoTemp.url   = trackInfo.url;
+        trackInfoTemp.actions.append({ id, 0, "Ban" });
+        trackInfoTemp.actions.append({ id, 1, "Love" });
+        if (tagLibOK) {
+            trackInfoTemp.actions.append({ id, 10, "Lyrics search"});
+            trackInfoTemp.actions.append({ id, 11, "Band search"});
+        }
+        emit updateTrackInfo(id, trackInfoTemp);
+    }
+
+    if (actionKey == 10) {
+        emit openUrl(QUrl(QString("http://google.com/search?q=%1 %2 lyrics").arg(trackInfo.performer).arg(trackInfo.title)));
+    }
+
+    if (actionKey == 11) {
+        emit openUrl(QUrl(QString("http://google.com/search?q=\"%1\" band").arg(trackInfo.performer)));
+    }
 
     if (sendDiagnostics) {
         sendDiagnosticsData();
@@ -538,6 +689,7 @@ QJsonDocument SFTPSource::configToJson()
     }
 
     jsonObject.insert("variation", variationSetting);
+    jsonObject.insert("already_played", QJsonArray::fromStringList(alreadyPlayed));
 
     return QJsonDocument(jsonObject);
 }
@@ -581,7 +733,63 @@ void SFTPSource::jsonToConfig(QJsonDocument jsonDocument)
     }
 
     if (jsonDocument.object().contains("variation")) {
-        variationSetting = jsonDocument.object().value("variation").toString();
+        variationSetting           = jsonDocument.object().value("variation").toString();
+        variationSetCountSinceLow  = (variationSettingId() == 3 ? 3 : 0);
+        variationSetCountSinceHigh = 0;
+    }
+
+    if (jsonDocument.object().contains("already_played")) {
+        alreadyPlayed.clear();
+
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("already_played").toArray()) {
+            bool inClients = false;
+            foreach (SSHClient *client, clients) {
+                if (jsonValue.toString().startsWith(client->getConfig().host + "/")) {
+                    inClients = true;
+                    break;
+                }
+            }
+            if (inClients) {
+                alreadyPlayed.append(jsonValue.toString());
+            }
+        }
+    }
+}
+
+
+// configuration conversion
+QJsonDocument SFTPSource::configToJsonGlobal()
+{
+    QJsonObject jsonObject;
+
+    jsonObject.insert("banned", QJsonArray::fromStringList(banned));
+    jsonObject.insert("loved", QJsonArray::fromStringList(loved));
+    jsonObject.insert("already_played_loved", QJsonArray::fromStringList(alreadyPlayedLoved));
+
+    return QJsonDocument(jsonObject);
+}
+
+
+// configuration conversion
+void SFTPSource::jsonToConfigGlobal(QJsonDocument jsonDocument)
+{
+    if (jsonDocument.object().contains("banned")) {
+        banned.clear();
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("banned").toArray()) {
+            banned.append(jsonValue.toString());
+        }
+    }
+    if (jsonDocument.object().contains("loved")) {
+        loved.clear();
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("loved").toArray()) {
+            loved.append(jsonValue.toString());
+        }
+    }
+    if (jsonDocument.object().contains("already_played_loved")) {
+        alreadyPlayedLoved.clear();
+        foreach (QJsonValue jsonValue, jsonDocument.object().value("already_played_loved").toArray()) {
+            alreadyPlayedLoved.append(jsonValue.toString());
+        }
     }
 }
 
@@ -721,10 +929,30 @@ void SFTPSource::appendToPlaylist()
         QList<int> clientIds = audioFiles.keys();
         int currentClientId = clientIds.at(qrand() % clientIds.count());
 
-        // detrmine which variation setting to use (3 means user selected random variation)
+        // determine which variation setting to use (3 means user selected random variation)
         int currentVariation = variationSettingId();
         if (currentVariation == 3) {
-            currentVariation = qrand() % 3;
+            if (variationSetCountSinceHigh >= 4) {
+                currentVariation = 2;
+            }
+            else if (variationSetCountSinceLow >= 4) {
+                currentVariation = qrand() % 3;
+            }
+            else {
+                currentVariation = (qrand() % 2) + 1;
+            }
+        }
+
+        // get remaining tracks for currect client
+        QStringList remaining;
+        foreach (QString audioFile, audioFiles.value(currentClientId)) {
+            if (!alreadyPlayed.contains(formatTrackForLists(currentClientId, audioFile)) && !banned.contains(formatTrackForLists(currentClientId, audioFile))) {
+                remaining.append(audioFile);
+            }
+        }
+        if (remaining.count() < 1) {
+            alreadyPlayed.clear();
+            remaining.append(audioFiles.value(currentClientId));
         }
 
         // determine batch size and "album" to use based on variation setting
@@ -734,24 +962,30 @@ void SFTPSource::appendToPlaylist()
             case 0:
                 // low variation: 4 - 6 tracks from same dir (usually each dir is one album but not necessary)
                 variationCount = (qrand() % 3) + 4;
-                variationDir = audioFiles.value(currentClientId).at(qrand() % audioFiles.value(currentClientId).count());
+                variationDir = remaining.at(qrand() % remaining.count());
                 variationDir = variationDir.left(variationDir.lastIndexOf("/"));
+                variationSetCountSinceHigh++;
+                variationSetCountSinceLow = 0;
                 break;
             case 1:
                 // medium variation: 2 - 3 tracks from same dir
                 variationCount = (qrand() % 2) + 2;
-                variationDir = audioFiles.value(currentClientId).at(qrand() % audioFiles.value(currentClientId).count());
+                variationDir = remaining.at(qrand() % remaining.count());
                 variationDir = variationDir.left(variationDir.lastIndexOf("/"));
+                variationSetCountSinceHigh++;
+                variationSetCountSinceLow++;
                 break;
             default:
                 // high variation: 4 tracks totally random
                 variationCount = 4;
+                variationSetCountSinceHigh = 0;
+                variationSetCountSinceLow++;
         }
 
         // get list of tracks to choose from (either from dir selected based on variation, or all tracks)
         // TODO already played and banned
         QStringList chooseFrom;
-        foreach (QString audioFile, audioFiles.value(currentClientId)) {
+        foreach (QString audioFile, remaining) {
             // this condition has no effect if variationDir is empty
             if (audioFile.startsWith(variationDir)) {
                 chooseFrom.append(audioFile);
@@ -760,12 +994,17 @@ void SFTPSource::appendToPlaylist()
 
         // add this batch to predetermined playlist and download list
         int i = 0;
-        while (i < variationCount) {
+        while ((i < variationCount) && (chooseFrom.count() > 0)) {
+            int index = qrand() % chooseFrom.count();
+
             PlaylistItem playlistItem;
             playlistItem.clientId   = currentClientId;
-            playlistItem.remotePath = chooseFrom.at(qrand() % chooseFrom.count());
+            playlistItem.remotePath = chooseFrom.at(index);
+
+            chooseFrom.removeAt(index);
 
             futurePlaylist.append(playlistItem);
+            alreadyPlayed.append(formatTrackForLists(currentClientId, playlistItem.remotePath));
 
             if (!downloadList.contains(currentClientId)) {
                 downloadList.insert(currentClientId, new QStringList());
@@ -776,6 +1015,9 @@ void SFTPSource::appendToPlaylist()
         }
     }
 
+    // save already played
+    emit saveConfiguration(id, configToJson());
+
     // start downloads
     foreach (int clientId, downloadList.keys()) {
         emit clientGetAudio(clientId, QStringList(*downloadList.value(clientId)));
@@ -785,6 +1027,13 @@ void SFTPSource::appendToPlaylist()
     foreach (QStringList *downloads, downloadList) {
         delete downloads;
     }
+}
+
+
+// private method
+QString SFTPSource::formatTrackForLists(int clientId, QString filePath)
+{
+    return QString("%1/%2").arg(clientFromId(clientId)->getConfig().host).arg(filePath);
 }
 
 
@@ -882,8 +1131,55 @@ void SFTPSource::clientUpdateConfig(int id)
 // private slot from SFTP client
 void SFTPSource::clientAudioList(int id, QStringList files)
 {
+    // pre-determined playlist
     audioFiles.insert(id, files);
     appendToPlaylist();
+
+    // loved and similar
+    QStringList downloadList;
+    foreach (QString file, files) {
+        QString formatted = formatTrackForLists(id, file);
+
+        if (banned.contains(formatted)) {
+            continue;
+        }
+
+        if (loved.contains(formatted)) {
+            PlaylistItem playlistItem;
+            playlistItem.clientId   = id;
+            playlistItem.remotePath = file;
+
+            lovedPlaylist.append(playlistItem);
+
+            downloadList.append(playlistItem.remotePath);
+
+            continue;
+        }
+
+        formatted = formatted.left(formatted.lastIndexOf("/") + 1);
+
+        bool similar = false;
+        int  i       = 0;
+        while ((i < loved.count()) && !similar) {
+            if (loved.at(i).left(loved.at(i).lastIndexOf("/") + 1).compare(formatted) == 0) {
+                similar = true;
+                break;
+            }
+            i++;
+        }
+        if (similar) {
+            PlaylistItem playlistItem;
+            playlistItem.clientId   = id;
+            playlistItem.remotePath = file;
+
+            similarPlaylist.append(playlistItem);
+
+            downloadList.append(playlistItem.remotePath);
+
+        }
+    }
+
+    emit clientGetAudio(id, downloadList);
 }
 
 
@@ -911,6 +1207,18 @@ void SFTPSource::clientGotAudio(int id, QString remote, QString local)
         if (downloaded >= qMin(PLAYLIST_READY_SIZE, PLAYLIST_DESIRED_SIZE)) {
             emit ready(this->id);
             readySent = true;
+        }
+    }
+
+    // maybe it's also loved or similar
+    for (int i = 0; i < lovedPlaylist.count(); i++) {
+        if ((lovedPlaylist.at(i).clientId == id) && (lovedPlaylist.at(i).remotePath.compare(remote) == 0)) {
+            lovedPlaylist[i].cachePath = QUrl::fromLocalFile(local);
+        }
+    }
+    for (int i = 0; i < similarPlaylist.count(); i++) {
+        if ((similarPlaylist.at(i).clientId == id) && (similarPlaylist.at(i).remotePath.compare(remote) == 0)) {
+            similarPlaylist[i].cachePath = QUrl::fromLocalFile(local);
         }
     }
 }
@@ -1028,20 +1336,19 @@ TrackInfo SFTPSource::trackInfoFromFilePath(QString filePath, int clientId)
     }
     trackInfo.pictures.append(pictures);
 
-    // TODO actions
-    /*
-        trackInfo.actions.append({ id, 0, "Ban" });
-        if (lovedFileNames.contains(filePath)) {
-        trackInfo.actions.append({ id, 2, "Unlove" });
-        }
-        else {
-        trackInfo.actions.append({ id, 1, "Love" });
-        }
-        if (tagLibOK) {
-        trackInfo.actions.append({ id, 10, "Lyrics search"});
-        trackInfo.actions.append({ id, 11, "Band search"});
-        }
-    */
+    QString remotePath = trackInfo.url.toLocalFile().replace(clientFromId(clientId)->getConfig().cacheDir + "/", clientFromId(clientId)->getConfig().dir);
+
+    trackInfo.actions.append({ id, clientId * 1000 + 0, "Ban" });
+    if (loved.contains(formatTrackForLists(clientId, remotePath))) {
+        trackInfo.actions.append({ id, clientId * 1000 + 2, "Unlove" });
+    }
+    else {
+        trackInfo.actions.append({ id, clientId * 1000 + 1, "Love" });
+    }
+    if (tagLibOK) {
+        trackInfo.actions.append({ id, clientId * 1000 + 10, "Lyrics search"});
+        trackInfo.actions.append({ id, clientId * 1000 + 11, "Band search"});
+    }
 
     return trackInfo;
 }
