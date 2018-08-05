@@ -855,6 +855,44 @@ void SSHClient::getAudio(int id, QStringList remoteFiles)
 }
 
 
+// public slot
+void SSHClient::getOpenItems(int id, QString remotePath)
+{
+    if (id != config.id) {
+        return;
+    }
+
+    if (remotePath.length() == 0) {
+        return;
+    }
+
+    OpenTracks returnValue;
+
+    DirList dirContents;
+    if (dirList(remotePath, &dirContents)) {
+        qSort(dirContents.begin(), dirContents.end(), [](DirListItem a, DirListItem b) {
+            return (a.name.compare(b.name) < 0);
+        });
+
+        foreach (DirListItem content, dirContents) {
+            if (content.name.startsWith(".")) {
+                continue;
+            }
+
+            OpenTrack openTrack;
+            openTrack.hasChildren = content.isDir;
+            openTrack.id = QString("%1:%2").arg(content.fullPath).arg(config.id);
+            openTrack.label = content.name;
+            openTrack.selectable = !content.isDir;
+
+            returnValue.append(openTrack);
+        }
+    }
+
+    emit gotOpenItems(config.id, returnValue);
+}
+
+
 // timer slot
 void SSHClient::dowloadNext()
 {

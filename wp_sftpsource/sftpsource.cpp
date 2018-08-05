@@ -397,12 +397,20 @@ void SFTPSource::done(QUuid uniqueId, QUrl url)
         }
         i++;
     }
+    if (lovedOrSimilar) {
+        return;
+    }
+
+    // check if it was opened manually too
+    if (doNotDelete.contains(url)) {
+        // OK to remove after played again
+        doNotDelete.removeOne(url);
+        return;
+    }
 
     // remove from cache
-    if (!lovedOrSimilar) {
-        QFile file(url.toLocalFile());
-        file.remove();
-    }
+    QFile file(url.toLocalFile());
+    file.remove();
 }
 
 // server's request for playlist entries
@@ -545,7 +553,46 @@ void SFTPSource::getOpenTracks(QUuid uniqueId, QString parentId)
         return;
     }
 
-    // TODO this
+    OpenTracks openTracks;
+
+    // top level
+    if (parentId.length() < 1) {
+        foreach (SSHClient *client, clients) {
+            OpenTrack openTrack;
+            openTrack.hasChildren = true;
+            openTrack.id = QString("%1").arg(client->getConfig().id);
+            openTrack.label = QString("%1 on %2").arg(client->getConfig().dir).arg(client->formatUserHost());
+            openTrack.selectable = false;
+            openTracks.append(openTrack);
+        }
+        emit openTracksResults(id, openTracks);
+        return;
+    }
+
+
+    // remote path and client id
+
+    QStringList brokeUp = parentId.split(":");
+    if (brokeUp.count() == 1) {
+        brokeUp.prepend("");
+    }
+    if (brokeUp.count() != 2) {
+        return;
+    }
+
+    QString remotePath = brokeUp.at(0);
+
+    bool OK      = false;
+    int clientId = brokeUp.at(1).toInt(&OK);
+    if (!OK) {
+        return;
+    }
+
+    if (remotePath.isEmpty()) {
+        remotePath = clientFromId(clientId)->getConfig().dir;
+    }
+
+    emit clientGetOpenItems(clientId, remotePath);
 }
 
 
@@ -560,7 +607,53 @@ void SFTPSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
         return;
     }
 
-    // TODO this
+    TracksInfo returnValue;
+    ExtraInfo  returnExtra;
+
+    foreach (QString selected, selectedTracks) {
+        // remote path and client id
+
+        QStringList brokeUp = selected.split(":");
+        if (brokeUp.count() != 2) {
+            continue;
+        }
+
+        QString remotePath = brokeUp.at(0);
+
+        bool OK      = false;
+        int clientId = brokeUp.at(1).toInt(&OK);
+        if (!OK) {
+            continue;
+        }
+
+        // local path
+        QString localPath = remotePath;
+        localPath.replace(clientFromId(clientId)->getConfig().dir, clientFromId(clientId)->getConfig().cacheDir + "/");
+
+        // check if it's already downloaded maybe
+        if (QFileInfo::exists(localPath)) {
+            // do not delete after fist play (if it's in cache then it's scheduled to be played from pre-determined playlist too)
+            doNotDelete.append(QUrl::fromLocalFile(localPath));
+
+            // add to return value
+            TrackInfo trackInfo = trackInfoFromFilePath(localPath, clientId);
+            returnValue.append(trackInfo);
+            returnExtra.insert(trackInfo.url, {{ "resolved_open_track", 1 }});
+
+            continue;
+        }
+
+        // remember to send to server right after it's downloaded
+        playImmediately.append(QUrl::fromLocalFile(localPath));
+
+        // tell the client to download it
+        emit clientGetAudio(clientId, QStringList(remotePath));
+    }
+
+    // send the ones we already have
+    if (returnValue.count() > 0) {
+        emit playlist(id, returnValue, returnExtra);
+    }
 }
 
 
@@ -571,7 +664,40 @@ void SFTPSource::search(QUuid uniqueId, QString criteria)
         return;
     }
 
-    // TODO this
+    criteria.replace("_", " ").replace(" ", "");
+
+    QStringList matches;
+    QHash<QString, QString> matchLabels;
+
+    foreach (int clientId, audioFiles.keys()) {
+        QString clientLabel = clientFromId(clientId)->formatUserHost();
+
+        foreach (QString audioFile, audioFiles.value(clientId)) {
+            QString modifying(audioFile);
+            modifying.replace("_", " ").replace(" ", "");
+
+            if (modifying.contains(criteria, Qt::CaseInsensitive)) {
+                QString match = QString("%1:%2").arg(audioFile).arg(clientId);
+                matches.append(match);
+                matchLabels.insert(match, QString("%1 %2").arg(clientLabel).arg(audioFile));
+            }
+        }
+    }
+
+    qSort(matches);
+
+    OpenTracks openTracks;
+    for (int i = 0; i < matches.count(); i++) {
+        OpenTrack openTrack;
+
+        openTrack.hasChildren = false;
+        openTrack.id = matches.at(i);
+        openTrack.label = matchLabels.value(matches.at(i));
+        openTrack.selectable = true;
+        openTracks.append(openTrack);
+    }
+
+    emit searchResults(id, openTracks);
 }
 
 
@@ -853,6 +979,7 @@ void SFTPSource::addClient(SSHClient::SSHClientConfig config)
     connect(this,   SIGNAL(clientDirSelectorResult(int, bool, QString)),                client, SLOT(dirSelectorResult(int, bool, QString)));
     connect(this,   SIGNAL(clientFindAudio(int)),                                       client, SLOT(findAudio(int)));
     connect(this,   SIGNAL(clientGetAudio(int, QStringList)),                           client, SLOT(getAudio(int, QStringList)));
+    connect(this,   SIGNAL(clientGetOpenItems(int, QString)),                           client, SLOT(getOpenItems(int, QString)));
     connect(client, SIGNAL(connected(int)),                                             this,   SLOT(clientConnected(int)));
     connect(client, SIGNAL(disconnected(int)),                                          this,   SLOT(clientDisconnected(int)));
     connect(client, SIGNAL(showPasswordEntry(int, QString, QString, QString)),          this,   SLOT(clientShowPasswordEntry(int, QString, QString, QString)));
@@ -861,6 +988,7 @@ void SFTPSource::addClient(SSHClient::SSHClientConfig config)
     connect(client, SIGNAL(updateConfig(int)),                                          this,   SLOT(clientUpdateConfig(int)));
     connect(client, SIGNAL(audioList(int, QStringList)),                                this,   SLOT(clientAudioList(int, QStringList)));
     connect(client, SIGNAL(gotAudio(int, QString, QString)),                            this,   SLOT(clientGotAudio(int, QString, QString)));
+    connect(client, SIGNAL(gotOpenItems(int, OpenTracks)),                              this,   SLOT(clientGotOpenItems(int, OpenTracks)));
     connect(client, SIGNAL(error(int, QString)),                                        this,   SLOT(clientError(int, QString)));
     connect(client, SIGNAL(info(int, QString)),                                         this,   SLOT(clientInfo(int, QString)));
 
@@ -1179,17 +1307,38 @@ void SFTPSource::clientAudioList(int id, QStringList files)
         }
     }
 
-    emit clientGetAudio(id, downloadList);
+    if (downloadList.count() > 0) {
+        emit clientGetAudio(id, downloadList);
+    }
 }
 
 
 // private slot from SFTP client
 void SFTPSource::clientGotAudio(int id, QString remote, QString local)
 {
-    // update predetermined playlist with local path
-    for (int i = 0; i < futurePlaylist.count(); i++) {
-        if ((futurePlaylist.at(i).clientId == id) && (futurePlaylist.at(i).remotePath.compare(remote) == 0)) {
-            futurePlaylist[i].cachePath = QUrl::fromLocalFile(local);
+    // check if it was opened manually
+    QUrl localUrl = QUrl::fromLocalFile(local);
+    if (playImmediately.contains(localUrl)) {
+        // send to server
+
+        TracksInfo returnValue;
+        ExtraInfo  returnExtra;
+
+        TrackInfo trackInfo = trackInfoFromFilePath(local, id);
+        returnValue.append(trackInfo);
+        returnExtra.insert(trackInfo.url, {{ "resolved_open_track", 1 }});
+
+        emit playlist(this->id, returnValue, returnExtra);
+
+        // can come up in the playlist later
+        playImmediately.removeAll(QUrl::fromLocalFile(local));
+    }
+    else {
+        // update predetermined playlist with local path
+        for (int i = 0; i < futurePlaylist.count(); i++) {
+            if ((futurePlaylist.at(i).clientId == id) && (futurePlaylist.at(i).remotePath.compare(remote) == 0)) {
+                futurePlaylist[i].cachePath = QUrl::fromLocalFile(local);
+            }
         }
     }
 
@@ -1221,6 +1370,15 @@ void SFTPSource::clientGotAudio(int id, QString remote, QString local)
             similarPlaylist[i].cachePath = QUrl::fromLocalFile(local);
         }
     }
+}
+
+
+// private slot from SFTP client
+void SFTPSource::clientGotOpenItems(int id, OpenTracks openTracks)
+{
+    Q_UNUSED(id);
+
+    emit openTracksResults(this->id, openTracks);
 }
 
 

@@ -40,6 +40,8 @@
 #include <libssh2.h>
 #include <libssh2_sftp.h>
 
+#include "../waver/pluginglobals.h"
+
 class SSHClient : public QObject {
         Q_OBJECT
 
@@ -120,6 +122,7 @@ class SSHClient : public QObject {
 
         void audioList(int id, QStringList files);
         void gotAudio(int id, QString remote, QString local);
+        void gotOpenItems(int id, OpenTracks openTracks);
 
         void error(int id, QString errorMessage);
         void info(int id, QString infoMessage);
@@ -139,6 +142,7 @@ class SSHClient : public QObject {
 
         void findAudio(int id);
         void getAudio(int id, QStringList remoteFiles);
+        void getOpenItems(int id, QString remotePath);
 
 
     private slots:

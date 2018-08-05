@@ -120,6 +120,8 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         QStringList             banned;
         QStringList             loved;
         QStringList             alreadyPlayedLoved;
+        QVector<QUrl>           doNotDelete;
+        QVector<QUrl>           playImmediately;
 
         void       addClient(SSHClient::SSHClientConfig config);
         void       removeAllClients();
@@ -155,6 +157,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
 
         void clientFindAudio(int id);
         void clientGetAudio(int id, QStringList remoteFiles);
+        void clientGetOpenItems(int id, QString remotePath);
 
 
     public slots:
@@ -200,6 +203,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
 
         void clientAudioList(int id, QStringList files);
         void clientGotAudio(int id, QString remote, QString local);
+        void clientGotOpenItems(int id, OpenTracks openTracks);
 
         void clientError(int id, QString errorMessage);
         void clientInfo(int id, QString infoMessage);
