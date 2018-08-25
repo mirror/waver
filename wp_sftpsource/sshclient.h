@@ -73,10 +73,13 @@ class SSHClient : public QObject {
         QString         formatUserHost();
         bool            isConnected();
 
+        QString localToRemote(QString local);
+        QString remoteToLocal(QString remote);
 
     private:
 
-        static const int HOSTKEY_HASH_SHA1_LENGTH = 20;
+        static const int  HOSTKEY_HASH_SHA1_LENGTH  = 20;
+        static const long UPLOAD_CREATE_PERMISSIONS = LIBSSH2_SFTP_S_IRUSR | LIBSSH2_SFTP_S_IWUSR | LIBSSH2_SFTP_S_IRGRP | LIBSSH2_SFTP_S_IWGRP | LIBSSH2_SFTP_S_IROTH;
 
         static const QString AUTH_METHOD_PUBLICKEY;
         static const QString AUTH_METHOD_PASSWORD;
@@ -109,6 +112,7 @@ class SSHClient : public QObject {
 
         bool dirList(QString dir, DirList *contents);
         bool download(QString source, QString destination);
+        bool upload(QString source, QString destination);
 
     signals:
 
@@ -143,6 +147,8 @@ class SSHClient : public QObject {
         void findAudio(int id);
         void getAudio(int id, QStringList remoteFiles);
         void getOpenItems(int id, QString remotePath);
+
+        void trackInfoUpdated(TrackInfo trackInfo);
 
 
     private slots:

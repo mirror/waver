@@ -67,4 +67,6 @@ static const int PLAYLIST_MODE_NORMAL        = 0;
 static const int PLAYLIST_MODE_LOVED         = 1;
 static const int PLAYLIST_MODE_LOVED_SIMILAR = 2;
 
+static const int RESERVED_ACTION_TRACKINFOUPDATED = 1250000;
+
 #endif // PLUGINGLOBALS_H

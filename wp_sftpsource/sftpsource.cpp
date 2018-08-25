@@ -627,8 +627,7 @@ void SFTPSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
         }
 
         // local path
-        QString localPath = remotePath;
-        localPath.replace(clientFromId(clientId)->getConfig().dir, clientFromId(clientId)->getConfig().cacheDir + "/");
+        QString localPath = clientFromId(clientId)->remoteToLocal(remotePath);
 
         // check if it's already downloaded maybe
         if (QFileInfo::exists(localPath)) {
@@ -708,9 +707,18 @@ void SFTPSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         return;
     }
 
+    // special action
+    if (actionKey == RESERVED_ACTION_TRACKINFOUPDATED) {
+        // don't know which client it is, let's let every client know, they can figure it out
+        emit clientsTrackInfoUpdated(trackInfo);
+        return;
+    }
+
+    // split action key to client id and real action key
     int clientId = actionKey / 1000;
     actionKey    = actionKey % 1000;
 
+    // check if track actions contain those actions that are added only if taglib was able to read tags
     bool tagLibOK = false;
     foreach (TrackAction trackAction, trackInfo.actions) {
         if ((trackAction.id == 10) || (trackAction.id == 11)) {
@@ -719,9 +727,11 @@ void SFTPSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         }
     }
 
-    QString remotePath        = trackInfo.url.toLocalFile().replace(clientFromId(clientId)->getConfig().cacheDir + "/", clientFromId(clientId)->getConfig().dir);
+    // some stuff
+    QString remotePath        = clientFromId(clientId)->localToRemote(trackInfo.url.toLocalFile());
     QString formattedForLists = formatTrackForLists(clientId, remotePath);
 
+    // ban
     if (actionKey == 0) {
         banned.append(formattedForLists);
 
@@ -729,6 +739,7 @@ void SFTPSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         emit requestRemoveTrack(id, trackInfo.url);
     }
 
+    // love
     if (actionKey == 1) {
         if (!loved.contains(formattedForLists)) {
             loved.append(formattedForLists);
@@ -749,6 +760,7 @@ void SFTPSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         emit updateTrackInfo(id, trackInfoTemp);
     }
 
+    // unlove
     if (actionKey == 2) {
         loved.removeAll(formattedForLists);
 
@@ -767,14 +779,17 @@ void SFTPSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         emit updateTrackInfo(id, trackInfoTemp);
     }
 
+    // lyrics search
     if (actionKey == 10) {
         emit openUrl(QUrl(QString("http://google.com/search?q=%1 %2 lyrics").arg(trackInfo.performer).arg(trackInfo.title)));
     }
 
+    // band search
     if (actionKey == 11) {
         emit openUrl(QUrl(QString("http://google.com/search?q=\"%1\" band").arg(trackInfo.performer)));
     }
 
+    // diagnostics
     if (sendDiagnostics) {
         sendDiagnosticsData();
     }
@@ -980,6 +995,7 @@ void SFTPSource::addClient(SSHClient::SSHClientConfig config)
     connect(this,   SIGNAL(clientFindAudio(int)),                                       client, SLOT(findAudio(int)));
     connect(this,   SIGNAL(clientGetAudio(int, QStringList)),                           client, SLOT(getAudio(int, QStringList)));
     connect(this,   SIGNAL(clientGetOpenItems(int, QString)),                           client, SLOT(getOpenItems(int, QString)));
+    connect(this,   SIGNAL(clientsTrackInfoUpdated(TrackInfo)),                         client, SLOT(trackInfoUpdated(TrackInfo)));
     connect(client, SIGNAL(connected(int)),                                             this,   SLOT(clientConnected(int)));
     connect(client, SIGNAL(disconnected(int)),                                          this,   SLOT(clientDisconnected(int)));
     connect(client, SIGNAL(showPasswordEntry(int, QString, QString, QString)),          this,   SLOT(clientShowPasswordEntry(int, QString, QString, QString)));
@@ -1048,6 +1064,11 @@ void SFTPSource::displayNextUIQueue()
 // private method
 void SFTPSource::appendToPlaylist()
 {
+    // can't do anything without files
+    if (audioFiles.count() < 1) {
+        return;
+    }
+
     // will also start downloading
     QHash<int, QStringList *> downloadList;
 
@@ -1111,7 +1132,6 @@ void SFTPSource::appendToPlaylist()
         }
 
         // get list of tracks to choose from (either from dir selected based on variation, or all tracks)
-        // TODO already played and banned
         QStringList chooseFrom;
         foreach (QString audioFile, remaining) {
             // this condition has no effect if variationDir is empty
@@ -1494,7 +1514,7 @@ TrackInfo SFTPSource::trackInfoFromFilePath(QString filePath, int clientId)
     }
     trackInfo.pictures.append(pictures);
 
-    QString remotePath = trackInfo.url.toLocalFile().replace(clientFromId(clientId)->getConfig().cacheDir + "/", clientFromId(clientId)->getConfig().dir);
+    QString remotePath = clientFromId(clientId)->localToRemote(trackInfo.url.toLocalFile());
 
     trackInfo.actions.append({ id, clientId * 1000 + 0, "Ban" });
     if (loved.contains(formatTrackForLists(clientId, remotePath))) {

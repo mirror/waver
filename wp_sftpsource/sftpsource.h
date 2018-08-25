@@ -159,6 +159,8 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         void clientGetAudio(int id, QStringList remoteFiles);
         void clientGetOpenItems(int id, QString remotePath);
 
+        void clientsTrackInfoUpdated(TrackInfo trackInfo);
+
 
     public slots:
 

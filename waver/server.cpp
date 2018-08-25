@@ -2105,8 +2105,14 @@ void WaverServer::trackInfoUpdated(QUrl url)
 {
     // is this the previous track?
     if ((previousTrack != NULL) && (url == previousTrack->getTrackInfo().url)) {
-        // see if picture must be shared with other tracks
         TrackInfo previousTrackInfo = previousTrack->getTrackInfo();
+
+        // let the source know
+        if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(previousTrack->getSourcePluginId()).waverVersionAPICompatibility, "0.0.5")) {
+            emit trackAction(previousTrack->getSourcePluginId(), RESERVED_ACTION_TRACKINFOUPDATED, previousTrackInfo);
+        }
+
+        // see if picture must be shared with other tracks
         if (previousTrackInfo.pictures.count() > 0) {
             foreach (Track *track, playlistTracks) {
                 TrackInfo trackInfo = track->getTrackInfo();
@@ -2121,12 +2127,18 @@ void WaverServer::trackInfoUpdated(QUrl url)
 
     // is this the current track?
     if ((currentTrack != NULL) && (url == currentTrack->getTrackInfo().url)) {
+        TrackInfo currentTrackInfo = currentTrack->getTrackInfo();
+
+        // let the source know
+        if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(currentTrack->getSourcePluginId()).waverVersionAPICompatibility, "0.0.5")) {
+            emit trackAction(currentTrack->getSourcePluginId(), RESERVED_ACTION_TRACKINFOUPDATED, currentTrackInfo);
+        }
+
         // update current track UI
         IpcMessageUtils ipcMessageUtils;
-        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrack->getTrackInfo(), currentTrack->getAdditionalInfo())));
+        emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::TrackInfos, ipcMessageUtils.trackInfoToJSONDocument(currentTrackInfo, currentTrack->getAdditionalInfo())));
 
         // see if picture must be shared with other tracks
-        TrackInfo currentTrackInfo = currentTrack->getTrackInfo();
         if (currentTrackInfo.pictures.count() > 0) {
             foreach (Track *track, playlistTracks) {
                 TrackInfo trackInfo = track->getTrackInfo();
@@ -2141,6 +2153,12 @@ void WaverServer::trackInfoUpdated(QUrl url)
     }
 
     // must be somewhere in the playlist
+    foreach (Track *track, playlistTracks) {
+        // let the source know
+        if ((url == track->getTrackInfo().url) && PluginLibsLoader::isPluginCompatible(sourcePlugins.value(track->getSourcePluginId()).waverVersionAPICompatibility, "0.0.5")) {
+            emit trackAction(track->getSourcePluginId(), RESERVED_ACTION_TRACKINFOUPDATED, track->getTrackInfo());
+        }
+    }
     sendPlaylistToClients();
 }
 

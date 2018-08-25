@@ -96,6 +96,40 @@ bool SSHClient::isConnected()
 }
 
 
+// public method
+QString SSHClient::localToRemote(QString local)
+{
+    QString cacheDir = config.cacheDir;
+    QString dir      = config.dir;
+
+    if (!cacheDir.endsWith("/")) {
+        cacheDir.append("/");
+    }
+    if (!dir.endsWith("/")) {
+        dir.append("/");
+    }
+
+    return local.replace(QRegExp(QString("^%1").arg(cacheDir)), dir);
+}
+
+
+// public method
+QString SSHClient::remoteToLocal(QString remote)
+{
+    QString cacheDir = config.cacheDir;
+    QString dir      = config.dir;
+
+    if (!cacheDir.endsWith("/")) {
+        cacheDir.append("/");
+    }
+    if (!dir.endsWith("/")) {
+        dir.append("/");
+    }
+
+    return remote.replace(QRegExp(QString("^%1").arg(dir)), cacheDir);
+}
+
+
 // public slot
 void SSHClient::connectSSH(int id)
 {
@@ -554,15 +588,13 @@ bool SSHClient::download(QString source, QString destination)
     }
 
     // read source and write destination
-
-    char bufferRaw[65536];
-
+    char    bufferRaw[65536];
+    bool    wasError  = false;
     ssize_t readCount = libssh2_sftp_read(sftpHandle, bufferRaw, sizeof(bufferRaw));
     while ((readCount > 0) && !QThread::currentThread()->isInterruptionRequested()) {
         if (localOutput.writeRawData(bufferRaw, readCount) != readCount) {
-            localFile.close();
-            localFile.remove();
-            return false;
+            wasError = true;
+            break;
         }
         readCount = libssh2_sftp_read(sftpHandle, bufferRaw, sizeof(bufferRaw));
     }
@@ -573,7 +605,50 @@ bool SSHClient::download(QString source, QString destination)
     // close local destination
     localFile.close();
 
-    return true;
+    // don't leave partial file on disk if there was an error
+    if (wasError) {
+        localFile.remove();
+    }
+
+    return !wasError;
+}
+
+
+// private method
+bool SSHClient::upload(QString source, QString destination)
+{
+    // local source
+    QFile localFile(source);
+
+    // open local source for reading
+    if (!localFile.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+
+    // open remote source for writing
+    LIBSSH2_SFTP_HANDLE *sftpHandle = libssh2_sftp_open(sftpSession, destination.toUtf8().constData(), LIBSSH2_FXF_WRITE | LIBSSH2_FXF_CREAT, UPLOAD_CREATE_PERMISSIONS);
+    if (!sftpHandle) {
+        localFile.close();
+        return false;
+    }
+
+    // read source and write destination
+    bool wasError = false;
+    while (!localFile.atEnd() && !QThread::currentThread()->isInterruptionRequested()) {
+        QByteArray bufferRaw = localFile.read(65536);
+        if (libssh2_sftp_write(sftpHandle, bufferRaw.constData(), bufferRaw.count()) < 0) {
+            wasError = true;
+            break;
+        }
+    }
+
+    // close local source
+    localFile.close();
+
+    // close remote destination
+    libssh2_sftp_close(sftpHandle);
+
+    return !wasError;
 }
 
 
@@ -893,6 +968,46 @@ void SSHClient::getOpenItems(int id, QString remotePath)
 }
 
 
+// public slot
+void SSHClient::trackInfoUpdated(TrackInfo trackInfo)
+{
+    // get remote dir listing
+    QString remoteDir = localToRemote(trackInfo.url.toLocalFile().left(trackInfo.url.toLocalFile().lastIndexOf("/")));
+    DirList remoteDirContents;
+    if (!dirList(remoteDir, &remoteDirContents)) {
+        // probably remote dir doesn't exist, which means track belongs to another client (or connection problem)
+        return;
+    }
+
+    // check to make sure the remote file exists too, could belong to another client
+    bool exists = false;
+    foreach (DirListItem dirListItem, remoteDirContents) {
+        if (!dirListItem.isDir && (localToRemote(trackInfo.url.toLocalFile()).compare(dirListItem.fullPath) == 0)) {
+            exists = true;
+            break;
+        }
+    }
+    if (!exists) {
+        return;
+    }
+
+    // TODO check if mp3 tags needs to written
+
+    // check if picture needs to be uploaded
+    foreach (QUrl localPictureUrl, trackInfo.pictures) {
+        exists = false;
+        foreach (DirListItem dirListItem, remoteDirContents) {
+            if (!dirListItem.isDir && (localToRemote(localPictureUrl.toLocalFile()).compare(dirListItem.fullPath) == 0)) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            upload(localPictureUrl.toLocalFile(), localToRemote(localPictureUrl.toLocalFile()));
+        }
+    }
+}
+
 // timer slot
 void SSHClient::dowloadNext()
 {
@@ -904,15 +1019,17 @@ void SSHClient::dowloadNext()
     QString remoteFile = downloadList.first();
     downloadList.removeFirst();
 
+    QString remoteDir = remoteFile.left(remoteFile.lastIndexOf("/"));
+
     // keep same dir structure as on remote
-    QDir localDir = QDir(QString("%1/%2").arg(config.cacheDir).arg(remoteFile.left(remoteFile.lastIndexOf("/")).replace(config.dir, "")));
+    QDir localDir(remoteToLocal(remoteDir));
 
     // create dir and download pictures too
     if (!localDir.exists()) {
         localDir.mkpath(localDir.absolutePath());
 
         DirList dirContents;
-        if (dirList(remoteFile.left(remoteFile.lastIndexOf("/")), &dirContents)) {
+        if (dirList(remoteDir, &dirContents)) {
             foreach (DirListItem dirContent, dirContents) {
                 if (!dirContent.isDir && (dirContent.name.endsWith(".jpg", Qt::CaseInsensitive) || dirContent.name.endsWith(".jpeg", Qt::CaseInsensitive) || dirContent.name.endsWith(".png", Qt::CaseInsensitive))) {
                     download(dirContent.fullPath, localDir.absoluteFilePath(dirContent.name));
@@ -922,11 +1039,11 @@ void SSHClient::dowloadNext()
     }
 
     // download audio file itself
-    QString destination = localDir.absoluteFilePath(remoteFile.mid(remoteFile.lastIndexOf("/") + 1));
+    QString destination = remoteToLocal(remoteFile);
     if (download(remoteFile, destination)) {
         emit gotAudio(config.id, remoteFile, destination);
     }
 
-    // start next with a delay so other signals can be processed too
+    // start next download with a delay so other signals can be processed too
     QTimer::singleShot(250, this, SLOT(dowloadNext()));
 }
