@@ -29,6 +29,7 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFileInfo>
+#include <QFileInfoList>
 #include <QObject>
 #include <QRegExp>
 #include <QString>
@@ -85,6 +86,8 @@ class SSHClient : public QObject {
         static const QString AUTH_METHOD_PASSWORD;
         static const QString AUTH_METHOD_KB_INTERACTIVE;
 
+        QStringList extensions;
+
         SSHClientConfig config;
 
         QTcpSocket *socket;
@@ -107,6 +110,8 @@ class SSHClient : public QObject {
         void connectCheckDir();
         void setHomeDir();
 
+        void findCachedAudio(QString localDir);
+
         bool    executeSSH(QString command);
         QString getErrorMessageSSH();
 
@@ -125,6 +130,7 @@ class SSHClient : public QObject {
         void updateConfig(int id);
 
         void audioList(int id, QStringList files);
+        void foundAudio(int id, QString local);
         void gotAudio(int id, QString remote, QString local);
         void gotOpenItems(int id, OpenTracks openTracks);
 
@@ -157,6 +163,7 @@ class SSHClient : public QObject {
         void socketError(QAbstractSocket::SocketError errorCode);
         void socketStateChanged(QAbstractSocket::SocketState socketState);
 
+        void autoConnect();
         void dowloadNext();
 };
 

@@ -38,6 +38,44 @@ SSHClient::SSHClient(SSHClientConfig config, QObject *parent) : QObject(parent)
     session     = NULL;
     sftpSession = NULL;
 
+    extensions.append(".3gp");
+    extensions.append(".aa");
+    extensions.append(".aac");
+    extensions.append(".aax");
+    extensions.append(".act");
+    extensions.append(".aiff");
+    extensions.append(".amr");
+    extensions.append(".ape");
+    extensions.append(".au");
+    extensions.append(".awb");
+    extensions.append(".dct");
+    extensions.append(".dss");
+    extensions.append(".dvf");
+    extensions.append(".flac");
+    extensions.append(".gsm");
+    extensions.append(".iklax");
+    extensions.append(".ivs");
+    extensions.append(".m4a");
+    extensions.append(".m4b");
+    extensions.append(".m4p");
+    extensions.append(".mmf");
+    extensions.append(".mp3");
+    extensions.append(".mpc");
+    extensions.append(".msv");
+    extensions.append(".nsf");
+    extensions.append(".ogg,");
+    extensions.append(".opus");
+    extensions.append(".ra,");
+    extensions.append(".raw");
+    extensions.append(".sln");
+    extensions.append(".tta");
+    extensions.append(".vox");
+    extensions.append(".wav");
+    extensions.append(".wma");
+    extensions.append(".wv");
+    extensions.append(".webm");
+    extensions.append(".8svx");
+
     qRegisterMetaType<SSHClient::DirListItem>("SSHClient::DirListItem");
     qRegisterMetaType<SSHClient::DirList>("SSHClient::DirList");
 }
@@ -59,6 +97,9 @@ SSHClient::~SSHClient()
 // thread entry point
 void SSHClient::run()
 {
+    // check if there are files already cached
+    findCachedAudio("");
+
     // instantiate socket (must be in this thread)
     socket = new QTcpSocket();
 
@@ -67,10 +108,16 @@ void SSHClient::run()
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)),        this, SLOT(socketError(QAbstractSocket::SocketError)));
     connect(socket, SIGNAL(stateChanged(QAbstractSocket::SocketState)), this, SLOT(socketStateChanged(QAbstractSocket::SocketState)));
 
-    // auto-connect
-    connectSSH(config.id);
+    // auto-connect with delay
+    QTimer::singleShot(5000, this, SLOT(autoConnect()));
 }
 
+
+// timer slot
+void SSHClient::autoConnect()
+{
+    connectSSH(config.id);
+}
 
 // public method
 SSHClient::SSHClientConfig SSHClient::getConfig()
@@ -476,6 +523,33 @@ void SSHClient::setHomeDir()
 
 
 // private method
+void SSHClient::findCachedAudio(QString localDir)
+{
+    if (localDir.isEmpty()) {
+        localDir = config.cacheDir;
+    }
+    if (!localDir.startsWith(config.cacheDir)) {
+        return;
+    }
+
+    QFileInfoList entries = QDir(localDir).entryInfoList();
+
+    foreach (QFileInfo entry, entries) {
+        if (entry.fileName().startsWith(".")) {
+            continue;
+        }
+        if (entry.isDir()) {
+            findCachedAudio(entry.absoluteFilePath());
+            continue;
+        }
+        if (extensions.contains("." + entry.suffix())) {
+            emit foundAudio(config.id, entry.absoluteFilePath());
+        }
+    }
+}
+
+
+// private method
 bool SSHClient::executeSSH(QString command)
 {
     // clear output buffers from previous execution
@@ -854,49 +928,13 @@ void SSHClient::findAudio(int id)
         return;
     }
 
-    QStringList extensions;
-
-    // TODO re-think this, are all of them really needed?
-    extensions.append("-iname \"*.3gp\"");
-    extensions.append("-iname \"*.aa\"");
-    extensions.append("-iname \"*.aac\"");
-    extensions.append("-iname \"*.aax\"");
-    extensions.append("-iname \"*.act\"");
-    extensions.append("-iname \"*.aiff\"");
-    extensions.append("-iname \"*.amr\"");
-    extensions.append("-iname \"*.ape\"");
-    extensions.append("-iname \"*.au\"");
-    extensions.append("-iname \"*.awb\"");
-    extensions.append("-iname \"*.dct\"");
-    extensions.append("-iname \"*.dss\"");
-    extensions.append("-iname \"*.dvf\"");
-    extensions.append("-iname \"*.flac\"");
-    extensions.append("-iname \"*.gsm\"");
-    extensions.append("-iname \"*.iklax\"");
-    extensions.append("-iname \"*.ivs\"");
-    extensions.append("-iname \"*.m4a\"");
-    extensions.append("-iname \"*.m4b\"");
-    extensions.append("-iname \"*.m4p\"");
-    extensions.append("-iname \"*.mmf\"");
-    extensions.append("-iname \"*.mp3\"");
-    extensions.append("-iname \"*.mpc\"");
-    extensions.append("-iname \"*.msv\"");
-    extensions.append("-iname \"*.nsf\"");
-    extensions.append("-iname \"*.ogg,\"");
-    extensions.append("-iname \"*.opus\"");
-    extensions.append("-iname \"*.ra,\"");
-    extensions.append("-iname \"*.raw\"");
-    extensions.append("-iname \"*.sln\"");
-    extensions.append("-iname \"*.tta\"");
-    extensions.append("-iname \"*.vox\"");
-    extensions.append("-iname \"*.wav\"");
-    extensions.append("-iname \"*.wma\"");
-    extensions.append("-iname \"*.wv\"");
-    extensions.append("-iname \"*.webm\"");
-    extensions.append("-iname \"*.8svx\"");
+    QStringList extensionFilters;
+    foreach (QString extension, extensions) {
+        extensionFilters.append(QString("-iname \"*%1\"").arg(extension));
+    }
 
     // execute find on remote
-    QString command = QString("find \"%1\" -type f %2").arg(config.dir).arg(extensions.join(" -o "));
+    QString command = QString("find \"%1\" -type f %2").arg(config.dir).arg(extensionFilters.join(" -o "));
     if (executeSSH(command)) {
         emit audioList(config.id, QStringList(stdOutSSH));
     }

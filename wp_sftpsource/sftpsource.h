@@ -38,8 +38,8 @@
 #include <QStandardPaths>
 #include <QString>
 #include <QStringList>
+#include <QRegExp>
 #include <QThread>
-#include <QTimer>
 #include <QUrl>
 #include <QVariantHash>
 #include <QVector>
@@ -126,12 +126,20 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         void       addClient(SSHClient::SSHClientConfig config);
         void       removeAllClients();
         SSHClient *clientFromId(int id);
+        void       readyIfReady();
 
         TrackInfo trackInfoFromFilePath(QString filePath, int clientId);
 
         void addToUIQueue(QString UI);
         void removeFromUIQueue();
         void displayNextUIQueue();
+
+        bool isLoved(int clientId, QString remoteFile);
+        bool isSimilar(int clientId, QString remoteFile);
+        bool isInFuturePlaylist(int clientId, QString remoteFile);
+        bool isInLovedPlaylist(int clientId, QString remoteFile);
+        bool isInSimilarPlaylist(int clientId, QString remoteFile);
+        bool isDownloaded(int clientId, QString remoteFile);
 
         void    appendToPlaylist();
         QString formatTrackForLists(int clientId, QString filePath);
@@ -204,6 +212,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         void clientUpdateConfig(int id);
 
         void clientAudioList(int id, QStringList files);
+        void clientFoundAudio(int id, QString local);
         void clientGotAudio(int id, QString remote, QString local);
         void clientGotOpenItems(int id, OpenTracks openTracks);
 
