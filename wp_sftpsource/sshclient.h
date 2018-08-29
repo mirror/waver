@@ -110,7 +110,7 @@ class SSHClient : public QObject {
         void connectCheckDir();
         void setHomeDir();
 
-        void findCachedAudio(QString localDir);
+        void findCachedAudio(QString localDir, QStringList *results);
 
         bool    executeSSH(QString command);
         QString getErrorMessageSSH();
@@ -129,8 +129,7 @@ class SSHClient : public QObject {
         void showDirSelector(int id, QString userAtHost, QString currentDir, SSHClient::DirList dirList);
         void updateConfig(int id);
 
-        void audioList(int id, QStringList files);
-        void foundAudio(int id, QString local);
+        void audioList(int id, QStringList files, bool alreadyCached);
         void gotAudio(int id, QString remote, QString local);
         void gotOpenItems(int id, OpenTracks openTracks);
 

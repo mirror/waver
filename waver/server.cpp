@@ -413,11 +413,11 @@ void WaverServer::startNextTrack()
     }
 
     // add new tracks to playlist if needed
-    if (playlistTracks.count() < 2) {
+    if (playlistTracks.count() <= 2) {
         requestPlaylist();
     }
 
-    // make sure there's at least one track waiting (requestPlaylist above runs in paralell; when playlist is received, this method will be called again)
+    // make sure there's at least one track waiting (notice requestPlaylist above; when playlist is received, this method will be called again)
     if (playlistTracks.count() < 1) {
         return;
     }

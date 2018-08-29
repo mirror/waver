@@ -98,7 +98,9 @@ SSHClient::~SSHClient()
 void SSHClient::run()
 {
     // check if there are files already cached
-    findCachedAudio("");
+    QStringList foundCached;
+    findCachedAudio("", &foundCached);
+    emit audioList(config.id, foundCached, true);
 
     // instantiate socket (must be in this thread)
     socket = new QTcpSocket();
@@ -108,8 +110,8 @@ void SSHClient::run()
     connect(socket, SIGNAL(error(QAbstractSocket::SocketError)),        this, SLOT(socketError(QAbstractSocket::SocketError)));
     connect(socket, SIGNAL(stateChanged(QAbstractSocket::SocketState)), this, SLOT(socketStateChanged(QAbstractSocket::SocketState)));
 
-    // auto-connect with delay
-    QTimer::singleShot(5000, this, SLOT(autoConnect()));
+    // auto-connect after delay
+    QTimer::singleShot(10000, this, SLOT(autoConnect()));
 }
 
 
@@ -523,7 +525,7 @@ void SSHClient::setHomeDir()
 
 
 // private method
-void SSHClient::findCachedAudio(QString localDir)
+void SSHClient::findCachedAudio(QString localDir, QStringList *results)
 {
     if (localDir.isEmpty()) {
         localDir = config.cacheDir;
@@ -539,11 +541,11 @@ void SSHClient::findCachedAudio(QString localDir)
             continue;
         }
         if (entry.isDir()) {
-            findCachedAudio(entry.absoluteFilePath());
+            findCachedAudio(entry.absoluteFilePath(), results);
             continue;
         }
         if (extensions.contains("." + entry.suffix())) {
-            emit foundAudio(config.id, entry.absoluteFilePath());
+            results->append(localToRemote(entry.absoluteFilePath()));
         }
     }
 }
@@ -936,7 +938,7 @@ void SSHClient::findAudio(int id)
     // execute find on remote
     QString command = QString("find \"%1\" -type f %2").arg(config.dir).arg(extensionFilters.join(" -o "));
     if (executeSSH(command)) {
-        emit audioList(config.id, QStringList(stdOutSSH));
+        emit audioList(config.id, QStringList(stdOutSSH), false);
     }
     else {
         emit error(config.id, stdErrSSH.join(" "));

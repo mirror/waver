@@ -211,8 +211,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         void clientShowDirSelector(int id, QString userAtHost, QString currentDir, SSHClient::DirList dirList);
         void clientUpdateConfig(int id);
 
-        void clientAudioList(int id, QStringList files);
-        void clientFoundAudio(int id, QString local);
+        void clientAudioList(int id, QStringList files, bool alreadyCached);
         void clientGotAudio(int id, QString remote, QString local);
         void clientGotOpenItems(int id, OpenTracks openTracks);
 

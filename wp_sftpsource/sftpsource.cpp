@@ -996,8 +996,7 @@ void SFTPSource::addClient(SSHClient::SSHClientConfig config)
     connect(client, SIGNAL(showKeySetupQuestion(int, QString)),                         this,   SLOT(clientShowKeySetupQuestion(int, QString)));
     connect(client, SIGNAL(showDirSelector(int, QString, QString, SSHClient::DirList)), this,   SLOT(clientShowDirSelector(int, QString, QString, SSHClient::DirList)));
     connect(client, SIGNAL(updateConfig(int)),                                          this,   SLOT(clientUpdateConfig(int)));
-    connect(client, SIGNAL(audioList(int, QStringList)),                                this,   SLOT(clientAudioList(int, QStringList)));
-    connect(client, SIGNAL(foundAudio(int, QString)),                                   this,   SLOT(clientFoundAudio(int, QString)));
+    connect(client, SIGNAL(audioList(int, QStringList, bool)),                          this,   SLOT(clientAudioList(int, QStringList, bool)));
     connect(client, SIGNAL(gotAudio(int, QString, QString)),                            this,   SLOT(clientGotAudio(int, QString, QString)));
     connect(client, SIGNAL(gotOpenItems(int, OpenTracks)),                              this,   SLOT(clientGotOpenItems(int, OpenTracks)));
     connect(client, SIGNAL(error(int, QString)),                                        this,   SLOT(clientError(int, QString)));
@@ -1358,12 +1357,12 @@ void SFTPSource::clientUpdateConfig(int id)
 
 
 // private slot from SFTP client
-void SFTPSource::clientAudioList(int id, QStringList files)
+void SFTPSource::clientAudioList(int id, QStringList files, bool alreadyCached)
 {
     QStringList downloadList;
     foreach (QString file, files) {
         // add to list of remote files
-        if (!audioFiles.value(id).contains(file)) {
+        if (!audioFiles.value(id).contains(file) && (!alreadyCached || (!isLoved(id, file) && !isSimilar(id, file)))) {
             audioFiles[id].append(file);
         }
 
@@ -1398,59 +1397,13 @@ void SFTPSource::clientAudioList(int id, QStringList files)
     // fill up pre-determind playlist
     appendToPlaylist();
 
+    // see if ready can be sent now
+    readyIfReady();
+
     // download loved and similar if needed
     if (downloadList.count() > 0) {
         emit clientGetAudio(id, downloadList);
     }
-}
-
-
-// private slot from SFTP client
-void SFTPSource::clientFoundAudio(int id, QString local)
-{
-    // this is what's left in the cache from previous run
-
-    // figure out remote path, needed for further checks
-    QString remote = clientFromId(id)->localToRemote(local);
-
-    // add to list of remote files, except if loved or similar, that would make this plugin start with the same tracks all the time
-    if (!audioFiles.value(id).contains(remote) && !isLoved(id, remote) && !isSimilar(id, remote)) {
-        audioFiles[id].append(remote);
-    }
-
-    // already played should be deleted
-    if (alreadyPlayed.contains(formatTrackForLists(id, remote)) && !isLoved(id, remote) && !isSimilar(id, remote)) {
-        QFile::remove(local);
-        return;
-    }
-
-    // add to loved playlist
-    if (isLoved(id, remote)) {
-        if (!isInLovedPlaylist(id, remote)) {
-            PlaylistItem playlistItem;
-            playlistItem.clientId   = id;
-            playlistItem.remotePath = remote;
-            playlistItem.cachePath  = QUrl::fromLocalFile(local);
-            lovedPlaylist.append(playlistItem);
-        }
-    }
-
-    // add to similar playlist
-    if (isSimilar(id, remote)) {
-        if (!isInSimilarPlaylist(id, remote)) {
-            PlaylistItem playlistItem;
-            playlistItem.clientId   = id;
-            playlistItem.remotePath = remote;
-            playlistItem.cachePath  = QUrl::fromLocalFile(local);
-            similarPlaylist.append(playlistItem);
-        }
-    }
-
-    // fill up pre-determind playlist
-    appendToPlaylist();
-
-    // see if ready can be sent now
-    readyIfReady();
 }
 
 
