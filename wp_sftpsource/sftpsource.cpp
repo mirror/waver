@@ -1599,7 +1599,7 @@ void SFTPSource::reduceCache()
         dirSumSizeMegabytes(cacheDir, &cacheSumSize);
     }
 
-    // delete some of the loved dirs to refresh similar (this might delete some lower-level subdirs that aren't contain loved, but that's OK)
+    // delete the oldest loved dir to refresh similar (this might delete some lower-level subdirs that aren't contain loved, but that's OK)
     foreach (SSHClient *sshClient, clients) {
         // get list of files and subdirs
         QFileInfoList entries = QDir(cacheDir.absoluteFilePath(clientCacheDirName(sshClient->getConfig().user, sshClient->getConfig().host))).entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
@@ -1629,13 +1629,7 @@ void SFTPSource::reduceCache()
                 return (a.lastModified() < b.lastModified());
             });
 
-            // how many dirs to delete
-            int countToBeDeleted = qMin(qMax(1, lovedEntries.count() / 3), 3);
-
-            // delete
-            for (int i = 0; i < countToBeDeleted; i++) {
-                QDir(lovedEntries.at(i).absoluteFilePath()).removeRecursively();
-            }
+            QDir(lovedEntries.at(0).absoluteFilePath()).removeRecursively();
         }
     }
 }
