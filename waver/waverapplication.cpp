@@ -263,7 +263,7 @@ void WaverApplication::menuQuit()
     activity.callMethod<void>("stopService");
     #endif
 
-    quit();
+    //quit();
 }
 
 

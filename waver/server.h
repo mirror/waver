@@ -145,15 +145,16 @@ class WaverServer : public QObject {
 
         QVector<ErrorLogItem> errorLog;
 
-        int  unableToStartCount;
-        bool waitingForLocalSource;
-        bool waitingForLocalSourceTimerStarted;
-        long positionSeconds;
-        bool showPreviousTime;
-        long previousPositionSeconds;
-        int  streamPlayTime;
-        int  lovedStreamPlayTime;
-        int  playlistAddMode;
+        int       unableToStartCount;
+        bool      waitingForLocalSource;
+        bool      waitingForLocalSourceTimerStarted;
+        QDateTime lastRequestPlaylist;
+        long      positionSeconds;
+        bool      showPreviousTime;
+        long      previousPositionSeconds;
+        int       streamPlayTime;
+        int       lovedStreamPlayTime;
+        int       playlistAddMode;
 
         QHash<QUuid, LoveCounter> loveCounter;
         QHash<QUuid, bool>        okToSaveConfig;
@@ -251,10 +252,13 @@ class WaverServer : public QObject {
 
     private slots:
 
+        void completeFinish();
+
         void pluginLibsLoaded();
         void pluginLibsFailInfo(QString info);
 
         void notWaitingForLocalSourceAnymore();
+        void delayedRequestPlaylist();
 
         void ipcReceivedMessage(IpcMessageUtils::IpcMessages message, QJsonDocument jsonDocument);
         void ipcReceivedUrl(QUrl url);

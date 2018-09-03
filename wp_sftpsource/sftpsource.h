@@ -30,12 +30,14 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QFileInfoList>
 #include <QHash>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QList>
 #include <QStandardPaths>
+#include <QStorageInfo>
 #include <QString>
 #include <QStringList>
 #include <QRegExp>
@@ -125,6 +127,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
 
         void       addClient(SSHClient::SSHClientConfig config);
         void       removeAllClients();
+        QString    clientCacheDirName(QString user, QString host);
         SSHClient *clientFromId(int id);
         void       readyIfReady();
 
@@ -139,6 +142,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         bool isInFuturePlaylist(int clientId, QString remoteFile);
         bool isInLovedPlaylist(int clientId, QString remoteFile);
         bool isInSimilarPlaylist(int clientId, QString remoteFile);
+        int  countSameDirInSimilarPlaylist(int clientId, QString remoteFile);
         bool isDownloaded(int clientId, QString remoteFile);
 
         void    appendToPlaylist();
@@ -149,6 +153,9 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         QJsonDocument configToJsonGlobal();
         void          jsonToConfigGlobal(QJsonDocument jsonDocument);
         int           variationSettingId();
+
+        void reduceCache();
+        void dirSumSizeMegabytes(QDir dir, double *sumSize);
 
         void setState(State state);
         void sendDiagnosticsData();

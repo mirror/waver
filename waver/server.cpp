@@ -40,21 +40,22 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     this->arguments.append(arguments);
 
     // initializations
-    previousTrack                     = NULL;
-    currentTrack                      = NULL;
-    currentCollection                 = "";
-    startupCollection                 = "";
-    unableToStartCount                = 0;
-    waitingForLocalSource             = true;
-    waitingForLocalSourceTimerStarted = false;
-    positionSeconds                   = 0;
-    showPreviousTime                  = false;
-    previousPositionSeconds           = 0;
-    sendErrorLogDiagnostics           = false;
-    diagnosticsChanged                = false;
-    streamPlayTime                    = 450 * 1000;
-    lovedStreamPlayTime               = 450 * 1000 * 2;
-    playlistAddMode                   = PLAYLIST_ADD_END;
+    previousTrack                       = NULL;
+    currentTrack                        = NULL;
+    currentCollection                   = "";
+    startupCollection                   = "";
+    unableToStartCount                  = 0;
+    waitingForLocalSource               = true;
+    waitingForLocalSourceTimerStarted   = false;
+    lastRequestPlaylist                 = QDateTime::fromSecsSinceEpoch(1);
+    positionSeconds                     = 0;
+    showPreviousTime                    = false;
+    previousPositionSeconds             = 0;
+    sendErrorLogDiagnostics             = false;
+    diagnosticsChanged                  = false;
+    streamPlayTime                      = 450 * 1000;
+    lovedStreamPlayTime                 = 450 * 1000 * 2;
+    playlistAddMode                     = PLAYLIST_ADD_END;
 
     diagnosticsTimer.setInterval(1000 / 20);
     connect(&diagnosticsTimer, SIGNAL(timeout()), this, SLOT(diagnosticsRefreshUI()));
@@ -120,6 +121,8 @@ void WaverServer::run()
 // shutdown this server - private method
 void WaverServer::finish()
 {
+    outputError("<INFO>Shutting down", "", false);
+
     // delete tracks
     if (previousTrack != NULL) {
         emit done(previousTrack->getSourcePluginId(), previousTrack->getTrackInfo().url);
@@ -139,15 +142,27 @@ void WaverServer::finish()
     sourcesThread.quit();
     sourcesThread.wait();
 
-    // stop interprocess communication handler
-    serverTcpThread.quit();
-    serverTcpThread.wait(THREAD_TIMEOUT);
-
     // stop settings storage
     settingsThread.quit();
     settingsThread.wait(THREAD_TIMEOUT);
 
-    // let the world know
+    // let the clients know
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::QuitClients));
+
+    // must wait a bit for IPC message to complete
+    QTimer::singleShot(500, this, SLOT(completeFinish()));
+}
+
+
+// timer slot
+void WaverServer::completeFinish()
+{
+    // stop interprocess communication handler
+    serverTcpThread.quit();
+    serverTcpThread.wait(THREAD_TIMEOUT);
+
+    // let coreApplication know
     emit finished();
 }
 
@@ -327,6 +342,12 @@ void WaverServer::outputError(QString errorMessage, QString title, bool fatal)
 // private method
 void WaverServer::requestPlaylist()
 {
+    // prevent requests from the same plugin during startup
+    if (lastRequestPlaylist.secsTo(QDateTime::currentDateTime()) < 5) {
+        QTimer::singleShot(5000, this, SLOT(delayedRequestPlaylist()));
+        return;
+    }
+
     // enumerate ready source plugins
     QVector<QUuid> readyPlugins;
     foreach (QUuid pluginId, sourcePlugins.keys()) {
@@ -367,7 +388,6 @@ void WaverServer::requestPlaylist()
     if (waitingForLocalSource) {
         pluginIndex = readyPlugins.indexOf(QUuid("{187C9046-4801-4DB2-976C-128761F25BD8}"));
         if (pluginIndex < 0) {
-            // plugin ready slot will call this request playlist method again
             return;
         }
     }
@@ -401,6 +421,7 @@ void WaverServer::requestPlaylist()
     if (pluginId != recurringPlugin) {
         lastPlaylistPluginNotRecurring = pluginId;
     }
+    lastRequestPlaylist = QDateTime::currentDateTime();
 }
 
 
@@ -1491,7 +1512,7 @@ void WaverServer::pluginReady(QUuid uniqueId)
     sourcePlugins[uniqueId].ready = true;
 
     // get tracks now if needed
-    if (playlistTracks.count() <= 1) {
+    if (playlistTracks.count() <= 2) {
         requestPlaylist();
     }
 }
@@ -1502,7 +1523,16 @@ void WaverServer::notWaitingForLocalSourceAnymore()
 {
     waitingForLocalSource = false;
 
-    if (playlistTracks.count() <= 1) {
+    if (playlistTracks.count() <= 2) {
+        requestPlaylist();
+    }
+}
+
+
+// timer signal handler
+void WaverServer::delayedRequestPlaylist()
+{
+    if (playlistTracks.count() <= 2) {
         requestPlaylist();
     }
 }

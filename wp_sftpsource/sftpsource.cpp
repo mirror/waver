@@ -142,6 +142,7 @@ QUuid SFTPSource::persistentUniqueId()
 void SFTPSource::run()
 {
     qsrand(QDateTime::currentDateTime().toTime_t());
+    srand(QDateTime::currentDateTime().toTime_t());
 
     emit loadGlobalConfiguration(id);
 }
@@ -156,11 +157,16 @@ void SFTPSource::loadedConfiguration(QUuid uniqueId, QJsonDocument configuration
 
     jsonToConfig(configuration);
 
-    // TODO empty cache every 10 days except for loved
-    // TODO empty cache every 30 days including loved
+    // keep cache from growing endlessly
+    reduceCache();
 
     if (sendDiagnostics) {
         sendDiagnosticsData();
+    }
+
+    // start all clients
+    foreach (SSHClient *client, clients) {
+        client->getConfig().thread->start();
     }
 }
 
@@ -290,6 +296,7 @@ void SFTPSource::uiResults(QUuid uniqueId, QJsonDocument results)
     // delete client for good
     if (resultsHash.value("button").toString().compare("remove") == 0) {
         SSHClient *client = clientFromId(resultsHash.value("client_id").toInt());
+        client->getConfig().thread->requestInterruption();
         client->getConfig().thread->quit();
         client->getConfig().thread->wait();
         clients.removeOne(client);
@@ -964,7 +971,7 @@ void SFTPSource::addClient(SSHClient::SSHClientConfig config)
 
     // needs to know where to store the disk cache
     if (config.cacheDir.isEmpty()) {
-        config.cacheDir = cacheDir.absoluteFilePath(QString("%1_%2").arg(config.user).arg(config.host).replace(QRegExp("\\W"), "_"));
+        config.cacheDir = cacheDir.absoluteFilePath(clientCacheDirName(config.user, config.host));
     }
 
     // will run in its own thread because downloads etc. are blocking
@@ -1004,9 +1011,6 @@ void SFTPSource::addClient(SSHClient::SSHClientConfig config)
 
     // remember this new client
     clients.append(client);
-
-    // start its thread
-    config.thread->start();
 }
 
 
@@ -1023,6 +1027,11 @@ void SFTPSource::removeAllClients()
     // TODO send unready
 }
 
+
+QString SFTPSource::clientCacheDirName(QString user, QString host)
+{
+    return QString("%1_%2").arg(user).arg(host).replace(QRegExp("\\W"), "_");
+}
 
 // private method
 void SFTPSource::addToUIQueue(QString UI)
@@ -1125,6 +1134,22 @@ bool SFTPSource::isInSimilarPlaylist(int clientId, QString remoteFile)
     }
 
     return found;
+}
+
+
+// private method
+int SFTPSource::countSameDirInSimilarPlaylist(int clientId, QString remoteFile)
+{
+    QString remoteDir = remoteFile.left(remoteFile.lastIndexOf("/"));
+
+    int count = 0;
+    foreach (PlaylistItem item, similarPlaylist) {
+        if ((item.clientId == clientId) && (item.remotePath.left(item.remotePath.lastIndexOf("/")).compare(remoteDir) == 0)) {
+            count++;
+        }
+    }
+
+    return count;
 }
 
 
@@ -1359,6 +1384,9 @@ void SFTPSource::clientUpdateConfig(int id)
 // private slot from SFTP client
 void SFTPSource::clientAudioList(int id, QStringList files, bool alreadyCached)
 {
+    // so that similar tracks are not the same all the time
+    std::random_shuffle(files.begin(), files.end());
+
     QStringList downloadList;
     foreach (QString file, files) {
         // add to list of remote files
@@ -1381,7 +1409,7 @@ void SFTPSource::clientAudioList(int id, QStringList files, bool alreadyCached)
         }
 
         // add to similar playlist
-        if (isSimilar(id, file)) {
+        if (isSimilar(id, file) && (countSameDirInSimilarPlaylist(id, file) < 3)) {
             if (!isInSimilarPlaylist(id, file)) {
                 PlaylistItem playlistItem;
                 playlistItem.clientId   = id;
@@ -1487,6 +1515,143 @@ int SFTPSource::variationSettingId()
 {
     QStringList variations({ "Low", "Medium", "High", "Random" });
     return variations.indexOf(variationSetting);
+}
+
+
+// private method
+void SFTPSource::reduceCache()
+{
+    // check if there's a dir that doesn't belong to any client anymore
+    QFileInfoList clientCacheDirInfos = cacheDir.entryInfoList(QDir::AllDirs | QDir::NoDotAndDotDot);
+    foreach (QFileInfo clientCacheDirInfo, clientCacheDirInfos) {
+        bool found = false;
+        foreach (SSHClient *sshClient, clients) {
+            if (clientCacheDirInfo.fileName().compare(clientCacheDirName(sshClient->getConfig().user, sshClient->getConfig().host)) == 0) {
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            QDir(clientCacheDirInfo.absoluteFilePath()).removeRecursively();
+        }
+    }
+
+    // get storage stats
+    QStorageInfo storageInfo(cacheDir);
+    double bytesTotalMegabytes     = (double)storageInfo.bytesTotal()     / (1024 * 1024);
+    double bytesAvailableMegabytes = (double)storageInfo.bytesAvailable() / (1024 * 1024);
+
+    // max size limit, one gigabyte
+    double maxSizeMegabytes = 1024;
+
+    // total cache size
+    double cacheSumSize = 0;
+    dirSumSizeMegabytes(cacheDir, &cacheSumSize);
+
+    // delete until desired size reached
+    while (((cacheSumSize > (bytesTotalMegabytes * 0.1)) || (cacheSumSize > ((bytesAvailableMegabytes + cacheSumSize) * 0.25)) || (cacheSumSize > maxSizeMegabytes))) {
+        // might seem like this would be better outside the while loop, but that could result in everything deleted from one client, little or nothing from others
+        foreach (SSHClient *sshClient, clients) {
+            // get list of files and subdirs
+            QFileInfoList entries = QDir(cacheDir.absoluteFilePath(clientCacheDirName(sshClient->getConfig().user, sshClient->getConfig().host))).entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
+
+            // sort, oldest first
+            qSort(entries.begin(), entries.end(), [](QFileInfo a, QFileInfo b) {
+                return (a.lastModified() < b.lastModified());
+            });
+
+            // try to find a subdir that doesn't contain loved first, otherwise just delete the first (a.k.a. oldest) item, whatever it is
+            QFileInfo toBeDeleted;
+            foreach (QFileInfo entry, entries) {
+                if (!entry.isDir()) {
+                    continue;
+                }
+
+                QString dirPath = entry.absoluteFilePath();
+                dirPath = sshClient->localToRemote(dirPath);
+                if (!dirPath.endsWith("/")) {
+                    dirPath = dirPath + "/";
+                }
+                dirPath = formatTrackForLists(sshClient->getConfig().id, dirPath);
+                if (loved.indexOf(QRegExp(QString("^%1.*$").arg(dirPath))) >= 0) {
+                    continue;
+                }
+
+                toBeDeleted = entry;
+                break;
+            }
+            if (!toBeDeleted.exists()) {
+                toBeDeleted = entries.first().absoluteFilePath();
+            }
+
+            // do the delete
+            if (toBeDeleted.isDir()) {
+                QDir(toBeDeleted.absoluteFilePath()).removeRecursively();
+            }
+            else {
+                QFile(toBeDeleted.absoluteFilePath()).remove();
+            }
+        }
+
+        // refresh cache size
+        cacheSumSize = 0;
+        dirSumSizeMegabytes(cacheDir, &cacheSumSize);
+    }
+
+    // delete some of the loved dirs to refresh similar (this might delete some lower-level subdirs that aren't contain loved, but that's OK)
+    foreach (SSHClient *sshClient, clients) {
+        // get list of files and subdirs
+        QFileInfoList entries = QDir(cacheDir.absoluteFilePath(clientCacheDirName(sshClient->getConfig().user, sshClient->getConfig().host))).entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
+
+        // filter for loved
+        QFileInfoList lovedEntries;
+        foreach (QFileInfo entry, entries) {
+            if (!entry.isDir()) {
+                continue;
+            }
+
+            QString dirPath = entry.absoluteFilePath();
+            dirPath = sshClient->localToRemote(dirPath);
+            if (!dirPath.endsWith("/")) {
+                dirPath = dirPath + "/";
+            }
+            dirPath = formatTrackForLists(sshClient->getConfig().id, dirPath);
+
+            if (loved.indexOf(QRegExp(QString("^%1.*$").arg(dirPath))) >= 0) {
+                lovedEntries.append(entry);
+            }
+        }
+
+        if (lovedEntries.count() > 0) {
+            // sort, oldest first
+            qSort(lovedEntries.begin(), lovedEntries.end(), [](QFileInfo a, QFileInfo b) {
+                return (a.lastModified() < b.lastModified());
+            });
+
+            // how many dirs to delete
+            int countToBeDeleted = qMin(qMax(1, lovedEntries.count() / 3), 3);
+
+            // delete
+            for (int i = 0; i < countToBeDeleted; i++) {
+                QDir(lovedEntries.at(i).absoluteFilePath()).removeRecursively();
+            }
+        }
+    }
+}
+
+
+// helper
+void SFTPSource::dirSumSizeMegabytes(QDir dir, double *sumSize)
+{
+    QFileInfoList entries = dir.entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
+    foreach (QFileInfo entry, entries) {
+        if (entry.isDir()) {
+            dirSumSizeMegabytes(QDir(entry.absoluteFilePath()), sumSize);
+            continue;
+        }
+        *sumSize += (double)entry.size() / (1024 * 1024);
+    }
 }
 
 

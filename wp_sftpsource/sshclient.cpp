@@ -34,6 +34,8 @@ SSHClient::SSHClient(SSHClientConfig config, QObject *parent) : QObject(parent)
 {
     this->config = config;
 
+    connectAttempt = 0;
+
     socket      = NULL;
     session     = NULL;
     sftpSession = NULL;
@@ -834,6 +836,10 @@ void SSHClient::socketStateChanged(QAbstractSocket::SocketState socketState)
         case QAbstractSocket::UnconnectedState:
             disconnectSSH(config.id);
             stateString = "Socket is not connected";
+            if (connectAttempt < 3) {
+                QTimer::singleShot(connectAttempt * 30000 + 5000, this, SLOT(autoConnect()));
+                connectAttempt++;
+            }
             break;
         case QAbstractSocket::HostLookupState:
             stateString = "Socket is looking up host";
@@ -843,6 +849,7 @@ void SSHClient::socketStateChanged(QAbstractSocket::SocketState socketState)
             break;
         case QAbstractSocket::ConnectedState:
             stateString = "Socket is connected";
+            connectAttempt = 0;
             break;
         case QAbstractSocket::BoundState:
             stateString = "Socket is bound";
@@ -1064,10 +1071,14 @@ void SSHClient::dowloadNext()
     // keep same dir structure as on remote
     QDir localDir(remoteToLocal(remoteDir));
 
-    // create dir and download pictures too
+    // create dir
     if (!localDir.exists()) {
         localDir.mkpath(localDir.absolutePath());
+    }
 
+    // download pictures
+    QFileInfoList entries = localDir.entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
+    if (entries.count() < 1) {
         DirList dirContents;
         if (dirList(remoteDir, &dirContents)) {
             foreach (DirListItem dirContent, dirContents) {

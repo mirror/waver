@@ -86,6 +86,8 @@ class SSHClient : public QObject {
         static const QString AUTH_METHOD_PASSWORD;
         static const QString AUTH_METHOD_KB_INTERACTIVE;
 
+        int connectAttempt;
+
         QStringList extensions;
 
         SSHClientConfig config;
