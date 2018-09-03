@@ -931,7 +931,7 @@ void SSHClient::dirSelectorResult(int id, bool openOnly, QString path)
 
 
 // public slot
-void SSHClient::findAudio(int id)
+void SSHClient::findAudio(int id, QString subdir)
 {
     if (id != config.id) {
         return;
@@ -942,8 +942,16 @@ void SSHClient::findAudio(int id)
         extensionFilters.append(QString("-iname \"*%1\"").arg(extension));
     }
 
+    QString dir = config.dir;
+    if (!subdir.isEmpty()) {
+        if (!dir.endsWith("/")) {
+            dir = dir + "/";
+        }
+        dir = dir + subdir;
+    }
+
     // execute find on remote
-    QString command = QString("find \"%1\" -type f %2").arg(config.dir).arg(extensionFilters.join(" -o "));
+    QString command = QString("find \"%1\" -type f %2").arg(dir).arg(extensionFilters.join(" -o "));
     if (executeSSH(command)) {
         emit audioList(config.id, QStringList(stdOutSSH), false);
     }

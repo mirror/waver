@@ -151,7 +151,7 @@ class SSHClient : public QObject {
         void keySetupQuestionResult(int id, bool answer);
         void dirSelectorResult(int id, bool openOnly, QString path);
 
-        void findAudio(int id);
+        void findAudio(int id, QString subdir);
         void getAudio(int id, QStringList remoteFiles);
         void getOpenItems(int id, QString remotePath);
 

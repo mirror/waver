@@ -170,7 +170,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         void clientKeySetupQuestionResult(int id, bool answer);
         void clientDirSelectorResult(int id, bool openOnly, QString path);
 
-        void clientFindAudio(int id);
+        void clientFindAudio(int id, QString subdir);
         void clientGetAudio(int id, QStringList remoteFiles);
         void clientGetOpenItems(int id, QString remotePath);
 

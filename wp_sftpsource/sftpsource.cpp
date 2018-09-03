@@ -722,7 +722,7 @@ void SFTPSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
     // check if track actions contain those actions that are added only if taglib was able to read tags
     bool tagLibOK = false;
     foreach (TrackAction trackAction, trackInfo.actions) {
-        if ((trackAction.id == 10) || (trackAction.id == 11)) {
+        if (((trackAction.id % 1000) == 10) || ((trackAction.id % 1000) == 11)) {
             tagLibOK = true;
             break;
         }
@@ -759,6 +759,11 @@ void SFTPSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
             trackInfoTemp.actions.append({ id, 11, "Band search"});
         }
         emit updateTrackInfo(id, trackInfoTemp);
+
+        QString remote = clientFromId(clientId)->localToRemote(trackInfo.url.toLocalFile());
+        remote = remote.left(remote.lastIndexOf("/"));
+        remote.replace(clientFromId(clientId)->getConfig().dir, "");
+        emit clientFindAudio(clientId, remote);
     }
 
     // unlove
@@ -766,6 +771,8 @@ void SFTPSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         loved.removeAll(formattedForLists);
 
         emit saveGlobalConfiguration(id, configToJsonGlobal());
+
+        // TODO remove from lovedPlaylist
 
         TrackInfo trackInfoTemp;
         trackInfoTemp.track = 0;
@@ -993,7 +1000,7 @@ void SFTPSource::addClient(SSHClient::SSHClientConfig config)
     connect(this,   SIGNAL(clientPasswordEntryResult(int, QString, QString)),           client, SLOT(passwordEntryResult(int, QString, QString)));
     connect(this,   SIGNAL(clientKeySetupQuestionResult(int, bool)),                    client, SLOT(keySetupQuestionResult(int, bool)));
     connect(this,   SIGNAL(clientDirSelectorResult(int, bool, QString)),                client, SLOT(dirSelectorResult(int, bool, QString)));
-    connect(this,   SIGNAL(clientFindAudio(int)),                                       client, SLOT(findAudio(int)));
+    connect(this,   SIGNAL(clientFindAudio(int, QString)),                              client, SLOT(findAudio(int, QString)));
     connect(this,   SIGNAL(clientGetAudio(int, QStringList)),                           client, SLOT(getAudio(int, QStringList)));
     connect(this,   SIGNAL(clientGetOpenItems(int, QString)),                           client, SLOT(getOpenItems(int, QString)));
     connect(this,   SIGNAL(clientsTrackInfoUpdated(TrackInfo)),                         client, SLOT(trackInfoUpdated(TrackInfo)));
@@ -1294,7 +1301,7 @@ QString SFTPSource::formatTrackForLists(int clientId, QString filePath)
 void SFTPSource::clientConnected(int id)
 {
     // SFTP connection successful, get list of audio files
-    emit clientFindAudio(id);
+    emit clientFindAudio(id, "");
 }
 
 
@@ -1396,13 +1403,17 @@ void SFTPSource::clientAudioList(int id, QStringList files, bool alreadyCached)
 
         // add to loved playlist
         if (isLoved(id, file)) {
+            bool dl = isDownloaded(id, file);
             if (!isInLovedPlaylist(id, file)) {
                 PlaylistItem playlistItem;
                 playlistItem.clientId   = id;
                 playlistItem.remotePath = file;
+                if (dl) {
+                    playlistItem.cachePath = QUrl::fromLocalFile(clientFromId(id)->remoteToLocal(file));
+                }
                 lovedPlaylist.append(playlistItem);
             }
-            if (!isDownloaded(id, file)) {
+            if (!dl) {
                 downloadList.append(file);
             }
             continue;
@@ -1410,13 +1421,17 @@ void SFTPSource::clientAudioList(int id, QStringList files, bool alreadyCached)
 
         // add to similar playlist
         if (isSimilar(id, file) && (countSameDirInSimilarPlaylist(id, file) < 3)) {
+            bool dl = isDownloaded(id, file);
             if (!isInSimilarPlaylist(id, file)) {
                 PlaylistItem playlistItem;
                 playlistItem.clientId   = id;
                 playlistItem.remotePath = file;
+                if (dl) {
+                    playlistItem.cachePath = QUrl::fromLocalFile(clientFromId(id)->remoteToLocal(file));
+                }
                 similarPlaylist.append(playlistItem);
             }
-            if (!isDownloaded(id, file)) {
+            if (!dl) {
                 downloadList.append(file);
             }
         }
