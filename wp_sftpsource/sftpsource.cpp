@@ -1205,7 +1205,7 @@ void SFTPSource::appendToPlaylist()
                 remaining.append(audioFile);
             }
         }
-        if (remaining.count() < 1) {
+        if ((remaining.count() < 1) && clientFromId(currentClientId)->isConnected()) {
             alreadyPlayed.clear();
             foreach (QString audioFile, audioFiles.value(currentClientId)) {
                 if (!isInFuturePlaylist(currentClientId, audioFile) && !banned.contains(formatTrackForLists(currentClientId, audioFile))) {
@@ -1214,6 +1214,7 @@ void SFTPSource::appendToPlaylist()
             }
         }
         if (remaining.count() < 1) {
+            // TODO send unready here?
             break;
         }
 
