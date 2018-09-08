@@ -138,6 +138,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         void displayNextUIQueue();
 
         bool isLoved(int clientId, QString remoteFile);
+        bool isDirLoved(int clientId, QString remoteDir);
         bool isSimilar(int clientId, QString remoteFile);
         bool isInFuturePlaylist(int clientId, QString remoteFile);
         bool isInLovedPlaylist(int clientId, QString remoteFile);

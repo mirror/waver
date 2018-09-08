@@ -290,7 +290,6 @@ void SFTPSource::uiResults(QUuid uniqueId, QJsonDocument results)
         if (client->isConnected()) {
             emit clientDisconnect(client->getConfig().id);
         }
-        // TODO send unready if there's no connected clients anymore
     }
 
     // delete client for good
@@ -301,7 +300,6 @@ void SFTPSource::uiResults(QUuid uniqueId, QJsonDocument results)
         client->getConfig().thread->wait();
         clients.removeOne(client);
         emit saveConfiguration(id, configToJson());
-        // TODO send unready if there's no connected clients anymore
     }
 
     // password entry
@@ -610,6 +608,7 @@ void SFTPSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
 
     TracksInfo returnValue;
     ExtraInfo  returnExtra;
+    bool       wasDownload = false;
 
     foreach (QString selected, selectedTracks) {
         // remote path and client id
@@ -627,12 +626,11 @@ void SFTPSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
             continue;
         }
 
-        // local path
-        QString localPath = clientFromId(clientId)->remoteToLocal(remotePath);
-
         // check if it's already downloaded maybe
-        if (QFileInfo::exists(localPath)) {
-            // do not delete after fist play (if it's in cache then it's scheduled to be played from pre-determined playlist too)
+        if (isDownloaded(clientId, remotePath)) {
+            QString localPath = clientFromId(clientId)->remoteToLocal(remotePath);
+
+            // do not delete after first play (if it's in cache then it's probably scheduled to be played from pre-determined playlist too)
             doNotDelete.append(QUrl::fromLocalFile(localPath));
 
             // add to return value
@@ -644,15 +642,21 @@ void SFTPSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
         }
 
         // remember to send to server right after it's downloaded
-        playImmediately.append(QUrl::fromLocalFile(localPath));
+        playImmediately.append(QUrl::fromLocalFile(clientFromId(clientId)->remoteToLocal(remotePath)));
 
         // tell the client to download it
         emit clientGetAudio(clientId, QStringList(remotePath));
+        wasDownload = true;
     }
 
     // send the ones we already have
     if (returnValue.count() > 0) {
         emit playlist(id, returnValue, returnExtra);
+    }
+
+    // just a little info
+    if (wasDownload) {
+        emit this->infoMessage(this->id, "<INFO>Tracks will be added to playlist after download completes");
     }
 }
 
@@ -1024,14 +1028,15 @@ void SFTPSource::addClient(SSHClient::SSHClientConfig config)
 // private method
 void SFTPSource::removeAllClients()
 {
-    // TODO this must be faster when quitting
     foreach (SSHClient *client, clients) {
         client->getConfig().thread->requestInterruption();
         client->getConfig().thread->quit();
         client->getConfig().thread->wait();
     }
     clients.clear();
-    // TODO send unready
+
+    emit unready(id);
+    readySent = false;
 }
 
 
@@ -1076,6 +1081,17 @@ bool SFTPSource::isLoved(int clientId, QString remoteFile)
 {
     QString formatted = formatTrackForLists(clientId, remoteFile);
     return loved.contains(formatted);
+}
+
+
+// private method
+bool SFTPSource::isDirLoved(int clientId, QString remoteDir)
+{
+    if (!remoteDir.endsWith("/")) {
+        remoteDir = remoteDir + "/";
+    }
+    QString formatted = formatTrackForLists(clientId, remoteDir);
+    return (loved.indexOf(QRegExp(QString("^%1.*$").arg(formatted))) >= 0);
 }
 
 
@@ -1214,7 +1230,8 @@ void SFTPSource::appendToPlaylist()
             }
         }
         if (remaining.count() < 1) {
-            // TODO send unready here?
+            emit unready(id);
+            readySent = false;
             break;
         }
 
@@ -1314,8 +1331,6 @@ void SFTPSource::clientDisconnected(int id)
     if (sendDiagnostics) {
         sendDiagnosticsData();
     }
-
-    // TODO send unready if there's no connected clients anymore
 }
 
 
@@ -1539,6 +1554,7 @@ void SFTPSource::reduceCache()
 {
     // check if there's a dir that doesn't belong to any client anymore
     QFileInfoList clientCacheDirInfos = cacheDir.entryInfoList(QDir::AllDirs | QDir::NoDotAndDotDot);
+    QStringList toBeDeleted;
     foreach (QFileInfo clientCacheDirInfo, clientCacheDirInfos) {
         bool found = false;
         foreach (SSHClient *sshClient, clients) {
@@ -1547,10 +1563,12 @@ void SFTPSource::reduceCache()
                 break;
             }
         }
-
         if (!found) {
-            QDir(clientCacheDirInfo.absoluteFilePath()).removeRecursively();
+            toBeDeleted.append(clientCacheDirInfo.absoluteFilePath());
         }
+    }
+    foreach (QString dirName, toBeDeleted) {
+        QDir(dirName).removeRecursively();
     }
 
     // get storage stats
@@ -1567,7 +1585,6 @@ void SFTPSource::reduceCache()
 
     // delete until desired size reached
     while (((cacheSumSize > (bytesTotalMegabytes * 0.1)) || (cacheSumSize > ((bytesAvailableMegabytes + cacheSumSize) * 0.25)) || (cacheSumSize > maxSizeMegabytes))) {
-        // might seem like this would be better outside the while loop, but that could result in everything deleted from one client, little or nothing from others
         foreach (SSHClient *sshClient, clients) {
             // get list of files and subdirs
             QFileInfoList entries = QDir(cacheDir.absoluteFilePath(clientCacheDirName(sshClient->getConfig().user, sshClient->getConfig().host))).entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
@@ -1583,17 +1600,9 @@ void SFTPSource::reduceCache()
                 if (!entry.isDir()) {
                     continue;
                 }
-
-                QString dirPath = entry.absoluteFilePath();
-                dirPath = sshClient->localToRemote(dirPath);
-                if (!dirPath.endsWith("/")) {
-                    dirPath = dirPath + "/";
-                }
-                dirPath = formatTrackForLists(sshClient->getConfig().id, dirPath);
-                if (loved.indexOf(QRegExp(QString("^%1.*$").arg(dirPath))) >= 0) {
+                if (isDirLoved(sshClient->getConfig().id, sshClient->localToRemote(entry.absoluteFilePath()))) {
                     continue;
                 }
-
                 toBeDeleted = entry;
                 break;
             }
@@ -1626,15 +1635,7 @@ void SFTPSource::reduceCache()
             if (!entry.isDir()) {
                 continue;
             }
-
-            QString dirPath = entry.absoluteFilePath();
-            dirPath = sshClient->localToRemote(dirPath);
-            if (!dirPath.endsWith("/")) {
-                dirPath = dirPath + "/";
-            }
-            dirPath = formatTrackForLists(sshClient->getConfig().id, dirPath);
-
-            if (loved.indexOf(QRegExp(QString("^%1.*$").arg(dirPath))) >= 0) {
+            if (isDirLoved(sshClient->getConfig().id, sshClient->localToRemote(entry.absoluteFilePath()))) {
                 lovedEntries.append(entry);
             }
         }
@@ -1791,5 +1792,10 @@ TrackInfo SFTPSource::trackInfoFromFilePath(QString filePath, int clientId)
 // diagnostics
 void SFTPSource::sendDiagnosticsData()
 {
-    // TODO this
+    DiagnosticData diagnosticData;
+
+    diagnosticData.append({ "Banned",             QString("%1").arg(banned.count()) });
+    diagnosticData.append({ "Loved",              QString("%1").arg(loved.count()) });
+
+    emit diagnostics(id, diagnosticData);
 }

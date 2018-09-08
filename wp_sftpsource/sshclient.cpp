@@ -241,6 +241,8 @@ void SSHClient::disconnectSSH(int id, QString errorMessage)
         }
     }
 
+    connectAttempt = 3;
+
     if (sftpSession != NULL) {
         libssh2_sftp_shutdown(sftpSession);
         sftpSession = NULL;
@@ -839,6 +841,9 @@ void SSHClient::socketStateChanged(QAbstractSocket::SocketState socketState)
             if (connectAttempt < 3) {
                 QTimer::singleShot(connectAttempt * 30000 + 5000, this, SLOT(autoConnect()));
                 connectAttempt++;
+            }
+            else {
+                emit disconnected(config.id);
             }
             break;
         case QAbstractSocket::HostLookupState:
