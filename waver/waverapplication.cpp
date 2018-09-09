@@ -77,8 +77,6 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
 {
     // just in case
     if (uiMainWindow != NULL) {
-        disconnect(this,         SIGNAL(uiActivated()),                                                                 uiMainWindow, SLOT(activated()));
-        disconnect(this,         SIGNAL(uiInactivated()),                                                               uiMainWindow, SLOT(inactivated()));
         disconnect(this,         SIGNAL(uiUserMessage(QVariant)),                                                       uiMainWindow, SLOT(displayUserMessage(QVariant)));
         disconnect(this,         SIGNAL(uiCollections(QVariant, QVariant)),                                             uiMainWindow, SLOT(fillCollectionsList(QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant)),                 uiMainWindow, SLOT(updateTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant)));
@@ -125,8 +123,6 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     uiMainWindow = qobject_cast<QQuickWindow *>(qmlApplicationEngine->rootObjects().first());
 
     // signal connections
-    connect(this,         SIGNAL(uiActivated()),                                                                 uiMainWindow, SLOT(activated()));
-    connect(this,         SIGNAL(uiInactivated()),                                                               uiMainWindow, SLOT(inactivated()));
     connect(this,         SIGNAL(uiUserMessage(QVariant, QVariant)),                                             uiMainWindow, SLOT(displayUserMessage(QVariant, QVariant)));
     connect(this,         SIGNAL(uiCollections(QVariant, QVariant)),                                             uiMainWindow, SLOT(fillCollectionsList(QVariant, QVariant)));
     connect(this,         SIGNAL(uiTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant, QVariant)),       uiMainWindow, SLOT(updateTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant, QVariant)));
@@ -402,16 +398,13 @@ void WaverApplication::active()
 
     // attempt to connect to the server if not yet connected
     emit ipcConnect();
-
-    // ui stuff
-    emit uiActivated();
 }
 
 
 // application inactivated
 void WaverApplication::inactive()
 {
-    emit uiInactivated();
+    // nothing to do now
 }
 
 
@@ -486,16 +479,16 @@ void WaverApplication::updateUITrackInfo(QJsonDocument jsonDocument)
 
     QStringList actions;
     if (trackInfo.cast) {
-        actions.append("<a href=\"s~play_more\">More</a>");
-        actions.append("<a href=\"s~play_forever\">Infinite</a>");
+        actions.append("s~play_more|More");
+        actions.append("s~play_forever|Infinite");
     }
     qSort(trackInfo.actions.begin(), trackInfo.actions.end(), [](TrackAction a, TrackAction b) {
         return ((a.pluginId < b.pluginId) || (a.id < b.id));
     });
     foreach (TrackAction trackAction, trackInfo.actions) {
-        actions.append(QString("<a href=\"%1~%2\">%3</a>").arg(trackAction.pluginId.toString()).arg(trackAction.id).arg(trackAction.label));
+        actions.append(QString("%1~%2|%3").arg(trackAction.pluginId.toString()).arg(trackAction.id).arg(trackAction.label));
     }
-    emit uiActions(actions.join(" "));
+    emit uiActions(actions.join("||"));
 }
 
 
@@ -541,18 +534,18 @@ void WaverApplication::updateUIPlaylist(QJsonDocument jsonDocument)
         QStringList actions;
 
         if (i > 0) {
-            actions.append("<a href=\"s~up\">Up</a>");
+            actions.append("s~up|Up");
         }
         if (i < (playlist.count() - 1)) {
-            actions.append("<a href=\"s~down\">Down</a>");
+            actions.append("s~down|Down");
         }
-        actions.append("<a href=\"s~remove\">Remove</a>");
+        actions.append("s~remove|Remove");
 
         qSort(trackInfo.actions.begin(), trackInfo.actions.end(), [](TrackAction a, TrackAction b) {
             return ((a.pluginId < b.pluginId) || (a.id < b.id));
         });
         foreach (TrackAction trackAction, trackInfo.actions) {
-            actions.append(QString("<a href=\"%1~%2\">%3</a>").arg(trackAction.pluginId.toString()).arg(trackAction.id).arg(trackAction.label));
+            actions.append(QString("%1~%2|%3").arg(trackAction.pluginId.toString()).arg(trackAction.id).arg(trackAction.label));
         }
 
         int loved = PLAYLIST_MODE_NORMAL;
@@ -560,7 +553,7 @@ void WaverApplication::updateUIPlaylist(QJsonDocument jsonDocument)
             loved = additionalInfo.value("loved").toInt();
         }
 
-        emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "/images/waver.png"), trackInfo.title.simplified(), trackInfo.performer.simplified(), actions.join(" "), (i == contextShowTrackIndex), loved);
+        emit uiAddToPlaylist((trackInfo.pictures.count() > 0 ? trackInfo.pictures.at(0).toString() : "/images/waver.png"), trackInfo.title.simplified(), trackInfo.performer.simplified(), actions.join("||"), (i == contextShowTrackIndex), loved);
     }
 
     if (contextShowTrackIndex >= 0) {

@@ -86,21 +86,6 @@ ApplicationWindow {
      handlers for signals received from C++
     *****/
 
-    // just to prevent some confusing effect
-
-    function activated()
-    {
-        activatedTimer.start()
-        nowPlayingActionsMouseArea.cursorShape = Qt.PointingHandCursor
-    }
-
-    function inactivated()
-    {
-        active = false;
-        nowPlayingActionsMouseArea.cursorShape = Qt.ArrowCursor;
-    }
-
-
     // error messages and warnings
     function displayUserMessage(messageText, type)
     {
@@ -164,9 +149,6 @@ ApplicationWindow {
         trackInfoChange.newTrack = track;
         trackInfoChange.loved = loved;
         trackInfoChange.start();
-
-        nowPlayingActions.visible = false
-        nowPlayingActionsBackground.visible = false
     }
 
     function updateArt(url)
@@ -183,7 +165,15 @@ ApplicationWindow {
     }
 
     function updateTrackActions(text) {
-        nowPlayingActions.text = text;
+        while (nowPlayingMenu.count > 0) {
+            nowPlayingMenu.removeItem(0);
+        }
+
+        var actions = text.split("||");
+        for(var i = 0; i < actions.length; i++) {
+            var elements = actions[i].split("|");
+            nowPlayingMenu.addItem(Qt.createQmlObject("import QtQuick.Controls 2.0; MenuItem { text: \"" + elements[1] + "\"; onTriggered: trackAction(-1, \"" + elements[0] + "\"); }", nowPlayingMenu, "dynamicMenu"));
+        }
     }
 
     function updatePosition(elapsed, remaining)
@@ -210,7 +200,7 @@ ApplicationWindow {
         playlistItems.append({
             labelTitle: title,
             labelPerformer: performer,
-            labelActions: actions,
+            actions: actions,
             imageSource: pictureUrl,
             initialShowActions: showActions,
             loved: loved
@@ -1107,6 +1097,13 @@ ApplicationWindow {
     }
 
 
+    // now playing
+
+    Menu {
+        id: nowPlayingMenu
+    }
+
+
     // playlist
 
     ListModel {
@@ -1115,9 +1112,8 @@ ApplicationWindow {
         ListElement {
             labelTitle: "Title"
             labelPerformer: "Performer"
-            labelActions: "<a href=\"action\">Action</a>"
+            actions: ""
             imageSource: "/images/waver.png"
-            initialShowActions: true
             loved: 0
         }
     }
@@ -1127,7 +1123,7 @@ ApplicationWindow {
 
         Item {
             id: playlistElementOuter
-            height: playlistElementImage.height + (playlistElementInner.anchors.margins * 2) + playlistActions.height + playlistActions.anchors.bottomMargin + playlistElementBorder.anchors.bottomMargin
+            height: playlistElementImage.height + (playlistElementInner.anchors.margins * 2) + playlistElementBorder.anchors.bottomMargin
             width: playlist.width
 
             Rectangle {
@@ -1159,19 +1155,17 @@ ApplicationWindow {
                 }
 
                 MouseArea {
-                    anchors.fill: playlistElementImage
-                    cursorShape: Qt.PointingHandCursor
+                    anchors.fill: playlistElementInner
+                    acceptedButtons: Qt.RightButton
                     onClicked: {
-                        if (playlistActions.visible) {
-                            playlistActions.height = 0;
-                            playlistActions.anchors.bottomMargin = 0;
-                            playlistActions.visible = false;
+                        if (playlistElementMenu.count == 0) {
+                            var actionsSplit = actions.split("||");
+                            for(var i = 0; i < actionsSplit.length; i++) {
+                                var actionSplit = actionsSplit[i].split("|");
+                                playlistElementMenu.addItem(Qt.createQmlObject("import QtQuick.Controls 2.0; MenuItem { text: \"" + actionSplit[1] + "\"; onTriggered: trackAction(index, \"" + actionSplit[0] + "\"); }", playlistElementMenu, "dynamicMenu"));
+                            }
                         }
-                        else {
-                            playlistActions.height = textMetrics.height + 6;
-                            playlistActions.anchors.bottomMargin = 3;
-                            playlistActions.visible = true;
-                        }
+                        playlistElementMenu.popup();
                     }
                 }
 
@@ -1217,32 +1211,8 @@ ApplicationWindow {
                 }
             }
 
-            MouseArea {
-                anchors.fill: playlistActions
-                cursorShape: Qt.PointingHandCursor
-            }
-
-            Rectangle {
-                anchors.fill: playlistActions
-                radius: 3
-                color: "#FFFFFF"
-            }
-
-            Label {
-                id: playlistActions
-                anchors.left: parent.left
-                anchors.bottom: playlistElementBorder.bottom
-                anchors.leftMargin: 3
-                anchors.bottomMargin: (initialShowActions ? 3 : 0)
-                leftPadding: 3
-                rightPadding: 3
-                height: (initialShowActions ? textMetrics.height + 6 : 0)
-                visible: (initialShowActions ? true : false)
-                text: labelActions
-                verticalAlignment: Text.AlignVCenter
-                onLinkActivated: {
-                    trackAction(index, link);
-                }
+            Menu {
+                id: playlistElementMenu
             }
         }
     }
@@ -1883,44 +1853,6 @@ ApplicationWindow {
                 }
             }
 
-            // track actions - normally invisible
-
-            MouseArea {
-                id: nowPlayingActionsMouseArea
-                anchors.fill: artArea
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    if (active) {
-                        nowPlayingActions.visible = !nowPlayingActions.visible;
-                        nowPlayingActionsBackground.visible = !nowPlayingActionsBackground.visible;
-                    }
-                }
-            }
-
-            Rectangle {
-                id: nowPlayingActionsBackground
-                anchors.fill: nowPlayingActions
-                color: "#FFFFFF"
-                radius: 3
-                visible: false
-            }
-
-            Label {
-                id: nowPlayingActions
-                text: "<a href=\"action\">Action</a>"
-                horizontalAlignment: Text.AlignHCenter
-                anchors.horizontalCenter: artArea.horizontalCenter
-                anchors.bottom: artArea.bottom
-                anchors.bottomMargin: 18
-                padding: 3
-                visible: false
-                onLinkActivated: {
-                    nowPlayingActions.visible = false;
-                    nowPlayingActionsBackground.visible = false;
-                    trackAction(-1, link);
-                }
-            }
-
             // labels and their background
 
             Rectangle {
@@ -2004,6 +1936,16 @@ ApplicationWindow {
                 anchors.rightMargin: 9
                 anchors.bottom: parent.bottom
                 anchors.bottomMargin: 3
+            }
+
+            // track actions - normally invisible
+
+            MouseArea {
+                anchors.fill: label_bkg
+                acceptedButtons: Qt.RightButton
+                onClicked: {
+                    nowPlayingMenu.popup();
+                }
             }
         }
 
