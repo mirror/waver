@@ -57,8 +57,9 @@ ApplicationWindow {
     readonly property var playtimeValues: [180000, 300000, 450000, 600000, 900000, 1800000]
     readonly property var playlistAddTypes: ["End", "Beginning", "Immediate"]
 
-    property bool active : true
-    property int  openUpY: 0;
+    property int openUpY               : 0;
+    property int playlistDragStartIndex: 0;
+    property int playlistDragEndIndex  : 0;
 
     // these signals are processed by C++ (WaverApplication class)
     signal menuPause()
@@ -78,6 +79,7 @@ ApplicationWindow {
     signal startSearch(variant criteria)
     signal resolveOpenTracks(variant selected)
     signal trackAction(variant index, variant action)
+    signal trackReposition(variant from, variant to)
     signal getDiagnostics(variant id)
     signal doneDiagnostics()
 
@@ -551,14 +553,6 @@ ApplicationWindow {
     /*****
      animation definitions
     *****/
-
-    // activation
-
-    Timer {
-        id: activatedTimer
-        interval: 100
-        onTriggered: active = true
-    }
 
     // error messages and warnings
 
@@ -1121,98 +1115,155 @@ ApplicationWindow {
     Component {
         id: playlistElement
 
-        Item {
-            id: playlistElementOuter
-            height: playlistElementImage.height + (playlistElementInner.anchors.margins * 2) + playlistElementBorder.anchors.bottomMargin
+        MouseArea  {
+            id: playlistElementMouseArea
+            height: playlistElementOuter.height
             width: playlist.width
 
-            Rectangle {
-                id: playlistElementBorder
+            acceptedButtons: Qt.RightButton | Qt.LeftButton
+
+            drag.target: okToDrag ? playlistElementOuter : undefined
+            drag.axis: Drag.YAxis
+
+            onClicked: {
+                if (mouse.button & Qt.RightButton) {
+                    if (playlistElementMenu.count == 0) {
+                        var actionsSplit = actions.split("||");
+                        for(var i = 0; i < actionsSplit.length; i++) {
+                            var actionSplit = actionsSplit[i].split("|");
+                            playlistElementMenu.addItem(Qt.createQmlObject("import QtQuick.Controls 2.0; MenuItem { text: \"" + actionSplit[1] + "\"; onTriggered: trackAction(index, \"" + actionSplit[0] + "\"); }", playlistElementMenu, "dynamicMenu"));
+                        }
+                    }
+                    playlistElementMenu.popup();
+                }
+            }
+            onPressAndHold: {
+                okToDrag = true;
+                playlistDragStartIndex = index;
+                playlist.currentIndex = index;
+            }
+            onReleased: {
+                if (okToDrag) {
+                    okToDrag = false
+                    trackReposition(playlistDragStartIndex, playlistDragEndIndex);
+                }
+            }
+
+            property bool okToDrag : false
+
+            DropArea {
                 anchors.fill: parent
-                anchors.bottomMargin: 6
-                border.color: "#AAAAAA"
-                radius: 3
-                gradient: Gradient {
-                    GradientStop { position: 0.0; color: "#AAAAAA" }
-                    GradientStop { position: 0.5; color: "transparent" }
-                    GradientStop { position: 1; color: "#AAAAAA" }
+                onEntered: {
+                    playlistDragEndIndex = index;
+                    playlist.currentIndex = index;
                 }
             }
 
             Item {
-                id: playlistElementInner
-                anchors.fill: playlistElementOuter
-                anchors.margins: 3
+                id: playlistElementOuter
+                height: playlistElementImage.height + (playlistElementInner.anchors.margins * 2) + playlistElementBorder.anchors.bottomMargin
+                width: playlist.width
 
-                Image {
-                    id: playlistElementImage
-                    anchors.left: playlistElementInner.left
-                    anchors.top: playlistElementInner.top
-                    source: imageSource
-                    width: 48
-                    height: 48
-                    onStatusChanged: if (playlistElementImage.status == Image.Error) playlistElementImage.source = "/images/waver.png"
-                }
+                Drag.active: playlistElementMouseArea.okToDrag
+                Drag.source: playlistElementMouseArea
+                Drag.hotSpot.x: playlistElementOuter.width / 2
+                Drag.hotSpot.y: playlistElementOuter.height / 2
 
-                MouseArea {
-                    anchors.fill: playlistElementInner
-                    acceptedButtons: Qt.RightButton
-                    onClicked: {
-                        if (playlistElementMenu.count == 0) {
-                            var actionsSplit = actions.split("||");
-                            for(var i = 0; i < actionsSplit.length; i++) {
-                                var actionSplit = actionsSplit[i].split("|");
-                                playlistElementMenu.addItem(Qt.createQmlObject("import QtQuick.Controls 2.0; MenuItem { text: \"" + actionSplit[1] + "\"; onTriggered: trackAction(index, \"" + actionSplit[0] + "\"); }", playlistElementMenu, "dynamicMenu"));
+                states: State {
+                    when: playlistElementMouseArea.okToDrag
+                    ParentChange {
+                        target: playlistElementOuter;
+                        parent: coming_up
+                    }
+                    PropertyChanges {
+                        target: playlistElementOuter;
+                        onYChanged: {
+                            if (y < 0) {
+                                playlist.decrementCurrentIndex();
+                            }
+                            if (y > playlist.height) {
+                                playlist.incrementCurrentIndex();
                             }
                         }
-                        playlistElementMenu.popup();
                     }
+                }
+
+                Menu {
+                    id: playlistElementMenu
                 }
 
                 Rectangle {
-                    anchors.fill: playlistElementImage
-                    border.color: "#666666"
-                    color: "transparent"
-                }
-
-                Column {
-                    id: playlistElementLabels
-                    spacing: -3
-                    anchors.left: playlistElementImage.right
-                    anchors.right: playlistElementInner.right
-                    anchors.verticalCenter: playlistElementImage.verticalCenter
-
-                    Label {
-                        id: playlistElementTitle
-                        anchors.left: playlistElementLabels.left
-                        anchors.right: playlistElementLabels.right
-                        anchors.leftMargin: 6
-                        anchors.rightMargin: 3
-                        text: labelTitle
-                        font.bold: true
-                        font.family: decorativeFont.name
-                        font.pointSize: userMessage.font.pointSize * fontSmallMul
-                        elide: Text.ElideRight
-                        color: (loved == loved_loved) ? "#440000" : (loved == loved_similar) ? "#000044" : "#000000"
-                    }
-
-                    Label {
-                        id: playlistElementPerformer
-                        anchors.left: playlistElementLabels.left
-                        anchors.right: playlistElementLabels.right
-                        anchors.leftMargin: 6
-                        anchors.rightMargin: 3
-                        text: labelPerformer
-                        font.family: decorativeFont.name
-                        font.pointSize: userMessage.font.pointSize * fontSmallMul
-                        elide: Text.ElideRight
-                        color: (loved == loved_loved) ? "#440000" : (loved == loved_similar) ? "#000044" : "#000000"
+                    id: playlistElementBorder
+                    anchors.fill: parent
+                    anchors.bottomMargin: 6
+                    border.color: "#AAAAAA"
+                    radius: 3
+                    gradient: Gradient {
+                        GradientStop { position: 0.0; color: "#AAAAAA" }
+                        GradientStop { position: 0.5; color: playlistElementMouseArea.okToDrag ? "#F0F0FF" : "transparent" }
+                        GradientStop { position: 1; color: "#AAAAAA" }
                     }
                 }
-            }
 
-            Menu {
-                id: playlistElementMenu
+                Item {
+                    id: playlistElementInner
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.bottom: parent.bottom
+                    anchors.margins: 3
+
+                    Image {
+                        id: playlistElementImage
+                        anchors.left: playlistElementInner.left
+                        anchors.top: playlistElementInner.top
+                        source: imageSource
+                        width: 48
+                        height: 48
+                        onStatusChanged: if (playlistElementImage.status == Image.Error) playlistElementImage.source = "/images/waver.png"
+                    }
+
+                    Rectangle {
+                        anchors.fill: playlistElementImage
+                        border.color: "#666666"
+                        color: "transparent"
+                    }
+
+                    Column {
+                        id: playlistElementLabels
+                        spacing: -3
+                        anchors.left: playlistElementImage.right
+                        anchors.right: playlistElementInner.right
+                        anchors.verticalCenter: playlistElementImage.verticalCenter
+
+                        Label {
+                            id: playlistElementTitle
+                            anchors.left: playlistElementLabels.left
+                            anchors.right: playlistElementLabels.right
+                            anchors.leftMargin: 6
+                            anchors.rightMargin: 3
+                            text: labelTitle
+                            font.bold: true
+                            font.family: decorativeFont.name
+                            font.pointSize: userMessage.font.pointSize * fontSmallMul
+                            elide: Text.ElideRight
+                            color: (loved == loved_loved) ? "#440000" : (loved == loved_similar) ? "#000044" : "#000000"
+                        }
+
+                        Label {
+                            id: playlistElementPerformer
+                            anchors.left: playlistElementLabels.left
+                            anchors.right: playlistElementLabels.right
+                            anchors.leftMargin: 6
+                            anchors.rightMargin: 3
+                            text: labelPerformer
+                            font.family: decorativeFont.name
+                            font.pointSize: userMessage.font.pointSize * fontSmallMul
+                            elide: Text.ElideRight
+                            color: (loved == loved_loved) ? "#440000" : (loved == loved_similar) ? "#000044" : "#000000"
+                        }
+                    }
+                }
             }
         }
     }

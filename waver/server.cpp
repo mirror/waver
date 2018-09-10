@@ -781,6 +781,15 @@ void WaverServer::handleTrackActionsRequest(QJsonDocument jsonDocument)
             playlistTracks.move(index, index - 1);
             sendPlaylistToClients(index - 1);
         }
+        if (ids.at(1).compare("move") == 0) {
+            bool OK = false;
+            int moveTo = ids.at(2).toInt(&OK);
+            if (OK) {
+                playlistTracks.move(index, moveTo);
+                sendPlaylistToClients(index - 1);
+            }
+        }
+
         if (ids.at(1).compare("remove") == 0) {
             Track *toBeRemoved = playlistTracks.at(index);
             playlistTracks.remove(index);

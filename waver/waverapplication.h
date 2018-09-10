@@ -142,6 +142,7 @@ class WaverApplication : public QGuiApplication {
         void startSearch(QVariant criteria);
         void resolveOpenTracks(QVariant results);
         void trackAction(QVariant index, QVariant action);
+        void trackReposition(QVariant from, QVariant to);
         void getDiagnostics(QVariant id);
         void doneDiagnostics();
         void sourcePrioritiesDialogResults(QVariant results);

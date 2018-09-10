@@ -113,6 +113,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(uiMainWindow, SIGNAL(getOpenTracks(QVariant, QVariant)),                                             this,         SLOT(getOpenTracks(QVariant, QVariant)));
         disconnect(uiMainWindow, SIGNAL(resolveOpenTracks(QVariant)),                                                   this,         SLOT(resolveOpenTracks(QVariant)));
         disconnect(uiMainWindow, SIGNAL(trackAction(QVariant, QVariant)),                                               this,         SLOT(trackAction(QVariant, QVariant)));
+        disconnect(uiMainWindow, SIGNAL(trackReposition(QVariant, QVariant)),                                           this,         SLOT(trackReposition(QVariant, QVariant)));
         disconnect(uiMainWindow, SIGNAL(getDiagnostics(QVariant)),                                                      this,         SLOT(getDiagnostics(QVariant)));
         disconnect(uiMainWindow, SIGNAL(doneDiagnostics()),                                                             this,         SLOT(doneDiagnostics()));
         disconnect(uiMainWindow, SIGNAL(sourcePrioritiesDialogResults(QVariant)),                                       this,         SLOT(sourcePrioritiesDialogResults(QVariant)));
@@ -161,6 +162,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(uiMainWindow, SIGNAL(startSearch(QVariant)),                                                         this,         SLOT(startSearch(QVariant)));
     connect(uiMainWindow, SIGNAL(resolveOpenTracks(QVariant)),                                                   this,         SLOT(resolveOpenTracks(QVariant)));
     connect(uiMainWindow, SIGNAL(trackAction(QVariant, QVariant)),                                               this,         SLOT(trackAction(QVariant, QVariant)));
+    connect(uiMainWindow, SIGNAL(trackReposition(QVariant, QVariant)),                                           this,         SLOT(trackReposition(QVariant, QVariant)));
     connect(uiMainWindow, SIGNAL(getDiagnostics(QVariant)),                                                      this,         SLOT(getDiagnostics(QVariant)));
     connect(uiMainWindow, SIGNAL(doneDiagnostics()),                                                             this,         SLOT(doneDiagnostics()));
     connect(uiMainWindow, SIGNAL(sourcePrioritiesDialogResults(QVariant)),                                       this,         SLOT(sourcePrioritiesDialogResults(QVariant)));
@@ -330,6 +332,20 @@ void WaverApplication::trackAction(QVariant index, QVariant action)
         },
         {
             "action", action.toString()
+        }
+    }))));
+}
+
+
+// UI signal handler
+void WaverApplication::trackReposition(QVariant from, QVariant to)
+{
+    emit ipcSend(IpcMessageUtils::TrackAction, QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
+        {
+            "index", from.toString()
+        },
+        {
+            "action", QString("s~move~%1").arg(to.toInt())
         }
     }))));
 }
