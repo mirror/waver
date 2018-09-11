@@ -57,9 +57,10 @@ ApplicationWindow {
     readonly property var playtimeValues: [180000, 300000, 450000, 600000, 900000, 1800000]
     readonly property var playlistAddTypes: ["End", "Beginning", "Immediate"]
 
-    property int openUpY               : 0;
-    property int playlistDragStartIndex: 0;
-    property int playlistDragEndIndex  : 0;
+    property int  openUpY               : 0;
+    property int  playlistDragStartIndex: 0;
+    property int  playlistDragEndIndex  : 0;
+    property bool qt510                 : false;
 
     // these signals are processed by C++ (WaverApplication class)
     signal menuPause()
@@ -87,6 +88,11 @@ ApplicationWindow {
     /*****
      handlers for signals received from C++
     *****/
+
+    // aaaaaaa backwards compatibility?!?
+    function setQt510(value) {
+        qt510 = value ? true : false;
+    }
 
     // error messages and warnings
     function displayUserMessage(messageText, type)
@@ -1091,13 +1097,6 @@ ApplicationWindow {
     }
 
 
-    // now playing
-
-    Menu {
-        id: nowPlayingMenu
-    }
-
-
     // playlist
 
     ListModel {
@@ -1127,14 +1126,24 @@ ApplicationWindow {
 
             onClicked: {
                 if (mouse.button & Qt.RightButton) {
-                    if (playlistElementMenu.count == 0) {
+                    var isMenuEmpty = qt510 ? (playlistElementMenu.count == 0) : (playlistElementMenu.contentData.length == 0)
+
+                    if (isMenuEmpty) {
                         var actionsSplit = actions.split("||");
                         for(var i = 0; i < actionsSplit.length; i++) {
                             var actionSplit = actionsSplit[i].split("|");
                             playlistElementMenu.addItem(Qt.createQmlObject("import QtQuick.Controls 2.0; MenuItem { text: \"" + actionSplit[1] + "\"; onTriggered: trackAction(index, \"" + actionSplit[0] + "\"); }", playlistElementMenu, "dynamicMenu"));
                         }
                     }
-                    playlistElementMenu.popup();
+                    if (qt510) {
+                        playlistElementMenu.popup();
+                    }
+                    else {
+                        var coordinates = mapToItem(playlistElementOuter, mouse.x, mouse.y);
+                        playlistElementMenu.x = coordinates.x
+                        playlistElementMenu.y = coordinates.y
+                        playlistElementMenu.open();
+                    }
                 }
             }
             onPressAndHold: {
@@ -1839,6 +1848,10 @@ ApplicationWindow {
         Item {
             id: now_playing
 
+            Menu {
+                id: nowPlayingMenu
+            }
+
             // image
             Item {
                 id: artArea
@@ -1995,7 +2008,15 @@ ApplicationWindow {
                 anchors.fill: label_bkg
                 acceptedButtons: Qt.RightButton
                 onClicked: {
-                    nowPlayingMenu.popup();
+                    if (qt510) {
+                        nowPlayingMenu.popup();
+                    }
+                    else {
+                        var coordinates = mapToItem(now_playing, mouse.x, mouse.y);
+                        nowPlayingMenu.x = coordinates.x
+                        nowPlayingMenu.y = coordinates.y
+                        nowPlayingMenu.open();
+                    }
                 }
             }
         }

@@ -77,6 +77,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
 {
     // just in case
     if (uiMainWindow != NULL) {
+        disconnect(this,         SIGNAL(uiSetQt510(QVariant)),                                                          uiMainWindow, SLOT(setQt510(QVariant)));
         disconnect(this,         SIGNAL(uiUserMessage(QVariant)),                                                       uiMainWindow, SLOT(displayUserMessage(QVariant)));
         disconnect(this,         SIGNAL(uiCollections(QVariant, QVariant)),                                             uiMainWindow, SLOT(fillCollectionsList(QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant)),                 uiMainWindow, SLOT(updateTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant)));
@@ -124,6 +125,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     uiMainWindow = qobject_cast<QQuickWindow *>(qmlApplicationEngine->rootObjects().first());
 
     // signal connections
+    connect(this,         SIGNAL(uiSetQt510(QVariant)),                                                          uiMainWindow, SLOT(setQt510(QVariant)));
     connect(this,         SIGNAL(uiUserMessage(QVariant, QVariant)),                                             uiMainWindow, SLOT(displayUserMessage(QVariant, QVariant)));
     connect(this,         SIGNAL(uiCollections(QVariant, QVariant)),                                             uiMainWindow, SLOT(fillCollectionsList(QVariant, QVariant)));
     connect(this,         SIGNAL(uiTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant, QVariant)),       uiMainWindow, SLOT(updateTrackInfo(QVariant, QVariant, QVariant, QVariant, QVariant, QVariant)));
@@ -167,6 +169,8 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(uiMainWindow, SIGNAL(doneDiagnostics()),                                                             this,         SLOT(doneDiagnostics()));
     connect(uiMainWindow, SIGNAL(sourcePrioritiesDialogResults(QVariant)),                                       this,         SLOT(sourcePrioritiesDialogResults(QVariant)));
     connect(uiMainWindow, SIGNAL(optionsDialogResults(QVariant)),                                                this,         SLOT(optionsDialogResults(QVariant)));
+
+    emit uiSetQt510(QT_VERSION >= 0x051000);
 }
 
 

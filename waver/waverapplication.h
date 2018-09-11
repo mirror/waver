@@ -100,6 +100,7 @@ class WaverApplication : public QGuiApplication {
         void ipcSend(IpcMessageUtils::IpcMessages ipcMessage);
         void ipcSend(IpcMessageUtils::IpcMessages ipcMessage, QJsonDocument ipcJsonData);
 
+        void uiSetQt510(QVariant value);
         void uiUserMessage(QVariant messageText, QVariant type);
         void uiPaused();
         void uiResumed();
