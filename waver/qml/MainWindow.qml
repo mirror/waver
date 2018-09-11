@@ -173,8 +173,15 @@ ApplicationWindow {
     }
 
     function updateTrackActions(text) {
-        while (nowPlayingMenu.count > 0) {
-            nowPlayingMenu.removeItem(0);
+        if (qt510) {
+            while (nowPlayingMenu.count > 0) {
+                nowPlayingMenu.removeItem(0);
+            }
+        }
+        else {
+            while (nowPlayingMenu.contentData.length > 0) {
+                nowPlayingMenu.removeItem(0);
+            }
         }
 
         var actions = text.split("||");
