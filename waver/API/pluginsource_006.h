@@ -32,10 +32,10 @@
 #include <QUrl>
 
 #include "../pluginglobals.h"
-#include "pluginbase_005.h"
+#include "pluginbase_006.h"
 
 
-class PluginSource_006 : public PluginBase_005 {
+class PluginSource_006 : public PluginBase_006 {
         Q_OBJECT
 
 

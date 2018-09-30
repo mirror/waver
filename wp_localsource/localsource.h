@@ -53,7 +53,7 @@
 #include "filescanner.h"
 #include "../waver/pluginfactory.h"
 #include "../waver/pluginglobals.h"
-#include "../waver/API/pluginsource_005.h"
+#include "../waver/API/pluginsource_006.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -63,7 +63,7 @@
 extern "C" WP_LOCALSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_005 {
+class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_006 {
         Q_OBJECT
 
     public:
@@ -114,11 +114,12 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_005 {
         void          jsonToConfigGlobal(QJsonDocument jsonDocument);
 
         bool      isTrackFile(QFileInfo fileInfo);
-        TrackInfo trackInfoFromFilePath(QString filePath);
+        TrackInfo trackInfoFromFilePath(QString filePath, bool *tagLibOK);
 
         int  variationSettingId();
         void variationSetCurrentRemainingDir();
 
+        void addToExtraInfo(ExtraInfo *extraInfo, QUrl url, QString key, QVariant value);
         void sendDiagnosticsData();
 
 
@@ -133,6 +134,8 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_005 {
         void globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results) override;
         void sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)              override;
 
+        void messageFromPlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value) override;
+
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
 
@@ -141,6 +144,7 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_005 {
 
         void unableToStart(QUuid uniqueId, QUrl url)                        override;
         void castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds) override;
+        void done(QUuid uniqueId, QUrl url)                                 override;
         void getPlaylist(QUuid uniqueId, int trackCount, int mode)          override;
         void getReplacement(QUuid uniqueId)                                 override;
         void getOpenTracks(QUuid uniqueId, QString parentId)                override;

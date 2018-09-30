@@ -588,6 +588,9 @@ bool SSHClient::executeSSH(QString command)
         tmp.append(QByteArray(bufferRaw, readCount));
         readCount = libssh2_channel_read(channel, bufferRaw, sizeof(bufferRaw));
     }
+    if (QThread::currentThread()->isInterruptionRequested()) {
+        tmp = "";
+    }
     stdOutSSH = tmp.split("\n");
 
     tmp.clear();
@@ -597,12 +600,19 @@ bool SSHClient::executeSSH(QString command)
         tmp.append(QByteArray(bufferRaw, readCount));
         readCount = libssh2_channel_read_stderr(channel, bufferRaw, sizeof(bufferRaw));
     }
+    if (QThread::currentThread()->isInterruptionRequested()) {
+        tmp = "";
+    }
     stdErrSSH = tmp.split("\n");
 
     // housekeeping
     libssh2_channel_close(channel);
     libssh2_channel_wait_closed(channel);
     libssh2_channel_free(channel);
+
+    if (QThread::currentThread()->isInterruptionRequested()) {
+        return false;
+    };
 
     return true;
 }
@@ -640,6 +650,11 @@ bool SSHClient::dirList(QString dir, DirList *contents)
 
     // housekeeping
     libssh2_sftp_closedir(sftpDirHandle);
+
+    if (QThread::currentThread()->isInterruptionRequested()) {
+        contents->clear();
+        return false;
+    }
 
     return true;
 }
@@ -686,11 +701,12 @@ bool SSHClient::download(QString source, QString destination)
     localFile.close();
 
     // don't leave partial file on disk if there was an error
-    if (wasError) {
+    if (wasError || QThread::currentThread()->isInterruptionRequested()) {
         localFile.remove();
+        return false;
     }
 
-    return !wasError;
+    return true;
 }
 
 
@@ -705,14 +721,16 @@ bool SSHClient::upload(QString source, QString destination)
         return false;
     }
 
+    QString destination_temp = QString("%1.%2").arg(destination).arg(QDateTime::currentMSecsSinceEpoch());
+
     // open remote source for writing
-    LIBSSH2_SFTP_HANDLE *sftpHandle = libssh2_sftp_open(sftpSession, destination.toUtf8().constData(), LIBSSH2_FXF_WRITE | LIBSSH2_FXF_CREAT, UPLOAD_CREATE_PERMISSIONS);
+    LIBSSH2_SFTP_HANDLE *sftpHandle = libssh2_sftp_open(sftpSession, destination_temp.toUtf8().constData(), LIBSSH2_FXF_WRITE | LIBSSH2_FXF_CREAT, UPLOAD_CREATE_PERMISSIONS);
     if (!sftpHandle) {
         localFile.close();
         return false;
     }
 
-    // read source and write destination
+    // read source and write temporary destination
     bool wasError = false;
     while (!localFile.atEnd() && !QThread::currentThread()->isInterruptionRequested()) {
         QByteArray bufferRaw = localFile.read(65536);
@@ -728,7 +746,13 @@ bool SSHClient::upload(QString source, QString destination)
     // close remote destination
     libssh2_sftp_close(sftpHandle);
 
-    return !wasError;
+    // don't leave partial file on remote if there was an error
+    if (wasError || QThread::currentThread()->isInterruptionRequested()) {
+        executeSSH(QString("rm -f \"%1\"").arg(destination_temp));
+        return false;
+    }
+
+    return executeSSH(QString("mv -f \"%1\" \"%2\"").arg(destination_temp).arg(destination));
 }
 
 
@@ -1031,8 +1055,10 @@ void SSHClient::getOpenItems(int id, QString remotePath)
 // public slot
 void SSHClient::trackInfoUpdated(TrackInfo trackInfo)
 {
+    QString localPath = trackInfo.url.toLocalFile();
+
     // get remote dir listing
-    QString remoteDir = localToRemote(trackInfo.url.toLocalFile().left(trackInfo.url.toLocalFile().lastIndexOf("/")));
+    QString remoteDir = localToRemote(localPath.left(localPath.lastIndexOf("/") + 1));
     DirList remoteDirContents;
     if (!dirList(remoteDir, &remoteDirContents)) {
         // probably remote dir doesn't exist, which means track belongs to another client (or connection problem)
@@ -1042,7 +1068,7 @@ void SSHClient::trackInfoUpdated(TrackInfo trackInfo)
     // check to make sure the remote file exists too, could belong to another client
     bool exists = false;
     foreach (DirListItem dirListItem, remoteDirContents) {
-        if (!dirListItem.isDir && (localToRemote(trackInfo.url.toLocalFile()).compare(dirListItem.fullPath) == 0)) {
+        if (!dirListItem.isDir && (localToRemote(localPath).compare(dirListItem.fullPath) == 0)) {
             exists = true;
             break;
         }
@@ -1051,7 +1077,34 @@ void SSHClient::trackInfoUpdated(TrackInfo trackInfo)
         return;
     }
 
-    // TODO check if mp3 tags needs to written
+    if (!trackInfo.title.isEmpty() && !trackInfo.album.isEmpty() && !trackInfo.performer.isEmpty()) {
+        bool OK         = true;
+        bool downloaded = false;
+        if (!QFileInfo::exists(localPath)) {
+            if (!download(localToRemote(localPath), localPath)) {
+                OK = false;
+            }
+            downloaded = true;
+        }
+
+        if (OK) {
+            TagLib::FileRef fileRef(QFile::encodeName(localPath).constData());
+            if (!fileRef.isNull()) {
+                fileRef.tag()->setTitle(QStringToTString(trackInfo.title));
+                fileRef.tag()->setAlbum(QStringToTString(trackInfo.album));
+                fileRef.tag()->setArtist(QStringToTString(trackInfo.performer));
+                fileRef.tag()->setYear(trackInfo.year);
+                fileRef.tag()->setTrack(trackInfo.track);
+                fileRef.save();
+            }
+
+            upload(localPath, localToRemote(localPath));
+            if (downloaded) {
+                QFile::remove(localPath);
+            }
+        }
+    }
+
 
     // check if picture needs to be uploaded
     foreach (QUrl localPictureUrl, trackInfo.pictures) {

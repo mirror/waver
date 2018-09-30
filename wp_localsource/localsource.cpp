@@ -94,7 +94,7 @@ int LocalSource::pluginVersion()
 // overrided virtual function
 QString LocalSource::waverVersionAPICompatibility()
 {
-    return "0.0.5";
+    return "0.0.6";
 }
 
 
@@ -212,6 +212,16 @@ void LocalSource::sqlError(QUuid persistentUniqueId, bool temporary, QString cli
 }
 
 
+// server siganl handler
+void LocalSource::messageFromPlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(sourceUniqueId);
+    Q_UNUSED(messageId);
+    Q_UNUSED(value);
+}
+
+
 // client wants to display this plugin's configuration dialog
 void LocalSource::getUiQml(QUuid uniqueId)
 {
@@ -291,6 +301,14 @@ void LocalSource::castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds)
     Q_UNUSED(uniqueId);
     Q_UNUSED(url);
     Q_UNUSED(playedSeconds);
+}
+
+
+// server message handler
+void LocalSource::done(QUuid uniqueId, QUrl url)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(url);
 }
 
 
@@ -399,9 +417,13 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
             }
 
             // add to return value
-            TrackInfo trackInfo = trackInfoFromFilePath(lovedFileName);
+            bool tagLibOK = true;
+            TrackInfo trackInfo = trackInfoFromFilePath(lovedFileName, &tagLibOK);
             returnValue.append(trackInfo);
-            returnExtra.insert(trackInfo.url, {{ "loved", isSimilar ? PLAYLIST_MODE_LOVED_SIMILAR : PLAYLIST_MODE_LOVED }});
+            addToExtraInfo(&returnExtra, trackInfo.url, "loved", isSimilar ? PLAYLIST_MODE_LOVED_SIMILAR : PLAYLIST_MODE_LOVED);
+            if (!tagLibOK) {
+                addToExtraInfo(&returnExtra, trackInfo.url, "incomplete_tags", 1);
+            }
 
             // playlist should be one less now
             trackCount--;
@@ -504,8 +526,12 @@ void LocalSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
         mutex.unlock();
 
         // return value
-        TrackInfo trackInfo = trackInfoFromFilePath(trackFileName);
+        bool tagLibOK = true;
+        TrackInfo trackInfo = trackInfoFromFilePath(trackFileName, &tagLibOK);
         returnValue.append(trackInfo);
+        if (!tagLibOK) {
+            addToExtraInfo(&returnExtra, trackInfo.url, "incomplete_tags", 1);
+        }
 
         // remember variation directory if it was just selected and variation is not not on High
         if ((variationCurrent < 2) && (variationDir.length() < 1)) {
@@ -545,9 +571,12 @@ void LocalSource::getReplacement(QUuid uniqueId)
         return;
     }
 
-    TrackInfo trackInfo = trackInfoFromFilePath(trackFileNames.at(qrand() % trackFileNames.count()));
+    bool tagLibOK = true;
+    TrackInfo trackInfo = trackInfoFromFilePath(trackFileNames.at(qrand() % trackFileNames.count()), &tagLibOK);
 
     emit replacement(id, trackInfo);
+
+    // TODO extrainfo? (for tagLibOK)
 }
 
 // client wants to dispaly open dialog
@@ -656,9 +685,13 @@ void LocalSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
     TracksInfo returnValue;
     ExtraInfo  returnExtra;
     foreach (QString file, fileList) {
-        TrackInfo trackInfo = trackInfoFromFilePath(file);
+        bool tagLibOK = true;
+        TrackInfo trackInfo = trackInfoFromFilePath(file, &tagLibOK);
         returnValue.append(trackInfo);
-        returnExtra.insert(trackInfo.url, {{ "resolved_open_track", 1 }});
+        addToExtraInfo(&returnExtra, trackInfo.url, "resolved_open_track", 1);
+        if (!tagLibOK) {
+            addToExtraInfo(&returnExtra, trackInfo.url, "incomplete_tags", 1);
+        }
     }
 
     emit playlist(id, returnValue, returnExtra);
@@ -721,6 +754,28 @@ void LocalSource::search(QUuid uniqueId, QString criteria)
 void LocalSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
 {
     if (uniqueId != id) {
+        return;
+    }
+
+    // special action
+    if (actionKey == RESERVED_ACTION_TRACKINFOUPDATED) {
+        if (!QFile::exists(trackInfo.url.toLocalFile())) {
+            return;
+        }
+        if (trackInfo.title.isEmpty() || trackInfo.album.isEmpty() || trackInfo.performer.isEmpty()) {
+            return;
+        }
+
+        TagLib::FileRef fileRef(QFile::encodeName(trackInfo.url.toLocalFile()).constData());
+        if (!fileRef.isNull()) {
+            fileRef.tag()->setTitle(QStringToTString(trackInfo.title));
+            fileRef.tag()->setAlbum(QStringToTString(trackInfo.album));
+            fileRef.tag()->setArtist(QStringToTString(trackInfo.performer));
+            fileRef.tag()->setYear(trackInfo.year);
+            fileRef.tag()->setTrack(trackInfo.track);
+            fileRef.save();
+        }
+
         return;
     }
 
@@ -1004,7 +1059,7 @@ bool LocalSource::isTrackFile(QFileInfo fileInfo)
 
 
 // helper
-TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
+TrackInfo LocalSource::trackInfoFromFilePath(QString filePath, bool *tagLibOK)
 {
     // defaults
     TrackInfo trackInfo;
@@ -1014,7 +1069,7 @@ TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
     trackInfo.track = 0;
 
     // try taglib first
-    bool tagLibOK = true;
+    *tagLibOK = true;
     TagLib::FileRef fileRef(QFile::encodeName(filePath).constData());
     if (!fileRef.isNull() && !fileRef.tag()->isEmpty()) {
         trackInfo.title     = TStringToQString(fileRef.tag()->title());
@@ -1026,7 +1081,7 @@ TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
 
     // figure out based on file path if taglib failed
     if (trackInfo.title.isEmpty() || trackInfo.performer.isEmpty() || trackInfo.album.isEmpty()) {
-        tagLibOK = false;
+        *tagLibOK = false;
         // find track's base directory for track info discovery
         QString trackDirectory;
         foreach (QString directory, directories) {
@@ -1074,7 +1129,7 @@ TrackInfo LocalSource::trackInfoFromFilePath(QString filePath)
     else {
         trackInfo.actions.append({ id, 1, "Love" });
     }
-    if (tagLibOK) {
+    if (*tagLibOK) {
         trackInfo.actions.append({ id, 10, "Lyrics search"});
         trackInfo.actions.append({ id, 11, "Band search"});
     }
@@ -1127,6 +1182,15 @@ void LocalSource::variationSetCurrentRemainingDir()
     }
 
     variationDir = "";
+}
+
+
+// helper
+void LocalSource::addToExtraInfo(ExtraInfo *extraInfo, QUrl url, QString key, QVariant value)
+{
+    QVariantHash temp = extraInfo->value(url);
+    temp.insert(key, value);
+    extraInfo->insert(url, temp);
 }
 
 

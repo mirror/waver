@@ -104,10 +104,11 @@ class Track : public QObject {
         static const int FADE_DIRECTION_OUT  = 2;
 
         struct PluginNoQueue {
-            QString name;
-            int     version;
-            QString waverVersionAPICompatibility;
-            bool    hasUI;
+            QString  name;
+            int      version;
+            QString  waverVersionAPICompatibility;
+            bool     hasUI;
+            QObject *pointer;
         };
         typedef QHash<QUuid, PluginNoQueue> PluginsNoQueue;
 
@@ -116,6 +117,7 @@ class Track : public QObject {
             int          version;
             QString      waverVersionAPICompatibility;
             bool         hasUI;
+            QObject     *pointer;
             BufferQueue *bufferQueue;
             QMutex      *bufferMutex;
         };
@@ -215,6 +217,7 @@ class Track : public QObject {
         void executedSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
         void executedGlobalSqlResults(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results);
         void executedSqlError(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error);
+        void messageFromPlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value);
 
         void requestPluginUi(QUuid id);
         void pluginUiResults(QUuid uniqueId, QJsonDocument results);
@@ -237,6 +240,7 @@ class Track : public QObject {
         void messageFromDspPrePlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value);
 
         void getInfo(QUuid uniqueId, TrackInfo trackInfo);
+        void getInfo(QUuid uniqueId, TrackInfo trackInfo, QVariantHash additionalInfo);
         void trackAction(QUuid uniqueId, int actionKey, TrackInfo trackInfo);
 
 
@@ -263,6 +267,7 @@ class Track : public QObject {
         void saveGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration);
         void executeSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
         void executeGlobalSql(QUuid uniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString sql, QVariantList values);
+        void messageToPlugin(QUuid uniqueId, QUuid destinationUniqueId, int messageId, QVariant value);
         void ui(QUuid uniqueId, QString qml);
         void infoMessage(QUuid uniqueId, QString message);
         void diagnostics(QUuid id, DiagnosticData diagnosticData);

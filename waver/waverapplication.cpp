@@ -503,7 +503,13 @@ void WaverApplication::updateUITrackInfo(QJsonDocument jsonDocument)
         actions.append("s~play_forever|Infinite");
     }
     qSort(trackInfo.actions.begin(), trackInfo.actions.end(), [](TrackAction a, TrackAction b) {
-        return ((a.pluginId < b.pluginId) || (a.id < b.id));
+        if (a.pluginId < b.pluginId) {
+            return true;
+        }
+        if (a.pluginId > b.pluginId) {
+            return false;
+        }
+        return (a.id < b.id);
     });
     foreach (TrackAction trackAction, trackInfo.actions) {
         actions.append(QString("%1~%2|%3").arg(trackAction.pluginId.toString()).arg(trackAction.id).arg(trackAction.label));
@@ -562,7 +568,13 @@ void WaverApplication::updateUIPlaylist(QJsonDocument jsonDocument)
         actions.append("s~remove|Remove");
 
         qSort(trackInfo.actions.begin(), trackInfo.actions.end(), [](TrackAction a, TrackAction b) {
-            return ((a.pluginId < b.pluginId) || (a.id < b.id));
+            if (a.pluginId < b.pluginId) {
+                return true;
+            }
+            if (a.pluginId > b.pluginId) {
+                return false;
+            }
+            return (a.id < b.id);
         });
         foreach (TrackAction trackAction, trackInfo.actions) {
             actions.append(QString("%1~%2|%3").arg(trackAction.pluginId.toString()).arg(trackAction.id).arg(trackAction.label));

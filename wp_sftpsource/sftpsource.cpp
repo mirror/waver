@@ -224,6 +224,16 @@ void SFTPSource::sqlError(QUuid persistentUniqueId, bool temporary, QString clie
 }
 
 
+// message from another plugin
+void SFTPSource::messageFromPlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(sourceUniqueId);
+    Q_UNUSED(messageId);
+    Q_UNUSED(value);
+}
+
+
 // server asks for this plugin's configuration dialog
 void SFTPSource::getUiQml(QUuid uniqueId)
 {
@@ -454,9 +464,13 @@ void SFTPSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
                 emit saveGlobalConfiguration(id, configToJsonGlobal());
 
                 // add to return value
-                TrackInfo trackInfo = trackInfoFromFilePath(downloaded.at(index).cachePath.toLocalFile(), downloaded.at(index).clientId);
+                bool tagLibOK = true;
+                TrackInfo trackInfo = trackInfoFromFilePath(downloaded.at(index).cachePath.toLocalFile(), downloaded.at(index).clientId, &tagLibOK);
                 returnValue.append(trackInfo);
-                returnExtra.insert(trackInfo.url, {{ "loved", PLAYLIST_MODE_LOVED }});
+                addToExtraInfo(&returnExtra, trackInfo.url, "loved", PLAYLIST_MODE_LOVED);
+                if (!tagLibOK) {
+                    addToExtraInfo(&returnExtra, trackInfo.url, "incomplete_tags", 1);
+                }
 
                 // playlist should be one less now
                 trackCount--;
@@ -477,9 +491,13 @@ void SFTPSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
             int index = qrand() % downloaded.count();
 
             // add to return value
-            TrackInfo trackInfo = trackInfoFromFilePath(downloaded.at(index).cachePath.toLocalFile(), downloaded.at(index).clientId);
+            bool tagLibOK = true;
+            TrackInfo trackInfo = trackInfoFromFilePath(downloaded.at(index).cachePath.toLocalFile(), downloaded.at(index).clientId, &tagLibOK);
             returnValue.append(trackInfo);
-            returnExtra.insert(trackInfo.url, {{ "loved", PLAYLIST_MODE_LOVED_SIMILAR }});
+            addToExtraInfo(&returnExtra, trackInfo.url, "loved", PLAYLIST_MODE_LOVED_SIMILAR);
+            if (!tagLibOK) {
+                addToExtraInfo(&returnExtra, trackInfo.url, "incomplete_tags", 1);
+            }
 
             // playlist should be one less now
             trackCount--;
@@ -505,8 +523,12 @@ void SFTPSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)
             }
 
             // add to return value
-            TrackInfo trackInfo = trackInfoFromFilePath(futurePlaylist.at(index).cachePath.toLocalFile(), futurePlaylist.at(index).clientId);
+            bool tagLibOK = true;
+            TrackInfo trackInfo = trackInfoFromFilePath(futurePlaylist.at(index).cachePath.toLocalFile(), futurePlaylist.at(index).clientId, &tagLibOK);
             returnValue.append(trackInfo);
+            if (!tagLibOK) {
+                addToExtraInfo(&returnExtra, trackInfo.url, "incomplete_tags", 1);
+            }
 
             // add to already played
             alreadyPlayed.append(formatTrackForLists(futurePlaylist.at(index).clientId, futurePlaylist.at(index).remotePath));
@@ -634,9 +656,13 @@ void SFTPSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
             doNotDelete.append(QUrl::fromLocalFile(localPath));
 
             // add to return value
-            TrackInfo trackInfo = trackInfoFromFilePath(localPath, clientId);
+            bool tagLibOK = true;
+            TrackInfo trackInfo = trackInfoFromFilePath(localPath, clientId, &tagLibOK);
             returnValue.append(trackInfo);
-            returnExtra.insert(trackInfo.url, {{ "resolved_open_track", 1 }});
+            addToExtraInfo(&returnExtra, trackInfo.url, "resolved_open_track", 1);
+            if (!tagLibOK) {
+                addToExtraInfo(&returnExtra, trackInfo.url, "incomplete_tags", 1);
+            }
 
             continue;
         }
@@ -656,7 +682,7 @@ void SFTPSource::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
 
     // just a little info
     if (wasDownload) {
-        emit this->infoMessage(this->id, "<INFO>Tracks will be added to playlist after download completes");
+        emit this->infoMessage(this->id, "<INFO>Tracks will be added after download completes");
     }
 }
 
@@ -1477,9 +1503,13 @@ void SFTPSource::clientGotAudio(int id, QString remote, QString local)
         TracksInfo returnValue;
         ExtraInfo  returnExtra;
 
-        TrackInfo trackInfo = trackInfoFromFilePath(local, id);
+        bool tagLibOK = true;
+        TrackInfo trackInfo = trackInfoFromFilePath(local, id, &tagLibOK);
         returnValue.append(trackInfo);
-        returnExtra.insert(trackInfo.url, {{ "resolved_open_track", 1 }});
+        addToExtraInfo(&returnExtra, trackInfo.url, "resolved_open_track", 1);
+        if (!tagLibOK) {
+            addToExtraInfo(&returnExtra, trackInfo.url, "incomplete_tags", 1);
+        }
 
         emit playlist(this->id, returnValue, returnExtra);
 
@@ -1677,6 +1707,15 @@ void SFTPSource::setState(State state)
 
 
 // helper
+void SFTPSource::addToExtraInfo(ExtraInfo *extraInfo, QUrl url, QString key, QVariant value)
+{
+    QVariantHash temp = extraInfo->value(url);
+    temp.insert(key, value);
+    extraInfo->insert(url, temp);
+}
+
+
+// helper
 SSHClient *SFTPSource::clientFromId(int id)
 {
     SSHClient *returnValue = NULL;
@@ -1714,7 +1753,7 @@ void SFTPSource::readyIfReady()
 
 
 // helper
-TrackInfo SFTPSource::trackInfoFromFilePath(QString filePath, int clientId)
+TrackInfo SFTPSource::trackInfoFromFilePath(QString filePath, int clientId, bool *tagLibOK)
 {
     // defaults
     TrackInfo trackInfo;
@@ -1724,7 +1763,7 @@ TrackInfo SFTPSource::trackInfoFromFilePath(QString filePath, int clientId)
     trackInfo.track = 0;
 
     // try taglib first
-    bool tagLibOK = true;
+    *tagLibOK = true;
     TagLib::FileRef fileRef(QFile::encodeName(filePath).constData());
     if (!fileRef.isNull() && !fileRef.tag()->isEmpty()) {
         trackInfo.title     = TStringToQString(fileRef.tag()->title());
@@ -1737,7 +1776,7 @@ TrackInfo SFTPSource::trackInfoFromFilePath(QString filePath, int clientId)
 
     // figure out based on file path if taglib failed
     if (trackInfo.title.isEmpty() || trackInfo.performer.isEmpty() || trackInfo.album.isEmpty()) {
-        tagLibOK = false;
+        *tagLibOK = false;
 
         // track info discovery
         QStringList trackRelative = QString(filePath).remove(clientFromId(clientId)->getConfig().cacheDir).split("/");
@@ -1780,7 +1819,7 @@ TrackInfo SFTPSource::trackInfoFromFilePath(QString filePath, int clientId)
     else {
         trackInfo.actions.append({ id, clientId * 1000 + 1, "Love" });
     }
-    if (tagLibOK) {
+    if (*tagLibOK) {
         trackInfo.actions.append({ id, clientId * 1000 + 10, "Lyrics search"});
         trackInfo.actions.append({ id, clientId * 1000 + 11, "Band search"});
     }

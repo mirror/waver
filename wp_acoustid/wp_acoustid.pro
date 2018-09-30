@@ -1,6 +1,6 @@
 #    This file is part of Waver
 #
-#    Copyright (C) 2017 Peter Papp <peter.papp.p@gmail.com>
+#    Copyright (C) 2017-2018 Peter Papp <peter.papp.p@gmail.com>
 #
 #    Please visit https://launchpad.net/waver for details
 #
@@ -21,10 +21,10 @@
 QT -= gui
 QT += multimedia
 
-TARGET = wp_equalizer
+TARGET = wp_acoustid
 TEMPLATE = lib
 
-DEFINES += WP_EQUALIZER_LIBRARY
+DEFINES += WP_ACOUSTID_LIBRARY
 
 CONFIG += c++11
 
@@ -33,35 +33,24 @@ CONFIG(debug, debug|release) {
 }
 
 
-SOURCES += equalizer.cpp \
+SOURCES += \
     analyzer.cpp \
-    main.cpp \
-    iirfilter.cpp \
-    coefficientlist.cpp \
-    iirfilterchain.cpp \
-    iirfiltercallback.cpp \
-    replaygaincalculator.cpp \
-    fadeoutdetector.cpp
+    acoustid.cpp \
+    main.cpp
 
-HEADERS += equalizer.h\
-    wp_equalizer_global.h \
-    analyzer.h \
-    ../waver/API/pluginbase_004.h \
-    ../waver/API/plugindsppre_004.h \
-    ../waver/API/plugindsp_004.h \
+HEADERS += \
+    wp_acoustid_global.h \
+    ../waver/API/pluginbase_006.h \
+    ../waver/API/plugindsppre_006.h \
+    ../waver/API/plugininfo_006.h \
     ../waver/pluginfactory.h \
     main.h \
-    iirfilter.h \
-    coefficientlist.h \
-    iirfilterchain.h \
-    iirfiltercallback.h \
-    replaygaincalculator.h \
-    fadeoutdetector.h
-
-RESOURCES += \
-    resources.qrc
+    analyzer.h \
+    acoustid.h
 
 unix:!android {
+    LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -lchromaprint
+
     target.path = /opt/waver/bin
     INSTALLS += target
 
@@ -69,3 +58,8 @@ unix:!android {
     install.depends = translatedestdir
     QMAKE_EXTRA_TARGETS += install translatedestdir
 }
+
+DISTFILES +=
+
+RESOURCES += \
+    resources.qrc

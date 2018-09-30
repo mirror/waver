@@ -2147,7 +2147,7 @@ void WaverServer::trackInfoUpdated(QUrl url)
         TrackInfo previousTrackInfo = previousTrack->getTrackInfo();
 
         // let the source know
-        if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(previousTrack->getSourcePluginId()).waverVersionAPICompatibility, "0.0.5")) {
+        if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(previousTrack->getSourcePluginId()).waverVersionAPICompatibility, "0.0.6")) {
             emit trackAction(previousTrack->getSourcePluginId(), RESERVED_ACTION_TRACKINFOUPDATED, previousTrackInfo);
         }
 
@@ -2169,7 +2169,7 @@ void WaverServer::trackInfoUpdated(QUrl url)
         TrackInfo currentTrackInfo = currentTrack->getTrackInfo();
 
         // let the source know
-        if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(currentTrack->getSourcePluginId()).waverVersionAPICompatibility, "0.0.5")) {
+        if (PluginLibsLoader::isPluginCompatible(sourcePlugins.value(currentTrack->getSourcePluginId()).waverVersionAPICompatibility, "0.0.6")) {
             emit trackAction(currentTrack->getSourcePluginId(), RESERVED_ACTION_TRACKINFOUPDATED, currentTrackInfo);
         }
 
@@ -2194,7 +2194,7 @@ void WaverServer::trackInfoUpdated(QUrl url)
     // must be somewhere in the playlist
     foreach (Track *track, playlistTracks) {
         // let the source know
-        if ((url == track->getTrackInfo().url) && PluginLibsLoader::isPluginCompatible(sourcePlugins.value(track->getSourcePluginId()).waverVersionAPICompatibility, "0.0.5")) {
+        if ((url == track->getTrackInfo().url) && PluginLibsLoader::isPluginCompatible(sourcePlugins.value(track->getSourcePluginId()).waverVersionAPICompatibility, "0.0.6")) {
             emit trackAction(track->getSourcePluginId(), RESERVED_ACTION_TRACKINFOUPDATED, track->getTrackInfo());
         }
     }

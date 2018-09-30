@@ -28,6 +28,7 @@
 #include <QDataStream>
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
 #include <QFileInfo>
 #include <QFileInfoList>
 #include <QObject>
@@ -40,6 +41,8 @@
 #include <QVector>
 #include <libssh2.h>
 #include <libssh2_sftp.h>
+#include <taglib/fileref.h>
+#include <taglib/tstring.h>
 
 #include "../waver/pluginglobals.h"
 

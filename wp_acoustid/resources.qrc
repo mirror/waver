@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/">
+        <file>ChromaprintAnalyzerSettings.qml</file>
+        <file>TrackTags.qml</file>
+        <file>acoustid_key</file>
+    </qresource>
+</RCC>

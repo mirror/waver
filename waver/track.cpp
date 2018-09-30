@@ -188,6 +188,7 @@ void Track::setupDecoderPlugin(QObject *plugin, bool fromEasyPluginInstallDir, Q
 
     // get some basic info
     PluginNoQueue pluginData;
+    pluginData.pointer = plugin;
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
         emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
@@ -263,6 +264,10 @@ void Track::setupDecoderPlugin(QObject *plugin, bool fromEasyPluginInstallDir, Q
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.6")) {
+        connect(plugin, SIGNAL(messageToPlugin(QUuid, QUuid, int, QVariant)),   this,   SLOT(messageToPlugin(QUuid, QUuid, int, QVariant)));
+        connect(this,   SIGNAL(messageFromPlugin(QUuid, QUuid, int, QVariant)), plugin, SLOT(messageFromPlugin(QUuid, QUuid, int, QVariant)));
+    }
 }
 
 
@@ -282,6 +287,7 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
 
     // get some basic info
     PluginWithQueue pluginData;
+    pluginData.pointer = plugin;
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
         emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
@@ -293,6 +299,11 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
         emit error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.6")) {
+        if (!plugin->metaObject()->invokeMethod(plugin, "setCast", Qt::DirectConnection, Q_ARG(bool, trackInfo.cast))) {
+            emit error(trackInfo.url, true, "Failed to invoke method on plugin");
+        }
     }
     pluginData.bufferQueue = new BufferQueue();
     pluginData.bufferMutex = new QMutex();
@@ -330,7 +341,6 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
     connect(plugin, SIGNAL(requestFadeInForNextTrack(QUuid, qint64)),        this,   SLOT(dspPreRequestFadeInForNextTrack(QUuid, qint64)));
     connect(plugin, SIGNAL(requestInterrupt(QUuid, qint64, bool)),           this,   SLOT(dspPreRequestInterrupt(QUuid, qint64, bool)));
     connect(plugin, SIGNAL(requestAboutToFinishSend(QUuid, qint64)),         this,   SLOT(dspPreRequestAboutToFinishSend(QUuid, qint64)));
-    connect(plugin, SIGNAL(messageToDspPlugin(QUuid, QUuid, int, QVariant)), this,   SLOT(dspPreMessageToDspPlugin(QUuid, QUuid, int, QVariant)));
     connect(plugin, SIGNAL(bufferDone(QUuid, QAudioBuffer *)),               this,   SLOT(moveBufferInQueue(QUuid, QAudioBuffer *)));
     connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)),       plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
     connect(this,   SIGNAL(requestPluginUi(QUuid)),                          plugin, SLOT(getUiQml(QUuid)));
@@ -352,6 +362,13 @@ void Track::setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QM
         connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
+    }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.6")) {
+        connect(plugin, SIGNAL(messageToPlugin(QUuid, QUuid, int, QVariant)),   this,   SLOT(messageToPlugin(QUuid, QUuid, int, QVariant)));
+        connect(this,   SIGNAL(messageFromPlugin(QUuid, QUuid, int, QVariant)), plugin, SLOT(messageFromPlugin(QUuid, QUuid, int, QVariant)));
+    }
+    else {
+        connect(plugin, SIGNAL(messageToDspPlugin(QUuid, QUuid, int, QVariant)), this, SLOT(dspPreMessageToDspPlugin(QUuid, QUuid, int, QVariant)));
     }
 }
 
@@ -375,6 +392,7 @@ void Track::setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<
 
     // get some basic info
     PluginWithQueue pluginData;
+    pluginData.pointer = plugin;
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
         emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
@@ -386,6 +404,11 @@ void Track::setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<
     }
     if (!plugin->metaObject()->invokeMethod(plugin, "hasUI", Qt::DirectConnection, Q_RETURN_ARG(bool, pluginData.hasUI))) {
         emit error(trackInfo.url, true, "Failed to invoke method on plugin");
+    }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.6")) {
+        if (!plugin->metaObject()->invokeMethod(plugin, "setCast", Qt::DirectConnection, Q_ARG(bool, trackInfo.cast))) {
+            emit error(trackInfo.url, true, "Failed to invoke method on plugin");
+        }
     }
     pluginData.bufferQueue = new BufferQueue();
     pluginData.bufferMutex = new QMutex();
@@ -441,6 +464,10 @@ void Track::setupDspPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
     }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.6")) {
+        connect(plugin, SIGNAL(messageToPlugin(QUuid, QUuid, int, QVariant)),   this,   SLOT(messageToPlugin(QUuid, QUuid, int, QVariant)));
+        connect(this,   SIGNAL(messageFromPlugin(QUuid, QUuid, int, QVariant)), plugin, SLOT(messageFromPlugin(QUuid, QUuid, int, QVariant)));
+    }
 }
 
 
@@ -460,6 +487,7 @@ void Track::setupOutputPlugin(QObject *plugin)
 
     // get some basic info
     PluginWithQueue pluginData;
+    pluginData.pointer = plugin;
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
         emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
@@ -533,6 +561,10 @@ void Track::setupOutputPlugin(QObject *plugin)
         connect(this,   SIGNAL(fadeIn(QUuid, int)),     plugin, SLOT(fadeIn(QUuid, int)));
         connect(this,   SIGNAL(fadeOut(QUuid, int)),    plugin, SLOT(fadeOut(QUuid, int)));
     }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.6")) {
+        connect(plugin, SIGNAL(messageToPlugin(QUuid, QUuid, int, QVariant)),   this,   SLOT(messageToPlugin(QUuid, QUuid, int, QVariant)));
+        connect(this,   SIGNAL(messageFromPlugin(QUuid, QUuid, int, QVariant)), plugin, SLOT(messageFromPlugin(QUuid, QUuid, int, QVariant)));
+    }
 }
 
 
@@ -552,6 +584,7 @@ void Track::setupInfoPlugin(QObject *plugin)
 
     // get some basic info
     PluginNoQueue pluginData;
+    pluginData.pointer = plugin;
     if (!plugin->metaObject()->invokeMethod(plugin, "pluginName", Qt::DirectConnection, Q_RETURN_ARG(QString, pluginData.name))) {
         emit error(trackInfo.url, true, "Failed to invoke method on plugin");
     }
@@ -592,7 +625,6 @@ void Track::setupInfoPlugin(QObject *plugin)
     connect(this,   SIGNAL(loadedConfiguration(QUuid, QJsonDocument)), plugin, SLOT(loadedConfiguration(QUuid, QJsonDocument)));
     connect(this,   SIGNAL(requestPluginUi(QUuid)),                    plugin, SLOT(getUiQml(QUuid)));
     connect(this,   SIGNAL(pluginUiResults(QUuid, QJsonDocument)),     plugin, SLOT(uiResults(QUuid, QJsonDocument)));
-    connect(plugin, SIGNAL(addInfoHtml(QUuid, QString)), this, SLOT(infoAddInfoHtml(QUuid, QString)));   // deprecated, don't use
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.3")) {
         connect(plugin, SIGNAL(saveGlobalConfiguration(QUuid, QJsonDocument)),   this,   SLOT(saveGlobalConfiguration(QUuid, QJsonDocument)));
         connect(plugin, SIGNAL(loadGlobalConfiguration(QUuid)),                  this,   SLOT(loadGlobalConfiguration(QUuid)));
@@ -607,7 +639,16 @@ void Track::setupInfoPlugin(QObject *plugin)
         connect(this,   SIGNAL(executedSqlResults(QUuid, bool, QString, int, SqlResults)),          plugin, SLOT(sqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedGlobalSqlResults(QUuid, bool, QString, int, SqlResults)),    plugin, SLOT(globalSqlResults(QUuid, bool, QString, int, SqlResults)));
         connect(this,   SIGNAL(executedSqlError(QUuid, bool, QString, int, QString)),               plugin, SLOT(sqlError(QUuid, bool, QString, int, QString)));
-        connect(this,   SIGNAL(getInfo(QUuid, TrackInfo)),                                          plugin, SLOT(getInfo(QUuid, TrackInfo)));
+    }
+    if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.6")) {
+        connect(plugin, SIGNAL(messageToPlugin(QUuid, QUuid, int, QVariant)),   this,   SLOT(messageToPlugin(QUuid, QUuid, int, QVariant)));
+        connect(this,   SIGNAL(messageFromPlugin(QUuid, QUuid, int, QVariant)), plugin, SLOT(messageFromPlugin(QUuid, QUuid, int, QVariant)));
+        connect(this,   SIGNAL(getInfo(QUuid, TrackInfo, QVariantHash)),        plugin, SLOT(getInfo(QUuid, TrackInfo, QVariantHash)));
+        connect(this,   SIGNAL(trackAction(QUuid, int, TrackInfo)),     plugin, SLOT(action(QUuid, int, TrackInfo)));
+    }
+    else {
+        connect(this,   SIGNAL(getInfo(QUuid, TrackInfo)),   plugin, SLOT(getInfo(QUuid, TrackInfo)));
+        connect(plugin, SIGNAL(addInfoHtml(QUuid, QString)), this,   SLOT(infoAddInfoHtml(QUuid, QString)));
     }
 }
 
@@ -670,9 +711,9 @@ void Track::setStatus(Status status)
         sendLoadedPlugins();
         sendLoadedPluginsWithUI();
 
-        // not sure which happens first (see also in infoUpdateTrackInfo)
         foreach (QUuid uniqueId, infoPlugins.keys()) {
             emit getInfo(uniqueId, this->trackInfo);
+            emit getInfo(uniqueId, this->trackInfo, this->additionalInfo);
         }
 
         return;
@@ -711,9 +752,9 @@ void Track::setStatus(Status status)
         sendLoadedPlugins();
         sendLoadedPluginsWithUI();
 
-        // not sure which happens first (see also in infoUpdateTrackInfo)
         foreach (QUuid uniqueId, infoPlugins.keys()) {
             emit getInfo(uniqueId, this->trackInfo);
+            emit getInfo(uniqueId, this->trackInfo, this->additionalInfo);
         }
 
         return;
@@ -1109,6 +1150,56 @@ void Track::executeGlobalSql(QUuid uniqueId, bool temporary, QString clientIdent
 {
     // re-emit for server
     emit executeGlobalSettingsSql(uniqueId, temporary, clientIdentifier, clientSqlIdentifier, sql, values);
+}
+
+
+// message from one plugin to another
+void Track::messageToPlugin(QUuid uniqueId, QUuid destinationUniqueId, int messageId, QVariant value)
+{
+    if (decoderPlugins.contains(destinationUniqueId)) {
+        if (decoderThread.isRunning()) {
+            emit messageFromPlugin(destinationUniqueId, uniqueId, messageId, value);
+            return;
+        }
+        decoderPlugins.value(destinationUniqueId).pointer->metaObject()->invokeMethod(decoderPlugins.value(destinationUniqueId).pointer, "messageFromPlugin", Qt::DirectConnection, Q_ARG(QUuid, destinationUniqueId), Q_ARG(QUuid, uniqueId), Q_ARG(int, messageId), Q_ARG(QVariant, value));
+        return;
+    }
+
+    if (dspPrePlugins.contains(destinationUniqueId)) {
+        if (dspPreThread.isRunning()) {
+            emit messageFromPlugin(destinationUniqueId, uniqueId, messageId, value);
+            return;
+        }
+        dspPrePlugins.value(destinationUniqueId).pointer->metaObject()->invokeMethod(dspPrePlugins.value(destinationUniqueId).pointer, "messageFromPlugin", Qt::DirectConnection, Q_ARG(QUuid, destinationUniqueId), Q_ARG(QUuid, uniqueId), Q_ARG(int, messageId), Q_ARG(QVariant, value));
+        return;
+    }
+
+    if (dspPlugins.contains(destinationUniqueId)) {
+        if (dspThread.isRunning()) {
+            emit messageFromPlugin(destinationUniqueId, uniqueId, messageId, value);
+            return;
+        }
+        dspPlugins.value(destinationUniqueId).pointer->metaObject()->invokeMethod(dspPlugins.value(destinationUniqueId).pointer, "messageFromPlugin", Qt::DirectConnection, Q_ARG(QUuid, destinationUniqueId), Q_ARG(QUuid, uniqueId), Q_ARG(int, messageId), Q_ARG(QVariant, value));
+        return;
+    }
+
+    if (outputPlugins.contains(destinationUniqueId)) {
+        if (outputThread.isRunning()) {
+            emit messageFromPlugin(destinationUniqueId, uniqueId, messageId, value);
+            return;
+        }
+        outputPlugins.value(destinationUniqueId).pointer->metaObject()->invokeMethod(outputPlugins.value(destinationUniqueId).pointer, "messageFromPlugin", Qt::DirectConnection, Q_ARG(QUuid, destinationUniqueId), Q_ARG(QUuid, uniqueId), Q_ARG(int, messageId), Q_ARG(QVariant, value));
+        return;
+    }
+
+    if (infoPlugins.contains(destinationUniqueId)) {
+        if (infoThread.isRunning()) {
+            emit messageFromPlugin(destinationUniqueId, uniqueId, messageId, value);
+            return;
+        }
+        infoPlugins.value(destinationUniqueId).pointer->metaObject()->invokeMethod(infoPlugins.value(destinationUniqueId).pointer, "messageFromPlugin", Qt::DirectConnection, Q_ARG(QUuid, destinationUniqueId), Q_ARG(QUuid, uniqueId), Q_ARG(int, messageId), Q_ARG(QVariant, value));
+        return;
+    }
 }
 
 
@@ -1691,7 +1782,6 @@ void Track::infoUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo)
         foreach (TrackAction trackAction, temp) {
             this->trackInfo.actions.append(trackAction);
         }
-
         foreach (TrackAction trackAction, trackInfo.actions) {
             this->trackInfo.actions.append(trackAction);
         }

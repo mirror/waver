@@ -131,7 +131,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         SSHClient *clientFromId(int id);
         void       readyIfReady();
 
-        TrackInfo trackInfoFromFilePath(QString filePath, int clientId);
+        TrackInfo trackInfoFromFilePath(QString filePath, int clientId, bool *tagLibOK);
 
         void addToUIQueue(QString UI);
         void removeFromUIQueue();
@@ -159,6 +159,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         void dirSumSizeMegabytes(QDir dir, double *sumSize);
 
         void setState(State state);
+        void addToExtraInfo(ExtraInfo *extraInfo, QUrl url, QString key, QVariant value);
         void sendDiagnosticsData();
 
 
@@ -188,6 +189,8 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         void sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)       override;
         void globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results) override;
         void sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)              override;
+
+        void messageFromPlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value) override;
 
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;

@@ -272,7 +272,7 @@ void AlbumArt::getInfo(QUuid uniqueId, TrackInfo trackInfo)
         return;
     }
 
-    // technically it's possible to overwrite trackInfo while another request is being processed, but the idea is that each track has its own set of info plugins
+    // each track has its own set of info plugins
     this->trackInfo = trackInfo;
 
     // actual work takes place after global config is loaded to prevent querying the same thing many times
