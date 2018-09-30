@@ -860,7 +860,6 @@ void SSHClient::socketStateChanged(QAbstractSocket::SocketState socketState)
 
     switch (socketState) {
         case QAbstractSocket::UnconnectedState:
-            disconnectSSH(config.id);
             stateString = "Socket is not connected";
             if (connectAttempt < 3) {
                 QTimer::singleShot(connectAttempt * 30000 + 5000, this, SLOT(autoConnect()));
