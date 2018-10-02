@@ -768,6 +768,16 @@ void LocalSource::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
 
         TagLib::FileRef fileRef(QFile::encodeName(trackInfo.url.toLocalFile()).constData());
         if (!fileRef.isNull()) {
+            if (
+                (trackInfo.title.compare(TStringToQString(fileRef.tag()->title()))      == 0) &&
+                (trackInfo.performer.compare(TStringToQString(fileRef.tag()->artist())) == 0) &&
+                (trackInfo.album.compare(TStringToQString(fileRef.tag()->album()))      == 0) &&
+                (trackInfo.year == fileRef.tag()->year())                                     &&
+                (trackInfo.track  == fileRef.tag()->track())
+            ) {
+                return;
+            }
+
             fileRef.tag()->setTitle(QStringToTString(trackInfo.title));
             fileRef.tag()->setAlbum(QStringToTString(trackInfo.album));
             fileRef.tag()->setArtist(QStringToTString(trackInfo.performer));

@@ -437,6 +437,7 @@ void Acoustid::networkFinished(QNetworkReply *reply)
             if (sendDiagnostics) {
                 sendDiagnosticsData();
             }
+            emit infoMessage(id, "<INFO>AcoustID invalid reply");
 
             reply->deleteLater();
             return;
@@ -451,6 +452,7 @@ void Acoustid::networkFinished(QNetworkReply *reply)
             if (sendDiagnostics) {
                 sendDiagnosticsData();
             }
+            emit infoMessage(id, "<INFO>AcoustID invalid reply");
 
             reply->deleteLater();
             return;
@@ -465,6 +467,7 @@ void Acoustid::networkFinished(QNetworkReply *reply)
             if (sendDiagnostics) {
                 sendDiagnosticsData();
             }
+            emit infoMessage(id, "<INFO>AcoustID not found");
 
             reply->deleteLater();
             return;
@@ -487,24 +490,28 @@ void Acoustid::networkFinished(QNetworkReply *reply)
         reply->readAll();
         reply->deleteLater();
 
-        if (recordings.count() > 0) {
-            // keep only recordings with highest score (more than one can have the same score)
-            qSort(recordings.begin(), recordings.end(), [](Recording a, Recording b) {
-                return (std::isless(a.score, b.score));
-            });
-            while (recordings.first().score != recordings.last().score) {
-                recordings.removeFirst();
-            }
-
-            // take first recording
-            Recording recording = recordings.first();
-            recordings.removeFirst();
-
-            // query on musicbrainz
-            QNetworkRequest request(QUrl("http://musicbrainz.org/ws/2/recording/?query=rid:" + recording.id));
-            request.setRawHeader("User-Agent", userAgent.toUtf8());
-            networkAccessManager->get(request);
+        if (recordings.count() < 1) {
+            emit infoMessage(id, "<INFO>AcoustID recording not found");
+            return;
         }
+
+        // keep only recordings with highest score (more than one can have the same score)
+        qSort(recordings.begin(), recordings.end(), [](Recording a, Recording b) {
+            return (std::isless(a.score, b.score));
+        });
+        while (recordings.first().score != recordings.last().score) {
+            recordings.removeFirst();
+        }
+
+        // take first recording
+        Recording recording = recordings.first();
+        recordings.removeFirst();
+
+        // query on musicbrainz
+        QNetworkRequest request(QUrl("http://musicbrainz.org/ws/2/recording/?query=rid:" + recording.id));
+        request.setRawHeader("User-Agent", userAgent.toUtf8());
+        networkAccessManager->get(request);
+
         return;
     }
 
@@ -517,6 +524,7 @@ void Acoustid::networkFinished(QNetworkReply *reply)
         if (sendDiagnostics) {
             sendDiagnosticsData();
         }
+        emit infoMessage(id, "<INFO>musicbrainz invalid reply");
 
         reply->deleteLater();
         return;
@@ -732,6 +740,7 @@ void Acoustid::networkFinished(QNetworkReply *reply)
         if (sendDiagnostics) {
             sendDiagnosticsData();
         }
+        emit infoMessage(id, "<INFO>musicbrainz not found");
         return;
     }
 

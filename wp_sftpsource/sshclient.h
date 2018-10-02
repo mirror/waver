@@ -51,6 +51,8 @@ class SSHClient : public QObject {
 
     public:
 
+        static const int CHUNK_SIZE = 65536;
+
         struct SSHClientConfig {
             int      id;
             QString  host;

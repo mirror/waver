@@ -581,7 +581,7 @@ bool SSHClient::executeSSH(QString command)
     // read outputs
 
     QString tmp;
-    char    bufferRaw[65536];
+    char    bufferRaw[CHUNK_SIZE];
 
     ssize_t readCount = libssh2_channel_read(channel, bufferRaw, sizeof(bufferRaw));
     while ((readCount > 0) && !QThread::currentThread()->isInterruptionRequested()) {
@@ -683,7 +683,7 @@ bool SSHClient::download(QString source, QString destination)
     }
 
     // read source and write destination
-    char    bufferRaw[65536];
+    char    bufferRaw[CHUNK_SIZE];
     bool    wasError  = false;
     ssize_t readCount = libssh2_sftp_read(sftpHandle, bufferRaw, sizeof(bufferRaw));
     while ((readCount > 0) && !QThread::currentThread()->isInterruptionRequested()) {
@@ -733,9 +733,19 @@ bool SSHClient::upload(QString source, QString destination)
     // read source and write temporary destination
     bool wasError = false;
     while (!localFile.atEnd() && !QThread::currentThread()->isInterruptionRequested()) {
-        QByteArray bufferRaw = localFile.read(65536);
-        if (libssh2_sftp_write(sftpHandle, bufferRaw.constData(), bufferRaw.count()) < 0) {
-            wasError = true;
+        QByteArray bufferRaw = localFile.read(CHUNK_SIZE);
+        int remaining        = bufferRaw.count();
+        int offset           = 0;
+        while (remaining > 0) {
+            ssize_t bytesWritten = libssh2_sftp_write(sftpHandle, bufferRaw.constData() + offset, remaining);
+            if (bytesWritten < 0) {
+                wasError = true;
+                break;
+            }
+            remaining -= bytesWritten;
+            offset    += bytesWritten;
+        }
+        if (wasError) {
             break;
         }
     }
@@ -752,6 +762,24 @@ bool SSHClient::upload(QString source, QString destination)
         return false;
     }
 
+    // check size
+    if (!executeSSH("stat -c %s \"" + destination_temp + "\"")) {
+        executeSSH(QString("rm -f \"%1\"").arg(destination_temp));
+        return false;
+    }
+    bool OK = false;
+    qint64 destination_temp_size = stdOutSSH.at(0).toLongLong(&OK);
+    if (!OK) {
+        executeSSH(QString("rm -f \"%1\"").arg(destination_temp));
+        return false;
+    }
+    QFileInfo sourceInfo(source);
+    if (sourceInfo.size() != destination_temp_size) {
+        executeSSH(QString("rm -f \"%1\"").arg(destination_temp));
+        return false;
+    }
+
+    // size OK, let's complete the upload
     return executeSSH(QString("mv -f \"%1\" \"%2\"").arg(destination_temp).arg(destination));
 }
 
@@ -1089,15 +1117,28 @@ void SSHClient::trackInfoUpdated(TrackInfo trackInfo)
         if (OK) {
             TagLib::FileRef fileRef(QFile::encodeName(localPath).constData());
             if (!fileRef.isNull()) {
+                if (
+                    (trackInfo.title.compare(TStringToQString(fileRef.tag()->title()))      == 0) &&
+                    (trackInfo.performer.compare(TStringToQString(fileRef.tag()->artist())) == 0) &&
+                    (trackInfo.album.compare(TStringToQString(fileRef.tag()->album()))      == 0) &&
+                    (trackInfo.year == fileRef.tag()->year())                                     &&
+                    (trackInfo.track  == fileRef.tag()->track())
+                ) {
+                    if (downloaded) {
+                        QFile::remove(localPath);
+                    }
+                    return;
+                }
+
                 fileRef.tag()->setTitle(QStringToTString(trackInfo.title));
                 fileRef.tag()->setAlbum(QStringToTString(trackInfo.album));
                 fileRef.tag()->setArtist(QStringToTString(trackInfo.performer));
                 fileRef.tag()->setYear(trackInfo.year);
                 fileRef.tag()->setTrack(trackInfo.track);
                 fileRef.save();
-            }
 
-            upload(localPath, localToRemote(localPath));
+                upload(localPath, localToRemote(localPath));
+            }
             if (downloaded) {
                 QFile::remove(localPath);
             }
