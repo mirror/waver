@@ -44,6 +44,7 @@ RadioSource::RadioSource()
     readySent             = false;
     sendDiagnostics       = false;
     state                 = Idle;
+    unableToStartCount    = 0;
 
     // TODO since I updated Qt, copy below does't work for some reason
     QFile::remove(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation) + "/wp_radiosource.png");
@@ -87,7 +88,7 @@ int RadioSource::pluginVersion()
 // overrided virtual function
 QString RadioSource::waverVersionAPICompatibility()
 {
-    return "0.0.5";
+    return "0.0.6";
 }
 
 
@@ -498,6 +499,16 @@ void RadioSource::sqlError(QUuid persistentUniqueId, bool temporary, QString cli
 }
 
 
+// message handler
+void RadioSource::messageFromPlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(sourceUniqueId);
+    Q_UNUSED(messageId);
+    Q_UNUSED(value);
+}
+
+
 // client wants to display this plugin's configuration dialog
 void RadioSource::getUiQml(QUuid uniqueId)
 {
@@ -610,6 +621,23 @@ void RadioSource::unableToStart(QUuid uniqueId, QUrl url)
         unableToStartUrls.append({ url, QDateTime::currentMSecsSinceEpoch() });
         emit saveGlobalConfiguration(id, configToJsonGlobal());
     }
+
+    unableToStartCount++;
+    if (readySent && (unableToStartCount >= 24)) {
+        readySent = false;
+        emit unready(id);
+
+        QTimer::singleShot(10 * 60 * 1000, this, SLOT(resumeAfterTooManyUnableToStart()));
+    }
+}
+
+
+// timer signal handler
+void RadioSource::resumeAfterTooManyUnableToStart()
+{
+    unableToStartCount = 0;
+    readySent          = true;
+    emit ready(id);
 }
 
 
@@ -625,6 +653,20 @@ void RadioSource::castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds)
     }
 }
 
+
+// server is done with a track
+void RadioSource::done(QUuid uniqueId, QUrl url, bool wasError)
+{
+    Q_UNUSED(url);
+
+    if (uniqueId != id) {
+        return;
+    }
+
+    if (!wasError) {
+        unableToStartCount = 0;
+    }
+}
 
 // reuest for playlist entries
 void RadioSource::getPlaylist(QUuid uniqueId, int trackCount, int mode)

@@ -43,6 +43,7 @@ SFTPSource::SFTPSource()
     variationSetCountSinceLow  = 0;
     readySent                  = false;
     sendDiagnostics            = false;
+    unableToStartCount         = 0;
 
     if (libssh2_init(0)) {
         emit infoMessage(id, "Unable to initialize libssh2");
@@ -367,10 +368,19 @@ void SFTPSource::stopDiagnostics(QUuid uniqueId)
 // broken download?
 void SFTPSource::unableToStart(QUuid uniqueId, QUrl url)
 {
-    Q_UNUSED(uniqueId);
     Q_UNUSED(url);
 
-    // don't care for now, maybe later
+    if (uniqueId != id) {
+        return;
+    }
+
+    unableToStartCount++;
+    if (readySent && (unableToStartCount >= 4)) {
+        readySent = false;
+        emit unready(id);
+
+        QTimer::singleShot(10 * 60 * 1000, this, SLOT(readyIfReady()));
+    }
 }
 
 
@@ -384,7 +394,7 @@ void SFTPSource::castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds)
 
 
 // server says this track is no longer needed (for now)
-void SFTPSource::done(QUuid uniqueId, QUrl url)
+void SFTPSource::done(QUuid uniqueId, QUrl url, bool wasError)
 {
     if (uniqueId != id) {
         return;
@@ -420,6 +430,11 @@ void SFTPSource::done(QUuid uniqueId, QUrl url)
     // remove from cache
     QFile file(url.toLocalFile());
     file.remove();
+
+    // reset "unable to start" counter
+    if (!wasError) {
+        unableToStartCount = 0;
+    }
 }
 
 // server's request for playlist entries
@@ -563,7 +578,30 @@ void SFTPSource::getReplacement(QUuid uniqueId)
         return;
     }
 
-    // TODO this
+    // find first downloaded (might be holes if there's more than one client)
+    int index = -1;
+    int i     = 0;
+    while ((i < futurePlaylist.count()) && (index < 0)) {
+        if (futurePlaylist.at(i).cachePath.isValid()) {
+            index = i;
+        }
+        i++;
+    }
+    if (index < 0) {
+        // no more downloaded tracks at this time, can't fullfill
+        return;
+    }
+
+    // add to return value
+    bool tagLibOK = true;
+    TrackInfo trackInfo = trackInfoFromFilePath(futurePlaylist.at(index).cachePath.toLocalFile(), futurePlaylist.at(index).clientId, &tagLibOK);
+    emit replacement(id, trackInfo);
+
+    // add to already played
+    alreadyPlayed.append(formatTrackForLists(futurePlaylist.at(index).clientId, futurePlaylist.at(index).remotePath));
+
+    // remove from predetermined playlist
+    futurePlaylist.remove(index);
 }
 
 
@@ -1746,7 +1784,8 @@ void SFTPSource::readyIfReady()
         // send ready if enough tracks are downloaded already
         if (downloaded >= qMin(PLAYLIST_READY_SIZE, PLAYLIST_DESIRED_SIZE)) {
             emit ready(this->id);
-            readySent = true;
+            readySent          = true;
+            unableToStartCount = 0;
         }
     }
 }

@@ -44,7 +44,6 @@ WaverServer::WaverServer(QObject *parent, QStringList arguments) : QObject(paren
     currentTrack                        = NULL;
     currentCollection                   = "";
     startupCollection                   = "";
-    unableToStartCount                  = 0;
     waitingForLocalSource               = true;
     waitingForLocalSourceTimerStarted   = false;
     lastRequestPlaylist                 = QDateTime::fromSecsSinceEpoch(1);
@@ -125,15 +124,15 @@ void WaverServer::finish()
 
     // delete tracks
     if (previousTrack != NULL) {
-        emit done(previousTrack->getSourcePluginId(), previousTrack->getTrackInfo().url);
+        emit done(previousTrack->getSourcePluginId(), previousTrack->getTrackInfo().url, false);
         delete previousTrack;
     }
     if (currentTrack != NULL) {
-        emit done(currentTrack->getSourcePluginId(), currentTrack->getTrackInfo().url);
+        emit done(currentTrack->getSourcePluginId(), currentTrack->getTrackInfo().url, false);
         delete currentTrack;
     }
     foreach (Track *track, playlistTracks) {
-        emit done(track->getSourcePluginId(), track->getTrackInfo().url);
+        emit done(track->getSourcePluginId(), track->getTrackInfo().url, false);
         delete track;
     }
 
@@ -356,12 +355,6 @@ void WaverServer::requestPlaylist()
         }
     }
     if (readyPlugins.count() < 1) {
-        return;
-    }
-
-    // not requesting anymore tracks if couldn't start too many tracks already
-    if (unableToStartCount >= GIVE_UP_TRACKS_COUNT) {
-        outputError("Too many tracks couldn't start. Not requesting tracks anymore until a manually added track plays.", "", false);
         return;
     }
 
@@ -608,7 +601,7 @@ void WaverServer::handleCollectionMenuChange(QJsonDocument jsonDocument)
     tracksToBeDeleted.append(playlistTracks);
     foreach (Track *track, tracksToBeDeleted) {
         playlistTracks.removeAll(track);
-        emit done(track->getSourcePluginId(), track->getTrackInfo().url);
+        emit done(track->getSourcePluginId(), track->getTrackInfo().url, false);
         delete track;
     }
 
@@ -793,7 +786,7 @@ void WaverServer::handleTrackActionsRequest(QJsonDocument jsonDocument)
         if (ids.at(1).compare("remove") == 0) {
             Track *toBeRemoved = playlistTracks.at(index);
             playlistTracks.remove(index);
-            emit done(toBeRemoved->getSourcePluginId(), toBeRemoved->getTrackInfo().url);
+            emit done(toBeRemoved->getSourcePluginId(), toBeRemoved->getTrackInfo().url, false);
             delete toBeRemoved;
             sendPlaylistToClients();
         }
@@ -1204,7 +1197,7 @@ void WaverServer::pluginLibsLoaded()
                 connect(this,   SIGNAL(trackAction(QUuid, int, QUrl)), plugin, SLOT(action(QUuid, int, QUrl)));
             }
             if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.6")) {
-                connect(this, SIGNAL(done(QUuid, QUrl)), plugin, SLOT(done(QUuid, QUrl)));
+                connect(this, SIGNAL(done(QUuid, QUrl, bool)), plugin, SLOT(done(QUuid, QUrl, bool)));
             }
         }
     }
@@ -1906,7 +1899,7 @@ void WaverServer::requestedRemoveTracks(QUuid uniqueId)
     }
     foreach (Track *track, tracksToBeDeleted) {
         playlistTracks.removeAll(track);
-        emit done(track->getSourcePluginId(), track->getTrackInfo().url);
+        emit done(track->getSourcePluginId(), track->getTrackInfo().url, false);
         delete track;
     }
     sendPlaylistToClients();
@@ -1930,7 +1923,7 @@ void WaverServer::requestedRemoveTrack(QUuid uniqueId, QUrl url)
     }
     foreach (Track *track, tracksToBeDeleted) {
         playlistTracks.removeAll(track);
-        emit done(track->getSourcePluginId(), track->getTrackInfo().url);
+        emit done(track->getSourcePluginId(), track->getTrackInfo().url, false);
         delete track;
     }
     sendPlaylistToClients();
@@ -2009,8 +2002,7 @@ void WaverServer::trackPosition(QUrl url, bool decoderFinished, long knownDurati
     if (!showPreviousTime && ((positionSeconds != (positionMilliseconds / 1000)) || currentTrack->status() == Track::Paused)) {
         positionSeconds = (positionMilliseconds / 1000);
 
-        unableToStartCount = 0;
-
+        // pass position to UI
         IpcMessageUtils ipcMessageUtils;
         emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Position, QJsonDocument(QJsonObject::fromVariantHash(positionToElapsedRemaining(decoderFinished, knownDurationMilliseconds, positionMilliseconds)))));
     }
@@ -2032,7 +2024,7 @@ void WaverServer::trackAboutToFinish(QUrl url)
 
     // move current track to previous track
     if (previousTrack != NULL) {
-        emit done(previousTrack->getSourcePluginId(), previousTrack->getTrackInfo().url);
+        emit done(previousTrack->getSourcePluginId(), previousTrack->getTrackInfo().url, false);
         delete previousTrack;
     }
     previousTrack           = currentTrack;
@@ -2047,14 +2039,6 @@ void WaverServer::trackAboutToFinish(QUrl url)
 // track signal handler
 void WaverServer::trackFinished(QUrl url)
 {
-    // get number of ready source plugins
-    int readySources = 0;
-    foreach (QUuid pluginId, sourcePlugins.keys()) {
-        if (sourcePlugins.value(pluginId).ready) {
-            readySources++;
-        }
-    }
-
     // is this the previous track?
     if ((previousTrack != NULL) && (url == previousTrack->getTrackInfo().url)) {
         // send message to source if cast finished too early
@@ -2063,12 +2047,13 @@ void WaverServer::trackFinished(QUrl url)
         }
 
         // get replacement if needed
-        if (previousTrack->isReplacable() && (readySources > 0) && ((previousPositionSeconds < 1) || ((previousTrack->getTrackInfo().cast) && (previousPositionSeconds < CAST_EARLY_SECONDS)))) {
+        bool wasError = ((previousPositionSeconds < 1) || (previousTrack->getTrackInfo().cast && (previousPositionSeconds < CAST_EARLY_SECONDS)));
+        if (previousTrack->isReplacable() && (sourcePlugins.value(previousTrack->getSourcePluginId()).ready) && wasError) {
             emit getReplacement(previousTrack->getSourcePluginId());
         }
 
         // housekeeping
-        emit done(previousTrack->getSourcePluginId(), previousTrack->getTrackInfo().url);
+        emit done(previousTrack->getSourcePluginId(), previousTrack->getTrackInfo().url, wasError);
         delete previousTrack;
         previousTrack = NULL;
         previousPositionSeconds = 0;
@@ -2079,7 +2064,6 @@ void WaverServer::trackFinished(QUrl url)
     if ((currentTrack != NULL) && (url == currentTrack->getTrackInfo().url)) {
         // send message to source if could not even start
         if (positionSeconds < 1) {
-            unableToStartCount++;
             emit unableToStart(currentTrack->getSourcePluginId(), url);
             if (playlistTracks.count() > 0) {
                 playlistTracks.at(0)->startWithoutFadeIn();
@@ -2095,12 +2079,13 @@ void WaverServer::trackFinished(QUrl url)
         }
 
         // get replacement if needed
-        if (currentTrack->isReplacable() && (readySources > 0) && ((positionSeconds < 1) || ((currentTrack->getTrackInfo().cast) && (positionSeconds < CAST_EARLY_SECONDS)))) {
+        bool wasError = ((positionSeconds < 1) || (currentTrack->getTrackInfo().cast && (positionSeconds < CAST_EARLY_SECONDS)));
+        if (currentTrack->isReplacable() && (sourcePlugins.value(currentTrack->getSourcePluginId()).ready) && wasError) {
             emit getReplacement(currentTrack->getSourcePluginId());
         }
 
         // housekeeping
-        emit done(currentTrack->getSourcePluginId(), currentTrack->getTrackInfo().url);
+        emit done(currentTrack->getSourcePluginId(), currentTrack->getTrackInfo().url, wasError);
         delete currentTrack;
         currentTrack = NULL;
 
@@ -2115,15 +2100,14 @@ void WaverServer::trackFinished(QUrl url)
     foreach (Track *track, playlistTracks) {
         if (track->getTrackInfo().url == url) {
             tracksToBeDeleted.append(track);
-            if (track->isReplacable() && (readySources > 0)) {
+            if (track->isReplacable() && (sourcePlugins.value(track->getSourcePluginId()).ready)) {
                 emit getReplacement(track->getSourcePluginId());
             }
         }
     }
     foreach (Track *track, tracksToBeDeleted) {
-        unableToStartCount++;
         emit unableToStart(track->getSourcePluginId(), track->getTrackInfo().url);
-        emit done(track->getSourcePluginId(), track->getTrackInfo().url);
+        emit done(track->getSourcePluginId(), track->getTrackInfo().url, true);
         playlistTracks.removeAll(track);
         delete track;
     }

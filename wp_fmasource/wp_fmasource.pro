@@ -40,8 +40,8 @@ SOURCES += \
 HEADERS += \
     fmasource.h \
     wp_fmasource_global.h \
-    ../waver/API/pluginbase_005.h \
-    ../waver/API/pluginsource_005.h \
+    ../waver/API/pluginbase_006.h \
+    ../waver/API/pluginsource_006.h \
     ../waver/pluginfactory.h \
 
 RESOURCES += \

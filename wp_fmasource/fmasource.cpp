@@ -39,17 +39,19 @@ FMASource::FMASource()
     id  = QUuid("{A41DEA06-4B1E-4C3F-8108-76EB29546089}");
     key = getKey();
 
-    networkAccessManager = NULL;
+    networkAccessManager = nullptr;
     readySent            = false;
+    okToSendReady        = true;
     sendDiagnostics      = false;
     state                = Idle;
+    unableToStartCount   = 0;
 }
 
 
 // destructor
 FMASource::~FMASource()
 {
-    if (networkAccessManager != NULL) {
+    if (networkAccessManager != nullptr) {
         networkAccessManager->deleteLater();
     }
 }
@@ -79,7 +81,7 @@ int FMASource::pluginVersion()
 // overrided virtual function
 QString FMASource::waverVersionAPICompatibility()
 {
-    return "0.0.5";
+    return "0.0.6";
 }
 
 
@@ -129,7 +131,8 @@ void FMASource::loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)
     }
 
     if (selectedGenres.count() < 1) {
-        readySent = false;
+        readySent     = false;
+        okToSendReady = false;
         emit unready(id);
         return;
     }
@@ -281,7 +284,7 @@ void FMASource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QStri
     }
 
     if (clientSqlIdentifier == SQL_LOADMORE_TRACKSLOADED) {
-        if (!readySent) {
+        if (!readySent && okToSendReady) {
             readySent = true;
             emit ready(id);
         }
@@ -669,6 +672,16 @@ void FMASource::sqlError(QUuid persistentUniqueId, bool temporary, QString clien
 }
 
 
+// message handler
+void FMASource::messageFromPlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(sourceUniqueId);
+    Q_UNUSED(messageId);
+    Q_UNUSED(value);
+}
+
+
 // client wants to display this plugin's configuration dialog
 void FMASource::getUiQml(QUuid uniqueId)
 {
@@ -730,11 +743,33 @@ void FMASource::stopDiagnostics(QUuid uniqueId)
 }
 
 
-// server says unable to start a station, but this plugin doesn't care
+// server says unable to start a track
 void FMASource::unableToStart(QUuid uniqueId, QUrl url)
 {
-    Q_UNUSED(uniqueId);
     Q_UNUSED(url);
+
+    if (uniqueId != id) {
+        return;
+    }
+
+    unableToStartCount++;
+    if (readySent && (unableToStartCount >= 4)) {
+        readySent     = false;
+        okToSendReady = false;
+        emit unready(id);
+
+        QTimer::singleShot(10 * 60 * 1000, this, SLOT(resumeAfterTooManyUnableToStart()));
+    }
+}
+
+
+// timer slot
+void FMASource::resumeAfterTooManyUnableToStart()
+{
+    unableToStartCount = 0;
+    readySent          = true;
+    okToSendReady      = true;
+    emit ready(id);
 }
 
 
@@ -744,6 +779,21 @@ void FMASource::castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds)
     Q_UNUSED(uniqueId);
     Q_UNUSED(url);
     Q_UNUSED(playedSeconds);
+}
+
+
+// server is done with a track
+void FMASource::done(QUuid uniqueId, QUrl url, bool wasError)
+{
+    Q_UNUSED(url);
+
+    if (uniqueId != id) {
+        return;
+    }
+
+    if (!wasError) {
+        unableToStartCount = 0;
+    }
 }
 
 
@@ -1381,7 +1431,7 @@ void FMASource::networkFinished(QNetworkReply *reply)
 
     // genre list
     if (state == GenreList) {
-        // saving already finished so let's fake it (this will give a chance to the settingshandler thread to complete everything before continuing here)
+        // saving is already finished so let's fake it (this will give a chance to the settingshandler thread to complete everything before continuing here)
         emit executeGlobalSql(id, false, "", SQL_STARTUPCHECK_GENRESLOADED, "SELECT CURRENT_TIMESTAMP", QVariantList());
 
         setState(Idle);
@@ -1390,7 +1440,7 @@ void FMASource::networkFinished(QNetworkReply *reply)
 
     // albums list (genre query)
     if ((state == AlbumList) || (state == OpeningPerformersAlbums)) {
-        // saving already finished so let's fake it
+        // saving is already finished so let's fake it
         emit executeGlobalSql(id, false, "", state == AlbumList ? SQL_LOADMORE_ALBUMSLOADED : SQL_OPEN_PERFORMERS_LOADED, "SELECT CURRENT_TIMESTAMP", QVariantList());
 
         genreSearchItems.removeFirst();
@@ -1404,7 +1454,7 @@ void FMASource::networkFinished(QNetworkReply *reply)
 
     // tracks list (album query)
     if ((state == TrackList) || (state == OpeningTracks)) {
-        // saving already finished so let's fake it
+        // saving is already finished so let's fake it
         emit executeGlobalSql(id, false, "", state == TrackList ? SQL_LOADMORE_TRACKSLOADED : SQL_OPEN_TRACKS_LOADED, "SELECT CURRENT_TIMESTAMP", QVariantList());
 
         albumSearchItems.removeFirst();

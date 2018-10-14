@@ -51,7 +51,7 @@
 #include <QXmlStreamReader>
 
 #include "../waver/pluginfactory.h"
-#include "../waver/API/pluginsource_005.h"
+#include "../waver/API/pluginsource_006.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -61,7 +61,7 @@
 extern "C" WP_RADIOSOURCE_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_005 {
+class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_006 {
         Q_OBJECT
 
     public:
@@ -154,6 +154,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_005 {
         bool    readySent;
         bool    sendDiagnostics;
         State   state;
+        int     unableToStartCount;
 
         void setState(State state);
 
@@ -201,6 +202,8 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_005 {
         void globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results) override;
         void sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)              override;
 
+        void messageFromPlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value) override;
+
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
 
@@ -209,6 +212,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_005 {
 
         void unableToStart(QUuid uniqueId, QUrl url)                        override;
         void castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds) override;
+        void done(QUuid uniqueId, QUrl url, bool wasError)                  override;
         void getPlaylist(QUuid uniqueId, int trackCount, int mode)          override;
         void getReplacement(QUuid uniqueId)                                 override;
         void getOpenTracks(QUuid uniqueId, QString parentId)                override;
@@ -220,6 +224,7 @@ class WP_RADIOSOURCE_EXPORT RadioSource : public PluginSource_005 {
 
     private slots:
 
+        void resumeAfterTooManyUnableToStart();
         void networkFinished(QNetworkReply *reply);
         void playlistFinished(QNetworkReply *reply);
         void genreSearch();

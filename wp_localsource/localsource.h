@@ -87,6 +87,7 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_006 {
         QMutex                 mutex;
         QVector<FileScanner *> scanners;
         bool                   readyEmitted;
+        int                    unableToStartCount;
 
         QStringList directories;
         QStringList trackFileNames;
@@ -144,7 +145,7 @@ class WP_LOCALSOURCE_EXPORT LocalSource : public PluginSource_006 {
 
         void unableToStart(QUuid uniqueId, QUrl url)                        override;
         void castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds) override;
-        void done(QUuid uniqueId, QUrl url)                                 override;
+        void done(QUuid uniqueId, QUrl url, bool wasError)                  override;
         void getPlaylist(QUuid uniqueId, int trackCount, int mode)          override;
         void getReplacement(QUuid uniqueId)                                 override;
         void getOpenTracks(QUuid uniqueId, QString parentId)                override;

@@ -41,6 +41,7 @@ LocalSource::LocalSource()
     variationSetting           = "Medium";
     variationSetCountSinceHigh = 0;
     variationSetCountSinceLow  = 0;
+    unableToStartCount         = 0;
     variationSetCurrentRemainingDir();
 
     sendDiagnostics = false;
@@ -288,10 +289,21 @@ void LocalSource::stopDiagnostics(QUuid uniqueId)
 // must be a broken file
 void LocalSource::unableToStart(QUuid uniqueId, QUrl url)
 {
+    if (uniqueId != id) {
+        return;
+    }
+
     // treat it like banned track
     TrackInfo trackInfo;
     trackInfo.url = url;
     action(uniqueId, 0, trackInfo);
+
+    unableToStartCount++;
+    if (readyEmitted && (unableToStartCount >= 12)) {
+        emit unready(id);
+        readyEmitted = false;
+        QTimer::singleShot(5 * 60 * 1000, this, SLOT(readyTimer()));
+    }
 }
 
 
@@ -305,10 +317,17 @@ void LocalSource::castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds)
 
 
 // server message handler
-void LocalSource::done(QUuid uniqueId, QUrl url)
+void LocalSource::done(QUuid uniqueId, QUrl url, bool wasError)
 {
-    Q_UNUSED(uniqueId);
     Q_UNUSED(url);
+
+    if (uniqueId != id) {
+        return;
+    }
+
+    if (!wasError) {
+        unableToStartCount = 0;
+    }
 }
 
 
@@ -888,6 +907,8 @@ void LocalSource::scannerFoundFirst()
 // timer signal handler
 void LocalSource::readyTimer()
 {
+    unableToStartCount = 0;
+    readyEmitted       = true;
     emit ready(id);
 }
 

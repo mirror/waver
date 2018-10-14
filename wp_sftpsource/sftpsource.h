@@ -106,6 +106,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         QDir    cacheDir;
         bool    readySent;
         bool    sendDiagnostics;
+        int     unableToStartCount;
 
         QString variationSetting;
         int     variationSetCountSinceHigh;
@@ -129,7 +130,6 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         void       removeAllClients();
         QString    clientCacheDirName(QString user, QString host);
         SSHClient *clientFromId(int id);
-        void       readyIfReady();
 
         TrackInfo trackInfoFromFilePath(QString filePath, int clientId, bool *tagLibOK);
 
@@ -200,7 +200,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
 
         void unableToStart(QUuid uniqueId, QUrl url)                        override;
         void castFinishedEarly(QUuid uniqueId, QUrl url, int playedSeconds) override;
-        void done(QUuid uniqueId, QUrl url)                                 override;
+        void done(QUuid uniqueId, QUrl url, bool wasError)                  override;
         void getPlaylist(QUuid uniqueId, int trackCount, int mode)          override;
         void getReplacement(QUuid uniqueId)                                 override;
         void getOpenTracks(QUuid uniqueId, QString parentId)                override;
@@ -213,6 +213,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
     private slots:
 
         void delayStartup();
+        void readyIfReady();
 
         void clientConnected(int id);
         void clientDisconnected(int id);
