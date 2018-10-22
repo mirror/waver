@@ -563,7 +563,9 @@ void Track::setupOutputPlugin(QObject *plugin)
     }
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.6")) {
         connect(plugin, SIGNAL(messageToPlugin(QUuid, QUuid, int, QVariant)),   this,   SLOT(messageToPlugin(QUuid, QUuid, int, QVariant)));
+        connect(plugin, SIGNAL(window(QString)),                                this,   SLOT(window(QString)));
         connect(this,   SIGNAL(messageFromPlugin(QUuid, QUuid, int, QVariant)), plugin, SLOT(messageFromPlugin(QUuid, QUuid, int, QVariant)));
+        connect(this,   SIGNAL(mainOutputPosition(qint64)),                     plugin, SLOT(mainOutputPosition(qint64)));
     }
 }
 
@@ -770,11 +772,11 @@ void Track::setStatus(Status status)
     }
 
     if ((status == Playing) && (currentStatus == Paused)) {
+        fadeDirection  = FADE_DIRECTION_IN;
+        fadePercent    = 0;
+        fadeSeconds    = 2;
+        fadeFrameCount = 0;
         foreach (QUuid pluginId, outputPlugins.keys()) {
-            fadeDirection  = FADE_DIRECTION_IN;
-            fadePercent    = 0;
-            fadeSeconds    = 2;
-            fadeFrameCount = 0;
             emit resume(pluginId);
         }
 
@@ -1246,6 +1248,13 @@ void Track::diagnostics(QUuid id, DiagnosticData diagnosticData)
 
 
 // plugin signal handler
+void Track::window(QString qmlString)
+{
+    emit pluginWindow(qmlString);
+}
+
+
+// plugin signal handler
 void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
 {
     // buffer just got available from decoder
@@ -1584,6 +1593,8 @@ void Track::outputPositionChanged(QUuid uniqueId, qint64 posMilliseconds)
     if (uniqueId != mainOutputId) {
         return;
     }
+
+    emit mainOutputPosition(posMilliseconds * 1000);
 
     if ((interruptPosition > 0) && (posMilliseconds >= interruptPosition)) {
         interruptPosition = 0;

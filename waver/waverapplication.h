@@ -27,8 +27,11 @@
 #include <QDesktopServices>
 #include <QGuiApplication>
 #include <QJsonArray>
+#include <QList>
 #include <QObject>
 #include <QQmlApplicationEngine>
+#include <QQmlComponent>
+#include <QQmlError>
 #include <QQuickWindow>
 #include <QString>
 #include <QStringList>
@@ -44,6 +47,10 @@
 #ifdef Q_OS_ANDROID
     #include <QtAndroid>
     #include <QAndroidJniObject>
+#endif
+
+#ifdef QT_DEBUG
+    #include <QDebug>
 #endif
 
 #include "clienttcphandler.h"
@@ -64,7 +71,9 @@ class WaverApplication : public QGuiApplication {
 
     private:
 
-        QQuickWindow *uiMainWindow;
+        QQmlApplicationEngine   *qmlEngine;
+        QQuickWindow            *uiMainWindow;
+        QVector<QQuickWindow *>  pluginWindows;
 
         QThread           tcpThread;
         ClientTcpHandler *tcpHandler;
@@ -91,6 +100,7 @@ class WaverApplication : public QGuiApplication {
         void updateUIOptions(QJsonDocument jsonDocument);
         void showPluginUI(QJsonDocument jsonDocument);
         void openUrl(QJsonDocument jsonDocument);
+        void createPluginWindow(QJsonDocument jsonDocument);
 
 
     signals:
@@ -160,6 +170,8 @@ class WaverApplication : public QGuiApplication {
         void ipcError(bool fatal, QString error);
 
         void updateUIPicture();
+
+        void pluginWindowClosing(QQuickCloseEvent *close);
 
 };
 

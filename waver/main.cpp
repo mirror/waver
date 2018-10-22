@@ -160,6 +160,7 @@ int main(int argc, char *argv[])
     // application
     QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
     WaverApplication application(argc, argv);
+
     application.setApplicationName(Globals::appName());
     application.setApplicationVersion(Globals::appVersion());
 

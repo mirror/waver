@@ -1614,6 +1614,19 @@ void WaverServer::pluginDiagnostics(QUuid uniqueId, QUrl url, DiagnosticData dat
 }
 
 
+// plugin signal handler (this comes from track)
+void WaverServer::pluginWindow(QString qmlString)
+{
+    IpcMessageUtils ipcMessageUtils;
+    emit ipcSend(ipcMessageUtils.constructIpcString(IpcMessageUtils::Window,
+    QJsonDocument(QJsonObject::fromVariantHash(QVariantHash({
+        {
+            "ui_qml", qmlString
+        },
+    })))));
+}
+
+
 // private slot for the diagnostics timer
 void WaverServer::diagnosticsRefreshUI()
 {
@@ -1868,6 +1881,7 @@ Track *WaverServer::createTrack(TrackInfo trackInfo, QVariantHash additionalInfo
     connect(track, SIGNAL(loadedPlugins(Track::PluginList)),                                           this,  SLOT(trackLoadedPlugins(Track::PluginList)));
     connect(track, SIGNAL(loadedPluginsWithUI(Track::PluginList)),                                     this,  SLOT(trackLoadedPluginsWithUI(Track::PluginList)));
     connect(track, SIGNAL(pluginDiagnostics(QUuid, QUrl, DiagnosticData)),                             this,  SLOT(pluginDiagnostics(QUuid, QUrl, DiagnosticData)));
+    connect(track, SIGNAL(pluginWindow(QString)),                                                      this,  SLOT(pluginWindow(QString)));
 
     return track;
 }

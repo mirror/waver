@@ -202,6 +202,7 @@ class Track : public QObject {
         void loadedPluginsWithUI(Track::PluginList pluginsWithUI);
         void pluginUi(QUuid id, QString qml, QString header);
         void pluginDiagnostics(QUuid id, QUrl url, DiagnosticData diagnosticData);
+        void pluginWindow(QString qmlString);
 
         void playPosition(QUrl url, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
         void aboutToFinish(QUrl url);
@@ -233,6 +234,7 @@ class Track : public QObject {
         void resume(QUuid uniqueId);
         void fadeIn(QUuid uniqueId, int seconds);
         void fadeOut(QUuid uniqueId, int seconds);
+        void mainOutputPosition(qint64 posMilliseconds);
 
         void decoderDone(QUuid uniqueId);
 
@@ -271,6 +273,7 @@ class Track : public QObject {
         void ui(QUuid uniqueId, QString qml);
         void infoMessage(QUuid uniqueId, QString message);
         void diagnostics(QUuid id, DiagnosticData diagnosticData);
+        void window(QString qmlString);
 
         void moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer);
         void sendFinished();

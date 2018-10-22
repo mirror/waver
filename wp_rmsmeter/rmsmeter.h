@@ -1,7 +1,7 @@
 /*
     This file is part of Waver
 
-    Copyright (C) 2017 Peter Papp <peter.papp.p@gmail.com>
+    Copyright (C) 2018 Peter Papp <peter.papp.p@gmail.com>
 
     Please visit https://launchpad.net/waver for details
 
@@ -21,41 +21,31 @@
 */
 
 
-#ifndef SOUNDOUTPUT_H
-#define SOUNDOUTPUT_H
+#ifndef RMSMETER_H
+#define RMSMETER_H
 
-#include "wp_soundoutput_global.h"
+#include "wp_rmsmeter_global.h"
 
+#include <cmath>
 #include <QAudioBuffer>
 #include <QAudioFormat>
-#include <QAudioOutput>
-#include <QByteArray>
-#include <QCoreApplication>
-#include <QDateTime>
 #include <QFile>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QIODevice>
-#include <QMutex>
-#include <QThread>
 #include <QTimer>
+#include <QThread>
+#include "websocketserver.h"
 
-#include "feeder.h"
 #include "../waver/pluginfactory.h"
-#include "../waver/API/pluginoutput_005.h"
+#include "../waver/API/pluginoutput_006.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
 #endif
 
 
-extern "C" WP_SOUNDOUTPUT_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
+extern "C" WP_RMSMETER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-// TODO: QAudioOutput->setVolume somehow kills the output, it must be investigated. For now, volume control is disabled.
-
-
-class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_005 {
+class WP_RMSMETER_EXPORT RMSMeter : public PluginOutput_006 {
         Q_OBJECT
 
     public:
@@ -69,42 +59,52 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_005 {
         QUuid   persistentUniqueId()                                               override;
         bool    hasUI()                                                            override;
 
-        explicit SoundOutput();
-        ~SoundOutput();
+        explicit RMSMeter();
+        ~RMSMeter();
 
 
     private:
 
-        static const qint64 NOTIFICATION_INTERVAL_MILLISECONDS = 40;
+        static int              instanceCount;
+        static int              instanceTotal;
+        static QThread         *webSocketServerThread;
+        static WebSocketServer *webSocketServer;
 
         QUuid id;
 
         BufferQueue *bufferQueue;
         QMutex      *bufferQueueMutex;
 
-        QAudioOutput *audioOutput;
-        QIODevice    *audioIODevice;
+        int instanceId;
 
-        QByteArray bytesToPlay;
-        QMutex     bytesToPlayMutex;
+        int audioFramePerVideoFrame;
+        int frameCount;
 
-        QThread feederThread;
-        Feeder *feeder;
+        int dataType;
 
-        QAudioFormat diagnosticsAudioFormat;
+        double int16Min;
+        double int16Max;
+        double int16Range;
+        double sampleMin;
+        double sampleRange;
 
-        bool   wasError;
-        bool   timerWaits;
-        qint64 notificationCounter;
+        int channelCount;
+        int channelIndex;
+
+        double lRmsSum;
+        double rRmsSum;
+        double lPeak;
+        double rPeak;
 
         bool sendDiagnostics;
 
-        double volume;
-
-        void fillBytesToPlay();
-        void clearBuffers();
-
         void sendDiagnosticsData();
+
+
+    signals:
+
+        void rms(int instanceId, qint64 position, int channelIndex, double rms, double peak);
+        void position(int instanceId, qint64 position);
 
 
     public slots:
@@ -118,6 +118,8 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_005 {
         void globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results) override;
         void sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)              override;
 
+        void messageFromPlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value) override;
+
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
 
@@ -125,6 +127,7 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_005 {
         void stopDiagnostics(QUuid uniqueId)  override;
 
         void bufferAvailable(QUuid uniqueId) override;
+        void mainOutputPosition(qint64 posMilliseconds) override;
 
         void pause(QUuid uniqueId)  override;
         void resume(QUuid uniqueId) override;
@@ -132,11 +135,8 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_005 {
 
     private slots:
 
-        void timerTimeout();
-
-        void audioOutputNotification();
-        void audioOutputStateChanged(QAudio::State state);
+        void requestWindow();
 
 };
 
-#endif // SOUNDOUTPUT_H
+#endif // RMSMETER_H

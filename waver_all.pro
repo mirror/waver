@@ -8,7 +8,8 @@ SUBDIRS +=                                 \
    wp_albumart/wp_albumart.pro             \
    wp_fmasource \
     wp_sftpsource \
-    wp_acoustid
+    wp_acoustid \
+    wp_rmsmeter
 
 unix:!android {
     SUBDIRS +=                                  \

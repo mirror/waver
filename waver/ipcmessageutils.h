@@ -83,6 +83,7 @@ class IpcMessageUtils : public QObject {
             SourcePriorityResults,
             TrackAction,
             TrackInfos,
+            Window,
         };
 
 

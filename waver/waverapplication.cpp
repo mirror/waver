@@ -171,6 +171,8 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(uiMainWindow, SIGNAL(optionsDialogResults(QVariant)),                                                this,         SLOT(optionsDialogResults(QVariant)));
 
     emit uiSetQt510(QT_VERSION >= 0x051000);
+
+    qmlEngine = qmlApplicationEngine;
 }
 
 
@@ -654,6 +656,47 @@ void WaverApplication::openUrl(QJsonDocument jsonDocument)
 }
 
 
+// create a new plugin window
+void WaverApplication::createPluginWindow(QJsonDocument jsonDocument)
+{
+    QVariantHash data      = jsonDocument.object().toVariantHash();
+    QString      windowQml = data.value("ui_qml").toString();
+
+    QQmlComponent component(qmlEngine);
+    component.setData(windowQml.toUtf8(), QUrl());
+    QQuickWindow *window = qobject_cast<QQuickWindow *>(component.create());
+
+    if (component.isReady()) {
+        pluginWindows.append(window);
+        connect(window, SIGNAL(closing(QQuickCloseEvent *)), this, SLOT(pluginWindowClosing(QQuickCloseEvent *)));
+        window->show();
+        return;
+    }
+
+    #ifdef QT_DEBUG
+    QList<QQmlError> errors = component.errors();
+    foreach (QQmlError error, errors) {
+        qWarning() << error.toString();
+    }
+    #endif
+
+    if (window != nullptr) {
+        window->deleteLater();
+    }
+}
+
+
+// plugin window about to close
+void WaverApplication::pluginWindowClosing(QQuickCloseEvent *close)
+{
+    QQuickWindow *sender = (QQuickWindow *) QObject::sender();
+
+    pluginWindows.removeAll(sender);
+
+    sender->deleteLater();
+}
+
+
 // playlist add
 void WaverApplication::updateUIOpenTracksList(QJsonDocument jsonDocument)
 {
@@ -880,6 +923,10 @@ void WaverApplication::ipcMessage(IpcMessageUtils::IpcMessages message, QJsonDoc
 
         case IpcMessageUtils::TrackInfos:
             updateUITrackInfo(jsonDocument);
+            break;
+
+        case IpcMessageUtils::Window:
+            createPluginWindow(jsonDocument);
             break;
 
         default:

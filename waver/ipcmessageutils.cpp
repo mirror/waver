@@ -65,6 +65,7 @@ IpcMessageUtils::IpcMessageUtils(QObject *parent) : QObject(parent)
     ipcMessagesToStrings[SourcePriorityResults]    = "source_priority_results";
     ipcMessagesToStrings[TrackAction]              = "track_action";
     ipcMessagesToStrings[TrackInfos]               = "track_info";
+    ipcMessagesToStrings[Window]                   = "window";
 }
 
 

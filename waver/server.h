@@ -280,6 +280,7 @@ class WaverServer : public QObject {
         void pluginUpdateTrackInfo(QUuid uniqueId, TrackInfo trackInfo);
         void pluginDiagnostics(QUuid uniqueId, DiagnosticData data);
         void pluginDiagnostics(QUuid uniqueId, QUrl url, DiagnosticData data);
+        void pluginWindow(QString qmlString);
 
         void loadConfiguration(QUuid uniqueId);
         void loadGlobalConfiguration(QUuid uniqueId);
