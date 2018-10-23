@@ -28,6 +28,9 @@ RMSVisual::RMSVisual(QQuickItem *parent) : QQuickPaintedItem(parent)
     webSocketPort = -1;
     audioChannel  = -1;
 
+    peakHold     = -99;
+    peakHoldTime = 0;
+
     socketErrorMessage = "";
 
     webSocketClient = nullptr;
@@ -124,14 +127,28 @@ void RMSVisual::paint(QPainter *painter)
 
     double count = 0;
     foreach (int track, tracks) {
-        double rmsRatio  = pow(10.0, webSocketClient->trackRms(track) / 20);
-        double peakRatio = pow(10.0, webSocketClient->trackPeak(track) / 20);
+        if (peakHoldTime < (QDateTime::currentMSecsSinceEpoch() - 500)) {
+            peakHold = -99;
+        }
+
+        double peak = webSocketClient->trackPeak(track);
+
+        // TODO peakhold per track
+        if (peak > peakHold) {
+            peakHold     = peak;
+            peakHoldTime = QDateTime::currentMSecsSinceEpoch();
+        }
+
+        double rmsRatio      = pow(10.0, webSocketClient->trackRms(track) / 20);
+        double peakRatio     = pow(10.0, peak / 20);
+        double peakHoldRatio = pow(10.0, peakHold / 20);
 
         painter->setBrush(QBrush(QColor(0, 0, 0, 127)));
         painter->drawRect(0, trackHeight * count, width() * rmsRatio, trackHeight * (count + 1));
 
         painter->setBrush(QBrush(QColor(0, 0, 0, 255)));
-        painter->drawRect(width() * peakRatio, trackHeight * count, width(), trackHeight * (count + 1));
+        painter->drawRect(width() * peakRatio, trackHeight * count, (width() * peakHoldRatio - 3) - width() * peakRatio, trackHeight * (count + 1));
+        painter->drawRect(width() * peakHoldRatio, trackHeight * count, width(), trackHeight * (count + 1));
 
         count++;
     }

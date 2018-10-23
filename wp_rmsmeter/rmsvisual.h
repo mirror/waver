@@ -65,6 +65,9 @@ class RMSVisual : public QQuickPaintedItem {
         int webSocketPort;
         int audioChannel;
 
+        double peakHold;
+        qint64 peakHoldTime;
+
         QString socketErrorMessage;
 
         WebSocketClient *webSocketClient;

@@ -350,7 +350,8 @@ void RMSMeter::bufferAvailable(QUuid uniqueId)
         // so that it doesn't have to be called many times
         QAudioBuffer *buffer = bufferQueue->at(0);
 
-        qint64 timestamp = buffer->startTime();
+        qint64 timestamp           = buffer->startTime();
+        int    timestampFrameCount = 0;
 
         if (dataType != 0) {
             // only one of these will be used, depending on the data type
@@ -416,10 +417,13 @@ void RMSMeter::bufferAvailable(QUuid uniqueId)
                 // calculations of temporary values
                 if (channelIndex == 0) {
                     frameCount++;
+                    timestampFrameCount++;
+
                     lRmsSum += (sampleValue * sampleValue);
                     if (abs(sampleValue) > lPeak) {
                         lPeak = abs(sampleValue);
                     }
+
                     channelIndex++;
                 }
                 else if (channelIndex == 1) {
@@ -427,6 +431,7 @@ void RMSMeter::bufferAvailable(QUuid uniqueId)
                     if (abs(sampleValue) > rPeak) {
                         rPeak = abs(sampleValue);
                     }
+
                     channelIndex++;
                 }
 
@@ -438,7 +443,7 @@ void RMSMeter::bufferAvailable(QUuid uniqueId)
                 // send values
                 if (frameCount == audioFramePerVideoFrame) {
                     frameCount = 0;
-                    timestamp += buffer->format().durationForFrames(audioFramePerVideoFrame);
+                    timestamp += buffer->format().durationForFrames(timestampFrameCount);
 
                     emit rms(instanceId, timestamp, 0, 20. * log10(sqrt(lRmsSum / audioFramePerVideoFrame) / (int16Range / 2)), 20. * log10(lPeak / (int16Range / 2)));
                     lRmsSum      = 0;
