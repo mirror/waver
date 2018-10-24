@@ -27,6 +27,7 @@
 #include <QBrush>
 #include <QColor>
 #include <QFont>
+#include <QHash>
 #include <QPainter>
 #include <QPen>
 #include <QQuickPaintedItem>
@@ -62,11 +63,15 @@ class RMSVisual : public QQuickPaintedItem {
 
     private:
 
+        struct PeakHold {
+            double peakHold;
+            qint64 peakHoldTime;
+        };
+
         int webSocketPort;
         int audioChannel;
 
-        double peakHold;
-        qint64 peakHoldTime;
+        QHash<int, PeakHold> peakHold;
 
         QString socketErrorMessage;
 

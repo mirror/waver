@@ -56,6 +56,10 @@ unix:!android {
     target.path = /opt/waver/bin
     INSTALLS += target
 
+    # create WaverRMSMeter dir
+    # copy .so file + qmldir file
+    # example at http://doc.qt.io/qt-5/qtqml-tutorials-extending-qml-example.html
+
     translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
     install.depends = translatedestdir
     QMAKE_EXTRA_TARGETS += install translatedestdir

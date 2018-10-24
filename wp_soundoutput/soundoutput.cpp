@@ -40,6 +40,7 @@ SoundOutput::SoundOutput()
     wasError            = false;
     timerWaits          = false;
     notificationCounter = 0;
+    lostInPause         = 0;
     audioOutput         = NULL;
     feeder              = NULL;
     volume              = 1.0;
@@ -318,6 +319,8 @@ void SoundOutput::pause(QUuid uniqueId)
         audioOutput->stop();
     }
 
+    lostInPause += diagnosticsAudioFormat.durationForBytes(bytesToPlay.count());
+
     bytesToPlayMutex.lock();
     bytesToPlay.clear();
     bytesToPlayMutex.unlock();
@@ -348,7 +351,7 @@ void SoundOutput::resume(QUuid uniqueId)
 void SoundOutput::audioOutputNotification()
 {
     notificationCounter++;
-    emit positionChanged(id, notificationCounter * NOTIFICATION_INTERVAL_MILLISECONDS);
+    emit positionChanged(id, (notificationCounter * NOTIFICATION_INTERVAL_MILLISECONDS) + (lostInPause / 1000));
 }
 
 
@@ -441,6 +444,7 @@ void SoundOutput::fillBytesToPlay()
 void SoundOutput::clearBuffers()
 {
     foreach (QAudioBuffer *buffer, *bufferQueue) {
+        lostInPause += buffer->duration();
         emit bufferDone(id, buffer);
     }
 
