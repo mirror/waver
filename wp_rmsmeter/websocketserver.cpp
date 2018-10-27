@@ -97,6 +97,20 @@ void WebSocketServer::position(int instanceId, qint64 position)
 }
 
 
+// signal from meter
+void WebSocketServer::clean(int instanceId)
+{
+    char messageType = 'C';
+
+    QByteArray binaryMessage(&messageType, 1);
+    binaryMessage.append(reinterpret_cast<char *>(&instanceId), sizeof(int));
+
+    foreach (QWebSocket *client, clients) {
+        client->sendBinaryMessage(binaryMessage);
+    }
+}
+
+
 // signal from websocket server
 void WebSocketServer::newConnection()
 {

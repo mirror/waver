@@ -40,7 +40,7 @@ SoundOutput::SoundOutput()
     wasError            = false;
     timerWaits          = false;
     notificationCounter = 0;
-    lostInPause         = 0;
+    beginningTimestamp  = -1;
     audioOutput         = NULL;
     feeder              = NULL;
     volume              = 1.0;
@@ -297,6 +297,10 @@ void SoundOutput::bufferAvailable(QUuid uniqueId)
         feeder->setOutputDevice(audioIODevice);
     }
 
+    if ((beginningTimestamp < 0) && (bufferQueue->count() > 0)) {
+        beginningTimestamp = bufferQueue->at(0)->startTime();
+    }
+
     // kick it off
     if (!timerWaits && (audioOutput->state() != QAudio::StoppedState)) {
         fillBytesToPlay();
@@ -319,8 +323,6 @@ void SoundOutput::pause(QUuid uniqueId)
         audioOutput->stop();
     }
 
-    lostInPause += diagnosticsAudioFormat.durationForBytes(bytesToPlay.count());
-
     bytesToPlayMutex.lock();
     bytesToPlay.clear();
     bytesToPlayMutex.unlock();
@@ -334,8 +336,11 @@ void SoundOutput::resume(QUuid uniqueId)
         return;
     }
 
+    clearBuffers();
+    notificationCounter = 0;
+    beginningTimestamp  = -1;
+
     if (audioOutput != NULL) {
-        clearBuffers();
         audioIODevice = audioOutput->start();
         if (feeder != NULL) {
             feeder->setOutputDevice(audioIODevice);
@@ -351,7 +356,7 @@ void SoundOutput::resume(QUuid uniqueId)
 void SoundOutput::audioOutputNotification()
 {
     notificationCounter++;
-    emit positionChanged(id, (notificationCounter * NOTIFICATION_INTERVAL_MILLISECONDS) + (lostInPause / 1000));
+    emit positionChanged(id, (notificationCounter * audioOutput->notifyInterval()) + (beginningTimestamp / 1000));
 }
 
 
@@ -444,7 +449,6 @@ void SoundOutput::fillBytesToPlay()
 void SoundOutput::clearBuffers()
 {
     foreach (QAudioBuffer *buffer, *bufferQueue) {
-        lostInPause += buffer->duration();
         emit bufferDone(id, buffer);
     }
 

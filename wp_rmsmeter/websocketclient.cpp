@@ -99,12 +99,12 @@ QVector<int> WebSocketClient::tracks()
 double WebSocketClient::trackRms(int trackId)
 {
     if (!tracksMeasurements.contains(trackId) || (mutex == nullptr)) {
-        return 0;
+        return -99.9;
     }
 
     Measurements *measurements = tracksMeasurements.value(trackId);
 
-    double rms = 0;
+    double rms = -99.9;
 
     if (measurements->count() > 0) {
         mutex->lock();
@@ -126,12 +126,12 @@ double WebSocketClient::trackRms(int trackId)
 double WebSocketClient::trackPeak(int trackId)
 {
     if (!tracksMeasurements.contains(trackId) || (mutex == nullptr)) {
-        return 0;
+        return -99.9;
     }
 
     Measurements *measurements = tracksMeasurements.value(trackId);
 
-    double peak = 0;
+    double peak = -99.9;
 
     if (measurements->count() > 0) {
         mutex->lock();
@@ -185,6 +185,14 @@ void WebSocketClient::binaryMessageReceived(const QByteArray &message)
 
         tracksLastSeen[instanceId] = QDateTime::currentMSecsSinceEpoch();
 
+        return;
+    }
+
+    if (messageType == 'C') {
+        if (!tracksMeasurements.contains(instanceId)) {
+            return;
+        }
+        tracksMeasurements.value(instanceId)->clear();
         return;
     }
 

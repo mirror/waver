@@ -57,6 +57,7 @@ class WebSocketServer : public QObject {
         void run();
         void rms(int instanceId, qint64 position, int channelIndex, double rms, double peak);
         void position(int instanceId, qint64 position);
+        void clean(int instanceId);
 
 
     private slots:

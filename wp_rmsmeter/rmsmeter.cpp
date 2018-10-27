@@ -100,6 +100,7 @@ RMSMeter::~RMSMeter()
 {
     disconnect(this, SIGNAL(rms(int, qint64, int, double, double)), webSocketServer, SLOT(rms(int, qint64, int, double, double)));
     disconnect(this, SIGNAL(position(int, qint64)),                 webSocketServer, SLOT(position(int, qint64)));
+    disconnect(this, SIGNAL(clean(int)),                            webSocketServer, SLOT(clean(int)));
 
     instanceCount--;
     if (instanceCount == 0) {
@@ -172,6 +173,7 @@ void RMSMeter::run()
 {
     connect(this, SIGNAL(rms(int, qint64, int, double, double)), webSocketServer, SLOT(rms(int, qint64, int, double, double)));
     connect(this, SIGNAL(position(int, qint64)),                 webSocketServer, SLOT(position(int, qint64)));
+    connect(this, SIGNAL(clean(int)),                            webSocketServer, SLOT(clean(int)));
 }
 
 
@@ -477,9 +479,7 @@ void RMSMeter::mainOutputPosition(qint64 posMilliseconds)
 // signal handler
 void RMSMeter::pause(QUuid uniqueId)
 {
-    if (uniqueId != id) {
-        return;
-    }
+    resume(uniqueId);
 }
 
 
@@ -489,6 +489,18 @@ void RMSMeter::resume(QUuid uniqueId)
     if (uniqueId != id) {
         return;
     }
+
+    emit clean(instanceId);
+
+    foreach (QAudioBuffer *buffer, *bufferQueue) {
+        emit bufferDone(id, buffer);
+    }
+
+    bufferQueueMutex->lock();
+    bufferQueue->clear();
+    bufferQueueMutex->unlock();
+
+    QThread::currentThread()->msleep(80);
 }
 
 

@@ -96,7 +96,7 @@ class WP_SOUNDOUTPUT_EXPORT SoundOutput : public PluginOutput_005 {
         bool   wasError;
         bool   timerWaits;
         qint64 notificationCounter;
-        qint64 lostInPause;
+        qint64 beginningTimestamp;
 
         bool sendDiagnostics;
 

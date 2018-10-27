@@ -28,7 +28,7 @@ RMSVisual::RMSVisual(QQuickItem *parent) : QQuickPaintedItem(parent)
     webSocketPort = -1;
     audioChannel  = -1;
 
-    socketErrorMessage = "";
+    socketErrorMessage  = "";
 
     webSocketClient = nullptr;
 
@@ -114,6 +114,10 @@ void RMSVisual::paint(QPainter *painter)
 
     QVector<int> tracks = webSocketClient->tracks();
     if (tracks.count() < 1) {
+        peakHold.clear();
+
+        painter->setBrush(QBrush(QColor(0, 0, 0, 255)));
+        painter->drawRect(0, 0, width(), height());
         return;
     }
 
@@ -125,11 +129,11 @@ void RMSVisual::paint(QPainter *painter)
     double count = 0;
     foreach (int track, tracks) {
         if (!peakHold.contains(track)) {
-            peakHold.insert(track, { -99.0, 0 });
+            peakHold.insert(track, { -99.9, 0 });
         }
 
         if (peakHold.value(track).peakHoldTime < (QDateTime::currentMSecsSinceEpoch() - 750)) {
-            peakHold[track].peakHold = -99;
+            peakHold[track].peakHold = -99.9;
         }
 
         double peak = webSocketClient->trackPeak(track);
