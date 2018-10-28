@@ -51,22 +51,27 @@ HEADERS += \
     rmsqml.h \
     websocketclient.h
 
-
-unix:!android {
-    target.path = /opt/waver/bin
-    INSTALLS += target
-
-    # create WaverRMSMeter dir
-    # copy .so file + qmldir file
-    # example at http://doc.qt.io/qt-5/qtqml-tutorials-extending-qml-example.html
-
-    translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
-    install.depends = translatedestdir
-    QMAKE_EXTRA_TARGETS += install translatedestdir
-}
-
 RESOURCES += \
     resources.qrc
 
 DISTFILES += \
     qmldir
+
+unix:!android {
+    target.path = /opt/waver/bin
+    INSTALLS += target
+
+    translatedestdir.commands = $(eval INSTALL_ROOT := $(DESTDIR))
+    install.depends = translatedestdir
+    QMAKE_EXTRA_TARGETS += install translatedestdir
+
+    qmlcomponent.path = /opt/waver/bin/WaverRMSMeter
+    qmlcomponent.files = qmldir
+    qmlcomponent.extra = ln -sf /opt/waver/bin/libwp_rmsmeter.so /opt/waver/bin/WaverRMSMeter/
+    INSTALLS += qmlcomponent
+
+    qmlcomponentremove.commands = rm -f /opt/waver/bin/WaverRMSMeter/libwp_rmsmeter.so
+    uninstall.depends = qmlcomponentremove
+    QMAKE_EXTRA_TARGETS += uninstall qmlcomponentremove
+}
+
