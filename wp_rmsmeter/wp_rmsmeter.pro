@@ -67,10 +67,10 @@ unix:!android {
 
     qmlcomponent.path = /opt/waver/bin/WaverRMSMeter
     qmlcomponent.files = qmldir
-    qmlcomponent.extra = ln -sf /opt/waver/bin/libwp_rmsmeter.so /opt/waver/bin/WaverRMSMeter/
+    qmlcomponent.extra = ln -sf $(INSTALL_ROOT)/opt/waver/bin/libwp_rmsmeter.so $(INSTALL_ROOT)/opt/waver/bin/WaverRMSMeter/
     INSTALLS += qmlcomponent
 
-    qmlcomponentremove.commands = rm -f /opt/waver/bin/WaverRMSMeter/libwp_rmsmeter.so
+    qmlcomponentremove.commands = rm -f $(INSTALL_ROOT)/opt/waver/bin/WaverRMSMeter/libwp_rmsmeter.so
     uninstall.depends = qmlcomponentremove
     QMAKE_EXTRA_TARGETS += uninstall qmlcomponentremove
 }
