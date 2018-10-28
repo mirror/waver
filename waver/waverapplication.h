@@ -171,6 +171,7 @@ class WaverApplication : public QGuiApplication {
 
         void updateUIPicture();
 
+        void mainWindowClosing(QQuickCloseEvent *close);
         void pluginWindowClosing(QQuickCloseEvent *close);
 
 };

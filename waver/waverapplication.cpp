@@ -101,6 +101,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
         disconnect(this,         SIGNAL(uiClearSourcePrioritiesList()),                                                 uiMainWindow, SLOT(clearSourcePrioritiesList()));
         disconnect(this,         SIGNAL(uiAddToSourcePrioritiesList(QVariant, QVariant, QVariant, QVariant, QVariant)), uiMainWindow, SLOT(addToSourcePrioritiesList(QVariant, QVariant, QVariant, QVariant, QVariant)));
         disconnect(this,         SIGNAL(uiOptions(QVariant, QVariant, QVariant, QVariant)),                             uiMainWindow, SLOT(optionsData(QVariant, QVariant, QVariant, QVariant)));
+        disconnect(uiMainWindow, SIGNAL(closing(QQuickCloseEvent *)),                                                   this,         SLOT(mainWindowClosing(QQuickCloseEvent *)));
         disconnect(uiMainWindow, SIGNAL(menuPause()),                                                                   this,         SLOT(menuPause()));
         disconnect(uiMainWindow, SIGNAL(menuResume()),                                                                  this,         SLOT(menuResume()));
         disconnect(uiMainWindow, SIGNAL(menuNext()),                                                                    this,         SLOT(menuNext()));
@@ -149,6 +150,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     connect(this,         SIGNAL(uiClearSourcePrioritiesList()),                                                 uiMainWindow, SLOT(clearSourcePrioritiesList()));
     connect(this,         SIGNAL(uiAddToSourcePrioritiesList(QVariant, QVariant, QVariant, QVariant, QVariant)), uiMainWindow, SLOT(addToSourcePrioritiesList(QVariant, QVariant, QVariant, QVariant, QVariant)));
     connect(this,         SIGNAL(uiOptions(QVariant, QVariant, QVariant, QVariant)),                             uiMainWindow, SLOT(optionsData(QVariant, QVariant, QVariant, QVariant)));
+    connect(uiMainWindow, SIGNAL(closing(QQuickCloseEvent *)),                                                   this,         SLOT(mainWindowClosing(QQuickCloseEvent *)));
     connect(uiMainWindow, SIGNAL(menuPause()),                                                                   this,         SLOT(menuPause()));
     connect(uiMainWindow, SIGNAL(menuResume()),                                                                  this,         SLOT(menuResume()));
     connect(uiMainWindow, SIGNAL(menuNext()),                                                                    this,         SLOT(menuNext()));
@@ -173,6 +175,17 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     emit uiSetQt510(QT_VERSION >= 0x051000);
 
     qmlEngine = qmlApplicationEngine;
+}
+
+
+// main window signal handler
+void WaverApplication::mainWindowClosing(QQuickCloseEvent *close)
+{
+    Q_UNUSED(close);
+
+    foreach (QQuickWindow *pluginWindow, pluginWindows) {
+        pluginWindow->close();
+    }
 }
 
 
@@ -689,6 +702,8 @@ void WaverApplication::createPluginWindow(QJsonDocument jsonDocument)
 // plugin window about to close
 void WaverApplication::pluginWindowClosing(QQuickCloseEvent *close)
 {
+    Q_UNUSED(close);
+
     QQuickWindow *sender = (QQuickWindow *) QObject::sender();
 
     pluginWindows.removeAll(sender);
