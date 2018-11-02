@@ -53,7 +53,6 @@ Window {
         y: 6
         width: parent.width - 12
         height: parent.height / 2 - 9
-        port: 999
         channel: 0
     }
 
@@ -62,7 +61,6 @@ Window {
         y: parent.height / 2 + 3
         width: parent.width - 12
         height: parent.height / 2 - 9
-        port: 999
         channel: 1
     }
 }

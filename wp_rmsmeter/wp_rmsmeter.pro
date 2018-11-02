@@ -19,7 +19,7 @@
 #    (GPL.TXT) along with Waver. If not, see <http://www.gnu.org/licenses/>.
 #
 
-QT += multimedia websockets qml quick
+QT += multimedia qml quick
 QT -= gui
 
 TARGET = wp_rmsmeter
@@ -35,21 +35,17 @@ CONFIG(debug, debug|release) {
 
 SOURCES += \
     rmsmeter.cpp \
-    websocketserver.cpp \
     rmsvisual.cpp \
-    rmsqml.cpp \
-    websocketclient.cpp
+    rmsqml.cpp
 
 HEADERS += \
     rmsmeter.h \
-    websocketserver.h \
     wp_rmsmeter_global.h \
     ../waver/API/pluginbase_006.h \
     ../waver/API/pluginoutput_006.h \
     ../waver/pluginfactory.h \
     rmsvisual.h \
-    rmsqml.h \
-    websocketclient.h
+    rmsqml.h
 
 RESOURCES += \
     resources.qrc

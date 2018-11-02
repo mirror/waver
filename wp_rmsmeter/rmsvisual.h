@@ -26,34 +26,34 @@
 #include <QByteArray>
 #include <QBrush>
 #include <QColor>
+#include <QDateTime>
 #include <QFont>
 #include <QHash>
 #include <QPainter>
 #include <QPen>
+#include <QRect>
 #include <QQuickPaintedItem>
+#include <QSharedMemory>
 #include <QThread>
 #include <QTimer>
 #include <math.h>
 
-#include "websocketclient.h"
+#include "rmsmeter.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
 #endif
 
+
 class RMSVisual : public QQuickPaintedItem {
         Q_OBJECT
 
-        Q_PROPERTY(int port    READ port    WRITE setPort    NOTIFY portChanged)
         Q_PROPERTY(int channel READ channel WRITE setChannel NOTIFY channelChanged)
 
     public:
 
         RMSVisual(QQuickItem *parent = nullptr);
         ~RMSVisual();
-
-        int  port() const;
-        void setPort(const int port);
 
         int  channel() const;
         void setChannel(const int channel);
@@ -68,31 +68,23 @@ class RMSVisual : public QQuickPaintedItem {
             qint64 peakHoldTime;
         };
 
-        int webSocketPort;
         int audioChannel;
 
         QHash<int, PeakHold> peakHold;
 
-        QString socketErrorMessage;
-
-        WebSocketClient *webSocketClient;
-        QThread          webSocketThread;
+        QSharedMemory sharedMemory;
 
         QTimer timer;
 
 
     signals:
 
-        void portChanged();
         void channelChanged();
-
-        void socketConnect(int port);
 
 
     private slots:
 
         void timerTimeout();
-        void socketError(QString msg);
 };
 
 #endif // RMSVISUAL_H

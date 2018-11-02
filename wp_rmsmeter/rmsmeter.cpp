@@ -34,10 +34,8 @@ void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal)
 
 
 // static members
-int              RMSMeter::instanceCount;
-int              RMSMeter::instanceTotal;
-QThread         *RMSMeter::webSocketServerThread;
-WebSocketServer *RMSMeter::webSocketServer;
+int           RMSMeter::instanceCount;
+const QString RMSMeter::SHAREDMEMORY_KEY = "WaverRMSMeter";
 
 
 // constructor
@@ -60,53 +58,56 @@ RMSMeter::RMSMeter()
     lPeak        = 0;
     rPeak        = 0;
 
-    instanceTotal++;
-
-    instanceId = instanceTotal;
+    sharedMemory = nullptr;
 
     instanceCount++;
-    if (instanceCount == 1) {
-        webSocketServerThread = new QThread();
-        webSocketServer       = new WebSocketServer();
-
-        webSocketServer->moveToThread(webSocketServerThread);
-
-        connect(webSocketServerThread, SIGNAL(started()),  webSocketServer, SLOT(run()));
-        connect(webSocketServerThread, SIGNAL(finished()), webSocketServer, SLOT(deleteLater()));
-
-        webSocketServerThread->start();
-
-        QTimer::singleShot(3333, this, SLOT(requestWindow()));
-    }
-}
-
-
-// timer slot
-void RMSMeter::requestWindow()
-{
-    QFile meterFile("://RMSMeter.qml");
-    meterFile.open(QFile::ReadOnly);
-    QString meter = meterFile.readAll();
-    meterFile.close();
-
-    meter.replace("999", QString("%1").arg(webSocketServer->port()));
-
-    emit window(meter);
+    instanceId = instanceCount;
 }
 
 
 // destructor
 RMSMeter::~RMSMeter()
 {
-    disconnect(this, SIGNAL(rms(int, qint64, int, double, double)), webSocketServer, SLOT(rms(int, qint64, int, double, double)));
-    disconnect(this, SIGNAL(position(int, qint64)),                 webSocketServer, SLOT(position(int, qint64)));
-    disconnect(this, SIGNAL(clean(int)),                            webSocketServer, SLOT(clean(int)));
+    if (sharedMemory != nullptr) {
 
-    instanceCount--;
-    if (instanceCount == 0) {
-        webSocketServerThread->quit();
-        webSocketServerThread->wait();
-        delete webSocketServerThread;
+        int     *shMemInstanceCount = static_cast<int *>(sharedMemory->data());
+        RMSData *shMemRMSData       = reinterpret_cast<RMSData *>(static_cast<char *>(sharedMemory->data()) + sizeof(int));
+
+        if (shMemInstanceCount == nullptr) {
+            return;
+        }
+
+        sharedMemory->lock();
+
+        RMSData *seeker = shMemRMSData;
+        bool     found  = false;
+        int      i      = 0;
+        while (!found && (i < *shMemInstanceCount)) {
+            if (seeker->instanceId == instanceId) {
+                found = true;
+            }
+            else {
+                i++;
+                seeker++;
+            }
+        }
+
+        if (found) {
+            while (i < (*shMemInstanceCount - 1)) {
+                RMSData *temp = seeker;
+                temp++;
+                *seeker = *temp;
+                seeker = temp;
+                i++;
+            }
+        }
+
+        *shMemInstanceCount -= 1;
+
+        sharedMemory->unlock();
+
+        sharedMemory->detach();
+        delete sharedMemory;
     }
 }
 
@@ -171,9 +172,33 @@ bool RMSMeter::hasUI()
 // thread entry point
 void RMSMeter::run()
 {
-    connect(this, SIGNAL(rms(int, qint64, int, double, double)), webSocketServer, SLOT(rms(int, qint64, int, double, double)));
-    connect(this, SIGNAL(position(int, qint64)),                 webSocketServer, SLOT(position(int, qint64)));
-    connect(this, SIGNAL(clean(int)),                            webSocketServer, SLOT(clean(int)));
+    sharedMemory = new QSharedMemory(SHAREDMEMORY_KEY);
+    if (!sharedMemory->attach()) {
+        if (sharedMemory->create(sizeof(int) + SHAREDMEMORY_MAX_INSTANCES * sizeof(RMSData))) {
+            sharedMemory->lock();
+            memset(sharedMemory->data(), 0, static_cast<size_t>(sharedMemory->size()));
+            sharedMemory->unlock();
+        }
+        else {
+            emit infoMessage(id, sharedMemory->errorString());
+        }
+    }
+
+    if (instanceId == 1) {
+        QTimer::singleShot(750, this, SLOT(requestWindow()));
+    }
+}
+
+
+// timer slot
+void RMSMeter::requestWindow()
+{
+    QFile meterFile("://RMSMeter.qml");
+    meterFile.open(QFile::ReadOnly);
+    QString meter = meterFile.readAll();
+    meterFile.close();
+
+    emit window(meter);
 }
 
 
@@ -250,13 +275,8 @@ void RMSMeter::getUiQml(QUuid uniqueId)
 // signal handler
 void RMSMeter::uiResults(QUuid uniqueId, QJsonDocument results)
 {
-    if (uniqueId != id) {
-        return;
-    }
-
-    /*
-        emit saveConfiguration(id, results);
-    */
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(results);
 }
 
 
@@ -447,13 +467,20 @@ void RMSMeter::bufferAvailable(QUuid uniqueId)
                     frameCount = 0;
                     timestamp += buffer->format().durationForFrames(timestampFrameCount);
 
-                    emit rms(instanceId, timestamp, 0, 20. * log10(sqrt(lRmsSum / audioFramePerVideoFrame) / (int16Range / 2)), 20. * log10(lPeak / (int16Range / 2)));
+                    RMSTimedData timedData;
+
+                    timedData.timestamp = timestamp;
+                    timedData.lrms      = 20. * log10(sqrt(lRmsSum / audioFramePerVideoFrame) / (int16Range / 2));
+                    timedData.lpeak     = 20. * log10(lPeak / (int16Range / 2));
+                    timedData.rrms      = 20. * log10(sqrt(rRmsSum / audioFramePerVideoFrame) / (int16Range / 2));
+                    timedData.rpeak     = 20. * log10(rPeak / (int16Range / 2));
+
                     lRmsSum      = 0;
                     lPeak        = 0;
-
-                    emit rms(instanceId, timestamp, 1, 20. * log10(sqrt(rRmsSum / audioFramePerVideoFrame) / (int16Range / 2)), 20. * log10(rPeak / (int16Range / 2)));
                     rRmsSum      = 0;
                     rPeak        = 0;
+
+                    this->timedData.append(timedData);
                 }
             }
 
@@ -472,7 +499,59 @@ void RMSMeter::bufferAvailable(QUuid uniqueId)
 // signal handler
 void RMSMeter::mainOutputPosition(qint64 posMilliseconds)
 {
-    emit position(instanceId, posMilliseconds);
+    while ((timedData.count() > 0) && (timedData.at(0).timestamp < posMilliseconds)) {
+        timedData.removeFirst();
+    }
+    if (timedData.count() < 1) {
+        return;
+    }
+
+    int     *shMemInstanceCount = static_cast<int *>(sharedMemory->data());
+    RMSData *shMemRMSData       = reinterpret_cast<RMSData *>(static_cast<char *>(sharedMemory->data()) + sizeof(int));
+
+    if (shMemInstanceCount == nullptr) {
+        return;
+    }
+
+    sharedMemory->lock();
+
+    int trackCount = *shMemInstanceCount;
+
+    RMSData *seeker = shMemRMSData;
+    bool     found  = false;
+    int      i      = 0;
+    while (!found && (i < trackCount)) {
+        if (seeker->instanceId == instanceId) {
+            found = true;
+        }
+        else {
+            i++;
+            seeker++;
+        }
+    }
+
+    if (!found && (trackCount < SHAREDMEMORY_MAX_INSTANCES)) {
+        seeker = shMemRMSData;
+        for (i = 0; i < trackCount; i++) {
+            seeker++;
+        }
+
+        seeker->instanceId = instanceId;
+        *shMemInstanceCount += 1;
+
+        found = true;
+    }
+
+    RMSTimedData timedData = this->timedData.at(0);
+
+    if (found) {
+        seeker->lpeak = timedData.lpeak;
+        seeker->lrms  = timedData.lrms;
+        seeker->rpeak = timedData.rpeak;
+        seeker->rrms  = timedData.rrms;
+    }
+
+    sharedMemory->unlock();
 }
 
 
@@ -490,7 +569,38 @@ void RMSMeter::resume(QUuid uniqueId)
         return;
     }
 
-    emit clean(instanceId);
+    int     *shMemInstanceCount = static_cast<int *>(sharedMemory->data());
+    RMSData *shMemRMSData       = reinterpret_cast<RMSData *>(static_cast<char *>(sharedMemory->data()) + sizeof(int));
+
+    if (shMemInstanceCount == nullptr) {
+        return;
+    }
+
+    sharedMemory->lock();
+
+    RMSData *seeker = shMemRMSData;
+    bool     found  = false;
+    int      i      = 0;
+    while (!found && (i < *shMemInstanceCount)) {
+        if (seeker->instanceId == instanceId) {
+            found = true;
+        }
+        else {
+            i++;
+            seeker++;
+        }
+    }
+
+    if (found) {
+        seeker->lpeak = -99.9;
+        seeker->lrms  = -99.9;
+        seeker->rpeak = -99.9;
+        seeker->rrms  = -99.9;
+    }
+
+    sharedMemory->unlock();
+
+    timedData.clear();
 
     foreach (QAudioBuffer *buffer, *bufferQueue) {
         emit bufferDone(id, buffer);

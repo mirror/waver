@@ -25,12 +25,10 @@
 // constructor
 RMSVisual::RMSVisual(QQuickItem *parent) : QQuickPaintedItem(parent)
 {
-    webSocketPort = -1;
     audioChannel  = -1;
 
-    socketErrorMessage  = "";
-
-    webSocketClient = nullptr;
+    sharedMemory.setKey(RMSMeter::SHAREDMEMORY_KEY);
+    sharedMemory.attach();
 
     connect(&timer, SIGNAL(timeout()), this, SLOT(timerTimeout()));
 
@@ -45,28 +43,7 @@ RMSVisual::RMSVisual(QQuickItem *parent) : QQuickPaintedItem(parent)
 RMSVisual::~RMSVisual()
 {
     timer.stop();
-    webSocketThread.quit();
-    webSocketThread.wait();
-}
-
-
-// property get
-int  RMSVisual::port() const
-{
-    return webSocketPort;
-}
-
-
-// property set
-void RMSVisual::setPort(const int port)
-{
-    if (port != webSocketPort) {
-        webSocketPort = port;
-
-        emit socketConnect(webSocketPort);
-
-        emit portChanged();
-    }
+    sharedMemory.detach();
 }
 
 
@@ -83,23 +60,6 @@ void RMSVisual::setChannel(const int channel)
     if (channel != audioChannel) {
         audioChannel = channel;
 
-        if (webSocketClient == nullptr) {
-            webSocketClient = new WebSocketClient(channel);
-
-            webSocketClient->moveToThread(&webSocketThread);
-
-            connect(&webSocketThread, SIGNAL(started()),  webSocketClient, SLOT(run()));
-            connect(&webSocketThread, SIGNAL(finished()), webSocketClient, SLOT(deleteLater()));
-
-            connect(this, SIGNAL(socketConnect(int)), webSocketClient, SLOT(socketConnect(int)));
-
-            webSocketThread.start();
-
-            if (webSocketPort != 0) {
-                emit socketConnect(webSocketPort);
-            }
-        }
-
         emit channelChanged();
     }
 }
@@ -108,72 +68,73 @@ void RMSVisual::setChannel(const int channel)
 // paint it
 void RMSVisual::paint(QPainter *painter)
 {
-    if (webSocketClient == nullptr) {
-        return;
-    }
+    int               *shMemInstanceCount = static_cast<int *>(sharedMemory.data());
+    RMSMeter::RMSData *shMemRMSData       = reinterpret_cast<RMSMeter::RMSData *>(static_cast<char *>(sharedMemory.data()) + sizeof(int));
 
-    QVector<int> tracks = webSocketClient->tracks();
-    if (tracks.count() < 1) {
+    sharedMemory.lock();
+    int trackCount = *shMemInstanceCount;
+    sharedMemory.unlock();
+
+    QRect window = painter->window();
+
+    if ((shMemRMSData == nullptr) || (trackCount < 1) || (audioChannel < 0) || (audioChannel > 1)) {
         peakHold.clear();
 
         painter->setBrush(QBrush(QColor(0, 0, 0, 255)));
-        painter->drawRect(0, 0, width(), height());
+        painter->drawRect(0, 0, window.width(), window.height());
         return;
     }
 
     painter->setRenderHints(QPainter::Antialiasing, true);
     painter->setPen(QPen(Qt::NoPen));
 
-    double trackHeight = height() / tracks.count();
+    int trackHeight = qRound(static_cast<double>(window.height() / trackCount));
 
-    double count = 0;
-    foreach (int track, tracks) {
-        if (!peakHold.contains(track)) {
-            peakHold.insert(track, { -99.9, 0 });
+    int count = 0;
+    while (count < trackCount) {
+        sharedMemory.lock();
+        RMSMeter::RMSData rmsData = *shMemRMSData;
+        sharedMemory.unlock();
+
+        if (!peakHold.contains(rmsData.instanceId)) {
+            peakHold.insert(rmsData.instanceId, { -99.9, 0 });
         }
 
-        if (peakHold.value(track).peakHoldTime < (QDateTime::currentMSecsSinceEpoch() - 750)) {
-            peakHold[track].peakHold = -99.9;
+        if (peakHold.value(rmsData.instanceId).peakHoldTime < (QDateTime::currentMSecsSinceEpoch() - 750)) {
+            peakHold[rmsData.instanceId].peakHold = -99.9;
         }
 
-        double peak = webSocketClient->trackPeak(track);
+        double peak = audioChannel == 0 ? rmsData.lpeak : rmsData.rpeak;
+        double rms  = audioChannel == 0 ? rmsData.rrms  : rmsData.rrms;
 
-        // TODO peakhold per track
-        if (peak >= peakHold.value(track).peakHold) {
-            peakHold[track] = { peak, QDateTime::currentMSecsSinceEpoch() };
+        if (peak >= peakHold.value(rmsData.instanceId).peakHold) {
+            peakHold[rmsData.instanceId] = { peak, QDateTime::currentMSecsSinceEpoch() };
         }
 
-        double rmsRatio      = pow(10.0, webSocketClient->trackRms(track) / 20);
+        double rmsRatio      = pow(10.0, rms / 20);
         double peakRatio     = pow(10.0, peak / 20);
-        double peakHoldRatio = pow(10.0, peakHold.value(track).peakHold / 20);
+        double peakHoldRatio = pow(10.0, peakHold.value(rmsData.instanceId).peakHold / 20);
+
+        int top = qRound(static_cast<double>(trackHeight * count));
 
         painter->setBrush(QBrush(QColor(0, 0, 0, 127)));
-        painter->drawRect(0, trackHeight * count, width() * rmsRatio, trackHeight * (count + 1));
+        painter->drawRect(0, top, qRound(width() * rmsRatio), trackHeight);
 
-        if (width() * peakRatio < width() - 4) {
+        if (window.width() * peakRatio < window.width() - 4) {
             painter->setBrush(QBrush(QColor(0, 0, 0, 255)));
-            painter->drawRect(width() * peakRatio, trackHeight * count, (width() * peakHoldRatio - 3) - width() * peakRatio, trackHeight * (count + 1));
-            painter->drawRect(width() * peakHoldRatio, trackHeight * count, width(), trackHeight * (count + 1));
+            painter->drawRect(qRound(window.width() * peakRatio), top, qRound((window.width() * peakHoldRatio - 3) - window.width() * peakRatio), trackHeight);
+            painter->drawRect(qRound(window.width() * peakHoldRatio), top, window.width(), trackHeight);
 
-            painter->setBrush(QBrush(QColor(0, 0, 0, qMax(0, qMin(255, static_cast<int>((static_cast<double>(QDateTime::currentMSecsSinceEpoch() - peakHold.value(track).peakHoldTime) / 500) * 255))))));
-            painter->drawRect(width() * peakHoldRatio - 4, trackHeight * count, 5, trackHeight * (count + 1));
+            painter->setBrush(QBrush(QColor(0, 0, 0, qMax(0, qMin(255, static_cast<int>((static_cast<double>(QDateTime::currentMSecsSinceEpoch() - peakHold.value(rmsData.instanceId).peakHoldTime) / 500) * 255))))));
+            painter->drawRect(qRound(window.width() * peakHoldRatio - 4), top, 5, trackHeight);
         }
         else {
             painter->setBrush(QBrush(QColor(0, 0, 0, 255)));
-            painter->drawRect(width() * peakRatio, trackHeight * count, width(), trackHeight * (count + 1));
+            painter->drawRect(qRound(window.width() * peakRatio), top, window.width(), trackHeight);
         }
 
         count++;
-    }
-
-    if (tracks.count() > 1) {
-        webSocketClient->cleanup();
-    }
-
-    if (!socketErrorMessage.isEmpty()) {
-        painter->setPen(QPen(QColor(255, 0, 0, 255), 1));
-        painter->setFont(QFont("Sans Serif", 8));
-        painter->drawText(7, height() - 7, socketErrorMessage);
+        shMemRMSData++;
     }
 }
 
@@ -181,14 +142,6 @@ void RMSVisual::paint(QPainter *painter)
 // refresh
 void RMSVisual::timerTimeout()
 {
-    if (webSocketClient != nullptr) {
-        update();
-    }
+    update();
 }
 
-
-// signal handler;
-void RMSVisual::socketError(QString msg)
-{
-    socketErrorMessage = msg;
-}

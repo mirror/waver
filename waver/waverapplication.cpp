@@ -185,6 +185,7 @@ void WaverApplication::mainWindowClosing(QQuickCloseEvent *close)
 
     foreach (QQuickWindow *pluginWindow, pluginWindows) {
         pluginWindow->close();
+        pluginWindow->deleteLater();
     }
 }
 

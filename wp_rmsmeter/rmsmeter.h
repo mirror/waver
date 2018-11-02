@@ -29,10 +29,12 @@
 #include <cmath>
 #include <QAudioBuffer>
 #include <QAudioFormat>
+#include <QDateTime>
 #include <QFile>
+#include <QHash>
 #include <QTimer>
+#include <QSharedMemory>
 #include <QThread>
-#include "websocketserver.h"
 
 #include "../waver/pluginfactory.h"
 #include "../waver/API/pluginoutput_006.h"
@@ -50,6 +52,17 @@ class WP_RMSMETER_EXPORT RMSMeter : public PluginOutput_006 {
 
     public:
 
+        static const QString SHAREDMEMORY_KEY;
+        static const int     SHAREDMEMORY_MAX_INSTANCES = 5;
+
+        struct RMSData {
+            int    instanceId;
+            double lrms;
+            double lpeak;
+            double rrms;
+            double rpeak;
+        };
+
         int     pluginType()                                                       override;
         QString pluginName()                                                       override;
         int     pluginVersion()                                                    override;
@@ -65,10 +78,15 @@ class WP_RMSMETER_EXPORT RMSMeter : public PluginOutput_006 {
 
     private:
 
-        static int              instanceCount;
-        static int              instanceTotal;
-        static QThread         *webSocketServerThread;
-        static WebSocketServer *webSocketServer;
+        static int instanceCount;
+
+        struct RMSTimedData {
+            qint64 timestamp;
+            double lrms;
+            double lpeak;
+            double rrms;
+            double rpeak;
+        };
 
         QUuid id;
 
@@ -76,6 +94,10 @@ class WP_RMSMETER_EXPORT RMSMeter : public PluginOutput_006 {
         QMutex      *bufferQueueMutex;
 
         int instanceId;
+
+        QVector<RMSTimedData> timedData;
+
+        QSharedMemory *sharedMemory;
 
         int audioFramePerVideoFrame;
         int frameCount;
@@ -99,13 +121,6 @@ class WP_RMSMETER_EXPORT RMSMeter : public PluginOutput_006 {
         bool sendDiagnostics;
 
         void sendDiagnosticsData();
-
-
-    signals:
-
-        void rms(int instanceId, qint64 position, int channelIndex, double rms, double peak);
-        void position(int instanceId, qint64 position);
-        void clean(int instanceId);
 
 
     public slots:
