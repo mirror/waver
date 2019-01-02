@@ -31,6 +31,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QFileInfoList>
+#include <QMutex>
 #include <QObject>
 #include <QRegExp>
 #include <QString>
@@ -46,12 +47,18 @@
 
 #include "../waver/pluginglobals.h"
 
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
+
+
 class SSHClient : public QObject {
         Q_OBJECT
 
     public:
 
         static const int CHUNK_SIZE = 65536;
+        static const int TIMEOUT_MS = 5000;
 
         struct SSHClientConfig {
             int      id;
@@ -72,15 +79,30 @@ class SSHClient : public QObject {
         };
         typedef QVector<DirListItem> DirList;
 
+        enum SSHClientState {
+            Idle,
+            Connecting,
+            Disconnecting,
+            CheckingCache,
+            ExecutingSSH,
+            Downloading,
+            Uploading,
+            GettingDirList
+        };
+
         explicit SSHClient(SSHClientConfig config, QObject *parent = nullptr);
         ~SSHClient();
 
         SSHClientConfig getConfig();
+        void            setCacheDir(QString cacheDir);
         QString         formatUserHost();
         bool            isConnected();
 
         QString localToRemote(QString local);
         QString remoteToLocal(QString remote);
+
+        SSHClientState getState();
+        qint64         getLoadingBytes();
 
     private:
 
@@ -90,6 +112,10 @@ class SSHClient : public QObject {
         static const QString AUTH_METHOD_PUBLICKEY;
         static const QString AUTH_METHOD_PASSWORD;
         static const QString AUTH_METHOD_KB_INTERACTIVE;
+
+        QMutex         *mutex;
+        SSHClientState  state;
+        qint64          loadingBytes;
 
         int connectAttempt;
 
@@ -110,6 +136,8 @@ class SSHClient : public QObject {
         QStringList stdErrSSH;
 
         QStringList downloadList;
+
+        void updateState(SSHClientState state);
 
         void connectAuthPublicKey();
         void connectAuthPassword(QString fingerprint);
@@ -142,6 +170,7 @@ class SSHClient : public QObject {
 
         void error(int id, QString errorMessage);
         void info(int id, QString infoMessage);
+        void stateChanged(int id);
 
 
     public slots:

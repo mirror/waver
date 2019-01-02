@@ -35,10 +35,14 @@ SSHClient::SSHClient(SSHClientConfig config, QObject *parent) : QObject(parent)
     this->config = config;
 
     connectAttempt = 0;
+    state          = Idle;
+    loadingBytes   = 0;
 
     socket      = NULL;
     session     = NULL;
     sftpSession = NULL;
+
+    mutex = new QMutex();
 
     extensions.append(".3gp");
     extensions.append(".aa");
@@ -93,6 +97,8 @@ SSHClient::~SSHClient()
     if (socket != NULL) {
         delete socket;
     }
+
+    delete mutex;
 }
 
 
@@ -100,8 +106,10 @@ SSHClient::~SSHClient()
 void SSHClient::run()
 {
     // check if there are files already cached
+    updateState(CheckingCache);
     QStringList foundCached;
     findCachedAudio("", &foundCached);
+    updateState(Idle);
     emit audioList(config.id, foundCached, true);
 
     // instantiate socket (must be in this thread)
@@ -127,6 +135,15 @@ void SSHClient::autoConnect()
 SSHClient::SSHClientConfig SSHClient::getConfig()
 {
     return config;
+}
+
+
+// public method
+void SSHClient::setCacheDir(QString cacheDir)
+{
+    if (config.cacheDir.isEmpty()) {
+        config.cacheDir = cacheDir;
+    }
 }
 
 
@@ -212,6 +229,8 @@ void SSHClient::connectSSH(int id)
         return;
     }
 
+    updateState(Connecting);
+
     // continued in socketConnected
     socket->connectToHost(host.at(0), (quint16)port);
 }
@@ -243,6 +262,8 @@ void SSHClient::disconnectSSH(int id, QString errorMessage)
 
     connectAttempt = 3;
 
+    updateState(Disconnecting);
+
     if (sftpSession != NULL) {
         libssh2_sftp_shutdown(sftpSession);
         sftpSession = NULL;
@@ -255,6 +276,8 @@ void SSHClient::disconnectSSH(int id, QString errorMessage)
     if (socket != NULL) {
         socket->close();
     }
+
+    updateState(Idle);
 
     if (!errorMessage.isEmpty()) {
         emit error(config.id, errorMessage);
@@ -282,6 +305,7 @@ void SSHClient::socketConnected()
 
     // config stuff
     libssh2_session_set_blocking(session, 1);
+    libssh2_session_set_timeout(session, TIMEOUT_MS);
 
     // banner just for the fun of it
     const char *bannerRaw = libssh2_session_banner_get(session);
@@ -510,6 +534,7 @@ void SSHClient::connectCheckDir()
     }
 
     // all OK
+    updateState(Idle);
     emit connected(config.id);
 }
 
@@ -558,6 +583,9 @@ void SSHClient::findCachedAudio(QString localDir, QStringList *results)
 // private method
 bool SSHClient::executeSSH(QString command)
 {
+    SSHClientState prevState = state;
+    updateState(ExecutingSSH);
+
     // clear output buffers from previous execution
     stdOutSSH.clear();
     stdErrSSH.clear();
@@ -566,17 +594,26 @@ bool SSHClient::executeSSH(QString command)
     LIBSSH2_CHANNEL *channel = libssh2_channel_open_session(session);
     if (!channel) {
         stdErrSSH.append(getErrorMessageSSH());
+        updateState(prevState);
         return false;
     }
 
     // do the deed
+    #ifdef QT_DEBUG
+    qint64 start = QDateTime::currentMSecsSinceEpoch();
+    #endif
     if (libssh2_channel_exec(channel, command.toUtf8().constData())) {
         stdErrSSH.append(getErrorMessageSSH());
         libssh2_channel_close(channel);
         libssh2_channel_wait_closed(channel);
         libssh2_channel_free(channel);
+        updateState(prevState);
         return false;
     }
+    #ifdef QT_DEBUG
+    qint64 duration = QDateTime::currentMSecsSinceEpoch() - start;
+    qWarning() << QString("%1 %2ms").arg(command.left(command.indexOf(" "))).arg(duration);
+    #endif
 
     // read outputs
 
@@ -611,9 +648,11 @@ bool SSHClient::executeSSH(QString command)
     libssh2_channel_free(channel);
 
     if (QThread::currentThread()->isInterruptionRequested()) {
+        updateState(prevState);
         return false;
     };
 
+    updateState(prevState);
     return true;
 }
 
@@ -621,6 +660,9 @@ bool SSHClient::executeSSH(QString command)
 // private method
 bool SSHClient::dirList(QString dir, DirList *contents)
 {
+    SSHClientState prevState = state;
+    updateState(GettingDirList);
+
     dir.replace(QRegExp("/$"), "");
 
     // clear buffer from previous listing
@@ -629,6 +671,7 @@ bool SSHClient::dirList(QString dir, DirList *contents)
     // open remote dir
     LIBSSH2_SFTP_HANDLE *sftpDirHandle = libssh2_sftp_opendir(sftpSession, dir.toUtf8().constData());
     if (!sftpDirHandle) {
+        updateState(prevState);
         return false;
     }
 
@@ -653,9 +696,11 @@ bool SSHClient::dirList(QString dir, DirList *contents)
 
     if (QThread::currentThread()->isInterruptionRequested()) {
         contents->clear();
+        updateState(prevState);
         return false;
     }
 
+    updateState(prevState);
     return true;
 }
 
@@ -663,11 +708,15 @@ bool SSHClient::dirList(QString dir, DirList *contents)
 // private method
 bool SSHClient::download(QString source, QString destination)
 {
+    SSHClientState prevState = state;
+    updateState(Downloading);
+
     // local destination
     QFile localFile(destination);
 
     // open local destination for writing
     if (!localFile.open(QIODevice::WriteOnly)) {
+        updateState(prevState);
         return false;
     }
 
@@ -679,20 +728,32 @@ bool SSHClient::download(QString source, QString destination)
     if (!sftpHandle) {
         localFile.close();
         localFile.remove();
+        updateState(prevState);
         return false;
     }
 
     // read source and write destination
     char    bufferRaw[CHUNK_SIZE];
     bool    wasError  = false;
+    qint64  timeStart = QDateTime::currentMSecsSinceEpoch();
     ssize_t readCount = libssh2_sftp_read(sftpHandle, bufferRaw, sizeof(bufferRaw));
     while ((readCount > 0) && !QThread::currentThread()->isInterruptionRequested()) {
+        mutex->lock();
+        loadingBytes += readCount;
+        mutex->unlock();
+        emit stateChanged(config.id);
+
         if (localOutput.writeRawData(bufferRaw, readCount) != readCount) {
             wasError = true;
             break;
         }
+        timeStart = QDateTime::currentMSecsSinceEpoch();
         readCount = libssh2_sftp_read(sftpHandle, bufferRaw, sizeof(bufferRaw));
     }
+    mutex->lock();
+    loadingBytes = 0;
+    mutex->unlock();
+    emit stateChanged(config.id);
 
     // close remote source
     libssh2_sftp_close(sftpHandle);
@@ -703,9 +764,11 @@ bool SSHClient::download(QString source, QString destination)
     // don't leave partial file on disk if there was an error
     if (wasError || QThread::currentThread()->isInterruptionRequested()) {
         localFile.remove();
+        updateState(prevState);
         return false;
     }
 
+    updateState(prevState);
     return true;
 }
 
@@ -713,11 +776,15 @@ bool SSHClient::download(QString source, QString destination)
 // private method
 bool SSHClient::upload(QString source, QString destination)
 {
+    SSHClientState prevState = state;
+    updateState(Uploading);
+
     // local source
     QFile localFile(source);
 
     // open local source for reading
     if (!localFile.open(QIODevice::ReadOnly)) {
+        updateState(prevState);
         return false;
     }
 
@@ -727,6 +794,7 @@ bool SSHClient::upload(QString source, QString destination)
     LIBSSH2_SFTP_HANDLE *sftpHandle = libssh2_sftp_open(sftpSession, destination_temp.toUtf8().constData(), LIBSSH2_FXF_WRITE | LIBSSH2_FXF_CREAT, UPLOAD_CREATE_PERMISSIONS);
     if (!sftpHandle) {
         localFile.close();
+        updateState(prevState);
         return false;
     }
 
@@ -737,18 +805,31 @@ bool SSHClient::upload(QString source, QString destination)
         int remaining        = bufferRaw.count();
         int offset           = 0;
         while (remaining > 0) {
+            qint64  timeStart = QDateTime::currentMSecsSinceEpoch();
             ssize_t bytesWritten = libssh2_sftp_write(sftpHandle, bufferRaw.constData() + offset, remaining);
+
             if (bytesWritten < 0) {
                 wasError = true;
                 break;
             }
+
+            mutex->lock();
+            loadingBytes += bytesWritten;
+            mutex->unlock();
+            emit stateChanged(config.id);
+
             remaining -= bytesWritten;
             offset    += bytesWritten;
+            updateState(Uploading);
         }
         if (wasError) {
             break;
         }
     }
+    mutex->lock();
+    loadingBytes = 0;
+    mutex->unlock();
+    emit stateChanged(config.id);
 
     // close local source
     localFile.close();
@@ -759,27 +840,32 @@ bool SSHClient::upload(QString source, QString destination)
     // don't leave partial file on remote if there was an error
     if (wasError || QThread::currentThread()->isInterruptionRequested()) {
         executeSSH(QString("rm -f \"%1\"").arg(destination_temp));
+        updateState(prevState);
         return false;
     }
 
     // check size
     if (!executeSSH("stat -c %s \"" + destination_temp + "\"")) {
         executeSSH(QString("rm -f \"%1\"").arg(destination_temp));
+        updateState(prevState);
         return false;
     }
     bool OK = false;
     qint64 destination_temp_size = stdOutSSH.at(0).toLongLong(&OK);
     if (!OK) {
         executeSSH(QString("rm -f \"%1\"").arg(destination_temp));
+        updateState(prevState);
         return false;
     }
     QFileInfo sourceInfo(source);
     if (sourceInfo.size() != destination_temp_size) {
         executeSSH(QString("rm -f \"%1\"").arg(destination_temp));
+        updateState(prevState);
         return false;
     }
 
     // size OK, let's complete the upload
+    updateState(prevState);
     return executeSSH(QString("mv -f \"%1\" \"%2\"").arg(destination_temp).arg(destination));
 }
 
@@ -916,8 +1002,6 @@ void SSHClient::socketStateChanged(QAbstractSocket::SocketState socketState)
         case QAbstractSocket::ListeningState:
             stateString = "Socket is listening";
             break;
-        default:
-            stateString = "Socket is in an unknown state";
     }
 
     emit info(config.id, stateString);
@@ -979,9 +1063,11 @@ void SSHClient::dirSelectorResult(int id, bool openOnly, QString path)
     // user is done selecting dir
 
     config.dir = path;
+
     emit updateConfig(config.id);
 
     // OK finally all connection sequence is done
+    updateState(Idle);
     emit connected(config.id);
 }
 
@@ -1203,4 +1289,36 @@ void SSHClient::dowloadNext()
 
     // start next download with a delay so other signals can be processed too
     QTimer::singleShot(250, this, SLOT(dowloadNext()));
+}
+
+
+// helper
+void SSHClient::updateState(SSHClientState state)
+{
+    mutex->lock();
+    this->state      = state;
+    mutex->unlock();
+    emit stateChanged(config.id);
+}
+
+
+// public method
+SSHClient::SSHClientState SSHClient::getState()
+{
+    mutex->lock();
+    SSHClientState state = this->state;
+    mutex->unlock();
+
+    return state;
+}
+
+
+// public method
+qint64 SSHClient::getLoadingBytes()
+{
+    mutex->lock();
+    qint64 loadingBytes = this->loadingBytes;
+    mutex->unlock();
+
+    return loadingBytes;
 }

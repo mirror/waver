@@ -128,7 +128,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
 
         void       addClient(SSHClient::SSHClientConfig config);
         void       removeAllClients();
-        QString    clientCacheDirName(QString user, QString host);
+        QString    clientCacheDirName(QString user, QString host, QString remotePath);
         SSHClient *clientFromId(int id);
 
         TrackInfo trackInfoFromFilePath(QString filePath, int clientId, bool *tagLibOK);
@@ -229,6 +229,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
 
         void clientError(int id, QString errorMessage);
         void clientInfo(int id, QString infoMessage);
+        void clientStateChanged(int id);
 };
 
 #endif // SFTPSOURCE_H

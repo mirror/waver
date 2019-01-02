@@ -27,8 +27,9 @@ RMSVisual::RMSVisual(QQuickItem *parent) : QQuickPaintedItem(parent)
 {
     audioChannel  = -1;
 
-    sharedMemory.setKey(RMSMeter::SHAREDMEMORY_KEY);
-    sharedMemory.attach();
+    sharedMemory = new QSharedMemory(RMSMeter::SHAREDMEMORY_KEY);
+
+    sharedMemory->attach();
 
     connect(&timer, SIGNAL(timeout()), this, SLOT(timerTimeout()));
 
@@ -43,7 +44,8 @@ RMSVisual::RMSVisual(QQuickItem *parent) : QQuickPaintedItem(parent)
 RMSVisual::~RMSVisual()
 {
     timer.stop();
-    sharedMemory.detach();
+    sharedMemory->detach();
+    delete sharedMemory;
 }
 
 
@@ -68,12 +70,12 @@ void RMSVisual::setChannel(const int channel)
 // paint it
 void RMSVisual::paint(QPainter *painter)
 {
-    int               *shMemInstanceCount = static_cast<int *>(sharedMemory.data());
-    RMSMeter::RMSData *shMemRMSData       = reinterpret_cast<RMSMeter::RMSData *>(static_cast<char *>(sharedMemory.data()) + sizeof(int));
+    int               *shMemInstanceCount = static_cast<int *>(sharedMemory->data());
+    RMSMeter::RMSData *shMemRMSData       = reinterpret_cast<RMSMeter::RMSData *>(static_cast<char *>(sharedMemory->data()) + sizeof(int));
 
-    sharedMemory.lock();
+    sharedMemory->lock();
     int trackCount = *shMemInstanceCount;
-    sharedMemory.unlock();
+    sharedMemory->unlock();
 
     QRect window = painter->window();
 
@@ -92,9 +94,9 @@ void RMSVisual::paint(QPainter *painter)
 
     int count = 0;
     while (count < trackCount) {
-        sharedMemory.lock();
+        sharedMemory->lock();
         RMSMeter::RMSData rmsData = *shMemRMSData;
-        sharedMemory.unlock();
+        sharedMemory->unlock();
 
         if (!peakHold.contains(rmsData.instanceId)) {
             peakHold.insert(rmsData.instanceId, { -99.9, 0 });
@@ -116,6 +118,9 @@ void RMSVisual::paint(QPainter *painter)
         double peakHoldRatio = pow(10.0, peakHold.value(rmsData.instanceId).peakHold / 20);
 
         int top = qRound(static_cast<double>(trackHeight * count));
+        if ((count == trackCount - 1) && (top + trackHeight < window.height())) {
+            trackHeight = window.height() - top;
+        }
 
         painter->setBrush(QBrush(QColor(0, 0, 0, 127)));
         painter->drawRect(0, top, qRound(width() * rmsRatio), trackHeight);

@@ -285,6 +285,7 @@ void SFTPSource::uiResults(QUuid uniqueId, QJsonDocument results)
         config.host = resultsHash.value("host").toString();
         config.user = resultsHash.value("user").toString();
         addClient(config);
+        clients.last()->thread()->start();
     }
 
     // manually connect client (in case it got disconnected)
@@ -1045,8 +1046,8 @@ void SFTPSource::addClient(SSHClient::SSHClientConfig config)
     }
 
     // needs to know where to store the disk cache
-    if (config.cacheDir.isEmpty()) {
-        config.cacheDir = cacheDir.absoluteFilePath(clientCacheDirName(config.user, config.host));
+    if (config.cacheDir.isEmpty() && !config.dir.isEmpty()) {
+        config.cacheDir = cacheDir.absoluteFilePath(clientCacheDirName(config.user, config.host, config.dir));
     }
 
     // will run in its own thread because downloads etc. are blocking
@@ -1083,6 +1084,7 @@ void SFTPSource::addClient(SSHClient::SSHClientConfig config)
     connect(client, SIGNAL(gotOpenItems(int, OpenTracks)),                              this,   SLOT(clientGotOpenItems(int, OpenTracks)));
     connect(client, SIGNAL(error(int, QString)),                                        this,   SLOT(clientError(int, QString)));
     connect(client, SIGNAL(info(int, QString)),                                         this,   SLOT(clientInfo(int, QString)));
+    connect(client, SIGNAL(stateChanged(int)),                                          this,   SLOT(clientStateChanged(int)));
 
     // remember this new client
     clients.append(client);
@@ -1104,9 +1106,11 @@ void SFTPSource::removeAllClients()
 }
 
 
-QString SFTPSource::clientCacheDirName(QString user, QString host)
+QString SFTPSource::clientCacheDirName(QString user, QString host, QString remotePath)
 {
-    return QString("%1_%2").arg(user).arg(host).replace(QRegExp("\\W"), "_");
+    remotePath.remove(QRegExp("/$"));
+
+    return QString("%1_%2_%3").arg(user).arg(host).arg(remotePath).replace(QRegExp("\\W"), "_");
 }
 
 // private method
@@ -1445,24 +1449,28 @@ void SFTPSource::clientShowDirSelector(int id, QString userAtHost, QString curre
         }
     }
 
-    QFile keySelectorFile("://SFTPDirChoose.qml");
-    keySelectorFile.open(QFile::ReadOnly);
-    QString keySelector = keySelectorFile.readAll();
-    keySelectorFile.close();
+    QFile dirSelectorFile("://SFTPDirChoose.qml");
+    dirSelectorFile.open(QFile::ReadOnly);
+    QString dirSelector = dirSelectorFile.readAll();
+    dirSelectorFile.close();
 
-    keySelector.replace("ListElement{}", listElements);
-    keySelector.replace("<user@host>", userAtHost);
-    keySelector.replace("<current_dir>", currentDir);
-    keySelector.replace("\"<clientId>\"", QString("%1").arg(id));
+    dirSelector.replace("ListElement{}", listElements);
+    dirSelector.replace("<user@host>", userAtHost);
+    dirSelector.replace("<current_dir>", currentDir);
+    dirSelector.replace("\"<clientId>\"", QString("%1").arg(id));
 
-    addToUIQueue(keySelector);
+    addToUIQueue(dirSelector);
 }
 
 
 // private slot from SFTP client
 void SFTPSource::clientUpdateConfig(int id)
 {
-    Q_UNUSED(id);
+    SSHClient                  *client = clientFromId(id);
+    SSHClient::SSHClientConfig  config = client->getConfig();
+    if (config.cacheDir.isEmpty() && !config.dir.isEmpty()) {
+        client->setCacheDir(cacheDir.absoluteFilePath(clientCacheDirName(config.user, config.host, config.dir)));
+    }
 
     emit saveConfiguration(this->id, configToJson());
 }
@@ -1609,6 +1617,17 @@ void SFTPSource::clientInfo(int id, QString infoMessage)
 }
 
 
+// private slot from SFTP client
+void SFTPSource::clientStateChanged(int id)
+{
+    Q_UNUSED(id);
+
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
+    }
+}
+
+
 // helper
 int SFTPSource::variationSettingId()
 {
@@ -1626,7 +1645,7 @@ void SFTPSource::reduceCache()
     foreach (QFileInfo clientCacheDirInfo, clientCacheDirInfos) {
         bool found = false;
         foreach (SSHClient *sshClient, clients) {
-            if (clientCacheDirInfo.fileName().compare(clientCacheDirName(sshClient->getConfig().user, sshClient->getConfig().host)) == 0) {
+            if (clientCacheDirInfo.fileName().compare(clientCacheDirName(sshClient->getConfig().user, sshClient->getConfig().host, sshClient->getConfig().dir)) == 0) {
                 found = true;
                 break;
             }
@@ -1655,7 +1674,7 @@ void SFTPSource::reduceCache()
     while (((cacheSumSize > (bytesTotalMegabytes * 0.1)) || (cacheSumSize > ((bytesAvailableMegabytes + cacheSumSize) * 0.25)) || (cacheSumSize > maxSizeMegabytes))) {
         foreach (SSHClient *sshClient, clients) {
             // get list of files and subdirs
-            QFileInfoList entries = QDir(cacheDir.absoluteFilePath(clientCacheDirName(sshClient->getConfig().user, sshClient->getConfig().host))).entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
+            QFileInfoList entries = QDir(cacheDir.absoluteFilePath(clientCacheDirName(sshClient->getConfig().user, sshClient->getConfig().host, sshClient->getConfig().dir))).entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
 
             // sort, oldest first
             qSort(entries.begin(), entries.end(), [](QFileInfo a, QFileInfo b) {
@@ -1695,7 +1714,7 @@ void SFTPSource::reduceCache()
     // delete the oldest loved dir to refresh similar (this might delete some lower-level subdirs that aren't contain loved, but that's OK)
     foreach (SSHClient *sshClient, clients) {
         // get list of files and subdirs
-        QFileInfoList entries = QDir(cacheDir.absoluteFilePath(clientCacheDirName(sshClient->getConfig().user, sshClient->getConfig().host))).entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
+        QFileInfoList entries = QDir(cacheDir.absoluteFilePath(clientCacheDirName(sshClient->getConfig().user, sshClient->getConfig().host, sshClient->getConfig().dir))).entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
 
         // filter for loved
         QFileInfoList lovedEntries;
@@ -1872,8 +1891,52 @@ void SFTPSource::sendDiagnosticsData()
 {
     DiagnosticData diagnosticData;
 
-    diagnosticData.append({ "Banned",             QString("%1").arg(banned.count()) });
-    diagnosticData.append({ "Loved",              QString("%1").arg(loved.count()) });
+    diagnosticData.append({ "Banned", QString("%1").arg(banned.count()) });
+    diagnosticData.append({ "Loved",  QString("%1").arg(loved.count()) });
+
+    foreach (SSHClient *sshClient, clients) {
+        SSHClient::SSHClientState state    = sshClient->getState();
+        QString                   stateStr = "Unknown";
+        switch (state) {
+            case SSHClient::Idle:
+                stateStr = "Idle";
+                break;
+            case SSHClient::Connecting:
+                stateStr = "Connecting";
+                break;
+            case SSHClient::Disconnecting:
+                stateStr = "Disconnecting";
+                break;
+            case SSHClient::CheckingCache:
+                stateStr = "Checking cache";
+                break;
+            case SSHClient::ExecutingSSH:
+                stateStr = "Executing SSH command";
+                break;
+            case SSHClient::Downloading:
+                stateStr = "Downloading";
+                break;
+            case SSHClient::Uploading:
+                stateStr = "Uploading";
+                break;
+            case SSHClient::GettingDirList:
+                stateStr = "Getting directory listing";
+        }
+
+        qint64 bytes = sshClient->getLoadingBytes();
+        QString bytesStr = "";
+        if (bytes >= (1024 * 1024)) {
+            bytesStr = QString(" %1 MB").arg(static_cast<double>(bytes) / (1024 * 1024), 0, 'f', 2);
+        }
+        else if (bytes >= 1024) {
+            bytesStr = QString(" %1 kB").arg(static_cast<double>(bytes) / 1024, 0, 'f', 1);
+        }
+        else if (bytes > 0) {
+            bytesStr = QString(" %1 bytes").arg(static_cast<double>(bytes), 0, 'f', 0);
+        }
+
+        diagnosticData.append({ sshClient->formatUserHost(), stateStr + bytesStr });
+    }
 
     emit diagnostics(id, diagnosticData);
 }

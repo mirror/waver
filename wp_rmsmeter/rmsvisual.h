@@ -72,7 +72,7 @@ class RMSVisual : public QQuickPaintedItem {
 
         QHash<int, PeakHold> peakHold;
 
-        QSharedMemory sharedMemory;
+        QSharedMemory *sharedMemory;
 
         QTimer timer;
 

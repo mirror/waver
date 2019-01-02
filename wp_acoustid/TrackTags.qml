@@ -21,7 +21,7 @@
 */
 
 
-import QtQuick 2.7;import QtQuick.Controls 2.0;
+import QtQuick 2.7;import QtQuick.Controls 2.0;import QtQml 2.2;
 
 Item {
     id: settings
@@ -66,7 +66,8 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 6
         onTextEdited: {
-            counter.stop();
+            counter.running = false;
+            timeout = -1;
             countdown.text = "";
         }
     }
@@ -92,7 +93,8 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 6
         onTextEdited: {
-            counter.stop();
+            counter.running = false;
+            timeout = -1;
             countdown.text = "";
         }
     }
@@ -118,7 +120,8 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 6
         onTextEdited: {
-            counter.stop();
+            counter.running = false;
+            timeout = -1;
             countdown.text = "";
         }
     }
@@ -155,7 +158,8 @@ Item {
         anchors.right: parent.horizontalCenter
         anchors.rightMargin: 3
         onTextEdited: {
-            counter.stop();
+            counter.running = false;
+            timeout = -1;
             countdown.text = "";
         }
     }
@@ -170,7 +174,8 @@ Item {
         anchors.right: parent.right
         anchors.rightMargin: 6
         onTextEdited: {
-            counter.stop();
+            counter.running = false;
+            timeout = -1;
             countdown.text = "";
         }
     }
@@ -184,7 +189,8 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 8
         onClicked: {
-            counter.stop;
+            counter.running = false;
+            timeout = -1;
             done(JSON.stringify({
                 url: "<url>",
                 action: "track_tags",
@@ -206,7 +212,8 @@ Item {
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 8
         onClicked: {
-            counter.stop();
+            counter.running = false;
+            timeout = -1;
             done(0);
         }
     }
@@ -226,11 +233,11 @@ Item {
         interval: 1000
         repeat: true
         running: true
-        triggeredOnStart: true;
 
         onTriggered: {
-            if (timeout <= 0) {
-                stop;
+            if (timeout == 0) {
+                counter.running = false
+                timeout = -1;
                 done(JSON.stringify({
                     url: "<url>",
                     action: "track_tags",
@@ -243,8 +250,10 @@ Item {
                 return;
             }
 
-            timeout = timeout - 1;
-            countdown.text = "Track will be updated automatically in " + timeout + " seconds"
+            if (timeout > 0) {
+                timeout = timeout - 1;
+                countdown.text = "Track will be updated automatically in " + timeout + " seconds";
+            }
         }
     }
 }

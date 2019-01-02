@@ -106,6 +106,10 @@ RMSMeter::~RMSMeter()
 
         sharedMemory->unlock();
 
+        if (sendDiagnostics) {
+            sendDiagnosticsData();
+        }
+
         sharedMemory->detach();
         delete sharedMemory;
     }
@@ -186,6 +190,10 @@ void RMSMeter::run()
 
     if (instanceId == 1) {
         QTimer::singleShot(750, this, SLOT(requestWindow()));
+    }
+
+    if (sendDiagnostics) {
+        sendDiagnosticsData();
     }
 }
 
@@ -619,9 +627,13 @@ void RMSMeter::sendDiagnosticsData()
 {
     DiagnosticData diagnosticData;
 
-    /*
-        diagnosticData.append({ "Play buffer size", QString("%1 KB (%2 ms)").arg(bufferSize / 1024, 5, 'f', 2, '0').arg((double)diagnosticsAudioFormat.durationForBytes(bufferSize) / 1000, 7, 'f', 3, '0') });
-    */
+    int *shMemInstanceCount = static_cast<int *>(sharedMemory->data());
+
+    if (shMemInstanceCount != nullptr) {
+        sharedMemory->lock();
+        diagnosticData.append({ "Active tracks", QString("%1").arg(*shMemInstanceCount) });
+        sharedMemory->unlock();
+    }
 
     emit diagnostics(id, diagnosticData);
 }
