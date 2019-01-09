@@ -306,6 +306,7 @@ void SSHClient::socketConnected()
     // config stuff
     libssh2_session_set_blocking(session, 1);
     libssh2_session_set_timeout(session, TIMEOUT_MS);
+    libssh2_keepalive_config(session, 1, KEEPALIVE_SEC);
 
     // banner just for the fun of it
     const char *bannerRaw = libssh2_session_banner_get(session);
@@ -1296,7 +1297,7 @@ void SSHClient::dowloadNext()
 void SSHClient::updateState(SSHClientState state)
 {
     mutex->lock();
-    this->state      = state;
+    this->state = state;
     mutex->unlock();
     emit stateChanged(config.id);
 }

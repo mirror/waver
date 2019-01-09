@@ -57,8 +57,9 @@ class SSHClient : public QObject {
 
     public:
 
-        static const int CHUNK_SIZE = 65536;
-        static const int TIMEOUT_MS = 5000;
+        static const int CHUNK_SIZE    = 65536;
+        static const int TIMEOUT_MS    = 5000;
+        static const int KEEPALIVE_SEC = 30;
 
         struct SSHClientConfig {
             int      id;
