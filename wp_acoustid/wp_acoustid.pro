@@ -1,6 +1,6 @@
 #    This file is part of Waver
 #
-#    Copyright (C) 2017-2018 Peter Papp <peter.papp.p@gmail.com>
+#    Copyright (C) 2017-2019 Peter Papp <peter.papp.p@gmail.com>
 #
 #    Please visit https://launchpad.net/waver for details
 #
