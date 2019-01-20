@@ -249,7 +249,7 @@ void SFTPSource::getUiQml(QUuid uniqueId)
 
     QString clientElements;
     foreach (SSHClient *client, clients) {
-        clientElements.append(QString("ListElement { formatted_user_host: \"%1\"; dir: \"%2\"; is_connected: %3; client_id: %4; } ").arg(client->formatUserHost()).arg(client->getConfig().dir).arg(client->isConnected() ? 1 : 0).arg(client->getConfig().id));
+        clientElements.append(QString("ListElement { formatted_user_host: \"%1\"; dir: \"%2\"; is_connected: %3; client_id: %4; } ").arg(client->formatUserHost()).arg(client->getConfig().dir).arg(client->isSocketConnected() ? 1 : 0).arg(client->getConfig().id));
     }
     settings.replace("ListElement{}", clientElements);
 
@@ -291,7 +291,7 @@ void SFTPSource::uiResults(QUuid uniqueId, QJsonDocument results)
     // manually connect client (in case it got disconnected)
     if (resultsHash.value("button").toString().compare("connect") == 0) {
         SSHClient *client = clientFromId(resultsHash.value("client_id").toInt());
-        if (!client->isConnected()) {
+        if (!client->isSocketConnected()) {
             emit clientConnect(client->getConfig().id);
         }
     }
@@ -299,7 +299,7 @@ void SFTPSource::uiResults(QUuid uniqueId, QJsonDocument results)
     // manually disconnect client
     if (resultsHash.value("button").toString().compare("disconnect") == 0) {
         SSHClient *client = clientFromId(resultsHash.value("client_id").toInt());
-        if (client->isConnected()) {
+        if (client->isSocketConnected()) {
             emit clientDisconnect(client->getConfig().id);
         }
     }
@@ -1289,7 +1289,7 @@ void SFTPSource::appendToPlaylist()
                 remaining.append(audioFile);
             }
         }
-        if ((remaining.count() < 1) && clientFromId(currentClientId)->isConnected()) {
+        if (remaining.count() < 1) {
             alreadyPlayed.clear();
             foreach (QString audioFile, audioFiles.value(currentClientId)) {
                 if (!isInFuturePlaylist(currentClientId, audioFile) && !banned.contains(formatTrackForLists(currentClientId, audioFile))) {

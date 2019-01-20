@@ -97,7 +97,7 @@ class SSHClient : public QObject {
         SSHClientConfig getConfig();
         void            setCacheDir(QString cacheDir);
         QString         formatUserHost();
-        bool            isConnected();
+        bool            isSocketConnected();
 
         QString localToRemote(QString local);
         QString remoteToLocal(QString remote);
@@ -117,8 +117,6 @@ class SSHClient : public QObject {
         QMutex         *mutex;
         SSHClientState  state;
         qint64          loadingBytes;
-
-        int connectAttempt;
 
         QStringList extensions;
 
@@ -147,6 +145,8 @@ class SSHClient : public QObject {
         void setHomeDir();
 
         void findCachedAudio(QString localDir, QStringList *results);
+
+        bool isConnected();
 
         bool    executeSSH(QString command);
         QString getErrorMessageSSH();

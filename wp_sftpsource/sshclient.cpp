@@ -34,7 +34,6 @@ SSHClient::SSHClient(SSHClientConfig config, QObject *parent) : QObject(parent)
 {
     this->config = config;
 
-    connectAttempt = 0;
     state          = Idle;
     loadingBytes   = 0;
 
@@ -155,11 +154,25 @@ QString SSHClient::formatUserHost()
 
 
 // public method
+bool SSHClient::isSocketConnected()
+{
+    if (socket == NULL) {
+        return false;
+    }
+
+    return (socket->state() == QTcpSocket::ConnectedState);
+}
+
+
+// private method
 bool SSHClient::isConnected()
 {
     if (socket == NULL) {
         return false;
     }
+
+    executeSSH("ls");
+
     return (socket->state() == QTcpSocket::ConnectedState);
 }
 
@@ -259,8 +272,6 @@ void SSHClient::disconnectSSH(int id, QString errorMessage)
             errorMessage = errorMessage + " - " + sshErrorMessage;
         }
     }
-
-    connectAttempt = 3;
 
     updateState(Disconnecting);
 
@@ -596,6 +607,7 @@ bool SSHClient::executeSSH(QString command)
     if (!channel) {
         stdErrSSH.append(getErrorMessageSSH());
         updateState(prevState);
+        disconnectSSH(config.id);
         return false;
     }
 
@@ -609,6 +621,7 @@ bool SSHClient::executeSSH(QString command)
         libssh2_channel_wait_closed(channel);
         libssh2_channel_free(channel);
         updateState(prevState);
+        disconnectSSH(config.id);
         return false;
     }
     #ifdef QT_DEBUG
@@ -673,6 +686,7 @@ bool SSHClient::dirList(QString dir, DirList *contents)
     LIBSSH2_SFTP_HANDLE *sftpDirHandle = libssh2_sftp_opendir(sftpSession, dir.toUtf8().constData());
     if (!sftpDirHandle) {
         updateState(prevState);
+        disconnectSSH(config.id);
         return false;
     }
 
@@ -730,6 +744,7 @@ bool SSHClient::download(QString source, QString destination)
         localFile.close();
         localFile.remove();
         updateState(prevState);
+        disconnectSSH(config.id);
         return false;
     }
 
@@ -766,6 +781,9 @@ bool SSHClient::download(QString source, QString destination)
     if (wasError || QThread::currentThread()->isInterruptionRequested()) {
         localFile.remove();
         updateState(prevState);
+        if (wasError) {
+            disconnectSSH(config.id);
+        }
         return false;
     }
 
@@ -796,6 +814,7 @@ bool SSHClient::upload(QString source, QString destination)
     if (!sftpHandle) {
         localFile.close();
         updateState(prevState);
+        disconnectSSH(config.id);
         return false;
     }
 
@@ -842,6 +861,9 @@ bool SSHClient::upload(QString source, QString destination)
     if (wasError || QThread::currentThread()->isInterruptionRequested()) {
         executeSSH(QString("rm -f \"%1\"").arg(destination_temp));
         updateState(prevState);
+        if (wasError) {
+            disconnectSSH(config.id);
+        }
         return false;
     }
 
@@ -849,6 +871,7 @@ bool SSHClient::upload(QString source, QString destination)
     if (!executeSSH("stat -c %s \"" + destination_temp + "\"")) {
         executeSSH(QString("rm -f \"%1\"").arg(destination_temp));
         updateState(prevState);
+        disconnectSSH(config.id);
         return false;
     }
     bool OK = false;
@@ -976,13 +999,7 @@ void SSHClient::socketStateChanged(QAbstractSocket::SocketState socketState)
     switch (socketState) {
         case QAbstractSocket::UnconnectedState:
             stateString = "Socket is not connected";
-            if (connectAttempt < 3) {
-                QTimer::singleShot(connectAttempt * 30000 + 5000, this, SLOT(autoConnect()));
-                connectAttempt++;
-            }
-            else {
-                emit disconnected(config.id);
-            }
+            emit disconnected(config.id);
             break;
         case QAbstractSocket::HostLookupState:
             stateString = "Socket is looking up host";
@@ -992,7 +1009,6 @@ void SSHClient::socketStateChanged(QAbstractSocket::SocketState socketState)
             break;
         case QAbstractSocket::ConnectedState:
             stateString = "Socket is connected";
-            connectAttempt = 0;
             break;
         case QAbstractSocket::BoundState:
             stateString = "Socket is bound";
@@ -1052,11 +1068,16 @@ void SSHClient::dirSelectorResult(int id, bool openOnly, QString path)
 
     // user not done yet, needs to display contents of dir
     if (openOnly) {
+        if (!isConnected()) {
+            connectSSH(config.id);
+        }
+
         DirList dirContents;
         if (!dirList(path, &dirContents)) {
             disconnectSSH(config.id, "Could not get directory listing");
             return;
         }
+
         emit showDirSelector(config.id, formatUserHost(), path, dirContents);
         return;
     }
@@ -1094,6 +1115,9 @@ void SSHClient::findAudio(int id, QString subdir)
     }
 
     // execute find on remote
+    if (!isConnected()) {
+        connectSSH(config.id);
+    }
     QString command = QString("find \"%1\" -type f %2").arg(dir).arg(extensionFilters.join(" -o "));
     if (executeSSH(command)) {
         emit audioList(config.id, QStringList(stdOutSSH), false);
@@ -1141,6 +1165,10 @@ void SSHClient::getOpenItems(int id, QString remotePath)
 
     OpenTracks returnValue;
 
+    if (!isConnected()) {
+        connectSSH(config.id);
+    }
+
     DirList dirContents;
     if (dirList(remotePath, &dirContents)) {
         qSort(dirContents.begin(), dirContents.end(), [](DirListItem a, DirListItem b) {
@@ -1170,6 +1198,10 @@ void SSHClient::getOpenItems(int id, QString remotePath)
 void SSHClient::trackInfoUpdated(TrackInfo trackInfo)
 {
     QString localPath = trackInfo.url.toLocalFile();
+
+    if (!isConnected()) {
+        connectSSH(config.id);
+    }
 
     // get remote dir listing
     QString remoteDir = localToRemote(localPath.left(localPath.lastIndexOf("/") + 1));
@@ -1253,6 +1285,10 @@ void SSHClient::dowloadNext()
 {
     if (downloadList.isEmpty()) {
         return;
+    }
+
+    if (!isConnected()) {
+        connectSSH(config.id);
     }
 
     // what to download
