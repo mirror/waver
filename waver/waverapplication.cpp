@@ -681,6 +681,7 @@ void WaverApplication::createPluginWindow(QJsonDocument jsonDocument)
     QQuickWindow *window = qobject_cast<QQuickWindow *>(component.create());
 
     if (component.isReady()) {
+        window->setTransientParent(uiMainWindow);
         pluginWindows.append(window);
         connect(window, SIGNAL(closing(QQuickCloseEvent *)), this, SLOT(pluginWindowClosing(QQuickCloseEvent *)));
         window->show();

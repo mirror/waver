@@ -27,6 +27,7 @@ Window {
     id: rmsMeter;
     width: 450;
     height: 60;
+    flags: Qt.Tool
     title: "Waver RMS & Peak meter"
 
     Rectangle {
