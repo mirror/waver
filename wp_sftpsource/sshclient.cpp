@@ -171,7 +171,8 @@ bool SSHClient::isConnected()
         return false;
     }
 
-    executeSSH("ls");
+    // TESTING - is this what causes segmentation fault?
+    //executeSSH("ls");
 
     return (socket->state() == QTcpSocket::ConnectedState);
 }
