@@ -164,20 +164,6 @@ bool SSHClient::isSocketConnected()
 }
 
 
-// private method
-bool SSHClient::isConnected()
-{
-    if (socket == NULL) {
-        return false;
-    }
-
-    // TESTING - is this what causes segmentation fault?
-    //executeSSH("ls");
-
-    return (socket->state() == QTcpSocket::ConnectedState);
-}
-
-
 // public method
 QString SSHClient::localToRemote(QString local)
 {
@@ -1069,10 +1055,6 @@ void SSHClient::dirSelectorResult(int id, bool openOnly, QString path)
 
     // user not done yet, needs to display contents of dir
     if (openOnly) {
-        if (!isConnected()) {
-            connectSSH(config.id);
-        }
-
         DirList dirContents;
         if (!dirList(path, &dirContents)) {
             disconnectSSH(config.id, "Could not get directory listing");
@@ -1116,9 +1098,6 @@ void SSHClient::findAudio(int id, QString subdir)
     }
 
     // execute find on remote
-    if (!isConnected()) {
-        connectSSH(config.id);
-    }
     QString command = QString("find \"%1\" -type f %2").arg(dir).arg(extensionFilters.join(" -o "));
     if (executeSSH(command)) {
         emit audioList(config.id, QStringList(stdOutSSH), false);
@@ -1166,10 +1145,6 @@ void SSHClient::getOpenItems(int id, QString remotePath)
 
     OpenTracks returnValue;
 
-    if (!isConnected()) {
-        connectSSH(config.id);
-    }
-
     DirList dirContents;
     if (dirList(remotePath, &dirContents)) {
         qSort(dirContents.begin(), dirContents.end(), [](DirListItem a, DirListItem b) {
@@ -1199,10 +1174,6 @@ void SSHClient::getOpenItems(int id, QString remotePath)
 void SSHClient::trackInfoUpdated(TrackInfo trackInfo)
 {
     QString localPath = trackInfo.url.toLocalFile();
-
-    if (!isConnected()) {
-        connectSSH(config.id);
-    }
 
     // get remote dir listing
     QString remoteDir = localToRemote(localPath.left(localPath.lastIndexOf("/") + 1));
@@ -1286,10 +1257,6 @@ void SSHClient::dowloadNext()
 {
     if (downloadList.isEmpty()) {
         return;
-    }
-
-    if (!isConnected()) {
-        connectSSH(config.id);
     }
 
     // what to download

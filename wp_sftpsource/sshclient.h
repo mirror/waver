@@ -146,8 +146,6 @@ class SSHClient : public QObject {
 
         void findCachedAudio(QString localDir, QStringList *results);
 
-        bool isConnected();
-
         bool    executeSSH(QString command);
         QString getErrorMessageSSH();
 
