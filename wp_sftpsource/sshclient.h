@@ -98,6 +98,8 @@ class SSHClient : public QObject {
         void            setCacheDir(QString cacheDir);
         QString         formatUserHost();
 
+        bool wasConnectionAttempt();
+
         QString localToRemote(QString local);
         QString remoteToLocal(QString remote);
 
@@ -126,6 +128,7 @@ class SSHClient : public QObject {
         };
 
         bool isConnected;
+        bool attemptedToConnect;
         void updateIsConnected(bool isConnected);
 
         QMutex         *mutex;
@@ -160,8 +163,7 @@ class SSHClient : public QObject {
 
         void findCachedAudio(QString localDir, QStringList *results);
 
-        bool    executeSSH(QString command);
-        QString getErrorMessageSSH();
+        bool executeSSH(QString command);
 
         void queueFindAudio(QString subdir);
         void queueDownload(QString remoteFile);

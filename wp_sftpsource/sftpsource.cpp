@@ -1021,12 +1021,25 @@ void SFTPSource::addClient(SSHClient::SSHClientConfig config)
         config.id = highestId + 1;
     }
 
-    // needs new key files - this does not create the files obviously, only establishes their future location and name
+    // needs key files
     if (config.privateKeyFile.isEmpty() || config.publicKeyFile.isEmpty()) {
-        QString timestampString = QString("%1").arg(QDateTime::currentMSecsSinceEpoch());
+        // let's use other client's existing file if host and user name is the same, it' reasonable to have same host with different dir
+        foreach (SSHClient *client, clients) {
+            if ((client->getConfig().host.compare(config.host) == 0) && (client->getConfig().user.compare(config.user) == 0)) {
+                config.privateKeyFile = client->getConfig().privateKeyFile;
+                config.publicKeyFile  = client->getConfig().publicKeyFile;
+                config.fingerprint    = client->getConfig().fingerprint;
+                break;
+            }
+        }
 
-        config.privateKeyFile = keysDir.absoluteFilePath(timestampString);
-        config.publicKeyFile  = keysDir.absoluteFilePath(timestampString + ".pub");
+        // generate new filenames - this does not create the files obviously, only establishes their future location and name
+        if (config.privateKeyFile.isEmpty() || config.publicKeyFile.isEmpty()) {
+            QString timestampString = QString("%1").arg(QDateTime::currentMSecsSinceEpoch());
+
+            config.privateKeyFile = keysDir.absoluteFilePath(timestampString);
+            config.publicKeyFile  = keysDir.absoluteFilePath(timestampString + ".pub");
+        }
     }
 
     // needs to know where to store the disk cache
@@ -1243,6 +1256,13 @@ void SFTPSource::appendToPlaylist()
         return;
     }
 
+    // must wait until all clients are attempted to connect at least once otherwise fist playlist would be all from the same client
+    foreach (SSHClient *client, clients) {
+        if (!client->wasConnectionAttempt()) {
+            return;
+        }
+    }
+
     // will also start downloading
     QHash<int, QStringList *> downloadList;
 
@@ -1274,14 +1294,15 @@ void SFTPSource::appendToPlaylist()
             }
         }
         if (remaining.count() < 1) {
-            alreadyPlayed.clear();
             foreach (QString audioFile, audioFiles.value(currentClientId)) {
+                alreadyPlayed.removeAll(audioFile);
                 if (!isInFuturePlaylist(currentClientId, audioFile) && !banned.contains(formatTrackForLists(currentClientId, audioFile))) {
                     remaining.append(audioFile);
                 }
             }
         }
         if (remaining.count() < 1) {
+            // TODO must check all clients before sending unready
             emit unready(id);
             readySent = false;
             break;

@@ -1394,6 +1394,9 @@ void FMASource::networkFinished(QNetworkReply *reply)
     }
     if (xmlStreamReader.hasError()) {
         emit infoMessage(id, "Error while parsing XML response from FMA");
+        #ifdef QT_DEBUG
+        qWarning() << reply->url().toString();
+        #endif
         setState(Idle);
         reply->deleteLater();
         return;

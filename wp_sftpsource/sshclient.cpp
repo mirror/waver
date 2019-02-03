@@ -34,9 +34,10 @@ SSHClient::SSHClient(SSHClientConfig config, QObject *parent) : QObject(parent)
 {
     this->config = config;
 
-    isConnected    = false;
-    state          = Idle;
-    loadingBytes   = 0;
+    isConnected        = false;
+    attemptedToConnect = false;
+    state              = Idle;
+    loadingBytes       = 0;
 
     socket      = NULL;
     session     = NULL;
@@ -135,7 +136,11 @@ void SSHClient::autoConnect()
 // private method
 void SSHClient::updateIsConnected(bool isConnected)
 {
-    this->isConnected = isConnected;
+    this->isConnected  = isConnected;
+
+    mutex->lock();
+    attemptedToConnect = true;
+    mutex->unlock();
 
     if (isConnected) {
         emit connected(config.id);
@@ -144,6 +149,17 @@ void SSHClient::updateIsConnected(bool isConnected)
     else {
         emit disconnected(config.id);
     }
+}
+
+
+// public method
+bool SSHClient::wasConnectionAttempt()
+{
+    mutex->lock();
+    bool retval = attemptedToConnect;
+    mutex->unlock();
+
+    return retval;
 }
 
 
@@ -258,13 +274,6 @@ void SSHClient::disconnectSSH(int id, QString errorMessage)
 {
     if (id != config.id) {
         return;
-    }
-
-    if (!errorMessage.isEmpty()) {
-        QString sshErrorMessage = getErrorMessageSSH();
-        if (!sshErrorMessage.isEmpty()) {
-            errorMessage = errorMessage + " - " + sshErrorMessage;
-        }
     }
 
     updateState(Disconnecting);
@@ -599,7 +608,6 @@ bool SSHClient::executeSSH(QString command)
     // need a channel for each command
     LIBSSH2_CHANNEL *channel = libssh2_channel_open_session(session);
     if (!channel) {
-        stdErrSSH.append(getErrorMessageSSH());
         updateState(prevState);
         disconnectSSH(config.id);
         return false;
@@ -610,7 +618,6 @@ bool SSHClient::executeSSH(QString command)
     qint64 start = QDateTime::currentMSecsSinceEpoch();
     #endif
     if (libssh2_channel_exec(channel, command.toUtf8().constData())) {
-        stdErrSSH.append(getErrorMessageSSH());
         libssh2_channel_close(channel);
         libssh2_channel_wait_closed(channel);
         libssh2_channel_free(channel);
@@ -885,20 +892,6 @@ bool SSHClient::upload(QString source, QString destination)
     // size OK, let's complete the upload
     updateState(prevState);
     return executeSSH(QString("mv -f \"%1\" \"%2\"").arg(destination_temp).arg(destination));
-}
-
-
-// private method
-QString SSHClient::getErrorMessageSSH()
-{
-    char *sshErrorMessageRaw;
-    int error_number = libssh2_session_last_error(session, &sshErrorMessageRaw, NULL, 0);
-
-    if ((error_number == LIBSSH2_ERROR_NONE) || !sshErrorMessageRaw) {
-        return "";
-    }
-
-    return QString(sshErrorMessageRaw);
 }
 
 
@@ -1238,7 +1231,7 @@ void SSHClient::queueGetOpenItems(QString remotePath)
 void SSHClient::trackInfoUpdated(TrackInfo trackInfo)
 {
     QueuedTask queuedTask;
-    queuedTask.type         = QueueDownload;
+    queuedTask.type         = QueueTrackInfoUpdated;
     queuedTask.argTrackInfo = trackInfo;
     queuedTasks.append(queuedTask);
     executeNextInQueue();
@@ -1284,33 +1277,27 @@ void SSHClient::queueTrackInfoUpdated(TrackInfo trackInfo)
             TagLib::FileRef fileRef(QFile::encodeName(localPath).constData());
             if (!fileRef.isNull()) {
                 if (
-                    (trackInfo.title.compare(TStringToQString(fileRef.tag()->title()))      == 0) &&
-                    (trackInfo.performer.compare(TStringToQString(fileRef.tag()->artist())) == 0) &&
-                    (trackInfo.album.compare(TStringToQString(fileRef.tag()->album()))      == 0) &&
-                    (trackInfo.year == fileRef.tag()->year())                                     &&
-                    (trackInfo.track  == fileRef.tag()->track())
+                    (trackInfo.title.compare(TStringToQString(fileRef.tag()->title()))      != 0) ||
+                    (trackInfo.performer.compare(TStringToQString(fileRef.tag()->artist())) != 0) ||
+                    (trackInfo.album.compare(TStringToQString(fileRef.tag()->album()))      != 0) ||
+                    (trackInfo.year  != fileRef.tag()->year())                                    ||
+                    (trackInfo.track != fileRef.tag()->track())
                 ) {
-                    if (downloaded) {
-                        QFile::remove(localPath);
-                    }
-                    return;
+                    fileRef.tag()->setTitle(QStringToTString(trackInfo.title));
+                    fileRef.tag()->setAlbum(QStringToTString(trackInfo.album));
+                    fileRef.tag()->setArtist(QStringToTString(trackInfo.performer));
+                    fileRef.tag()->setYear(trackInfo.year);
+                    fileRef.tag()->setTrack(trackInfo.track);
+                    fileRef.save();
+
+                    upload(localPath, localToRemote(localPath));
                 }
-
-                fileRef.tag()->setTitle(QStringToTString(trackInfo.title));
-                fileRef.tag()->setAlbum(QStringToTString(trackInfo.album));
-                fileRef.tag()->setArtist(QStringToTString(trackInfo.performer));
-                fileRef.tag()->setYear(trackInfo.year);
-                fileRef.tag()->setTrack(trackInfo.track);
-                fileRef.save();
-
-                upload(localPath, localToRemote(localPath));
             }
             if (downloaded) {
                 QFile::remove(localPath);
             }
         }
     }
-
 
     // check if picture needs to be uploaded
     foreach (QUrl localPictureUrl, trackInfo.pictures) {
@@ -1382,7 +1369,7 @@ void SSHClient::executeNextInQueue()
     }
 
     // start next task with a delay so other signals can be processed too
-    QTimer::singleShot(250, this, SLOT(executeNextInQueue()));
+    QTimer::singleShot(100, this, SLOT(executeNextInQueue()));
 }
 
 
