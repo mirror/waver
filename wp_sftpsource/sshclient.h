@@ -97,7 +97,6 @@ class SSHClient : public QObject {
         SSHClientConfig getConfig();
         void            setCacheDir(QString cacheDir);
         QString         formatUserHost();
-        bool            isSocketConnected();
 
         QString localToRemote(QString local);
         QString remoteToLocal(QString remote);
@@ -113,6 +112,21 @@ class SSHClient : public QObject {
         static const QString AUTH_METHOD_PUBLICKEY;
         static const QString AUTH_METHOD_PASSWORD;
         static const QString AUTH_METHOD_KB_INTERACTIVE;
+
+        enum QueuedTaskType {
+            QueueFindAudio,
+            QueueDownload,
+            QueueGetOpenItems,
+            QueueTrackInfoUpdated
+        };
+        struct QueuedTask {
+            QueuedTaskType type;
+            QString        argString;
+            TrackInfo      argTrackInfo;
+        };
+
+        bool isConnected;
+        void updateIsConnected(bool isConnected);
 
         QMutex         *mutex;
         SSHClientState  state;
@@ -134,7 +148,7 @@ class SSHClient : public QObject {
         QStringList stdOutSSH;
         QStringList stdErrSSH;
 
-        QStringList downloadList;
+        QVector<QueuedTask> queuedTasks;
 
         void updateState(SSHClientState state);
 
@@ -148,6 +162,11 @@ class SSHClient : public QObject {
 
         bool    executeSSH(QString command);
         QString getErrorMessageSSH();
+
+        void queueFindAudio(QString subdir);
+        void queueDownload(QString remoteFile);
+        void queueGetOpenItems(QString remotePath);
+        void queueTrackInfoUpdated(TrackInfo trackInfo);
 
         bool dirList(QString dir, DirList *contents);
         bool download(QString source, QString destination);
@@ -198,7 +217,7 @@ class SSHClient : public QObject {
         void socketStateChanged(QAbstractSocket::SocketState socketState);
 
         void autoConnect();
-        void dowloadNext();
+        void executeNextInQueue();
 };
 
 #endif // SSHCLIENT_H

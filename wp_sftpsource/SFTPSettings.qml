@@ -157,7 +157,7 @@ Item {
         focus: true
         anchors.left: parent.left
         anchors.leftMargin: 8
-        anchors.right: connectButton.left
+        anchors.right: cancelButton.left
         anchors.rightMargin: 8
         anchors.top: addFrame.bottom
         anchors.topMargin: 8
@@ -173,7 +173,6 @@ Item {
                 text: "%1 on %2".arg(dir).arg(formatted_user_host)
                 padding: 6
                 width: clients.width
-                color: is_connected ? "#004400" : "#440000"
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
 
                 MouseArea {
@@ -191,45 +190,12 @@ Item {
     }
 
     Button {
-        id: connectButton
-        text: qsTr("Connect")
-        font.pointSize: 10
-        anchors.right: parent.right
-        anchors.rightMargin: 8
-        anchors.top: clients.top
-        onClicked: {
-            var retval = {
-                button: "connect",
-                client_id: (clientsModel.count > 0 ? clientsModel.get(clients.currentIndex).client_id : -1)
-            }
-            done(JSON.stringify(retval));
-        }
-    }
-
-    Button {
-        id: disconnectButton
-        text: qsTr("Disconnect")
-        font.pointSize: 10
-        anchors.right: parent.right
-        anchors.rightMargin: 8
-        anchors.top: connectButton.bottom
-        anchors.topMargin: 8
-        onClicked: {
-            var retval = {
-                button: "disconnect",
-                client_id: (clientsModel.count > 0 ? clientsModel.get(clients.currentIndex).client_id : -1)
-            }
-            done(JSON.stringify(retval));
-        }
-    }
-
-    Button {
         id: removeButton
         text: qsTr("Remove")
         font.pointSize: 10
         anchors.right: parent.right
         anchors.rightMargin: 8
-        anchors.top: disconnectButton.bottom
+        anchors.top: addFrame.bottom
         anchors.topMargin: 8
         onClicked: {
             var retval = {

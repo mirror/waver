@@ -34,6 +34,7 @@ SSHClient::SSHClient(SSHClientConfig config, QObject *parent) : QObject(parent)
 {
     this->config = config;
 
+    isConnected    = false;
     state          = Idle;
     loadingBytes   = 0;
 
@@ -89,7 +90,7 @@ SSHClient::SSHClient(SSHClientConfig config, QObject *parent) : QObject(parent)
 // destructor
 SSHClient::~SSHClient()
 {
-    downloadList.clear();
+    queuedTasks.clear();
 
     disconnectSSH(config.id);
 
@@ -130,6 +131,22 @@ void SSHClient::autoConnect()
     connectSSH(config.id);
 }
 
+
+// private method
+void SSHClient::updateIsConnected(bool isConnected)
+{
+    this->isConnected = isConnected;
+
+    if (isConnected) {
+        emit connected(config.id);
+        executeNextInQueue();
+    }
+    else {
+        emit disconnected(config.id);
+    }
+}
+
+
 // public method
 SSHClient::SSHClientConfig SSHClient::getConfig()
 {
@@ -150,17 +167,6 @@ void SSHClient::setCacheDir(QString cacheDir)
 QString SSHClient::formatUserHost()
 {
     return QString("%1@%2").arg(config.user).arg(config.host);
-}
-
-
-// public method
-bool SSHClient::isSocketConnected()
-{
-    if (socket == NULL) {
-        return false;
-    }
-
-    return (socket->state() == QTcpSocket::ConnectedState);
 }
 
 
@@ -231,6 +237,7 @@ void SSHClient::connectSSH(int id)
 
     updateState(Connecting);
 
+
     // continued in socketConnected
     socket->connectToHost(host.at(0), (quint16)port);
 }
@@ -281,7 +288,7 @@ void SSHClient::disconnectSSH(int id, QString errorMessage)
         emit error(config.id, errorMessage);
     }
 
-    emit disconnected(config.id);
+    updateIsConnected(false);
 }
 
 
@@ -534,7 +541,7 @@ void SSHClient::connectCheckDir()
 
     // all OK
     updateState(Idle);
-    emit connected(config.id);
+    updateIsConnected(true);
 }
 
 
@@ -986,7 +993,7 @@ void SSHClient::socketStateChanged(QAbstractSocket::SocketState socketState)
     switch (socketState) {
         case QAbstractSocket::UnconnectedState:
             stateString = "Socket is not connected";
-            emit disconnected(config.id);
+            updateIsConnected(false);
             break;
         case QAbstractSocket::HostLookupState:
             stateString = "Socket is looking up host";
@@ -1073,7 +1080,7 @@ void SSHClient::dirSelectorResult(int id, bool openOnly, QString path)
 
     // OK finally all connection sequence is done
     updateState(Idle);
-    emit connected(config.id);
+    updateIsConnected(true);
 }
 
 
@@ -1084,6 +1091,17 @@ void SSHClient::findAudio(int id, QString subdir)
         return;
     }
 
+    QueuedTask queuedTask;
+    queuedTask.type      = QueueFindAudio;
+    queuedTask.argString = subdir;
+    queuedTasks.append(queuedTask);
+    executeNextInQueue();
+}
+
+
+// private method
+void SSHClient::queueFindAudio(QString subdir)
+{
     QStringList extensionFilters;
     foreach (QString extension, extensions) {
         extensionFilters.append(QString("-iname \"*%1\"").arg(extension));
@@ -1119,15 +1137,50 @@ void SSHClient::getAudio(int id, QStringList remoteFiles)
         return;
     }
 
-    // download sequence is interruped after each file with a timer, if currently there are no downloads in progress, then timer must be fired up
-    bool startNow = downloadList.isEmpty();
+    // queue downloads
+    foreach (QString remoteFile, remoteFiles) {
+        QueuedTask queuedTask;
+        queuedTask.type      = QueueDownload;
+        queuedTask.argString = remoteFile;
+        queuedTasks.append(queuedTask);
+    }
 
-    // add to download list
-    downloadList.append(remoteFiles);
+    // download them
+    executeNextInQueue();
+}
 
-    // start if none in progress
-    if (startNow) {
-        QTimer::singleShot(25, this, SLOT(dowloadNext()));
+
+// private method
+void SSHClient::queueDownload(QString remoteFile)
+{
+    // remote path
+    QString remoteDir = remoteFile.left(remoteFile.lastIndexOf("/"));
+
+    // keep same dir structure as on remote
+    QDir localDir(remoteToLocal(remoteDir));
+
+    // create dir
+    if (!localDir.exists()) {
+        localDir.mkpath(localDir.absolutePath());
+    }
+
+    // download pictures
+    QFileInfoList entries = localDir.entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
+    if (entries.count() < 1) {
+        DirList dirContents;
+        if (dirList(remoteDir, &dirContents)) {
+            foreach (DirListItem dirContent, dirContents) {
+                if (!dirContent.isDir && (dirContent.name.endsWith(".jpg", Qt::CaseInsensitive) || dirContent.name.endsWith(".jpeg", Qt::CaseInsensitive) || dirContent.name.endsWith(".png", Qt::CaseInsensitive))) {
+                    download(dirContent.fullPath, localDir.absoluteFilePath(dirContent.name));
+                }
+            }
+        }
+    }
+
+    // download audio file itself
+    QString destination = remoteToLocal(remoteFile);
+    if (download(remoteFile, destination)) {
+        emit gotAudio(config.id, remoteFile, destination);
     }
 }
 
@@ -1143,6 +1196,17 @@ void SSHClient::getOpenItems(int id, QString remotePath)
         return;
     }
 
+    QueuedTask queuedTask;
+    queuedTask.type      = QueueGetOpenItems;
+    queuedTask.argString = remotePath;
+    queuedTasks.append(queuedTask);
+    executeNextInQueue();
+}
+
+
+// private method
+void SSHClient::queueGetOpenItems(QString remotePath)
+{
     OpenTracks returnValue;
 
     DirList dirContents;
@@ -1172,6 +1236,17 @@ void SSHClient::getOpenItems(int id, QString remotePath)
 
 // public slot
 void SSHClient::trackInfoUpdated(TrackInfo trackInfo)
+{
+    QueuedTask queuedTask;
+    queuedTask.type         = QueueDownload;
+    queuedTask.argTrackInfo = trackInfo;
+    queuedTasks.append(queuedTask);
+    executeNextInQueue();
+}
+
+
+// private method
+void SSHClient::queueTrackInfoUpdated(TrackInfo trackInfo)
 {
     QString localPath = trackInfo.url.toLocalFile();
 
@@ -1252,48 +1327,62 @@ void SSHClient::trackInfoUpdated(TrackInfo trackInfo)
     }
 }
 
+
 // timer slot
-void SSHClient::dowloadNext()
+void SSHClient::executeNextInQueue()
 {
-    if (downloadList.isEmpty()) {
+    // is there anything to do
+    if (queuedTasks.isEmpty()) {
         return;
     }
 
-    // what to download
-    QString remoteFile = downloadList.first();
-    downloadList.removeFirst();
-
-    QString remoteDir = remoteFile.left(remoteFile.lastIndexOf("/"));
-
-    // keep same dir structure as on remote
-    QDir localDir(remoteToLocal(remoteDir));
-
-    // create dir
-    if (!localDir.exists()) {
-        localDir.mkpath(localDir.absolutePath());
+    // is connecting in progress
+    if (state == Connecting) {
+        return;
     }
 
-    // download pictures
-    QFileInfoList entries = localDir.entryInfoList(QDir::AllDirs | QDir::Files | QDir::NoDotAndDotDot);
-    if (entries.count() < 1) {
-        DirList dirContents;
-        if (dirList(remoteDir, &dirContents)) {
-            foreach (DirListItem dirContent, dirContents) {
-                if (!dirContent.isDir && (dirContent.name.endsWith(".jpg", Qt::CaseInsensitive) || dirContent.name.endsWith(".jpeg", Qt::CaseInsensitive) || dirContent.name.endsWith(".png", Qt::CaseInsensitive))) {
-                    download(dirContent.fullPath, localDir.absoluteFilePath(dirContent.name));
-                }
-            }
+    // check connection
+    if (!executeSSH("ls") && !QThread::currentThread()->isInterruptionRequested()) {
+        connectSSH(config.id);
+        return;
+    }
+
+    // rearrange queue so quick(er) tasks come first
+    QVector<QueuedTask> rearranger;
+    foreach (QueuedTask task, queuedTasks) {
+        if ((task.type == QueueFindAudio) || (task.type == QueueGetOpenItems)) {
+            rearranger.append(task);
         }
     }
+    foreach (QueuedTask task, queuedTasks) {
+        if ((task.type != QueueFindAudio) && (task.type != QueueGetOpenItems)) {
+            rearranger.append(task);
+        }
+    }
+    queuedTasks.clear();
+    queuedTasks.append(rearranger);
 
-    // download audio file itself
-    QString destination = remoteToLocal(remoteFile);
-    if (download(remoteFile, destination)) {
-        emit gotAudio(config.id, remoteFile, destination);
+    // take the first task and do it
+    QueuedTask task = queuedTasks.first();
+    queuedTasks.removeFirst();
+
+    switch (task.type) {
+        case QueueFindAudio:
+            queueFindAudio(task.argString);
+            break;
+        case QueueGetOpenItems:
+            queueGetOpenItems(task.argString);
+            break;
+        case QueueDownload:
+            queueDownload(task.argString);
+            break;
+        case QueueTrackInfoUpdated:
+            queueTrackInfoUpdated(task.argTrackInfo);
+            break;
     }
 
-    // start next download with a delay so other signals can be processed too
-    QTimer::singleShot(250, this, SLOT(dowloadNext()));
+    // start next task with a delay so other signals can be processed too
+    QTimer::singleShot(250, this, SLOT(executeNextInQueue()));
 }
 
 

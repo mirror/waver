@@ -249,7 +249,7 @@ void SFTPSource::getUiQml(QUuid uniqueId)
 
     QString clientElements;
     foreach (SSHClient *client, clients) {
-        clientElements.append(QString("ListElement { formatted_user_host: \"%1\"; dir: \"%2\"; is_connected: %3; client_id: %4; } ").arg(client->formatUserHost()).arg(client->getConfig().dir).arg(client->isSocketConnected() ? 1 : 0).arg(client->getConfig().id));
+        clientElements.append(QString("ListElement { formatted_user_host: \"%1\"; dir: \"%2\"; client_id: %3; } ").arg(client->formatUserHost()).arg(client->getConfig().dir).arg(client->getConfig().id));
     }
     settings.replace("ListElement{}", clientElements);
 
@@ -286,22 +286,6 @@ void SFTPSource::uiResults(QUuid uniqueId, QJsonDocument results)
         config.user = resultsHash.value("user").toString();
         addClient(config);
         clients.last()->thread()->start();
-    }
-
-    // manually connect client (in case it got disconnected)
-    if (resultsHash.value("button").toString().compare("connect") == 0) {
-        SSHClient *client = clientFromId(resultsHash.value("client_id").toInt());
-        if (!client->isSocketConnected()) {
-            emit clientConnect(client->getConfig().id);
-        }
-    }
-
-    // manually disconnect client
-    if (resultsHash.value("button").toString().compare("disconnect") == 0) {
-        SSHClient *client = clientFromId(resultsHash.value("client_id").toInt());
-        if (client->isSocketConnected()) {
-            emit clientDisconnect(client->getConfig().id);
-        }
     }
 
     // delete client for good
