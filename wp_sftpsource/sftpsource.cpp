@@ -1940,7 +1940,7 @@ void SFTPSource::sendDiagnosticsData()
             bytesStr = QString(" %1 bytes").arg(static_cast<double>(bytes), 0, 'f', 0);
         }
 
-        diagnosticData.append({ sshClient->formatUserHost(), stateStr + bytesStr });
+        diagnosticData.append({ QString("%1 on %2").arg(sshClient->getConfig().dir).arg(sshClient->formatUserHost()), stateStr + bytesStr });
     }
 
     emit diagnostics(id, diagnosticData);
