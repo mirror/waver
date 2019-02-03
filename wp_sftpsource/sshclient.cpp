@@ -1328,6 +1328,12 @@ void SSHClient::executeNextInQueue()
         return;
     }
 
+    // connection known to be broken
+    if (!isConnected) {
+        connectSSH(config.id);
+        return;
+    }
+
     // check connection
     if (!executeSSH("ls") && !QThread::currentThread()->isInterruptionRequested()) {
         connectSSH(config.id);
