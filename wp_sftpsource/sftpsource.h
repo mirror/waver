@@ -84,7 +84,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
     private:
 
         const int PLAYLIST_DESIRED_SIZE = 15;
-        const int PLAYLIST_READY_SIZE   = 10;
+        const int PLAYLIST_READY_SIZE   = 5;
 
         struct PlaylistItem {
             int     clientId;

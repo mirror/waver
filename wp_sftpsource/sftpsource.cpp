@@ -1256,10 +1256,11 @@ void SFTPSource::appendToPlaylist()
         return;
     }
 
-    // must wait until all clients are attempted to connect at least once otherwise fist playlist would be all from the same client
+    // wanna be ready as soon as possible
+    int playlistSizeToFill = PLAYLIST_DESIRED_SIZE;
     foreach (SSHClient *client, clients) {
         if (!client->wasConnectionAttempt()) {
-            return;
+            playlistSizeToFill = PLAYLIST_READY_SIZE;
         }
     }
 
@@ -1267,7 +1268,7 @@ void SFTPSource::appendToPlaylist()
     QHash<int, QStringList *> downloadList;
 
     // fill or re-fill predetermed playlist
-    while (futurePlaylist.count() < PLAYLIST_DESIRED_SIZE) {
+    while (futurePlaylist.count() < playlistSizeToFill) {
         // select a client for this batch
         QList<int> clientIds = audioFiles.keys();
         int currentClientId = clientIds.at(qrand() % clientIds.count());
