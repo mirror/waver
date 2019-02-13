@@ -39,7 +39,7 @@
 
 #include "feed.h"
 #include "mpg123lib/mpg123.h"
-#include "../waver/API/plugindecoder_005.h"
+#include "../waver/API/plugindecoder_006.h"
 #include "../waver/pluginfactory.h"
 
 #ifdef QT_DEBUG
@@ -49,7 +49,7 @@
 extern "C" WP_MPG123DECODER_EXPORT void wp_plugin_factory(int pluginTypesMask, PluginFactoryResults *retVal);
 
 
-class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_005 {
+class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_006 {
         Q_OBJECT
 
     public:
@@ -76,6 +76,11 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_005 {
         static const size_t        INPUT_SIZE          = 4 * 1024;
         static const size_t        OUTPUT_SIZE         = 16 * 1024;
 
+        struct SHOUTcastRawTitlePosition {
+            qint64  rawBytePosition;
+            QString title;
+        };
+
         QUuid id;
         QUrl  url;
 
@@ -91,6 +96,9 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_005 {
         qint64  lastNotNeedMore;
         bool    sendDiagnostics;
         QString userAgent;
+
+        qint64                             totalRawBytes;
+        QVector<SHOUTcastRawTitlePosition> SHOUTcastRawTitles;
 
         void    sendDiagnosticsData();
         QString formatFormat(QAudioFormat format, bool compact);
@@ -109,6 +117,8 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_005 {
         void globalSqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results) override;
         void sqlError(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, QString error)              override;
 
+        void messageFromPlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value) override;
+
         void getUiQml(QUuid uniqueId)                         override;
         void uiResults(QUuid uniqueId, QJsonDocument results) override;
 
@@ -122,6 +132,7 @@ class WP_MPG123DECODER_EXPORT Mpg123Decoder : public PluginDecoder_005 {
 
         void feedReady();
         void feedError(QString errorString);
+        void feedSHOUTcastTitle(qint64 rawBytePosition, QString title);
 
 };
 

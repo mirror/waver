@@ -266,6 +266,7 @@ void Track::setupDecoderPlugin(QObject *plugin, bool fromEasyPluginInstallDir, Q
     }
     if (PluginLibsLoader::isPluginCompatible(pluginData.waverVersionAPICompatibility, "0.0.6")) {
         connect(plugin, SIGNAL(messageToPlugin(QUuid, QUuid, int, QVariant)),   this,   SLOT(messageToPlugin(QUuid, QUuid, int, QVariant)));
+        connect(plugin, SIGNAL(castTitle(QUuid, qint64, QString)),              this,   SLOT(decoderCastTitle(QUuid, qint64, QString)));
         connect(this,   SIGNAL(messageFromPlugin(QUuid, QUuid, int, QVariant)), plugin, SLOT(messageFromPlugin(QUuid, QUuid, int, QVariant)));
     }
 }
@@ -1509,6 +1510,16 @@ void Track::moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer)
 
 
 // decoder plugin signal handler
+void Track::decoderCastTitle(QUuid uniqueId, qint64 microSecondsTimestamp, QString title)
+{
+    if (uniqueId != currentDecoderId) {
+        return;
+    }
+
+    SHOUTcastPMCTitles.append({ microSecondsTimestamp, title });
+}
+
+// decoder plugin signal handler
 void Track::decoderFinished(QUuid uniqueId)
 {
     if (uniqueId != currentDecoderId) {
@@ -1615,6 +1626,13 @@ void Track::outputPositionChanged(QUuid uniqueId, qint64 posMilliseconds)
     playedMilliseconds = posMilliseconds;
 
     emit playPosition(trackInfo.url, trackInfo.cast ? true : decodingDone, trackInfo.cast ? currentCastPlaytimeMilliseconds : decodedMilliseconds, posMilliseconds);
+
+    if ((SHOUTcastPMCTitles.count() > 0) && (SHOUTcastPMCTitles.first().microSecondsTimestamp <= (posMilliseconds * 1000))) {
+        trackInfo.performer = SHOUTcastPMCTitles.first().title;
+        SHOUTcastPMCTitles.removeFirst();
+        emit trackInfoUpdated(trackInfo.url);
+    }
+
 }
 
 

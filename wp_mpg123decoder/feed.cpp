@@ -36,7 +36,13 @@ Feed::Feed(QUrl url, QString userAgent) : QObject(0)
     downloadStarted  = false;
     readyEmitted     = false;
     downloadFinished = false;
+    totalRawBytes    = 0;
     totalBufferBytes = 0;
+
+    rawChunkSize = 0;
+    rawCount     = 0;
+    icyMetaSize  = 0;
+    icyCount     = 0;
 }
 
 
@@ -84,6 +90,7 @@ void Feed::run()
 
     QNetworkRequest networkRequest = QNetworkRequest(url);
     networkRequest.setRawHeader("User-Agent", userAgent.toUtf8());
+    networkRequest.setRawHeader("Icy-MetaData", "1");
     networkRequest.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
     networkRequest.setMaximumRedirectsAllowed(12);
     networkReply = networkAccessManager->get(networkRequest);
@@ -115,6 +122,83 @@ void Feed::networkDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
 
     // read the data
     QByteArray data = networkReply->readAll();
+
+    // check if SHOUTcast metadata must be extracted (Icy-MetaData header was sent with the request)
+    if ((rawChunkSize == 0) && networkReply->hasRawHeader("icy-metaint")) {
+        QString icyMetaInt(networkReply->rawHeader("icy-metaint"));
+        bool OK = false;
+        rawChunkSize = icyMetaInt.toInt(&OK);
+        if (!OK) {
+            rawChunkSize = 0;
+        }
+    }
+
+    // extract SHOUTcast metadata
+    if (rawChunkSize > 0) {
+        int pointer = 0;
+        while (pointer < data.count()) {
+            // is pointer inside metadata now?
+            if (rawCount < 0) {
+                // was metadata size obtained yet?
+                if (icyMetaSize < 0) {
+                    // first byte of metadata is size of the rest of metadata divided by 16
+                    char *lenByte = data.data() + pointer;
+                    icyMetaSize = 16 * *lenByte;
+
+                    // remove this byte, must not pass it to the decoder, pointer needs not to be increased
+                    data.remove(pointer, 1);
+                }
+
+                // downloaded data might not contain all the metadata, the rest will be in next download chunk
+                int increment = qMin(icyMetaSize - icyCount, data.count() - pointer);
+
+                // add to metadata buffer
+                icyBuffer.append(data.data() + pointer, increment);
+
+                // remove from data, must not pass it to the decoder, pointer needs not to be increased
+                data.remove(pointer, increment);
+
+                // update metadata bytes counter
+                icyCount += increment;
+
+                // is the end of metadata reached?
+                if (icyCount == icyMetaSize) {
+                    // many times metadata is empty, most stations send only on connection and track change
+                    if (icyBuffer.count() > 0) {
+                        // search for title
+                        QRegExp finder("StreamTitle='(.+)';");
+                        if (finder.indexIn(QString(icyBuffer)) >= 0) {
+                            // got it, let the decoder know
+                            emit SHOUTcastTitle(totalRawBytes, finder.cap(1));
+                        }
+                    }
+
+                    // reset counter, prepare for audio data
+                    rawCount = 0;
+                }
+            }
+            else {
+                // downloaded data might not contain the entire block of compressed audio data, the rest will be in next download chunk
+                int increment = qMin(rawChunkSize - rawCount, data.count() - pointer);
+
+                // increase pointer and counters
+                pointer       += increment;
+                rawCount      += increment;
+                totalRawBytes += increment;
+
+                // is the end of audio block reached?
+                if (rawCount == rawChunkSize) {
+                    // signals that pointer reached metadata
+                    rawCount = -1;
+
+                    // prepare for metadata
+                    icyCount    = 0;
+                    icyMetaSize = -1;
+                    icyBuffer.clear();
+                }
+            }
+        }
+    }
 
     // add it the buffer
     QByteArray *bufferData = new QByteArray(data.constData(), data.count());
@@ -182,6 +266,9 @@ void Feed::fileReadTimer()
     mutex.lock();
     buffer.append(bufferData);
     mutex.unlock();
+
+    // increase counter
+    totalRawBytes += data.count();
 
     // let the world know
     if (!readyEmitted) {

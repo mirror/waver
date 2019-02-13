@@ -58,7 +58,7 @@ int Mpg123Decoder::pluginVersion()
 // overrided virtual function
 QString Mpg123Decoder::waverVersionAPICompatibility()
 {
-    return "0.0.5";
+    return "0.0.6";
 }
 
 
@@ -111,6 +111,7 @@ Mpg123Decoder::Mpg123Decoder()
     mpg123Handle        = NULL;
     sendDiagnostics     = false;
     lastNotNeedMore     = 0;
+    totalRawBytes       = 0;
 }
 
 
@@ -191,8 +192,9 @@ void Mpg123Decoder::start(QUuid uniqueId)
     connect(&feedThread, SIGNAL(started()),  feed, SLOT(run()));
     connect(&feedThread, SIGNAL(finished()), feed, SLOT(deleteLater()));
 
-    connect(feed, SIGNAL(ready()),        this, SLOT(feedReady()));
-    connect(feed, SIGNAL(error(QString)), this, SLOT(feedError(QString)));
+    connect(feed, SIGNAL(ready()),                         this, SLOT(feedReady()));
+    connect(feed, SIGNAL(error(QString)),                  this, SLOT(feedError(QString)));
+    connect(feed, SIGNAL(SHOUTcastTitle(qint64, QString)), this, SLOT(feedSHOUTcastTitle(qint64, QString)));
 
     feedThread.start();
 
@@ -251,6 +253,16 @@ void Mpg123Decoder::sqlError(QUuid persistentUniqueId, bool temporary, QString c
     Q_UNUSED(clientIdentifier);
     Q_UNUSED(clientSqlIdentifier);
     Q_UNUSED(error);
+}
+
+
+// this plugin doesn't care
+void Mpg123Decoder::messageFromPlugin(QUuid uniqueId, QUuid sourceUniqueId, int messageId, QVariant value)
+{
+    Q_UNUSED(uniqueId);
+    Q_UNUSED(sourceUniqueId);
+    Q_UNUSED(messageId);
+    Q_UNUSED(value);
 }
 
 
@@ -324,6 +336,9 @@ void Mpg123Decoder::feedReady()
             done = true;
             continue;
         }
+
+        // increase the counter
+        totalRawBytes += input_size;
 
         // feed to the decoder
         int mpg123Result = mpg123_decode(mpg123Handle, (unsigned char *)&input, input_size, (unsigned char *)&output, OUTPUT_SIZE, &output_size);
@@ -408,6 +423,12 @@ void Mpg123Decoder::feedReady()
             memoryUsage         += audioBuffer->byteCount();
             decodedMicroSeconds += audioBuffer->format().durationForBytes(audioBuffer->byteCount());
 
+            // convert raw positions of cast titles to decoded positions and let the track know
+            if ((SHOUTcastRawTitles.count() > 0) && (SHOUTcastRawTitles.first().rawBytePosition <= totalRawBytes)) {
+                emit castTitle(id, decodedMicroSeconds, SHOUTcastRawTitles.first().title);
+                SHOUTcastRawTitles.removeFirst();
+            }
+
             // remember buffer so it can be deleted later
             audioBuffers.append(audioBuffer);
             didDecode = true;
@@ -477,6 +498,15 @@ void Mpg123Decoder::feedError(QString errorString)
 {
     // let the world know
     emit error(id, errorString);
+}
+
+
+// network download signal handler
+void Mpg123Decoder::feedSHOUTcastTitle(qint64 rawBytePosition, QString title)
+{
+    if ((SHOUTcastRawTitles.count() < 1) || (SHOUTcastRawTitles.first().title.compare(title) != 0)) {
+        SHOUTcastRawTitles.append({ rawBytePosition, title });
+    }
 }
 
 

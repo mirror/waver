@@ -123,6 +123,11 @@ class Track : public QObject {
         };
         typedef QHash<QUuid, PluginWithQueue> PluginsWithQueue;
 
+        struct SHOUTcastPMCTitlePosition {
+            qint64  microSecondsTimestamp;
+            QString title;
+        };
+
         TrackInfo    trackInfo;
         QVariantHash additionalInfo;
         QUuid        sourcePluginId;
@@ -175,6 +180,8 @@ class Track : public QObject {
         qint64 decodedMillisecondsAtUnderrun;
         qint64 playedMilliseconds;
         bool   replacable;
+
+        QVector<SHOUTcastPMCTitlePosition> SHOUTcastPMCTitles;
 
         void setupDecoderPlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);
         void setupDspPrePlugin(QObject *plugin, bool fromEasyPluginInstallDir, QMap<int, QUuid> *priorityMap);
@@ -278,6 +285,7 @@ class Track : public QObject {
         void moveBufferInQueue(QUuid pluginId, QAudioBuffer *buffer);
         void sendFinished();
 
+        void decoderCastTitle(QUuid uniqueId, qint64 microSecondsTimestamp, QString title);
         void decoderFinished(QUuid uniqueId);
         void decoderError(QUuid uniqueId, QString errorMessage);
         void underrunTimeout();

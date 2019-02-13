@@ -24,13 +24,17 @@
 #ifndef FEED_H
 #define FEED_H
 
+#include <QDateTime>
 #include <QFile>
 #include <QMutex>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QObject>
+#include <QRegExp>
+#include <QString>
 #include <QTimer>
 #include <QUrl>
+#include <QUrlQuery>
 
 
 class Feed : public QObject {
@@ -64,7 +68,14 @@ class Feed : public QObject {
         bool    downloadFinished;
         QString userAgent;
 
+        qint64 totalRawBytes;
         qint64 totalBufferBytes;
+
+        int        rawChunkSize;
+        int        rawCount;
+        int        icyMetaSize;
+        int        icyCount;
+        QByteArray icyBuffer;
 
         void updateTotalBufferBytes();
 
@@ -73,6 +84,7 @@ class Feed : public QObject {
 
         void ready();
         void error(QString errorString);
+        void SHOUTcastTitle(qint64 rawBytePosition, QString title);
 
 
     public slots:
@@ -89,7 +101,6 @@ class Feed : public QObject {
         void fileReadTimer();
         void connectionTimeout();
         void preCacheTimeout();
-
 };
 
 #endif // FEED_H
