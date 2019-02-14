@@ -167,6 +167,7 @@ void Feed::networkDownloadProgress(qint64 bytesReceived, qint64 bytesTotal)
                     if (icyBuffer.count() > 0) {
                         // search for title
                         QRegExp finder("StreamTitle='(.+)';");
+                        finder.setMinimal(true);
                         if (finder.indexIn(QString(icyBuffer)) >= 0) {
                             // got it, let the decoder know
                             emit SHOUTcastTitle(totalRawBytes, finder.cap(1));
