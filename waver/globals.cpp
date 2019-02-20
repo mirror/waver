@@ -83,7 +83,7 @@ QString Globals::license()
 
 QString Globals::credits()
 {
-    return "Online Radio Stations plugin is powered by SHOUTcast (<a href=\"https://www.shoutcast.com\">shoutcast.com</a>)\n\nFree Music plugin is powered by the Free Music Archive (<a href=\"http://www.freemusicarchive.org\">freemusicarchive.org</a>)";
+    return "Online Radio Stations plugin is powered by SHOUTcast (<a href=\"https://www.shoutcast.com\">shoutcast.com</a>)";
 }
 
 
