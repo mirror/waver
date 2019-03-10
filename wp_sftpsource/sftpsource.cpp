@@ -44,6 +44,7 @@ SFTPSource::SFTPSource()
     readySent                  = false;
     sendDiagnostics            = false;
     unableToStartCount         = 0;
+    previousBatchClient        = -1;
 
     if (libssh2_init(0)) {
         emit infoMessage(id, "Unable to initialize libssh2");
@@ -1271,7 +1272,11 @@ void SFTPSource::appendToPlaylist()
     while (futurePlaylist.count() < playlistSizeToFill) {
         // select a client for this batch
         QList<int> clientIds = audioFiles.keys();
+        if ((clientIds.count() > 1) && clientIds.contains(previousBatchClient)) {
+            clientIds.removeAll(previousBatchClient);
+        }
         int currentClientId = clientIds.at(qrand() % clientIds.count());
+        previousBatchClient = currentClientId;
 
         // determine which variation setting to use (3 means user selected random variation)
         int currentVariation = variationSettingId();
@@ -1400,8 +1405,6 @@ void SFTPSource::clientConnected(int id)
 // private slot from SFTP client
 void SFTPSource::clientDisconnected(int id)
 {
-    audioFiles.remove(id);
-
     if (sendDiagnostics) {
         sendDiagnosticsData();
     }

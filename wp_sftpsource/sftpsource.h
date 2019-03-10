@@ -116,6 +116,7 @@ class WP_SFTPSOURCE_EXPORT SFTPSource : public PluginSource_006 {
         QVector<QString>     uiQueue;
 
         QHash<int, QStringList> audioFiles;
+        int                     previousBatchClient;
         QVector<PlaylistItem>   futurePlaylist;
         QVector<PlaylistItem>   lovedPlaylist;
         QVector<PlaylistItem>   similarPlaylist;
