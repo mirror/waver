@@ -29,6 +29,7 @@
 #include <QObject>
 #include <QProcess>
 #include <QQmlApplicationEngine>
+#include <QSslConfiguration>
 #include <QString>
 #include <QStringList>
 #include <QTcpSocket>
@@ -192,6 +193,15 @@ int main(int argc, char *argv[])
     }
 
     #endif
+
+    // TODO!!!
+    // This is temporary for testing purposes. Disables all SLL certificate checking.
+    // So that QML can show images from self-signed sites.
+    // Placed here just before UI starts so that it doesn't affect the server.
+    // To be replaced with user-defined whitelist.
+    QSslConfiguration sslConf = QSslConfiguration::defaultConfiguration();
+    sslConf.setPeerVerifyMode(QSslSocket::VerifyNone);
+    QSslConfiguration::setDefaultConfiguration(sslConf);
 
     // start user interface
     QQmlApplicationEngine engine;

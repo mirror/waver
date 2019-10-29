@@ -1,4 +1,3 @@
-#
 #    This file is part of Waver
 #
 #    Copyright (C) 2017-2019 Peter Papp <peter.papp.p@gmail.com>
@@ -17,15 +16,14 @@
 #
 #    You should have received a copy of the GNU General Public License
 #    (GPL.TXT) along with Waver. If not, see <http://www.gnu.org/licenses/>.
-#
 
 QT -= gui
 QT += multimedia
 
-TARGET = wp_fmasource
+TARGET = wp_ampache
 TEMPLATE = lib
 
-DEFINES += WP_FMASOURCE_LIBRARY
+DEFINES += WP_AMPACHE_LIBRARY
 
 CONFIG += c++11
 
@@ -34,18 +32,16 @@ CONFIG(debug, debug|release) {
 }
 
 
-SOURCES += \
-        fmasource.cpp
-
 HEADERS += \
-    fmasource.h \
-    wp_fmasource_global.h \
+    wp_ampache_global.h \
+    ampache.h \
     ../waver/API/pluginbase_006.h \
     ../waver/API/pluginsource_006.h \
-    ../waver/pluginfactory.h \
+    ../waver/pluginfactory.h
 
-RESOURCES += \
-    resources.qrc
+SOURCES += \
+    ampache.cpp
+
 
 unix:!android {
     target.path = /opt/waver/bin
@@ -56,5 +52,5 @@ unix:!android {
     QMAKE_EXTRA_TARGETS += install translatedestdir
 }
 
-
-
+RESOURCES += \
+    resources.qrc

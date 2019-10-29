@@ -1,6 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>fma_key</file>
-        <file>FMASettings.qml</file>
-    </qresource>
-</RCC>

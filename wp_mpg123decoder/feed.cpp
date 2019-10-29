@@ -93,6 +93,12 @@ void Feed::run()
     networkRequest.setRawHeader("Icy-MetaData", "1");
     networkRequest.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
     networkRequest.setMaximumRedirectsAllowed(12);
+
+    // TODO!!! This is temporary for testing purposes. Disables all SLL certificate checking. To be replaced with user-defined whitelist.
+    QSslConfiguration sslConfiguration = networkRequest.sslConfiguration();
+    sslConfiguration.setPeerVerifyMode(QSslSocket::VerifyNone);
+    networkRequest.setSslConfiguration(sslConfiguration);
+
     networkReply = networkAccessManager->get(networkRequest);
 
     connect(networkReply, SIGNAL(downloadProgress(qint64, qint64)),   this, SLOT(networkDownloadProgress(qint64, qint64)));

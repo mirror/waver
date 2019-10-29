@@ -1,7 +1,7 @@
 /*
     This file is part of Waver
 
-    Copyright (C) 2018-2019 Peter Papp <peter.papp.p@gmail.com>
+    Copyright (C) 2017-2019 Peter Papp <peter.papp.p@gmail.com>
 
     Please visit https://launchpad.net/waver for details
 
@@ -31,10 +31,17 @@ Item {
     signal apply(variant results);
 
     Label {
-        id: question
-        text: "Do you want to set up passwordless public key authentication for this server?"
-        wrapMode: Text.WordWrap
+        id: urlLabel
+        text: 'URL (includig protocol)'
         anchors.left: parent.left
+        anchors.leftMargin: 8
+        anchors.verticalCenter: url.verticalCenter
+    }
+
+    TextField {
+        id: url
+        text: "<https://server.com>"
+        anchors.left: urlLabel.right
         anchors.leftMargin: 8
         anchors.right: parent.right
         anchors.rightMargin: 8
@@ -43,31 +50,59 @@ Item {
     }
 
     Label {
-        id: host
-        text: "<user@host>"
+        id: userLabel
+        text: 'User'
         anchors.left: parent.left
+        anchors.leftMargin: 8
+        anchors.verticalCenter: user.verticalCenter
+    }
+
+    TextField {
+        id: user
+        text: "<username>"
+        anchors.left: userLabel.right
         anchors.leftMargin: 8
         anchors.right: parent.right
         anchors.rightMargin: 8
-        anchors.top: question.bottom
+        anchors.top: url.bottom
+        anchors.topMargin: 8
+    }
+
+    Label {
+        id: pswLabel
+        text: 'Password'
+        anchors.left: parent.left
+        anchors.leftMargin: 8
+        anchors.verticalCenter: psw.verticalCenter
+    }
+
+    TextField {
+        id: psw
+        text: "<password>"
+        echoMode: TextInput.PasswordEchoOnEdit
+        anchors.left: pswLabel.right
+        anchors.leftMargin: 8
+        anchors.right: parent.right
+        anchors.rightMargin: 8
+        anchors.top: user.bottom
         anchors.topMargin: 8
     }
 
     Label {
         id: explanation
-        text: "Do not do this on a public computer! Answer yes only if this is your private computer."
+        text: "Do not do this on a public computer! Your password will be stored in plain text format. Do this only if this is your private computer."
         wrapMode: Text.WordWrap
         anchors.left: parent.left
         anchors.leftMargin: 8
         anchors.right: parent.right
         anchors.rightMargin: 8
-        anchors.top: host.bottom
+        anchors.top: psw.bottom
         anchors.topMargin: 24
     }
 
     Button {
-        id: yesButton
-        text: qsTr("Yes")
+        id: doneButton
+        text: qsTr("Done")
         font.pointSize: 10
         anchors.right: parent.right
         anchors.rightMargin: 8
@@ -76,16 +111,17 @@ Item {
 
         onClicked: {
             var retval = {
-                button: "key_setup_yes",
-                client: "<clientId>",
+                url: url.text,
+                user: user.text,
+                psw: psw.text,
             }
             done(JSON.stringify(retval));
         }
     }
 
     Button {
-        id: noButton
-        text: qsTr("No")
+        id: cancelButton
+        text: qsTr("Cancel")
         font.pointSize: 10
         anchors.left: parent.left
         anchors.leftMargin: 8
@@ -93,11 +129,7 @@ Item {
         anchors.bottomMargin: 8
 
         onClicked: {
-            var retval = {
-                button: "key_setup_no",
-                client: "<clientId>",
-            }
-            done(JSON.stringify(retval));
+            done(0);
         }
     }
 }

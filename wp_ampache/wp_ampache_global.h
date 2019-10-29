@@ -21,15 +21,15 @@
 */
 
 
-#ifndef WP_FMASOURCE_GLOBAL_H
-#define WP_FMASOURCE_GLOBAL_H
+#ifndef WP_AMPACHE_GLOBAL_H
+#define WP_AMPACHE_GLOBAL_H
 
 #include <QtCore/qglobal.h>
 
-#if defined(WP_FMASOURCE_LIBRARY)
-    #define WP_FMASOURCE_EXPORT Q_DECL_EXPORT
+#if defined(WP_AMPACHE_LIBRARY)
+    #define WP_AMPACHE_EXPORT Q_DECL_EXPORT
 #else
-    #define WP_FMASOURCE_EXPORT Q_DECL_IMPORT
+    #define WP_AMPACHE_EXPORT Q_DECL_IMPORT
 #endif
 
-#endif // WP_FMASOURCE_GLOBAL_H
+#endif // WP_AMPACHE_GLOBAL_H

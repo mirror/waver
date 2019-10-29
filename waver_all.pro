@@ -1,18 +1,14 @@
 TEMPLATE = subdirs
 SUBDIRS +=                                 \
    waver/waver.pro                         \
+   wp_ampache/wp_ampache.pro               \
    wp_equalizer/wp_equalizer.pro           \
    wp_localsource/wp_localsource.pro       \
    wp_radiosource/wp_radiosource.pro       \
    wp_soundoutput/wp_soundoutput.pro       \
    wp_albumart/wp_albumart.pro             \
-   wp_sftpsource                           \
-   wp_acoustid                             \
-   wp_rmsmeter
-
-# FMA seems to have trouble with their API since they became quasi-commercialzed
-# disabling FMA source for now, still deciding what to do, but leaning towards removing it completely
-#wp_fmasource
+   wp_acoustid/wp_acoustid.pro             \
+   wp_rmsmeter/wp_rmsmeter.pro
 
 unix:!android {
     SUBDIRS +=                                  \

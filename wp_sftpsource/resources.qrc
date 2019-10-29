@@ -1,8 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>SFTPSettings.qml</file>
-        <file>SFTPPsw.qml</file>
-        <file>SFTPKeySetupQuestion.qml</file>
-        <file>SFTPDirChoose.qml</file>
-    </qresource>
-</RCC>
