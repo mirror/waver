@@ -65,7 +65,7 @@ int Ampache::pluginType()
 // overridden virtual function
 QString Ampache::pluginName()
 {
-    return "Waver's Ampache Plugin";
+    return "Ampache";
 }
 
 
@@ -321,38 +321,37 @@ void Ampache::getOpenTracks(QUuid uniqueId, QString parentId)
         return;
     }
 
-    OpenTracks openTracks;
-    /*
-        // top level
-        if (parentId == 0) {
-            foreach (QString genre, selectedGenres) {
-                OpenTrack openTrack;
-                openTrack.hasChildren = true;
-                openTrack.id          = genre;
-                openTrack.label       = genre;
-                openTrack.selectable = false;
-                openTracks.append(openTrack);
-            }
+    QUrlQuery query;
+    query.addQueryItem("auth", authKey);
+    query.addQueryItem("limit", "none");
 
-            qSort(openTracks.begin(), openTracks.end(), [](OpenTrack a, OpenTrack b) {
-                return (a.label.compare(b.label) < 0);
-            });
+    // top level
+    if (parentId.length() == 0) {
+        query.addQueryItem("action", "artists");
+        setState(OpeningArtistList);
+    }
+    else {
+        QStringList parentIdParts = parentId.split("~");
+        QString     parentType    = parentIdParts.at(0);
 
-            emit openTracksResults(id, openTracks);
+        parentIdParts.removeFirst();
+        parentId = parentIdParts.join("");
 
-            return;
+        if (parentType.compare("A") == 0) {
+            query.addQueryItem("action", "artist_albums");
+            query.addQueryItem("filter", parentId);
+            setState(OpeningAlbumList);
         }
-
-        // genre level, see if it was already queried
-        if (stationsLoaded.contains(parentId)) {
-            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_OPEN_GENRE_STATIONS, "SELECT id, name FROM stations WHERE genre = ?", QVariantList({ parentId }));
-            return;
+        else {
+            query.addQueryItem("action", "album_songs");
+            query.addQueryItem("filter", parentId);
+            setState(OpeningSongList);
         }
+    }
 
-        // must query stations
-        genreSearchItems.append({ parentId, Opening });
-        genreSearch();
-    */
+    QNetworkRequest request = buildRequest(query);
+
+    networkAccessManager->get(request);
 }
 
 
@@ -366,28 +365,9 @@ void Ampache::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
     if (selectedTracks.count() < 1) {
         return;
     }
-    /*
-        QStringList  openBinds;
-        QVariantList openValues;
-        QStringList  searchBinds;
-        QVariantList searchValues;
-        foreach (QString selectedTrack, selectedTracks) {
-            if (selectedTrack.startsWith("SEARCH_")) {
-                searchBinds.append("?");
-                searchValues.append(selectedTrack.replace("SEARCH_", ""));
-                continue;
-            }
-            openBinds.append("?");
-            openValues.append(selectedTrack);
-        }
 
-        if (openValues.count() > 0) {
-            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_OPEN_PLAYLIST, "SELECT id, base, name, genre, url, logo FROM stations WHERE id IN (" + openBinds.join(",") + ")", openValues);
-        }
-        if (searchValues.count() > 0) {
-            emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_STATION_SEARCH_PLAYLIST, "SELECT id, base, name, genre, url FROM search WHERE id IN (" + searchBinds.join(",") + ")", searchValues);
-        }
-    */
+    resolveIds.append(selectedTracks);
+    resolveNext();
 }
 
 
@@ -398,11 +378,16 @@ void Ampache::search(QUuid uniqueId, QString criteria)
         return;
     }
 
-    /*
-        stationSearchCriteria = criteria.toLower();
+    QUrlQuery query;
+    query.addQueryItem("auth", authKey);
+    query.addQueryItem("limit", "none");
+    query.addQueryItem("action", "songs");
+    query.addQueryItem("filter", criteria);
 
-        emit executeGlobalSql(id, SQL_TEMPORARY_DB, "", SQL_STATION_SEARCH_STATIONS, "SELECT * FROM search WHERE criteria = ?", QVariantList({ stationSearchCriteria }));
-    */
+    QNetworkRequest request = buildRequest(query);
+
+    setState(Searching);
+    networkAccessManager->get(request);
 }
 
 
@@ -506,6 +491,27 @@ void Ampache::handshake()
 }
 
 
+void Ampache::resolveNext()
+{
+    if (!resolveIds.count()) {
+        return;
+    }
+
+    QUrlQuery query;
+    query.addQueryItem("auth", authKey);
+    query.addQueryItem("limit", "none");
+    query.addQueryItem("action", "song");
+    query.addQueryItem("filter", resolveIds.first());
+
+    resolveIds.removeFirst();
+
+    QNetworkRequest request = buildRequest(query);
+
+    setState(Resolving);
+    networkAccessManager->get(request);
+}
+
+
 void Ampache::networkFinished(QNetworkReply *reply)
 {
     // make sure reply OK
@@ -529,6 +535,9 @@ void Ampache::networkFinished(QNetworkReply *reply)
     TrackInfo  trackInfo;
     ExtraInfo  extraInfo;
 
+    OpenTracks openTracks;
+    OpenTrack  openTrack;
+
     QXmlStreamReader xmlStreamReader(reply);
     while (!xmlStreamReader.atEnd()) {
         QXmlStreamReader::TokenType tokenType = xmlStreamReader.readNext();
@@ -549,7 +558,7 @@ void Ampache::networkFinished(QNetworkReply *reply)
             }
         }
 
-        if (state == Playlist) {
+        if ((state == Playlist) || (state == Resolving)) {
             if (tokenType == QXmlStreamReader::StartElement) {
                 currentElement = xmlStreamReader.name().toString();
 
@@ -597,6 +606,94 @@ void Ampache::networkFinished(QNetworkReply *reply)
                 }
             }
         }
+
+        if (state == OpeningArtistList) {
+            if (tokenType == QXmlStreamReader::StartElement) {
+                currentElement = xmlStreamReader.name().toString();
+                if (currentElement.compare("artist") == 0) {
+                    QXmlStreamAttributes attributes = xmlStreamReader.attributes();
+
+                    if (attributes.hasAttribute("id")) {
+                        openTrack.id         = QString("A~%1").arg(attributes.value("id").toString());
+                        openTrack.label      = "";
+                        openTrack.selectable = false;
+                        openTrack.hasChildren = true;
+                    }
+                }
+            }
+            if (tokenType == QXmlStreamReader::Characters) {
+                if (currentElement.compare("name") == 0) {
+                    openTrack.label = xmlStreamReader.text().toString();
+                }
+            }
+            if (tokenType == QXmlStreamReader::EndElement) {
+                currentElement = "";
+
+                if ((xmlStreamReader.name().toString().compare("artist") == 0) && (openTrack.id.length())) {
+                    openTracks.append(openTrack);
+                }
+            }
+        }
+
+        if (state == OpeningAlbumList) {
+            if (tokenType == QXmlStreamReader::StartElement) {
+                currentElement = xmlStreamReader.name().toString();
+
+                if (currentElement.compare("album") == 0) {
+                    QXmlStreamAttributes attributes = xmlStreamReader.attributes();
+                    if (attributes.hasAttribute("id")) {
+                        openTrack.id          = QString("L~%1").arg(attributes.value("id").toString());
+                        openTrack.label       = "";
+                        openTrack.selectable  = false;
+                        openTrack.hasChildren = true;
+                    }
+                }
+            }
+            if (tokenType == QXmlStreamReader::Characters) {
+                if (currentElement.compare("name") == 0) {
+                    openTrack.label = xmlStreamReader.text().toString();
+                }
+            }
+            if (tokenType == QXmlStreamReader::EndElement) {
+                currentElement = "";
+
+                if ((xmlStreamReader.name().toString().compare("album") == 0) && (openTrack.id.length())) {
+                    openTracks.append(openTrack);
+                }
+            }
+        }
+
+        if ((state == OpeningSongList) || (state == Searching)) {
+            if (tokenType == QXmlStreamReader::StartElement) {
+                currentElement = xmlStreamReader.name().toString();
+
+                if (currentElement.compare("song") == 0) {
+                    QXmlStreamAttributes attributes = xmlStreamReader.attributes();
+                    if (attributes.hasAttribute("id")) {
+                        openTrack.id          = QString("%1").arg(attributes.value("id").toString());
+                        openTrack.label       = "";
+                        openTrack.selectable  = true;
+                        openTrack.hasChildren = false;
+                    }
+                }
+            }
+            if (tokenType == QXmlStreamReader::Characters) {
+                if (currentElement.compare("title") == 0) {
+                    openTrack.label = xmlStreamReader.text().toString();
+                }
+
+                if ((currentElement.compare("artist") == 0) && (state == Searching)) {
+                    openTrack.label.append(" - " + xmlStreamReader.text().toString());
+                }
+            }
+            if (tokenType == QXmlStreamReader::EndElement) {
+                currentElement = "";
+
+                if ((xmlStreamReader.name().toString().compare("song") == 0) && (openTrack.id.length())) {
+                    openTracks.append(openTrack);
+                }
+            }
+        }
     }
 
     if (xmlStreamReader.hasError()) {
@@ -609,6 +706,28 @@ void Ampache::networkFinished(QNetworkReply *reply)
     if (state == Playlist) {
         emit saveConfiguration(id, configToJson());
         emit playlist(id, tracksInfo, extraInfo);
+    }
+    else if (state == Resolving) {
+        resolveTracksInfo.append(tracksInfo);
+
+        if (resolveIds.count()) {
+            QTimer::singleShot(75, this, SLOT(resolveNext()));
+        }
+        else {
+            foreach (TrackInfo trackInfo, resolveTracksInfo) {
+                QVariantHash temp = extraInfo.value(trackInfo.url);
+                temp.insert("resolved_open_track", 1);
+                extraInfo.insert(trackInfo.url, temp);
+            }
+            emit playlist(id, resolveTracksInfo, extraInfo);
+            resolveTracksInfo.clear();
+        }
+    }
+    else if ((state == OpeningArtistList) || (state == OpeningAlbumList) || (state == OpeningSongList)) {
+        emit openTracksResults(id, openTracks);
+    }
+    else if (state == Searching) {
+        emit searchResults(id, openTracks);
     }
 
     reply->deleteLater();

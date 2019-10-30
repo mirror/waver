@@ -37,6 +37,7 @@
 #include <QSslConfiguration>
 #include <QString>
 #include <QStringList>
+#include <QTimer>
 #include <QUrl>
 #include <QUrlQuery>
 #include <QUuid>
@@ -82,8 +83,11 @@ class WP_AMPACHE_EXPORT Ampache : public PluginSource_006 {
             Handshake,
             Playlist,
             Replacement,
-            Opening,
-            Searching
+            OpeningArtistList,
+            OpeningAlbumList,
+            OpeningSongList,
+            Searching,
+            Resolving
         };
 
         QUuid   id;
@@ -100,6 +104,9 @@ class WP_AMPACHE_EXPORT Ampache : public PluginSource_006 {
         int nextIndex;
 
         QString authKey;
+
+        QStringList resolveIds;
+        TracksInfo  resolveTracksInfo;
 
         QNetworkAccessManager *networkAccessManager;
 
@@ -150,6 +157,7 @@ class WP_AMPACHE_EXPORT Ampache : public PluginSource_006 {
     private slots:
 
         void networkFinished(QNetworkReply *reply);
+        void resolveNext();
 };
 
 #endif // AMPACHE_H
