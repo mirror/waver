@@ -602,7 +602,9 @@ void Ampache::networkFinished(QNetworkReply *reply)
 
                 if (xmlStreamReader.name().toString().compare("song") == 0) {
                     tracksInfo.append(trackInfo);
-                    nextIndex++;
+                    if (state == Playlist) {
+                        nextIndex++;
+                    }
                 }
             }
         }
