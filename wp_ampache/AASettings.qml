@@ -100,6 +100,26 @@ Item {
         anchors.topMargin: 24
     }
 
+    Label {
+        id: variationLabel
+        text: "Variation"
+        anchors.left: parent.left
+        anchors.leftMargin: 8
+        anchors.verticalCenter: variation.verticalCenter
+    }
+
+    ComboBox {
+        id: variation
+        anchors.left: variationLabel.right
+        anchors.leftMargin: 8
+        anchors.right: parent.right
+        anchors.rightMargin: 8
+        anchors.top: explanation.bottom
+        anchors.topMargin: 24
+        model: [ "Low", "Medium", "High", "Random" ]
+        currentIndex: 9999
+    }
+
     Button {
         id: doneButton
         text: qsTr("Done")
@@ -114,6 +134,7 @@ Item {
                 url: url.text,
                 user: user.text,
                 psw: psw.text,
+                variation: variation.currentText
             }
             done(JSON.stringify(retval));
         }

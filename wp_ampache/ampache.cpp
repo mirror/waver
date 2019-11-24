@@ -38,9 +38,17 @@ Ampache::Ampache()
     id  = QUuid("{2650B433-F8DA-4D1B-81E8-CA389BFF1049}");
 
     networkAccessManager  = nullptr;
+    serverApiVersion      = 0;
     readySent             = false;
     sendDiagnostics       = false;
-    nextIndex             = 0;
+    resolveScheduled      = false;
+
+    lastReturnedAlbumId = 0;
+
+    variationSetting           = "Medium";
+    variationSetCountSinceHigh = 0;
+    variationSetCountSinceLow  = 0;
+    variationSetCurrentRemainingAlbum();
 
     setState(Idle);
 }
@@ -117,19 +125,6 @@ void Ampache::run()
 
 
 // slot receiving configuration
-void Ampache::loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)
-{
-    if (uniqueId != id) {
-        return;
-    }
-
-    jsonToConfig(configuration);
-
-    handshake();
-}
-
-
-// slot receiving configuration
 void Ampache::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configuration)
 {
     if (uniqueId != id) {
@@ -139,6 +134,19 @@ void Ampache::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configurat
     jsonToConfigGlobal(configuration);
 
     emit loadConfiguration(id);
+}
+
+
+// slot receiving configuration
+void Ampache::loadedConfiguration(QUuid uniqueId, QJsonDocument configuration)
+{
+    if (uniqueId != id) {
+        return;
+    }
+
+    jsonToConfig(configuration);
+
+    handshake();
 }
 
 
@@ -207,8 +215,9 @@ void Ampache::getUiQml(QUuid uniqueId)
         settings.replace("<password>", serverPassword);
     }
 
-    emit uiQml(id, settings);
+    settings.replace("9999", QString("%1").arg(variationSettingId()));
 
+    emit uiQml(id, settings);
 }
 
 
@@ -220,10 +229,10 @@ void Ampache::uiResults(QUuid uniqueId, QJsonDocument results)
     }
 
     jsonToConfigGlobal(results);
-    //jsonToConfig(results);
+    jsonToConfig(results);
 
     emit saveGlobalConfiguration(id, configToJsonGlobal());
-    //emit saveConfiguration(id, configToJson());
+    emit saveConfiguration(id, configToJson());
     emit requestRemoveTracks(id);
 }
 
@@ -288,18 +297,8 @@ void Ampache::getPlaylist(QUuid uniqueId, int trackCount, int mode)
         return;
     }
 
-    QUrlQuery query;
-    query.addQueryItem("action", "songs");
-    query.addQueryItem("auth", authKey);
-    query.addQueryItem("limit", QString("%1").arg(trackCount));
-    query.addQueryItem("offset", QString("%1").arg(nextIndex + 1));
-
-    QNetworkRequest request = buildRequest(query);
-
-    setState(Playlist);
-    networkAccessManager->get(request);
-
-    return;
+    playlistRequests.append({ trackCount, mode });
+    playlisting();
 }
 
 
@@ -367,7 +366,7 @@ void Ampache::resolveOpenTracks(QUuid uniqueId, QStringList selectedTracks)
     }
 
     resolveIds.append(selectedTracks);
-    resolveNext();
+    resolve();
 }
 
 
@@ -398,8 +397,42 @@ void Ampache::action(QUuid uniqueId, int actionKey, TrackInfo trackInfo)
         return;
     }
 
-    if (actionKey == 0) {
+    if (actionKey == 1) {
+        if (urlsToServerId.contains(trackInfo.url)) {
+            updateFlag(urlsToServerId.value(trackInfo.url), true);
 
+            TrackInfo trackInfoTemp;
+            trackInfoTemp.track = 0;
+            trackInfoTemp.year  = 0;
+            trackInfoTemp.url   = trackInfo.url;
+            trackInfoTemp.actions.append({ id, 2, "Unlove" });
+            trackInfoTemp.actions.append({ id, 10, "Lyrics search"});
+            trackInfoTemp.actions.append({ id, 11, "Band search"});
+            emit updateTrackInfo(id, trackInfoTemp);
+        }
+    }
+
+    if (actionKey == 2) {
+        if (urlsToServerId.contains(trackInfo.url)) {
+            updateFlag(urlsToServerId.value(trackInfo.url), false);
+
+            TrackInfo trackInfoTemp;
+            trackInfoTemp.track = 0;
+            trackInfoTemp.year  = 0;
+            trackInfoTemp.url   = trackInfo.url;
+            trackInfoTemp.actions.append({ id, 1, "Love" });
+            trackInfoTemp.actions.append({ id, 10, "Lyrics search"});
+            trackInfoTemp.actions.append({ id, 11, "Band search"});
+            emit updateTrackInfo(id, trackInfoTemp);
+        }
+    }
+
+    if (actionKey == 10) {
+        emit openUrl(QUrl(QString("http://google.com/search?q=%1 %2 lyrics").arg(trackInfo.performer).arg(trackInfo.title)));
+    }
+
+    if (actionKey == 11) {
+        emit openUrl(QUrl(QString("http://google.com/search?q=\"%1\" band").arg(trackInfo.performer)));
     }
 
     if (sendDiagnostics) {
@@ -413,7 +446,7 @@ QJsonDocument Ampache::configToJson()
 {
     QJsonObject jsonObject;
 
-    jsonObject.insert("nextIndex", nextIndex);
+    jsonObject.insert("variation", variationSetting);
 
     QJsonDocument returnValue;
     returnValue.setObject(jsonObject);
@@ -441,10 +474,10 @@ QJsonDocument Ampache::configToJsonGlobal()
 // configuration conversion
 void Ampache::jsonToConfig(QJsonDocument jsonDocument)
 {
-    Q_UNUSED(jsonDocument)
-
-    if (jsonDocument.object().contains("nextIndex")) {
-        nextIndex = jsonDocument.object().value("nextIndex").toInt();
+    if (jsonDocument.object().contains("variation")) {
+        variationSetting = jsonDocument.object().value("variation").toString();
+        variationSetCountSinceLow  = (variationSettingId() == 3 ? 3 : 0);
+        variationSetCountSinceHigh = 0;
     }
 }
 
@@ -481,7 +514,7 @@ void Ampache::handshake()
     query.addQueryItem("action", "handshake");
     query.addQueryItem("auth", authHash.toHex());
     query.addQueryItem("timestamp", timeStr);
-    query.addQueryItem("version", "400001");
+    query.addQueryItem("version", QString("%1").arg(SERVER_API_VERSION_MIN));
     query.addQueryItem("user", serverUser);
 
     QNetworkRequest request = buildRequest(query);
@@ -491,12 +524,93 @@ void Ampache::handshake()
 }
 
 
-void Ampache::resolveNext()
+void Ampache::playlisting()
 {
-    if (!resolveIds.count()) {
+    if (playlistScheduled || !playlistRequests.count()) {
         return;
     }
 
+    playlistScheduled = true;
+    QTimer::singleShot(NET_DELAY, this, SLOT(playlistNext()));
+}
+
+
+void Ampache::playlistNext()
+{
+    PlaylistRequest playlistRequest = playlistRequests.first();
+    playlistRequests.removeFirst();
+
+    QUrlQuery query;
+    query.addQueryItem("auth", authKey);
+    query.addQueryItem("action", "playlist_generate");
+
+    if (playlistRequest.mode == PLAYLIST_MODE_NORMAL) {
+        if (variationRemaining == 0) {
+            variationSetCurrentRemainingAlbum();
+        }
+
+        if (variationCurrent < 2) {
+            if (variationAlbum == 0) {
+                query.addQueryItem("limit", "1");
+                playlistRequestsSent.append({ 1, PLAYLIST_MODE_VARIATION_FIRST });
+
+                if (playlistRequest.trackCount > 1) {
+                    playlistRequests.prepend({ playlistRequest.trackCount - 1, PLAYLIST_MODE_NORMAL });
+                }
+            }
+            else {
+                int thisRequestCount = qMin(playlistRequest.trackCount, variationRemaining);
+                int nextRequestCount = qMax(playlistRequest.trackCount - variationRemaining, 0);
+
+                query.addQueryItem("limit", QString("%1").arg(thisRequestCount));
+                query.addQueryItem("album", QString("%1").arg(variationAlbum));
+                playlistRequestsSent.append({ thisRequestCount, playlistRequest.mode });
+
+                if (nextRequestCount) {
+                    playlistRequests.prepend({ nextRequestCount, PLAYLIST_MODE_NORMAL });
+                }
+            }
+        }
+        else {
+            query.addQueryItem("mode", "forgotten");
+            query.addQueryItem("limit", QString("%1").arg(playlistRequest.trackCount));
+            playlistRequestsSent.append({ playlistRequest.trackCount, playlistRequest.mode });
+        }
+    }
+    else {
+        query.addQueryItem("limit", "1");
+        if (playlistRequest.mode == PLAYLIST_MODE_LOVED_SIMILAR_RESOLVE) {
+            query.addQueryItem("album", QString("%1").arg(lastReturnedAlbumId));
+        }
+        else {
+            query.addQueryItem("flag", "1");
+        }
+        playlistRequestsSent.append({ 1, playlistRequest.mode });
+
+        if (playlistRequest.trackCount > 1) {
+            playlistRequests.prepend({ playlistRequest.trackCount - 1, PLAYLIST_MODE_NORMAL });
+        }
+    }
+
+    QNetworkRequest request = buildRequest(query);
+    setState(Playlist);
+    networkAccessManager->get(request);
+}
+
+
+void Ampache::resolve()
+{
+    if (resolveScheduled || !resolveIds.count()) {
+        return;
+    }
+
+    resolveScheduled = true;
+    QTimer::singleShot(NET_DELAY, this, SLOT(resolveNext()));
+}
+
+
+void Ampache::resolveNext()
+{
     QUrlQuery query;
     query.addQueryItem("auth", authKey);
     query.addQueryItem("limit", "none");
@@ -508,6 +622,22 @@ void Ampache::resolveNext()
     QNetworkRequest request = buildRequest(query);
 
     setState(Resolving);
+    networkAccessManager->get(request);
+}
+
+
+void Ampache::updateFlag(int songId, bool flag)
+{
+    QUrlQuery query;
+    query.addQueryItem("auth", authKey);
+    query.addQueryItem("action", "flag");
+    query.addQueryItem("type", "song");
+    query.addQueryItem("id", QString("%1").arg(songId));
+    query.addQueryItem("flag", flag ? "1" : "0");
+
+    QNetworkRequest request = buildRequest(query);
+
+    setState(Flagging);
     networkAccessManager->get(request);
 }
 
@@ -528,39 +658,62 @@ void Ampache::networkFinished(QNetworkReply *reply)
         return;
     }
 
-    bool    inAuth         = false;
-    QString currentElement = "";
+    // TODO reconnect if session timed out, check https://github.com/ampache/ampache/wiki/XML-API-ERRORS
 
+    QString currentElement = "";
+    int     errorCode      = 0;
+
+    qint32     trackServerId;
     TracksInfo tracksInfo;
     TrackInfo  trackInfo;
-    ExtraInfo  extraInfo;
 
     OpenTracks openTracks;
     OpenTrack  openTrack;
+
+    PlaylistRequest playlistRequest;
+    if (state == Playlist) {
+        playlistRequest = playlistRequestsSent.first();
+        playlistRequestsSent.removeFirst();
+    }
 
     QXmlStreamReader xmlStreamReader(reply);
     while (!xmlStreamReader.atEnd()) {
         QXmlStreamReader::TokenType tokenType = xmlStreamReader.readNext();
 
-        if (state == Handshake) {
-            if (tokenType == QXmlStreamReader::StartElement) {
-                if (xmlStreamReader.name().toString().compare("auth") == 0) {
-                    inAuth = true;
+        if (tokenType == QXmlStreamReader::StartElement) {
+            currentElement = xmlStreamReader.name().toString();
+
+            if (currentElement.compare("error") == 0) {
+                QXmlStreamAttributes attributes = xmlStreamReader.attributes();
+                if (attributes.hasAttribute("code")) {
+                    errorCode = attributes.value("code").toInt();
                 }
             }
+        }
+        if (tokenType == QXmlStreamReader::EndElement) {
+            currentElement = "";
+        }
+
+        if (tokenType == QXmlStreamReader::Characters) {
+            if (currentElement.compare("error") == 0) {
+                emit infoMessage(id, QString("Error %1: %2").arg(errorCode).arg(xmlStreamReader.text().toString()));
+            }
+        }
+
+        if (state == Handshake) {
             if (tokenType == QXmlStreamReader::Characters) {
-                if (inAuth) {
+                if (currentElement.compare("auth") == 0) {
                     authKey = xmlStreamReader.text().toString();
                 }
-            }
-            if (tokenType == QXmlStreamReader::EndElement) {
-                inAuth = false;
+                if (currentElement.compare("api") == 0) {
+                    serverApiVersion = xmlStreamReader.text().toLong();
+                }
             }
         }
 
         if ((state == Playlist) || (state == Resolving)) {
             if (tokenType == QXmlStreamReader::StartElement) {
-                currentElement = xmlStreamReader.name().toString();
+                QXmlStreamAttributes attributes = xmlStreamReader.attributes();
 
                 if (currentElement.compare("song") == 0) {
                     trackInfo.title     = "";
@@ -572,6 +725,14 @@ void Ampache::networkFinished(QNetworkReply *reply)
                     trackInfo.actions.clear();
                     trackInfo.pictures.clear();
                     trackInfo.url.clear();
+
+                    if (attributes.hasAttribute("id")) {
+                        trackServerId = attributes.value("id").toInt();
+                    }
+                }
+
+                if ((currentElement.compare("album") == 0) && (attributes.hasAttribute("id"))) {
+                    lastReturnedAlbumId = attributes.value("id").toInt();
                 }
             }
             if (tokenType == QXmlStreamReader::Characters) {
@@ -595,15 +756,23 @@ void Ampache::networkFinished(QNetworkReply *reply)
                 }
                 if (currentElement.compare("url") == 0) {
                     trackInfo.url = QUrl(xmlStreamReader.text().toString());
+                    urlsToServerId.insert(trackInfo.url, trackServerId);
+                }
+                if (currentElement.compare("flag") == 0) {
+                    if (xmlStreamReader.text().toInt()) {
+                        trackInfo.actions.append({ id, 2, "Unlove" });
+                    }
+                    else {
+                        trackInfo.actions.append({ id, 1, "Love" });
+                    }
+                    trackInfo.actions.append({ id, 10, "Lyrics search"});
+                    trackInfo.actions.append({ id, 11, "Band search"});
                 }
             }
             if (tokenType == QXmlStreamReader::EndElement) {
-                currentElement = "";
-
                 if (xmlStreamReader.name().toString().compare("song") == 0) {
-                    tracksInfo.append(trackInfo);
-                    if (state == Playlist) {
-                        nextIndex++;
+                    if (playlistRequest.mode != PLAYLIST_MODE_LOVED_SIMILAR) {
+                        tracksInfo.append(trackInfo);
                     }
                 }
             }
@@ -611,7 +780,6 @@ void Ampache::networkFinished(QNetworkReply *reply)
 
         if (state == OpeningArtistList) {
             if (tokenType == QXmlStreamReader::StartElement) {
-                currentElement = xmlStreamReader.name().toString();
                 if (currentElement.compare("artist") == 0) {
                     QXmlStreamAttributes attributes = xmlStreamReader.attributes();
 
@@ -629,8 +797,6 @@ void Ampache::networkFinished(QNetworkReply *reply)
                 }
             }
             if (tokenType == QXmlStreamReader::EndElement) {
-                currentElement = "";
-
                 if ((xmlStreamReader.name().toString().compare("artist") == 0) && (openTrack.id.length())) {
                     openTracks.append(openTrack);
                 }
@@ -639,8 +805,6 @@ void Ampache::networkFinished(QNetworkReply *reply)
 
         if (state == OpeningAlbumList) {
             if (tokenType == QXmlStreamReader::StartElement) {
-                currentElement = xmlStreamReader.name().toString();
-
                 if (currentElement.compare("album") == 0) {
                     QXmlStreamAttributes attributes = xmlStreamReader.attributes();
                     if (attributes.hasAttribute("id")) {
@@ -657,8 +821,6 @@ void Ampache::networkFinished(QNetworkReply *reply)
                 }
             }
             if (tokenType == QXmlStreamReader::EndElement) {
-                currentElement = "";
-
                 if ((xmlStreamReader.name().toString().compare("album") == 0) && (openTrack.id.length())) {
                     openTracks.append(openTrack);
                 }
@@ -667,8 +829,6 @@ void Ampache::networkFinished(QNetworkReply *reply)
 
         if ((state == OpeningSongList) || (state == Searching)) {
             if (tokenType == QXmlStreamReader::StartElement) {
-                currentElement = xmlStreamReader.name().toString();
-
                 if (currentElement.compare("song") == 0) {
                     QXmlStreamAttributes attributes = xmlStreamReader.attributes();
                     if (attributes.hasAttribute("id")) {
@@ -689,8 +849,6 @@ void Ampache::networkFinished(QNetworkReply *reply)
                 }
             }
             if (tokenType == QXmlStreamReader::EndElement) {
-                currentElement = "";
-
                 if ((xmlStreamReader.name().toString().compare("song") == 0) && (openTrack.id.length())) {
                     openTracks.append(openTrack);
                 }
@@ -705,17 +863,58 @@ void Ampache::networkFinished(QNetworkReply *reply)
         return;
     }
 
-    if (state == Playlist) {
-        emit saveConfiguration(id, configToJson());
-        emit playlist(id, tracksInfo, extraInfo);
+    if (state == Handshake) {
+        if (serverApiVersion < SERVER_API_VERSION_MIN) {
+            emit infoMessage(id, QString("Server API version %1 does not satisfy minimum requirement %2").arg(serverApiVersion).arg(SERVER_API_VERSION_MIN));
+        }
+    }
+    else if (state == Playlist) {
+        playlistTracksInfo.append(tracksInfo);
+
+        if (variationRemaining > 0) {
+            variationRemaining = qMax(variationRemaining - tracksInfo.count(), 0);
+        }
+
+        if (playlistRequest.mode == PLAYLIST_MODE_LOVED) {
+            QVariantHash temp = playlistExtraInfo.value(trackInfo.url);
+            temp.insert("loved", PLAYLIST_MODE_LOVED);
+            playlistExtraInfo.insert(trackInfo.url, temp);
+        }
+        else if (playlistRequest.mode == PLAYLIST_MODE_LOVED_SIMILAR) {
+            playlistRequests.prepend({ 1, PLAYLIST_MODE_LOVED_SIMILAR_RESOLVE });
+        }
+        else if (playlistRequest.mode == PLAYLIST_MODE_LOVED_SIMILAR_RESOLVE) {
+            QVariantHash temp = playlistExtraInfo.value(trackInfo.url);
+            temp.insert("loved", PLAYLIST_MODE_LOVED_SIMILAR);
+            playlistExtraInfo.insert(trackInfo.url, temp);
+        }
+        else if (playlistRequest.mode == PLAYLIST_MODE_VARIATION_FIRST) {
+            variationAlbum = lastReturnedAlbumId;
+        }
+
+        if (playlistRequests.count()) {
+            QTimer::singleShot(NET_DELAY, this, SLOT(playlistNext()));
+        }
+        else {
+            if (variationCurrent != 0) {
+                variationRemaining = 0;
+            }
+
+            playlistScheduled = false;
+            emit playlist(id, playlistTracksInfo, playlistExtraInfo);
+            playlistTracksInfo.clear();
+            playlistExtraInfo.clear();
+        }
     }
     else if (state == Resolving) {
         resolveTracksInfo.append(tracksInfo);
 
         if (resolveIds.count()) {
-            QTimer::singleShot(75, this, SLOT(resolveNext()));
+            QTimer::singleShot(NET_DELAY, this, SLOT(resolveNext()));
         }
         else {
+            resolveScheduled = false;
+            ExtraInfo  extraInfo;
             foreach (TrackInfo trackInfo, resolveTracksInfo) {
                 QVariantHash temp = extraInfo.value(trackInfo.url);
                 temp.insert("resolved_open_track", 1);
@@ -735,7 +934,7 @@ void Ampache::networkFinished(QNetworkReply *reply)
     reply->deleteLater();
     setState(Idle);
 
-    if (!readySent && !authKey.isEmpty()) {
+    if (!readySent && !authKey.isEmpty() && (serverApiVersion >= SERVER_API_VERSION_MIN)) {
         emit ready(id);
         readySent = true;
     }
@@ -764,6 +963,52 @@ QNetworkRequest Ampache::buildRequest(QUrlQuery query)
 
 
 // helper
+int Ampache::variationSettingId()
+{
+    QStringList variations({ "Low", "Medium", "High", "Random" });
+    return variations.indexOf(variationSetting);
+}
+
+
+// helper
+void Ampache::variationSetCurrentRemainingAlbum()
+{
+    if (variationSettingId() == 3) {
+        if (variationSetCountSinceHigh >= 4) {
+            variationCurrent = 2;
+        }
+        else if (variationSetCountSinceLow >= 4) {
+            variationCurrent = qrand() % 3;
+        }
+        else {
+            variationCurrent = (qrand() % 2) + 1;
+        }
+    }
+    else {
+        variationCurrent = variationSettingId();
+    }
+
+    switch (variationCurrent) {
+        case 0:
+            variationRemaining = (qrand() % 3) + 4;
+            variationSetCountSinceHigh++;
+            variationSetCountSinceLow = 0;
+            break;
+        case 1:
+            variationRemaining = (qrand() % 2) + 2;
+            variationSetCountSinceHigh++;
+            variationSetCountSinceLow++;
+            break;
+        case 2:
+            variationRemaining = -1;
+            variationSetCountSinceHigh = 0;
+            variationSetCountSinceLow++;
+    }
+
+    variationAlbum = 0;
+}
+
+// helper
 void Ampache::setState(State state)
 {
     this->state = state;
@@ -776,5 +1021,40 @@ void Ampache::setState(State state)
 // helper
 void Ampache::sendDiagnosticsData()
 {
+    DiagnosticData diagnosticData;
 
+    switch (state) {
+        case Idle:
+            diagnosticData.append({ "Status", "Idle"});
+            break;
+        case Handshake:
+            diagnosticData.append({ "Status", "Performing handshake" });
+            break;
+        case Playlist:
+            diagnosticData.append({ "Status", "Getting playlist" });
+            break;
+        case Replacement:
+            diagnosticData.append({ "Status", "Getting replacement" });
+            break;
+        case OpeningArtistList:
+            diagnosticData.append({ "Status", "Getting performer's list" });
+            break;
+        case OpeningAlbumList:
+            diagnosticData.append({ "Status", "Getting album list" });
+            break;
+        case OpeningSongList:
+            diagnosticData.append({ "Status", "Getting track list" });
+            break;
+        case Searching:
+            diagnosticData.append({ "Status", "Searching" });
+            break;
+        case Resolving:
+            diagnosticData.append({ "Status", "Resolving tracks" });
+            break;
+        case Flagging:
+            diagnosticData.append({ "Status", "Updati8ng flag" });
+            break;
+    }
+
+    emit diagnostics(id, diagnosticData);
 }

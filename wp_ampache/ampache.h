@@ -31,6 +31,8 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonValue>
+#include <QList>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -42,6 +44,7 @@
 #include <QUrlQuery>
 #include <QUuid>
 #include <QVariantHash>
+#include <QVector>
 #include <QXmlStreamAttribute>
 #include <QXmlStreamAttributes>
 #include <QXmlStreamReader>
@@ -78,6 +81,11 @@ class WP_AMPACHE_EXPORT Ampache : public PluginSource_006 {
 
     private:
 
+        static const long SERVER_API_VERSION_MIN              = 400001;
+        static const int  PLAYLIST_MODE_VARIATION_FIRST       = 101;
+        static const int  PLAYLIST_MODE_LOVED_SIMILAR_RESOLVE = 102;
+        static const int  NET_DELAY                           = 50;
+
         enum State {
             Idle,
             Handshake,
@@ -87,30 +95,57 @@ class WP_AMPACHE_EXPORT Ampache : public PluginSource_006 {
             OpeningAlbumList,
             OpeningSongList,
             Searching,
-            Resolving
+            Resolving,
+            Flagging
+        };
+
+        struct PlaylistRequest {
+            int trackCount;
+            int mode;
         };
 
         QUuid   id;
         QString userAgent;
+        State   state;
 
         bool  readySent;
         bool  sendDiagnostics;
-        State state;
 
         QUrl    serverUrl;
         QString serverUser;
         QString serverPassword;
-
-        int nextIndex;
-
+        long    serverApiVersion;
         QString authKey;
 
+        QVector<PlaylistRequest> playlistRequests;
+        QVector<PlaylistRequest> playlistRequestsSent;
+        bool                     playlistScheduled;
+        TracksInfo               playlistTracksInfo;
+        ExtraInfo                playlistExtraInfo;
+
         QStringList resolveIds;
+        bool        resolveScheduled;
         TracksInfo  resolveTracksInfo;
+
+        qint32              lastReturnedAlbumId;
+        QHash<QUrl, qint32> urlsToServerId;
+
+        QString variationSetting;
+        int     variationCurrent;
+        int     variationRemaining;
+        qint32  variationAlbum;
+        int     variationSetCountSinceHigh;
+        int     variationSetCountSinceLow;
+
+        int  variationSettingId();
+        void variationSetCurrentRemainingAlbum();
 
         QNetworkAccessManager *networkAccessManager;
 
         void handshake();
+        void playlisting();
+        void resolve();
+        void updateFlag(int songId, bool flag);
 
         QJsonDocument configToJson();
         QJsonDocument configToJsonGlobal();
@@ -157,6 +192,7 @@ class WP_AMPACHE_EXPORT Ampache : public PluginSource_006 {
     private slots:
 
         void networkFinished(QNetworkReply *reply);
+        void playlistNext();
         void resolveNext();
 };
 
