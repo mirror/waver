@@ -951,13 +951,6 @@ QNetworkRequest Ampache::buildRequest(QUrlQuery query)
     QNetworkRequest request(url);
     request.setRawHeader("User-Agent", userAgent.toUtf8());
 
-    if (url.scheme().compare("https") == 0) {
-        // TODO!!! This is temporary for testing purposes. Disables all SLL certificate checking. To be replaced with user-defined whitelist.
-        QSslConfiguration sslConfiguration = request.sslConfiguration();
-        sslConfiguration.setPeerVerifyMode(QSslSocket::VerifyNone);
-        request.setSslConfiguration(sslConfiguration);
-    }
-
     return request;
 }
 
