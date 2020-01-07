@@ -326,9 +326,41 @@ void Ampache::getOpenTracks(QUuid uniqueId, QString parentId)
 
     // top level
     if (parentId.length() == 0) {
+        OpenTracks openTracks;
+
+        OpenTrack  browseTrack;
+        browseTrack.id = "99B";
+        browseTrack.label = "Browse";
+        browseTrack.selectable = false;
+        browseTrack.hasChildren = true;
+
+        OpenTrack  playlistsTrack;
+        playlistsTrack.id = "99P";
+        playlistsTrack.label = "Playlists";
+        playlistsTrack.selectable = false;
+        playlistsTrack.hasChildren = true;
+
+        openTracks.append(browseTrack);
+        openTracks.append(playlistsTrack);
+
+        emit openTracksResults(id, openTracks);
+        return;
+    }
+
+    // browse top level
+    else if (parentId.compare("99B") == 0) {
         query.addQueryItem("action", "artists");
         setState(OpeningArtistList);
     }
+
+    // playlists top level
+    else if (parentId.compare("99P") == 0) {
+        query.addQueryItem("action", "get_indexes");
+        query.addQueryItem("type", "playlist");
+        setState(OpeningPlaylistList);
+    }
+
+    // everything else
     else {
         QStringList parentIdParts = parentId.split("~");
         QString     parentType    = parentIdParts.at(0);
@@ -341,8 +373,13 @@ void Ampache::getOpenTracks(QUuid uniqueId, QString parentId)
             query.addQueryItem("filter", parentId);
             setState(OpeningAlbumList);
         }
-        else {
+        else if (parentType.compare("L") == 0) {
             query.addQueryItem("action", "album_songs");
+            query.addQueryItem("filter", parentId);
+            setState(OpeningSongList);
+        }
+        else if (parentType.compare("P") == 0) {
+            query.addQueryItem("action", "playlist_songs");
             query.addQueryItem("filter", parentId);
             setState(OpeningSongList);
         }
@@ -614,10 +651,18 @@ void Ampache::resolveNext()
     QUrlQuery query;
     query.addQueryItem("auth", authKey);
     query.addQueryItem("limit", "none");
-    query.addQueryItem("action", "song");
-    query.addQueryItem("filter", resolveIds.first());
 
+    QString resolveId = resolveIds.first();
     resolveIds.removeFirst();
+
+    if (resolveId.startsWith("P~")) {
+        query.addQueryItem("action", "playlist_songs");
+        resolveId.replace("P~", "");
+    }
+    else {
+        query.addQueryItem("action", "song");
+    }
+    query.addQueryItem("filter", resolveId);
 
     QNetworkRequest request = buildRequest(query);
 
@@ -827,6 +872,30 @@ void Ampache::networkFinished(QNetworkReply *reply)
             }
         }
 
+        if (state == OpeningPlaylistList) {
+            if (tokenType == QXmlStreamReader::StartElement) {
+                if (currentElement.compare("playlist") == 0) {
+                    QXmlStreamAttributes attributes = xmlStreamReader.attributes();
+                    if (attributes.hasAttribute("id")) {
+                        openTrack.id          = QString("P~%1").arg(attributes.value("id").toString());
+                        openTrack.label       = "";
+                        openTrack.selectable  = true;
+                        openTrack.hasChildren = true;
+                    }
+                }
+            }
+            if (tokenType == QXmlStreamReader::Characters) {
+                if (currentElement.compare("name") == 0) {
+                    openTrack.label = xmlStreamReader.text().toString();
+                }
+            }
+            if (tokenType == QXmlStreamReader::EndElement) {
+                if ((xmlStreamReader.name().toString().compare("playlist") == 0) && (openTrack.id.length())) {
+                    openTracks.append(openTrack);
+                }
+            }
+        }
+
         if ((state == OpeningSongList) || (state == Searching)) {
             if (tokenType == QXmlStreamReader::StartElement) {
                 if (currentElement.compare("song") == 0) {
@@ -924,7 +993,7 @@ void Ampache::networkFinished(QNetworkReply *reply)
             resolveTracksInfo.clear();
         }
     }
-    else if ((state == OpeningArtistList) || (state == OpeningAlbumList) || (state == OpeningSongList)) {
+    else if ((state == OpeningArtistList) || (state == OpeningAlbumList) || (state == OpeningSongList) || (state == OpeningPlaylistList)) {
         emit openTracksResults(id, openTracks);
     }
     else if (state == Searching) {

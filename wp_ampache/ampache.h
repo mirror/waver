@@ -94,6 +94,7 @@ class WP_AMPACHE_EXPORT Ampache : public PluginSource_006 {
             OpeningArtistList,
             OpeningAlbumList,
             OpeningSongList,
+            OpeningPlaylistList,
             Searching,
             Resolving,
             Flagging
