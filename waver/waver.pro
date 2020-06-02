@@ -21,7 +21,7 @@
 QT += qml quick multimedia sql
 
 unix:!android {
-    QT += dbus
+    QT += dbus widgets
 }
 
 windows {

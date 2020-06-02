@@ -190,6 +190,7 @@ class Track : public QObject {
         void setupInfoPlugin(QObject *plugin);
         void sendLoadedPlugins();
         void sendLoadedPluginsWithUI();
+        bool isFadeForbidden();
         void applyFade(QAudioBuffer *buffer);
 
 

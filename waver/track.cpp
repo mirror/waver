@@ -702,7 +702,7 @@ void Track::setStatus(Status status)
             emit playBegin(dspPluginId);
         }
 
-        if (trackInfo.cast || fadeInRequested) {
+        if (trackInfo.cast || (fadeInRequested && !isFadeForbidden())) {
             fadeDirection  = FADE_DIRECTION_IN;
             fadePercent    = 0;
             fadeSeconds    = (fadeInRequestedMilliseconds == 0 ? INTERRUPT_FADE_SECONDS : fadeInRequestedMilliseconds / 1000);
@@ -730,7 +730,7 @@ void Track::setStatus(Status status)
             emit playBegin(dspPluginId);
         }
 
-        if (trackInfo.cast || fadeInRequested) {
+        if (trackInfo.cast || (fadeInRequested && !isFadeForbidden())) {
             fadeDirection  = FADE_DIRECTION_IN;
             fadePercent    = 0;
             fadeSeconds    = (fadeInRequestedMilliseconds == 0 ? INTERRUPT_FADE_SECONDS : fadeInRequestedMilliseconds / 1000);
@@ -864,6 +864,11 @@ qint64 Track::getPreviousTrackAboutToFinishSendRequestedMilliseconds()
 // public method
 void Track::startWithFadeIn(qint64 lengthMilliseconds)
 {
+    if (isFadeForbidden()) {
+        startWithoutFadeIn();
+        return;
+    }
+
     // this has effect only when the track starts to play
     fadeInRequested = true;
     if (fadeInRequestedMilliseconds < lengthMilliseconds) {
@@ -875,7 +880,7 @@ void Track::startWithFadeIn(qint64 lengthMilliseconds)
 // public method
 void Track::startWithoutFadeIn()
 {
-    if (fadeInRequestedInternal) {
+    if (fadeInRequestedInternal && !isFadeForbidden()) {
         fadeInRequestedMilliseconds = fadeInRequestedInternalMilliseconds;
         return;
     }
@@ -888,7 +893,7 @@ void Track::startWithoutFadeIn()
 // public method
 void Track::setAboutToFinishSend(qint64 beforeEndMillisecods)
 {
-    if (trackInfo.cast || !decodingDone) {
+    if (trackInfo.cast || !decodingDone || isFadeForbidden()) {
         return;
     }
 
@@ -901,6 +906,10 @@ void Track::setAboutToFinishSend(qint64 beforeEndMillisecods)
 // public method
 void Track::resetAboutToFinishSend()
 {
+    if (isFadeForbidden()) {
+        interruptAboutToFinishSendPosition = 0;
+    }
+
     interruptAboutToFinishSendPosition = interruptAboutToFinishSendPositionInternal;
 }
 
@@ -1701,6 +1710,10 @@ void Track::dspPreRequestFadeIn(QUuid uniqueId, qint64 lengthMilliseconds)
 {
     Q_UNUSED(uniqueId);
 
+    if (isFadeForbidden()) {
+        return;
+    }
+
     // this has effect only when the track starts to play
     fadeInRequested = true;
     if (fadeInRequestedMilliseconds < lengthMilliseconds) {
@@ -1729,6 +1742,10 @@ void Track::dspPreRequestInterrupt(QUuid uniqueId, qint64 posMilliseconds, bool 
 {
     Q_UNUSED(uniqueId);
 
+    if (isFadeForbidden()) {
+        return;
+    }
+
     // new request overwrites pervious one
     interruptPosition            = posMilliseconds;
     interruptPositionWithFadeOut = withFadeOut;
@@ -1739,6 +1756,10 @@ void Track::dspPreRequestInterrupt(QUuid uniqueId, qint64 posMilliseconds, bool 
 void Track::dspPreRequestAboutToFinishSend(QUuid uniqueId, qint64 posMilliseconds)
 {
     Q_UNUSED(uniqueId);
+
+    if (isFadeForbidden()) {
+        return;
+    }
 
     interruptAboutToFinishSendPosition         = posMilliseconds;
     interruptAboutToFinishSendPositionInternal = posMilliseconds;
@@ -1825,6 +1846,13 @@ void Track::infoAddInfoHtml(QUuid uniqueId, QString info)
 {
     Q_UNUSED(uniqueId);
     Q_UNUSED(info);
+}
+
+
+// private method
+bool Track::isFadeForbidden()
+{
+    return additionalInfo.contains("fade_forbidden") && additionalInfo.value("fade_forbidden").toInt();
 }
 
 

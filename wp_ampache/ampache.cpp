@@ -609,7 +609,7 @@ void Ampache::playlistNext()
             }
         }
         else {
-            query.addQueryItem("mode", "forgotten");
+            //query.addQueryItem("mode", "forgotten");
             query.addQueryItem("limit", QString("%1").arg(playlistRequest.trackCount));
             playlistRequestsSent.append({ playlistRequest.trackCount, playlistRequest.mode });
         }
@@ -983,18 +983,35 @@ void Ampache::networkFinished(QNetworkReply *reply)
         }
         else {
             resolveScheduled = false;
+
+            QVector<TrackInfo> updatedAlbum;
             ExtraInfo  extraInfo;
+            int i = 1;
             foreach (TrackInfo trackInfo, resolveTracksInfo) {
+                trackInfo.album = QString("%1 (Added %2/%3)").arg(trackInfo.album).arg(i).arg(resolveTracksInfo.count());
+                updatedAlbum.append(trackInfo);
+                i++;
+
                 QVariantHash temp = extraInfo.value(trackInfo.url);
                 temp.insert("resolved_open_track", 1);
+                temp.insert("fade_forbidden", 1);
                 extraInfo.insert(trackInfo.url, temp);
             }
-            emit playlist(id, resolveTracksInfo, extraInfo);
+            emit playlist(id, updatedAlbum, extraInfo);
             resolveTracksInfo.clear();
         }
     }
-    else if ((state == OpeningArtistList) || (state == OpeningAlbumList) || (state == OpeningSongList) || (state == OpeningPlaylistList)) {
+    else if ((state == OpeningArtistList) || (state == OpeningAlbumList) || (state == OpeningSongList)) {
         emit openTracksResults(id, openTracks);
+    }
+    else if (state == OpeningPlaylistList) {
+        OpenTracks notDot;
+        foreach (OpenTrack playlist, openTracks) {
+            if (!playlist.label.startsWith('.')) {
+                notDot.append(playlist);
+            }
+        }
+        emit openTracksResults(id, notDot);
     }
     else if (state == Searching) {
         emit searchResults(id, openTracks);
