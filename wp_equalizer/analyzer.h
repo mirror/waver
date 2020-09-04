@@ -135,9 +135,14 @@ class WP_EQUALIZER_EXPORT Analyzer : PluginDspPre_004 {
 
     private:
 
+        const char LIVE_UNKNOWN = 0;
+        const char LIVE_LIVE    = 1;
+        const char LIVE_NOT     = 2;
+
         QUuid id;
 
         bool enableTransitions;
+        char live;
 
         BufferQueue *bufferQueue;
         QMutex      *bufferQueueMutex;

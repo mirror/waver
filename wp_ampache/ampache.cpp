@@ -813,6 +813,14 @@ void Ampache::networkFinished(QNetworkReply *reply)
                     trackInfo.actions.append({ id, 10, "Lyrics search"});
                     trackInfo.actions.append({ id, 11, "Band search"});
                 }
+                if (currentElement.compare("tag") == 0) {
+                    QString tagString = xmlStreamReader.text().toString();
+                    if ((tagString.compare("Live", Qt::CaseInsensitive) == 0) || (tagString.compare("Medley", Qt::CaseInsensitive) == 0) || (tagString.compare("Nonstop", Qt::CaseInsensitive) == 0)) {
+                        if (!liveServerIds.contains(trackServerId)) {
+                            liveServerIds.append(trackServerId);
+                        }
+                    }
+                }
             }
             if (tokenType == QXmlStreamReader::EndElement) {
                 if (xmlStreamReader.name().toString().compare("song") == 0) {
@@ -961,6 +969,15 @@ void Ampache::networkFinished(QNetworkReply *reply)
             variationAlbum = lastReturnedAlbumId;
         }
 
+        QVariantHash tempExtraInfo = playlistExtraInfo.value(trackInfo.url);
+        if (urlsToServerId.contains(trackInfo.url)) {
+            tempExtraInfo.insert("live", liveServerIds.contains(urlsToServerId.value(trackInfo.url)) ? 1 : 0);
+        }
+        else {
+            tempExtraInfo.insert("live", 0);
+        }
+        playlistExtraInfo.insert(trackInfo.url, tempExtraInfo);
+
         if (playlistRequests.count()) {
             QTimer::singleShot(NET_DELAY, this, SLOT(playlistNext()));
         }
@@ -995,6 +1012,12 @@ void Ampache::networkFinished(QNetworkReply *reply)
                 QVariantHash temp = extraInfo.value(trackInfo.url);
                 temp.insert("resolved_open_track", 1);
                 temp.insert("fade_forbidden", 1);
+                if (urlsToServerId.contains(trackInfo.url)) {
+                    temp.insert("live", liveServerIds.contains(urlsToServerId.value(trackInfo.url)) ? 1 : 0);
+                }
+                else {
+                    temp.insert("live", 0);
+                }
                 extraInfo.insert(trackInfo.url, temp);
             }
             emit playlist(id, updatedAlbum, extraInfo);
@@ -1132,6 +1155,9 @@ void Ampache::sendDiagnosticsData()
             break;
         case Flagging:
             diagnosticData.append({ "Status", "Updati8ng flag" });
+            break;
+        case OpeningPlaylistList:
+            diagnosticData.append({ "Status", "Opening playlist list" });
             break;
     }
 

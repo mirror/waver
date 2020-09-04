@@ -124,12 +124,13 @@ class WP_AMPACHE_EXPORT Ampache : public PluginSource_006 {
         TracksInfo               playlistTracksInfo;
         ExtraInfo                playlistExtraInfo;
 
-        QStringList resolveIds;
-        bool        resolveScheduled;
-        TracksInfo  resolveTracksInfo;
+        QStringList     resolveIds;
+        bool            resolveScheduled;
+        TracksInfo      resolveTracksInfo;
 
         qint32              lastReturnedAlbumId;
         QHash<QUrl, qint32> urlsToServerId;
+        QVector<qint32>     liveServerIds;
 
         QString variationSetting;
         int     variationCurrent;

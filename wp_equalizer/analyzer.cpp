@@ -96,6 +96,7 @@ Analyzer::Analyzer()
     resultLastCalculated          = 0;
     decoderFinished               = false;
     sendDiagnostics               = false;
+    live                          = LIVE_UNKNOWN;
 }
 
 
@@ -145,11 +146,16 @@ void Analyzer::loadedGlobalConfiguration(QUuid uniqueId, QJsonDocument configura
 // configuration
 void Analyzer::sqlResults(QUuid persistentUniqueId, bool temporary, QString clientIdentifier, int clientSqlIdentifier, SqlResults results)
 {
-    Q_UNUSED(persistentUniqueId);
     Q_UNUSED(temporary);
-    Q_UNUSED(clientIdentifier);
-    Q_UNUSED(clientSqlIdentifier);
     Q_UNUSED(results);
+
+    if (persistentUniqueId != id) {
+        return;
+    }
+
+    if (clientIdentifier.compare("live") == 0) {
+        live = clientSqlIdentifier ? LIVE_LIVE : LIVE_NOT;
+    }
 }
 
 
@@ -339,10 +345,10 @@ void Analyzer::bufferAvailable(QUuid uniqueId)
             // check some stuff that's needed for transitions
             if (enableTransitions) {
                 // usually there's at least one tenth of a second silence at the begining of tracks; if not, chances are it's a live recording or a medley or something similar
-                if (!firstNonSilentPositionChecked && (fadeOutDetector->getFirstNonSilentMSec() > 0)) {
+                if (!firstNonSilentPositionChecked && (fadeOutDetector->getFirstNonSilentMSec() >= 0)) {
                     firstNonSilentPositionChecked = true;
 
-                    if (fadeOutDetector->getFirstNonSilentMSec() < 100) {
+                    if ((live == LIVE_LIVE) || ((live == LIVE_UNKNOWN) && (fadeOutDetector->getFirstNonSilentMSec() < 100))) {
                         emit requestFadeIn(id, Track::INTERRUPT_FADE_SECONDS * 1000);
                         diagnosticsHash["is_live"] = true;
                     }
@@ -439,7 +445,7 @@ void Analyzer::transition()
     }
 
     // live recording, medley, etc
-    if ((fadeOutDetector->getFirstNonSilentMSec() > 0) && (fadeOutDetector->getFirstNonSilentMSec() < 100)) {
+    if ((fadeOutDetector->getFirstNonSilentMSec() >= 0) && ((live == LIVE_LIVE) || ((live == LIVE_UNKNOWN) && (fadeOutDetector->getFirstNonSilentMSec() < 100)))) {
         qint64 position = fadeOutDetector->getLastNonSilentMSec() - (Track::INTERRUPT_FADE_SECONDS * 1000) - 500;
 
         emit requestInterrupt(id, position, true);

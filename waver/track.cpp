@@ -114,6 +114,11 @@ Track::Track(PluginLibsLoader::LoadedLibs *loadedLibs, TrackInfo trackInfo, QVar
         mainOutputId = outputPlugins.keys().at(0);
     }
 
+    // send info of "live" to analyzer, this is a bit of a hack, but hey it works
+    if (additionalInfo.contains("live")) {
+        emit executedSqlResults(QUuid("{5C60545B-5E0D-4CD8-9296-227442ADC49B}"), false, "live", additionalInfo.value("live").toInt(), QVector<QVariantHash>());
+    }
+
     // convert priority maps to vectors (iterating through a map is done in ascending order, and greater number means less priority, so it works out well)
     QMap<int, QUuid>::const_iterator i;
     for (i = decoderPriorityMap.begin(); i != decoderPriorityMap.end(); ++i) {
@@ -702,7 +707,7 @@ void Track::setStatus(Status status)
             emit playBegin(dspPluginId);
         }
 
-        if (trackInfo.cast || (fadeInRequested && !isFadeForbidden())) {
+        if (trackInfo.cast || ((fadeInRequested || (additionalInfo.contains("live") && additionalInfo.value("live").toInt())) && !isFadeForbidden())) {
             fadeDirection  = FADE_DIRECTION_IN;
             fadePercent    = 0;
             fadeSeconds    = (fadeInRequestedMilliseconds == 0 ? INTERRUPT_FADE_SECONDS : fadeInRequestedMilliseconds / 1000);
@@ -730,7 +735,7 @@ void Track::setStatus(Status status)
             emit playBegin(dspPluginId);
         }
 
-        if (trackInfo.cast || (fadeInRequested && !isFadeForbidden())) {
+        if (trackInfo.cast || ((fadeInRequested || (additionalInfo.contains("live") && additionalInfo.value("live").toInt())) && !isFadeForbidden())) {
             fadeDirection  = FADE_DIRECTION_IN;
             fadePercent    = 0;
             fadeSeconds    = (fadeInRequestedMilliseconds == 0 ? INTERRUPT_FADE_SECONDS : fadeInRequestedMilliseconds / 1000);
@@ -1852,6 +1857,10 @@ void Track::infoAddInfoHtml(QUuid uniqueId, QString info)
 // private method
 bool Track::isFadeForbidden()
 {
+    if (additionalInfo.contains("live") && additionalInfo.value("live").toInt()) {
+        return false;
+    }
+
     return additionalInfo.contains("fade_forbidden") && additionalInfo.value("fade_forbidden").toInt();
 }
 
