@@ -96,6 +96,7 @@ RMSMeter::~RMSMeter()
             while (i < (*shMemInstanceCount - 1)) {
                 RMSData *temp = seeker;
                 temp++;
+                *seeker = *temp;
                 seeker = temp;
                 i++;
             }
