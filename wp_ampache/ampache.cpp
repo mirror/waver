@@ -322,7 +322,11 @@ void Ampache::getOpenTracks(QUuid uniqueId, QString parentId)
 
     QUrlQuery query;
     query.addQueryItem("auth", authKey);
-    query.addQueryItem("limit", "none");
+
+    // there was a bug in that Ampache version
+    if (serverApiVersion != 424000) {
+        query.addQueryItem("limit", "none");
+    }
 
     // top level
     if (parentId.length() == 0) {
