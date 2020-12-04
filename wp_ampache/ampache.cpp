@@ -324,7 +324,7 @@ void Ampache::getOpenTracks(QUuid uniqueId, QString parentId)
     query.addQueryItem("auth", authKey);
 
     // there was a bug in that Ampache version
-    if (serverApiVersion != 424000) {
+    if ((serverApiVersion != 424000) && (serverApiVersion != 425000)) {
         query.addQueryItem("limit", "none");
     }
 
