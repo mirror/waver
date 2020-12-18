@@ -1,7 +1,7 @@
 /*
     This file is part of Waver
 
-    Copyright (C) 2017-2019 Peter Papp <peter.papp.p@gmail.com>
+    Copyright (C) 2017-2020 Peter Papp <peter.papp.p@gmail.com>
 
     Please visit https://launchpad.net/waver for details
 
@@ -1131,37 +1131,37 @@ void Ampache::sendDiagnosticsData()
 
     switch (state) {
         case Idle:
-            diagnosticData.append({ "Status", "Idle"});
+            diagnosticData.append((DiagnosticItem){ "Status", "Idle"});
             break;
         case Handshake:
-            diagnosticData.append({ "Status", "Performing handshake" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Performing handshake" });
             break;
         case Playlist:
-            diagnosticData.append({ "Status", "Getting playlist" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Getting playlist" });
             break;
         case Replacement:
-            diagnosticData.append({ "Status", "Getting replacement" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Getting replacement" });
             break;
         case OpeningArtistList:
-            diagnosticData.append({ "Status", "Getting performer's list" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Getting performer's list" });
             break;
         case OpeningAlbumList:
-            diagnosticData.append({ "Status", "Getting album list" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Getting album list" });
             break;
         case OpeningSongList:
-            diagnosticData.append({ "Status", "Getting track list" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Getting track list" });
             break;
         case Searching:
-            diagnosticData.append({ "Status", "Searching" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Searching" });
             break;
         case Resolving:
-            diagnosticData.append({ "Status", "Resolving tracks" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Resolving tracks" });
             break;
         case Flagging:
-            diagnosticData.append({ "Status", "Updati8ng flag" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Updati8ng flag" });
             break;
         case OpeningPlaylistList:
-            diagnosticData.append({ "Status", "Opening playlist list" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Opening playlist list" });
             break;
     }
 

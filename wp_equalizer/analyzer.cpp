@@ -1,7 +1,7 @@
 /*
     This file is part of Waver
 
-    Copyright (C) 2017-2019 Peter Papp <peter.papp.p@gmail.com>
+    Copyright (C) 2017-2020 Peter Papp <peter.papp.p@gmail.com>
 
     Please visit https://launchpad.net/waver for details
 
@@ -484,25 +484,25 @@ void Analyzer::sendDiagnosticsData()
     DiagnosticData diagnosticData;
 
     if (diagnosticsHash.contains("format_supported")) {
-        diagnosticData.append({ "PCM format supported", diagnosticsHash.value("format_supported").toBool() ? "Yes" : "No" });
+        diagnosticData.append((DiagnosticItem){ "PCM format supported", diagnosticsHash.value("format_supported").toBool() ? "Yes" : "No" });
     }
     if (diagnosticsHash.contains("replay_gain")) {
-        diagnosticData.append({ "ReplayGain", QString("%1 dB").arg(diagnosticsHash.value("replay_gain").toDouble(), 0, 'f', 2) });
+        diagnosticData.append((DiagnosticItem){ "ReplayGain", QString("%1 dB").arg(diagnosticsHash.value("replay_gain").toDouble(), 0, 'f', 2) });
     }
     if (diagnosticsHash.contains("is_live")) {
-        diagnosticData.append({ "Live or medley detected", diagnosticsHash.value("is_live").toBool() ? "Yes" : "No" });
+        diagnosticData.append((DiagnosticItem){ "Live or medley detected", diagnosticsHash.value("is_live").toBool() ? "Yes" : "No" });
     }
     if (diagnosticsHash.contains("transition_type")) {
-        diagnosticData.append({ "Transition type", diagnosticsHash.value("transition_type").toString() });
+        diagnosticData.append((DiagnosticItem){ "Transition type", diagnosticsHash.value("transition_type").toString() });
     }
     if (diagnosticsHash.contains("transition_start")) {
-        diagnosticData.append({ "Transition start", QDateTime::fromMSecsSinceEpoch(diagnosticsHash.value("transition_start").toLongLong(), QTimeZone::utc()).toString("hh:mm:ss.zzz") });
+        diagnosticData.append((DiagnosticItem){ "Transition start", QDateTime::fromMSecsSinceEpoch(diagnosticsHash.value("transition_start").toLongLong(), QTimeZone::utc()).toString("hh:mm:ss.zzz") });
     }
     if (diagnosticsHash.contains("transition_length")) {
-        diagnosticData.append({ "Transition length", QDateTime::fromMSecsSinceEpoch(diagnosticsHash.value("transition_length").toLongLong(), QTimeZone::utc()).toString("hh:mm:ss.zzz") });
+        diagnosticData.append((DiagnosticItem){ "Transition length", QDateTime::fromMSecsSinceEpoch(diagnosticsHash.value("transition_length").toLongLong(), QTimeZone::utc()).toString("hh:mm:ss.zzz") });
     }
     if (diagnosticsHash.contains("prev_track_about_to_finish_send")) {
-        diagnosticData.append({ "Early start", QDateTime::fromMSecsSinceEpoch(diagnosticsHash.value("prev_track_about_to_finish_send").toLongLong(), QTimeZone::utc()).toString("hh:mm:ss.zzz") });
+        diagnosticData.append((DiagnosticItem){ "Early start", QDateTime::fromMSecsSinceEpoch(diagnosticsHash.value("prev_track_about_to_finish_send").toLongLong(), QTimeZone::utc()).toString("hh:mm:ss.zzz") });
     }
 
     emit diagnostics(id, diagnosticData);

@@ -1,7 +1,7 @@
 /*
     This file is part of Waver
 
-    Copyright (C) 2017-2019 Peter Papp <peter.papp.p@gmail.com>
+    Copyright (C) 2017-2020 Peter Papp <peter.papp.p@gmail.com>
 
     Please visit https://launchpad.net/waver for details
 
@@ -448,22 +448,22 @@ void RadioSource::globalSqlResults(QUuid persistentUniqueId, bool temporary, QSt
 
         switch (state) {
             case Idle:
-                diagnosticData.append({ "Status", "Idle"});
+                diagnosticData.append((DiagnosticItem){ "Status", "Idle"});
                 break;
             case GenreList:
-                diagnosticData.append({ "Status", "Getting genre list..." });
+                diagnosticData.append((DiagnosticItem){ "Status", "Getting genre list..." });
                 break;
             case StationList:
-                diagnosticData.append({ "Status", "Caching station data..." });
+                diagnosticData.append((DiagnosticItem){ "Status", "Caching station data..." });
                 break;
             case Opening:
-                diagnosticData.append({ "Status", "Getting station data..." });
+                diagnosticData.append((DiagnosticItem){ "Status", "Getting station data..." });
                 break;
             case Searching:
-                diagnosticData.append({ "Status", "Searching stations..." });
+                diagnosticData.append((DiagnosticItem){ "Status", "Searching stations..." });
                 break;
             case TuneIn:
-                diagnosticData.append({ "Status", "Tuning in to stations..." });
+                diagnosticData.append((DiagnosticItem){ "Status", "Tuning in to stations..." });
                 break;
         }
 

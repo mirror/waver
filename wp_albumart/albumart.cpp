@@ -1,7 +1,7 @@
 /*
     This file is part of Waver
 
-    Copyright (C) 2017-2019 Peter Papp <peter.papp.p@gmail.com>
+    Copyright (C) 2017-2020 Peter Papp <peter.papp.p@gmail.com>
 
     Please visit https://launchpad.net/waver for details
 
@@ -492,29 +492,29 @@ void AlbumArt::sendDiagnosticsData()
 
     switch (state) {
         case NotStartedYet:
-            diagnosticData.append({ "Status", "Not started yet"});
+            diagnosticData.append((DiagnosticItem){ "Status", "Not started yet"});
             break;
         case NotToBeChecked:
-            diagnosticData.append({ "Status", "Not needed to be checked" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Not needed to be checked" });
             break;
         case CanNotCheck:
-            diagnosticData.append({ "Status", "Not enough info, can not check" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Not enough info, can not check" });
             break;
         case InAlreadyFailed:
-            diagnosticData.append({ "Status", "Already checked and not found" });
-            diagnosticData.append({ "Next check", QString("On or after %1").arg(nextCheck.toString("yyyy/MM/dd")) });
+            diagnosticData.append((DiagnosticItem){ "Status", "Already checked and not found" });
+            diagnosticData.append((DiagnosticItem){ "Next check", QString("On or after %1").arg(nextCheck.toString("yyyy/MM/dd")) });
             break;
         case CheckStarted:
-            diagnosticData.append({ "Status", "Checking..." });
+            diagnosticData.append((DiagnosticItem){ "Status", "Checking..." });
             break;
         case SuccessLooseMatch:
-            diagnosticData.append({ "Status", "Success, but with loose match" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Success, but with loose match" });
             break;
         case Success:
-            diagnosticData.append({ "Status", "Success" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Success" });
             break;
         case NotFound:
-            diagnosticData.append({ "Status", "Not found" });
+            diagnosticData.append((DiagnosticItem){ "Status", "Not found" });
             break;
     }
 

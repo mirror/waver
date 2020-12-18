@@ -3,7 +3,7 @@
 /*
     This file is part of Waver
 
-    Copyright (C) 2017-2019 Peter Papp <peter.papp.p@gmail.com>
+    Copyright (C) 2017-2020 Peter Papp <peter.papp.p@gmail.com>
 
     Please visit https://launchpad.net/waver for details
 
@@ -362,15 +362,15 @@ void Analyzer::sendDiagnosticsData()
 {
     DiagnosticData diagnosticData;
 
-    diagnosticData.append({ "Enabled", enabled ? "Yes" : "No" });
+    diagnosticData.append((DiagnosticItem){ "Enabled", enabled ? "Yes" : "No" });
     if (cast) {
-        diagnosticData.append({ "Status", "Not needed to be analyzed" });
+        diagnosticData.append((DiagnosticItem){ "Status", "Not needed to be analyzed" });
     }
     if (!chromaprint.isEmpty()) {
-        diagnosticData.append({ "Length of fingerprint", QString("%1").arg(chromaprint.length()) });
+        diagnosticData.append((DiagnosticItem){ "Length of fingerprint", QString("%1").arg(chromaprint.length()) });
     }
     if (decoderFinished) {
-        diagnosticData.append({ "Duration", QString("%1").arg(duration / (1000 * 1000)) });
+        diagnosticData.append((DiagnosticItem){ "Duration", QString("%1").arg(duration / (1000 * 1000)) });
     }
 
     emit diagnostics(id, diagnosticData);
