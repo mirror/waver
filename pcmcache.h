@@ -1,0 +1,80 @@
+/*
+    This file is part of Waver
+    Copyright (C) 2021 Peter Papp
+    Please visit https://launchpad.net/waver for details
+*/
+
+
+#ifndef PCMCACHE_H
+#define PCMCACHE_H
+
+#include <QAudioBuffer>
+#include <QAudioFormat>
+#include <QFile>
+#include <QMutex>
+#include <QObject>
+#include <QRegExp>
+#include <QStandardPaths>
+#include <QUuid>
+#include <QVector>
+
+#include "globals.h"
+
+#ifdef QT_DEBUG
+    #include <QDebug>
+#endif
+
+
+class PCMCache : public QObject
+{
+    Q_OBJECT
+
+
+    public:
+
+        static const qint32 BUFFER_CREATE_MILLISECONDS = 50;
+        static const long   DEFAULT_PCM_MEMORY         = 50 * 1024 * 1024;
+
+        explicit PCMCache(QAudioFormat format, long lengthMilliseconds, bool radioStation, QObject *parent = nullptr);
+        ~PCMCache();
+
+        void storeBuffer(QAudioBuffer buffer);
+
+        qint64 size();
+        bool   isFile();
+
+
+    private:
+
+        QAudioFormat format;
+        qint64       lengthMilliseconds;
+        bool         radioStation;
+
+        QMutex mutex;
+
+        QByteArray *memory;
+        QFile      *file;
+
+        qint64 readPosition;
+
+        bool unfullfilledRequest;
+
+        long availableMemory();
+
+
+    public slots:
+
+        void run();
+
+        void requestNextPCMChunk();
+        void requestTimestampPCMChunk(long milliseconds);
+
+
+    signals:
+
+        void pcmChunk(QByteArray PCM, qint64 startMicroseconds, bool fromTimestamp);
+        void error(QString info, QString error);
+
+};
+
+#endif // PCMCACHE_H

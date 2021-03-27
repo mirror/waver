@@ -1,0 +1,38 @@
+<RCC>
+    <qresource prefix="/">
+        <file>icons/browse.ico</file>
+        <file>icons/enqueue.ico</file>
+        <file>icons/enqueue_top.ico</file>
+        <file>icons/expand.ico</file>
+        <file>icons/local.ico</file>
+        <file>icons/menu.ico</file>
+        <file>icons/pause.ico</file>
+        <file>icons/play.ico</file>
+        <file>icons/playlist.ico</file>
+        <file>icons/radio_station.ico</file>
+        <file>icons/refresh.ico</file>
+        <file>icons/remote.ico</file>
+        <file>icons/shuffle.ico</file>
+        <file>icons/skip_next.ico</file>
+        <file>icons/skip_previous.ico</file>
+        <file>icons/star.ico</file>
+        <file>icons/stop.ico</file>
+        <file>images/waver.png</file>
+        <file>qml/Main.qml</file>
+        <file>qml/ImgSwp.qml</file>
+        <file>qml/Explorer.qml</file>
+        <file>icons/check_checked.ico</file>
+        <file>icons/check_unchecked.ico</file>
+        <file>qml/Playlist.qml</file>
+        <file>qml/PeakMeter.qml</file>
+        <file>qml/Servers.qml</file>
+        <file>icons/audio_file.ico</file>
+        <file>icons/search.ico</file>
+        <file>qml/GlobalConstants.qml</file>
+        <file>icons/tag.ico</file>
+        <file>icons/remove.ico</file>
+        <file>icons/move_to_top.ico</file>
+        <file>qml/Options.qml</file>
+        <file>qml/About.qml</file>
+    </qresource>
+</RCC>

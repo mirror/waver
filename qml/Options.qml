@@ -1,0 +1,491 @@
+import QtQml 2.3
+import QtQuick 2.12
+import QtQuick.Controls 2.3
+import QtQuick.Layouts 1.3
+
+Dialog {
+    title: qsTr("Options")
+    modal: true
+    focus: true
+    standardButtons: Dialog.Ok | Dialog.Apply | Dialog.Cancel
+
+    signal optionsSending(string optionsJSON)
+
+    function setOptions(optionsObj)
+    {
+        if (optionsObj.eq_disable) {
+            preAmp.enabled = false;
+            eq1.enabled = false;
+            eq2.enabled = false;
+            eq3.enabled = false;
+            eq4.enabled = false;
+            eq5.enabled = false;
+            eq6.enabled = false;
+            eq7.enabled = false;
+            eq8.enabled = false;
+            eq9.enabled = false;
+            eq10.enabled = false;
+        }
+        else {
+            preAmp.enabled = true;
+            preAmp.value = optionsObj.pre_amp;
+
+            eq1Label.text = optionsObj.eq1Label;
+            eq1.enabled = true;
+            eq1.value = optionsObj.eq1;
+            eq2Label.text = optionsObj.eq2Label;
+            eq2.enabled = true;
+            eq2.value = optionsObj.eq2;
+            eq3Label.text = optionsObj.eq3Label;
+            eq3.enabled = true;
+            eq3.value = optionsObj.eq3;
+            eq4Label.text = optionsObj.eq4Label;
+            eq4.enabled = true;
+            eq4.value = optionsObj.eq4;
+            eq5Label.text = optionsObj.eq5Label;
+            eq5.enabled = true;
+            eq5.value = optionsObj.eq5;
+            eq6Label.text = optionsObj.eq6Label;
+            eq6.enabled = true;
+            eq6.value = optionsObj.eq6;
+            eq7Label.text = optionsObj.eq7Label;
+            eq7.enabled = true;
+            eq7.value = optionsObj.eq7;
+            eq8Label.text = optionsObj.eq8Label;
+            eq8.enabled = true;
+            eq8.value = optionsObj.eq8;
+            eq9Label.text = optionsObj.eq9Label;
+            eq9.enabled = true;
+            eq9.value = optionsObj.eq9;
+            eq10Label.text = optionsObj.eq10Label;
+            eq10.enabled = true;
+            eq10.value = optionsObj.eq10;
+        }
+
+        shuffle_autostart.checked = optionsObj.shuffle_autostart === "true" ? true : false;
+        shuffle_delay_seconds.value = optionsObj.shuffle_delay_seconds;
+        shuffle_count.value = optionsObj.shuffle_count;
+        shuffle_favorite_frequency.currentIndex = optionsObj.shuffle_favorite_frequency <= internal.shuffle_favorite_frequent ? 2 : optionsObj.shuffle_favorite_frequency >= internal.shuffle_favorite_rare ? 0 : 1;
+        shuffle_operator.currentIndex = optionsObj.shuffle_operator === "or" ? 1 : 0;
+        random_lists_count.value = optionsObj.random_lists_count;
+
+        hide_dot_playlists.checked = optionsObj.hide_dot_playlists === "true" ? true : false;
+        fade_tags.text = optionsObj.fade_tags;
+        crossfade_tags.text = optionsObj.crossfade_tags;
+    }
+
+    onAccepted: internal.sendOptions()
+    onApplied: internal.sendOptions()
+
+    QtObject {
+        id: internal
+
+        readonly property int shuffle_favorite_rare    : 15;
+        readonly property int shuffle_favorite_normal  : 9;
+        readonly property int shuffle_favorite_frequent: 4;
+
+        function sendOptions()
+        {
+            var optionsObj = {
+                eq_disable: !eq1.enabled,
+                pre_amp: preAmp.value,
+                eq1: eq1.value,
+                eq2: eq2.value,
+                eq3: eq3.value,
+                eq4: eq4.value,
+                eq5: eq5.value,
+                eq6: eq6.value,
+                eq7: eq7.value,
+                eq8: eq8.value,
+                eq9: eq9.value,
+                eq10: eq10.value,
+                shuffle_autostart: shuffle_autostart.checked,
+                shuffle_delay_seconds: shuffle_delay_seconds.value,
+                shuffle_count: shuffle_count.value,
+                random_lists_count: random_lists_count.value,
+                shuffle_favorite_frequency: shuffle_favorite_frequency.currentIndex == 0 ? shuffle_favorite_rare : shuffle_favorite_frequency.currentIndex == 1 ? shuffle_favorite_normal : shuffle_favorite_frequent,
+                shuffle_operator: shuffle_operator.currentIndex == 0 ? 'and' : 'or',
+                hide_dot_playlists: hide_dot_playlists.checked,
+                fade_tags: fade_tags.text,
+                crossfade_tags: crossfade_tags.text,
+            };
+            optionsSending(JSON.stringify(optionsObj));
+        }
+    }
+
+
+    TabBar {
+        id: optionsTabs
+
+        anchors.top: parent.top
+        anchors.left: parent.left
+        anchors.right: parent.right
+        padding: 7
+
+        TabButton {
+            text: qsTr("Equalizer")
+        }
+        TabButton {
+            text: qsTr("Shuffle")
+        }
+        TabButton {
+            text: qsTr("General")
+        }
+    }
+
+    StackLayout {
+        anchors.top: optionsTabs.bottom
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
+
+        currentIndex: optionsTabs.currentIndex
+
+        Row {
+            x: 10
+            y: 10
+            width: parent.width - 20
+            height: parent.height - 20
+
+            Column {
+                height: parent.height
+                width: parent.width / 12
+                Slider {
+                    id: preAmp
+                    height: parent.height - preAmpLabel.height
+                    anchors.horizontalCenter: preAmpLabel.horizontalCenter
+                    orientation: Qt.Vertical
+                    from: -12
+                    to: 6
+                }
+                Label {
+                    id: preAmpLabel
+                    text: qsTr("preAmp")
+                }
+            }
+            Column {
+                height: parent.height
+                width: parent.width / 12
+            }
+            Column {
+                height: parent.height
+                width: parent.width / 12
+                Slider {
+                    id: eq1
+                    height: parent.height - preAmpLabel.height
+                    anchors.horizontalCenter: eq1Label.horizontalCenter
+                    orientation: Qt.Vertical
+                    from: -12
+                    to: 12
+                }
+                Label {
+                    id: eq1Label
+                    text: qsTr("EQ1")
+                }
+            }
+            Column {
+                height: parent.height
+                width: parent.width / 12
+                Slider {
+                    id: eq2
+                    height: parent.height - preAmpLabel.height
+                    anchors.horizontalCenter: eq2Label.horizontalCenter
+                    orientation: Qt.Vertical
+                    from: -12
+                    to: 12
+                }
+                Label {
+                    id: eq2Label
+                    text: qsTr("EQ2")
+                }
+            }
+            Column {
+                height: parent.height
+                width: parent.width / 12
+                Slider {
+                    id: eq3
+                    height: parent.height - preAmpLabel.height
+                    anchors.horizontalCenter: eq3Label.horizontalCenter
+                    orientation: Qt.Vertical
+                    from: -12
+                    to: 12
+                }
+                Label {
+                    id: eq3Label
+                    text: qsTr("EQ3")
+                }
+            }
+            Column {
+                height: parent.height
+                width: parent.width / 12
+                Slider {
+                    id: eq4
+                    height: parent.height - preAmpLabel.height
+                    anchors.horizontalCenter: eq4Label.horizontalCenter
+                    orientation: Qt.Vertical
+                    from: -12
+                    to: 12
+                }
+
+                Label {
+                    id: eq4Label
+                    text: qsTr("EQ4")
+                }
+            }
+            Column {
+                height: parent.height
+                width: parent.width / 12
+                Slider {
+                    id: eq5
+                    height: parent.height - preAmpLabel.height
+                    anchors.horizontalCenter: eq5Label.horizontalCenter
+                    orientation: Qt.Vertical
+                    from: -12
+                    to: 12
+                }
+                Label {
+                    id: eq5Label
+                    text: qsTr("EQ5")
+                }
+            }
+            Column {
+                height: parent.height
+                width: parent.width / 12
+                Slider {
+                    id: eq6
+                    height: parent.height - preAmpLabel.height
+                    anchors.horizontalCenter: eq6Label.horizontalCenter
+                    orientation: Qt.Vertical
+                    from: -12
+                    to: 12
+                }
+                Label {
+                    id: eq6Label
+                    text: qsTr("EQ6")
+                }
+            }
+            Column {
+                height: parent.height
+                width: parent.width / 12
+                Slider {
+                    id: eq7
+                    height: parent.height - preAmpLabel.height
+                    anchors.horizontalCenter: eq7Label.horizontalCenter
+                    orientation: Qt.Vertical
+                    from: -12
+                    to: 12
+                }
+                Label {
+                    id: eq7Label
+                    text: qsTr("EQ7")
+                }
+            }
+            Column {
+                height: parent.height
+                width: parent.width / 12
+                Slider {
+                    id: eq8
+                    height: parent.height - preAmpLabel.height
+                    anchors.horizontalCenter: eq8Label.horizontalCenter
+                    orientation: Qt.Vertical
+                    from: -12
+                    to: 12
+                }
+                Label {
+                    id: eq8Label
+                    text: qsTr("EQ8")
+                }
+            }
+            Column {
+                height: parent.height
+                width: parent.width / 12
+                Slider {
+                    id: eq9
+                    height: parent.height - preAmpLabel.height
+                    anchors.horizontalCenter: eq9Label.horizontalCenter
+                    orientation: Qt.Vertical
+                    from: -12
+                    to: 12
+                }
+                Label {
+                    id: eq9Label
+                    text: qsTr("EQ9")
+                }
+            }
+            Column {
+                height: parent.height
+                width: parent.width / 12
+                Slider {
+                    id: eq10
+                    height: parent.height - preAmpLabel.height
+                    anchors.horizontalCenter: eq10Label.horizontalCenter
+                    orientation: Qt.Vertical
+                    from: -12
+                    to: 12
+                }
+                Label {
+                    id: eq10Label
+                    text: qsTr("EQ10")
+                }
+            }
+        }
+
+        Column {
+            x: 10
+            y: 10
+            width: parent.width - 20
+            height: parent.height - 20
+
+            Row {
+                CheckBox {
+                    id: shuffle_autostart
+                    text: qsTr("Autostart Shuffle")
+                }
+            }
+            Row {
+                Label {
+                    width: parent.parent.width / 3
+                    anchors.verticalCenter: shuffle_delay_seconds.verticalCenter
+                    text: qsTr("Delay Before Autostart (seconds)")
+                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                }
+                SpinBox {
+                    id: shuffle_delay_seconds
+                    from: 2
+                    to: 60
+                }
+            }
+            Row {
+                Label {
+                    width: parent.parent.width / 3
+                    anchors.verticalCenter: shuffle_count.verticalCenter
+                    text: qsTr("Song Count")
+                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                }
+                SpinBox {
+                    id: shuffle_count
+                    from: 3
+                    to: 33
+                }
+            }
+            Row {
+                Label {
+                    width: parent.parent.width / 3
+                    anchors.verticalCenter: shuffle_favorite_frequency.verticalCenter
+                    text: qsTr("Favorites")
+                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                }
+                ComboBox {
+                    id: shuffle_favorite_frequency
+                    width: parent.parent.width / 3 * 2
+                    model: ListModel {
+                        ListElement {
+                          text: qsTr("Rare")
+                        }
+                        ListElement {
+                          text: qsTr("Normal")
+                        }
+                        ListElement {
+                          text: qsTr("Frequent")
+                        }
+                    }
+                }
+            }
+            Row {
+                Label {
+                    width: parent.parent.width / 3
+                    anchors.verticalCenter: shuffle_operator.verticalCenter
+                    text: qsTr("Labels Operator")
+                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                }
+                ComboBox {
+                    id: shuffle_operator
+                    width: parent.parent.width / 3 * 2
+                    model: ListModel {
+                        ListElement {
+                          text: qsTr("AND - Match all")
+                        }
+                        ListElement {
+                          text: qsTr("OR - Match any")
+                        }
+                    }
+                }
+            }
+            Row {
+                topPadding: 17
+                bottomPadding: 17
+
+                Rectangle {
+                    x: 0
+                    y: 0
+                    width: parent.parent.width
+                    height: 1
+                    color: "#AAAAAA"
+                }
+            }
+            Row {
+                Label {
+                    width: parent.parent.width / 3
+                    anchors.verticalCenter: random_lists_count.verticalCenter
+                    text: qsTr("Song Count: Random lists ('Play artist', 'Never Played', etc.)")
+                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                }
+                SpinBox {
+                    id: random_lists_count
+                    from: 3
+                    to: 33
+                }
+            }
+        }
+
+        Column {
+            x: 10
+            y: 10
+            width: parent.width - 20
+            height: parent.height - 20
+
+            Row {
+                CheckBox {
+                    id: hide_dot_playlists
+                    text: qsTr("Hide playlists whose name starts with a dot")
+                }
+            }
+            Row {
+                topPadding: 17
+                bottomPadding: 17
+
+                Rectangle {
+                    x: 0
+                    y: 0
+                    width: parent.parent.width
+                    height: 1
+                    color: "#AAAAAA"
+                }
+            }
+            Row {
+                Label {
+                    width: parent.parent.width / 4
+                    anchors.verticalCenter: fade_tags.verticalCenter
+                    text: qsTr("Fade Tags")
+                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                }
+                TextField {
+                    id: fade_tags
+                    width: parent.parent.width / 4 * 3
+                }
+            }
+            Row {
+                Label {
+                    width: parent.parent.width / 4
+                    anchors.verticalCenter: crossfade_tags.verticalCenter
+                    text: qsTr("Crossfade Tags")
+                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                }
+                TextField {
+                    id: crossfade_tags
+                    width: parent.parent.width / 4 * 3
+                }
+            }
+        }
+    }
+}

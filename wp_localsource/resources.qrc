@@ -1,5 +1,0 @@
-<RCC>
-    <qresource prefix="/">
-        <file>LSSettings.qml</file>
-    </qresource>
-</RCC>
