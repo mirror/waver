@@ -67,5 +67,5 @@ unix:!android {
 }
 
 windows {
-    LIBS += -L$$PWD/mpg123lib/win32 -lqt5keychain
+    LIBS += -lqt5keychain #-L$$PWD/mpg123lib/win32
 }

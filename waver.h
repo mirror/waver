@@ -139,7 +139,7 @@ class Waver : public QObject, PeakCallback
 
         void connectTrackSignals(Track *track, bool newConnect = true);
         bool isCrossfade(Track *track1, Track *track2);
-        bool killPreviousTrack();
+        void killPreviousTrack();
 
         void startShuffleCountdown();
         void stopShuffleCountdown();

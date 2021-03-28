@@ -18,7 +18,9 @@ ReplayGainCalculator::ReplayGainCalculator(IIRFilter::SampleTypes sampleType, in
     int16Max   = std::numeric_limits<qint16>::max();
     int16Range = int16Max - int16Min;
 
-    double sampleMax;
+    sampleMin = int16Min;
+
+    double sampleMax = int16Max;
     switch (sampleType) {
         case IIRFilter::int8Sample:
             sampleMin = std::numeric_limits<qint8>::min();

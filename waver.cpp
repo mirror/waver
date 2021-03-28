@@ -400,7 +400,7 @@ void Waver::itemActionLocal(QString id, int action, QVariantMap extra)
         Track *track = new Track(trackInfo, peakCallbackInfo);
         connectTrackSignals(track);
 
-        if (action == globalConstant("action_enqueue") == 0) {
+        if (action == globalConstant("action_enqueue")) {
             playlist.append(track);
         }
         else {
@@ -740,7 +740,7 @@ bool Waver::isShutdownCompleted()
 }
 
 
-bool Waver::killPreviousTrack()
+void Waver::killPreviousTrack()
 {
     if (previousTrack != nullptr) {
         connectTrackSignals(previousTrack, false);
