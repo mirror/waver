@@ -17,7 +17,7 @@ WaverApplication::WaverApplication(int &argc, char **argv) : QGuiApplication(arg
     setOrganizationDomain("pppphun.com");
     setApplicationName("Waver");
     setApplicationVersion(QString("%1.%2").arg(VERSION_MAJOR).arg(VERSION_MINOR));
-    setWindowIcon(QIcon("qrc:/images/Waver.png"));
+    setWindowIcon(QIcon("qrc:/images/waver.png"));
 
     if ((QSysInfo::productType().compare("windows", Qt::CaseInsensitive) == 0) || (QSysInfo::productType().compare("winrt", Qt::CaseInsensitive) == 0)) {
         QQuickStyle::setStyle("Universal");
