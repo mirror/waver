@@ -17,6 +17,7 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
     this->trackInfo = trackInfo;
 
     peakCallbackInfo.trackPointer = static_cast<void *>(this);
+
     this->peakCallbackInfo = peakCallbackInfo;
 
     currentStatus       = Idle;

@@ -70,6 +70,12 @@ void DecoderGenericNetworkSource::connectionTimeout()
 }
 
 
+void DecoderGenericNetworkSource::emitReady()
+{
+    emit ready();
+}
+
+
 bool DecoderGenericNetworkSource::isFinshed()
 {
     return downloadFinished;
@@ -179,12 +185,6 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
         }
     }
 
-
-
-
-
-
-
     // add it the buffer
     QByteArray *bufferData = new QByteArray(data.constData(), data.count());
     mutex.lock();
@@ -193,7 +193,7 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
 
     // let the world know when pre-caching is done
     if (!readyEmitted && (bytesReceived > (bytesTotal > 0 ? qMin(bytesTotal, (qint64)1024 * 1024) : 10240))) {
-        emit ready();
+        QTimer::singleShot(250, this, &DecoderGenericNetworkSource::emitReady);
         readyEmitted = true;
     }
 

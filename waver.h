@@ -30,7 +30,6 @@
 #include <taglib/tpropertymap.h>
 #include <taglib/tstring.h>
 
-
 #ifdef QT_DEBUG
     #include <QDebug>
 #endif
@@ -107,6 +106,15 @@ class Waver : public QObject, PeakCallback
         QObject    *globalConstants;
 
         PeakCallbackInfo peakCallbackInfo;
+        int              peakTimerCount;
+        int              peakTimerLagCount;
+        qint64           peakFPS;
+        QMutex           peakFPSMutex;
+        qint64           maxPeakFPS;
+        qint64           peakFPSLagCount;
+        qint64           peakFPSIncreaseStart;
+        bool             peakDelayOn;
+        qint64           peakDelayMilliseconds;
 
         Track                   *previousTrack;
         Track                   *currentTrack;
@@ -220,6 +228,7 @@ class Waver : public QObject, PeakCallback
         void uiSetTrackBufferData(QVariant memoryUsageText);
         void uiSetTrackReplayGain(QVariant target, QVariant current);
         void uiSetPeakMeter(QVariant left, QVariant right);
+        void uiSetPeakFPS(QVariant fpsText);
         void uiSetShuffleCountdown(QVariant percent);
 
         void uiSetImage(QVariant image);

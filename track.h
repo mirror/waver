@@ -101,8 +101,9 @@ class Track : public QObject
         };
 
 
-        TrackInfo                      trackInfo;
-        QStringList                    fadeTags;
+        TrackInfo   trackInfo;
+        QStringList fadeTags;
+
         PeakCallback::PeakCallbackInfo peakCallbackInfo;
 
         QAudioFormat desiredPCMFormat;

@@ -142,6 +142,11 @@ ApplicationWindow {
         art.swapImage(image);
     }
 
+    function setPeakFPS(fpsText)
+    {
+        peakFPS.text = fpsText;
+    }
+
     function setPeakMeter(l, r)
     {
         peakMeter.setPeak(l, r);
@@ -329,7 +334,7 @@ ApplicationWindow {
                 id: tags
                 text: "-"
                 leftPadding: 5
-                width: parent.width / 3
+                width: parent.width / 10 * 3
             }
             Label {
                 anchors.left: tags.right
@@ -337,7 +342,7 @@ ApplicationWindow {
                 id: status
                 text: qsTr("Idle")
                 leftPadding: 5
-                width: parent.width / 3
+                width: parent.width / 10 * 2
             }
             Label {
                 anchors.left: status.right
@@ -345,7 +350,7 @@ ApplicationWindow {
                 id: bufferSize
                 text: "0B / 0B"
                 leftPadding: 5
-                width: parent.width / 6
+                width: parent.width / 10 * 2
             }
             Label {
                 anchors.left: bufferSize.right
@@ -353,7 +358,15 @@ ApplicationWindow {
                 id: gain
                 text: "0dB / 0dB"
                 leftPadding: 5
-                width: parent.width / 6
+                width: parent.width / 10 * 2
+            }
+            Label {
+                anchors.left: gain.right
+                anchors.verticalCenter: parent.verticalCenter
+                id: peakFPS
+                text: "0FPS"
+                leftPadding: 5
+                width: parent.width / 10 * 1
             }
         }
     }

@@ -23,6 +23,10 @@ static const bool    DEFAULT_HIDE_DOT_PLAYLIST = true;
 static const QString DEFAULT_FADE_TAGS         = "live,medley,nonstop";
 static const QString DEFAULT_CROSSFADE_TAGS    = "live";
 
+static const int    DEFAULT_MAX_PEAK_FPS  = 25;
+static const bool   DEFAULT_PEAK_DELAY_ON = false;
+static const qint64 DEFAULT_PEAK_DELAY_MS = 333;
+
 static const double DEFAULT_PREAMP = 3.0;
 static const double DEFAULT_EQ1    = 6.0;
 static const double DEFAULT_EQ2    = 3.0;

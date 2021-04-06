@@ -29,10 +29,8 @@ OutputFeeder::OutputFeeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, 
 
     this->peakCallbackInfo = peakCallbackInfo;
 
-    channelCount             = audioFormat.channelCount();
-    channelIndex             = 0;
-    audioFramesPerPeakPeriod = audioFormat.framesForDuration(PEAK_PERIOD_MICROSECONDS);
-    frameCount               = 0;
+    channelCount = audioFormat.channelCount();
+    channelIndex = 0;
 
     double sampleMax = 0;
     if (audioFormat.sampleType() == QAudioFormat::SignedInt) {
@@ -92,6 +90,10 @@ void OutputFeeder::run()
 
     qint64 peakDelayTemp;
     qint64 peakDelay;
+
+    peakCallbackInfo.peakFPSMutex->lock();
+    int audioFramesPerPeakPeriod = audioFormat.framesForDuration(MICROSECONDS_PER_SECOND / *peakCallbackInfo.peakFPS);
+    peakCallbackInfo.peakFPSMutex->unlock();
 
     int bytesToWrite;
     while (!QThread::currentThread()->isInterruptionRequested()) {
@@ -174,8 +176,11 @@ void OutputFeeder::run()
                     }
 
                     if (frameCount == audioFramesPerPeakPeriod) {
-                        frameCount     = 0;
-                        peakDelayTemp += PEAK_PERIOD_MICROSECONDS;
+                        frameCount = 0;
+
+                        peakCallbackInfo.peakFPSMutex->lock();
+                        peakDelayTemp += MICROSECONDS_PER_SECOND / *peakCallbackInfo.peakFPS;
+                        peakCallbackInfo.peakFPSMutex->unlock();
 
                         peakDelay = peakDelayTemp - audioOutput->processedUSecs();
 
@@ -183,6 +188,10 @@ void OutputFeeder::run()
 
                         lPeak = 0;
                         rPeak = 0;
+
+                        peakCallbackInfo.peakFPSMutex->lock();
+                        audioFramesPerPeakPeriod = audioFormat.framesForDuration(MICROSECONDS_PER_SECOND / *peakCallbackInfo.peakFPS);
+                        peakCallbackInfo.peakFPSMutex->unlock();
                     }
                 }
 

@@ -93,6 +93,8 @@ class DecoderGenericNetworkSource : public QIODevice
 
     private slots:
 
+        void emitReady();
+
         void networkDownloadProgress(qint64 bytesReceived, qint64 bytesTotal);
         void networkError(QNetworkReply::NetworkError code);
 

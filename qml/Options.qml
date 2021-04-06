@@ -72,6 +72,10 @@ Dialog {
         hide_dot_playlists.checked = optionsObj.hide_dot_playlists === "true" ? true : false;
         fade_tags.text = optionsObj.fade_tags;
         crossfade_tags.text = optionsObj.crossfade_tags;
+
+        max_peak_fps.value = optionsObj.max_peak_fps;
+        peak_delay_on.checked = optionsObj.peak_delay_on === "true" ? true : false;
+        peak_delay_ms.value = optionsObj.peak_delay_ms;
     }
 
     onAccepted: internal.sendOptions()
@@ -108,6 +112,9 @@ Dialog {
                 hide_dot_playlists: hide_dot_playlists.checked,
                 fade_tags: fade_tags.text,
                 crossfade_tags: crossfade_tags.text,
+                max_peak_fps: max_peak_fps.value,
+                peak_delay_on: peak_delay_on.checked,
+                peak_delay_ms: peak_delay_ms.value
             };
             optionsSending(JSON.stringify(optionsObj));
         }
@@ -330,160 +337,230 @@ Dialog {
             }
         }
 
-        Column {
+        Flickable {
             x: 10
             y: 10
             width: parent.width - 20
             height: parent.height - 20
+            clip: true
+            contentHeight: shuffleColumn.height
 
-            Row {
-                CheckBox {
-                    id: shuffle_autostart
-                    text: qsTr("Autostart Shuffle")
+            ScrollBar.vertical: ScrollBar { }
+
+            Column {
+                id: shuffleColumn
+                width: parent.width - 20
+
+                Row {
+                    CheckBox {
+                        id: shuffle_autostart
+                        text: qsTr("Autostart Shuffle")
+                    }
                 }
-            }
-            Row {
-                Label {
-                    width: parent.parent.width / 3
-                    anchors.verticalCenter: shuffle_delay_seconds.verticalCenter
-                    text: qsTr("Delay Before Autostart (seconds)")
-                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
+                        anchors.verticalCenter: shuffle_delay_seconds.verticalCenter
+                        text: qsTr("Delay Before Autostart (seconds)")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    SpinBox {
+                        id: shuffle_delay_seconds
+                        from: 2
+                        to: 60
+                    }
                 }
-                SpinBox {
-                    id: shuffle_delay_seconds
-                    from: 2
-                    to: 60
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
+                        anchors.verticalCenter: shuffle_count.verticalCenter
+                        text: qsTr("Song Count")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    SpinBox {
+                        id: shuffle_count
+                        from: 3
+                        to: 33
+                    }
                 }
-            }
-            Row {
-                Label {
-                    width: parent.parent.width / 3
-                    anchors.verticalCenter: shuffle_count.verticalCenter
-                    text: qsTr("Song Count")
-                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
-                }
-                SpinBox {
-                    id: shuffle_count
-                    from: 3
-                    to: 33
-                }
-            }
-            Row {
-                Label {
-                    width: parent.parent.width / 3
-                    anchors.verticalCenter: shuffle_favorite_frequency.verticalCenter
-                    text: qsTr("Favorites")
-                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
-                }
-                ComboBox {
-                    id: shuffle_favorite_frequency
-                    width: parent.parent.width / 3 * 2
-                    model: ListModel {
-                        ListElement {
-                          text: qsTr("Rare")
-                        }
-                        ListElement {
-                          text: qsTr("Normal")
-                        }
-                        ListElement {
-                          text: qsTr("Frequent")
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
+                        anchors.verticalCenter: shuffle_favorite_frequency.verticalCenter
+                        text: qsTr("Favorites")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    ComboBox {
+                        id: shuffle_favorite_frequency
+                        width: parent.parent.width / 3 * 2
+                        model: ListModel {
+                            ListElement {
+                              text: qsTr("Rare")
+                            }
+                            ListElement {
+                              text: qsTr("Normal")
+                            }
+                            ListElement {
+                              text: qsTr("Frequent")
+                            }
                         }
                     }
                 }
-            }
-            Row {
-                Label {
-                    width: parent.parent.width / 3
-                    anchors.verticalCenter: shuffle_operator.verticalCenter
-                    text: qsTr("Labels Operator")
-                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
-                }
-                ComboBox {
-                    id: shuffle_operator
-                    width: parent.parent.width / 3 * 2
-                    model: ListModel {
-                        ListElement {
-                          text: qsTr("AND - Match all")
-                        }
-                        ListElement {
-                          text: qsTr("OR - Match any")
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
+                        anchors.verticalCenter: shuffle_operator.verticalCenter
+                        text: qsTr("Labels Operator")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    ComboBox {
+                        id: shuffle_operator
+                        width: parent.parent.width / 3 * 2
+                        model: ListModel {
+                            ListElement {
+                              text: qsTr("AND - Match all")
+                            }
+                            ListElement {
+                              text: qsTr("OR - Match any")
+                            }
                         }
                     }
                 }
-            }
-            Row {
-                topPadding: 17
-                bottomPadding: 17
+                Row {
+                    topPadding: 17
+                    bottomPadding: 17
 
-                Rectangle {
-                    x: 0
-                    y: 0
-                    width: parent.parent.width
-                    height: 1
-                    color: "#AAAAAA"
+                    Rectangle {
+                        x: 0
+                        y: 0
+                        width: parent.parent.width
+                        height: 1
+                        color: "#AAAAAA"
+                    }
                 }
-            }
-            Row {
-                Label {
-                    width: parent.parent.width / 3
-                    anchors.verticalCenter: random_lists_count.verticalCenter
-                    text: qsTr("Song Count: Random lists ('Play artist', 'Never Played', etc.)")
-                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
-                }
-                SpinBox {
-                    id: random_lists_count
-                    from: 3
-                    to: 33
+                Row {
+                    Label {
+                        width: parent.parent.width / 2
+                        anchors.verticalCenter: random_lists_count.verticalCenter
+                        text: qsTr("Song Count: Random lists ('Play artist', 'Never Played', etc.)")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    SpinBox {
+                        id: random_lists_count
+                        from: 3
+                        to: 33
+                    }
                 }
             }
         }
 
-        Column {
+        Flickable {
             x: 10
             y: 10
             width: parent.width - 20
             height: parent.height - 20
+            clip: true
+            contentHeight: generalColumn.height
 
-            Row {
-                CheckBox {
-                    id: hide_dot_playlists
-                    text: qsTr("Hide playlists whose name starts with a dot")
-                }
-            }
-            Row {
-                topPadding: 17
-                bottomPadding: 17
+            ScrollBar.vertical: ScrollBar { }
 
-                Rectangle {
-                    x: 0
-                    y: 0
-                    width: parent.parent.width
-                    height: 1
-                    color: "#AAAAAA"
+            Column {
+                id: generalColumn
+                width: parent.width - 20
+
+                Row {
+                    CheckBox {
+                        id: hide_dot_playlists
+                        text: qsTr("Hide playlists whose name starts with a dot")
+                    }
                 }
-            }
-            Row {
-                Label {
-                    width: parent.parent.width / 4
-                    anchors.verticalCenter: fade_tags.verticalCenter
-                    text: qsTr("Fade Tags")
-                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                Row {
+                    topPadding: 17
+                    bottomPadding: 17
+
+                    Rectangle {
+                        x: 0
+                        y: 0
+                        width: parent.parent.width
+                        height: 1
+                        color: "#AAAAAA"
+                    }
                 }
-                TextField {
-                    id: fade_tags
-                    width: parent.parent.width / 4 * 3
+                Row {
+                    bottomPadding: 17
+                    Label {
+                        text: qsTr("<b>Peak Meter</b>")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
                 }
-            }
-            Row {
-                Label {
-                    width: parent.parent.width / 4
-                    anchors.verticalCenter: crossfade_tags.verticalCenter
-                    text: qsTr("Crossfade Tags")
-                    wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                Row {
+                    CheckBox {
+                        width: parent.parent.width / 4
+                        anchors.verticalCenter: peak_delay_ms.verticalCenter
+                        id: peak_delay_on
+                        text: qsTr("Delay (milliseconds)")
+                    }
+                    SpinBox {
+                        id: peak_delay_ms
+                        editable: true
+                        from: 5
+                        to: 3000
+                    }
+                    Label {
+                        anchors.rightMargin: 17
+                        anchors.verticalCenter: peak_delay_ms.verticalCenter
+                        text: qsTr("<i>(useful for Bluetooth headphones/speakers)</i>")
+                    }
                 }
-                TextField {
-                    id: crossfade_tags
-                    width: parent.parent.width / 4 * 3
+                Row {
+                    leftPadding: 9
+                    Label {
+                        width: parent.parent.width / 4 - 9
+                        anchors.verticalCenter: max_peak_fps.verticalCenter
+                        text: qsTr("Maximum Frames Per Second")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    SpinBox {
+                        id: max_peak_fps
+                        from: 10
+                        to: 50
+                    }
+                }
+                Row {
+                    topPadding: 17
+                    bottomPadding: 17
+
+                    Rectangle {
+                        x: 0
+                        y: 0
+                        width: parent.parent.width
+                        height: 1
+                        color: "#AAAAAA"
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 4
+                        anchors.verticalCenter: fade_tags.verticalCenter
+                        text: qsTr("Fade Tags")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    TextField {
+                        id: fade_tags
+                        width: parent.parent.width / 4 * 3
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 4
+                        anchors.verticalCenter: crossfade_tags.verticalCenter
+                        text: qsTr("Crossfade Tags")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    TextField {
+                        id: crossfade_tags
+                        width: parent.parent.width / 4 * 3
+                    }
                 }
             }
         }

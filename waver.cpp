@@ -42,6 +42,9 @@ Waver::Waver() : QObject()
 
     QSettings settings;
     crossfadeTags.append(settings.value("options/crossfade_tags", DEFAULT_CROSSFADE_TAGS).toString().split(","));
+    maxPeakFPS            = settings.value("options/max_peak_fps", DEFAULT_MAX_PEAK_FPS).toInt();
+    peakDelayOn           = settings.value("options/peak_delay_on", DEFAULT_PEAK_DELAY_ON).toBool();
+    peakDelayMilliseconds = settings.value("options/peak_delay_ms", DEFAULT_PEAK_DELAY_MS).toInt();
 
     shuffleCountdownPercent = 1.0;
     shuffleServerIndex      = 0;
@@ -49,6 +52,17 @@ Waver::Waver() : QObject()
     peakCallbackInfo.callbackObject = (PeakCallback *)this;
     peakCallbackInfo.callbackMethod = (PeakCallback::PeakCallbackPointer)&Waver::peakCallback;
     peakCallbackInfo.trackPointer   = nullptr;
+    peakCallbackInfo.peakFPS        = &peakFPS;
+    peakCallbackInfo.peakFPSMutex   = &peakFPSMutex;
+
+    peakTimerCount       = 0;
+    peakTimerLagCount    = 0;
+    peakFPSLagCount = 0;
+    peakFPSIncreaseStart = 0;
+
+    peakFPSMutex.lock();
+    peakFPS = maxPeakFPS;
+    peakFPSMutex.unlock();
 
     shutdownCompleted = false;
 }
@@ -765,6 +779,14 @@ void Waver::nextButton()
 }
 
 
+void Waver::pauseButton()
+{
+    if (currentTrack != nullptr) {
+        currentTrack->setStatus(Track::Paused);
+    }
+}
+
+
 void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, void *trackPointer)
 {
     Track *track = currentTrack;
@@ -780,17 +802,41 @@ void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, v
         return;
     }
 
-    QTimer::singleShot(delayMicroseconds / 1000, this, [this, lPeak, rPeak] () {
+    qint64 delayMilliseconds = delayMicroseconds / 1000 + (peakDelayOn ? peakDelayMilliseconds : 0);
+    qint64 scheduledTime     = QDateTime::currentMSecsSinceEpoch() + delayMilliseconds;
+
+    QTimer::singleShot(delayMilliseconds, this, [this, lPeak, rPeak, scheduledTime] () {
         emit uiSetPeakMeter(1 - lPeak, 1 - rPeak);
+
+        peakTimerCount++;
+
+        if (abs(QDateTime::currentMSecsSinceEpoch() - scheduledTime) >= 10) {
+            peakTimerLagCount++;
+        }
+
+        if (peakTimerCount % 10 == 0) {
+            peakFPSMutex.lock();
+
+            if (peakTimerLagCount > 0)  {
+                peakFPSLagCount++;
+                if (peakFPS > 3) {
+                    peakFPS -= 2;
+                    emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS));
+                }
+                peakFPSIncreaseStart = QDateTime::currentMSecsSinceEpoch() + qMin(peakFPSLagCount * 100, static_cast<qint64>(30000));
+                peakTimerLagCount    = 0;
+            }
+            else if ((peakFPS < maxPeakFPS) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart)) {
+                peakFPS++;
+                emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS));
+            }
+            else if ((peakFPSLagCount > 0) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart + 300000)) {
+                peakFPSLagCount = 0;
+            }
+
+            peakFPSMutex.unlock();
+        }
     });
-}
-
-
-void Waver::pauseButton()
-{
-    if (currentTrack != nullptr) {
-        currentTrack->setStatus(Track::Paused);
-    }
 }
 
 
@@ -970,6 +1016,10 @@ void Waver::requestOptions()
     optionsObj.insert("hide_dot_playlists", settings.value("options/hide_dot_playlists", DEFAULT_HIDE_DOT_PLAYLIST));
     optionsObj.insert("fade_tags", settings.value("options/fade_tags", DEFAULT_FADE_TAGS));
     optionsObj.insert("crossfade_tags", settings.value("options/crossfade_tags", DEFAULT_CROSSFADE_TAGS));
+
+    optionsObj.insert("max_peak_fps", settings.value("options/max_peak_fps", DEFAULT_MAX_PEAK_FPS));
+    optionsObj.insert("peak_delay_on", settings.value("options/peak_delay_on", DEFAULT_PEAK_DELAY_ON));
+    optionsObj.insert("peak_delay_ms", settings.value("options/peak_delay_ms", DEFAULT_PEAK_DELAY_MS));
 
     emit optionsAsRequested(optionsObj);
 }
@@ -1731,12 +1781,20 @@ void Waver::updatedOptions(QString optionsJSON)
     QVariantMap options = QJsonDocument::fromJson(optionsJSON.toUtf8()).toVariant().toMap();
     QSettings   settings;
 
+    maxPeakFPS            = options.value("max_peak_fps").toInt();
+    peakDelayOn           = options.value("peak_delay_on").toBool();
+    peakDelayMilliseconds = options.value("peak_delay_ms").toInt();
+
     settings.setValue("options/shuffle_autostart", options.value("shuffle_autostart").toBool());
     settings.setValue("options/shuffle_operator", options.value("shuffle_operator").toString());
     settings.setValue("options/shuffle_count", options.value("shuffle_count").toInt());
     settings.setValue("options/random_lists_count", options.value("random_lists_count").toInt());
     settings.setValue("options/shuffle_delay_seconds", options.value("shuffle_delay_seconds").toInt());
     settings.setValue("options/shuffle_favorite_frequency", options.value("shuffle_favorite_frequency").toInt());
+
+    settings.setValue("options/max_peak_fps", maxPeakFPS);
+    settings.setValue("options/peak_delay_on", peakDelayOn);
+    settings.setValue("options/peak_delay_ms", peakDelayMilliseconds);
 
     settings.setValue("options/fade_tags", options.value("fade_tags").toString());
     settings.setValue("options/crossfade_tags", options.value("crossfade_tags").toString());
@@ -1754,6 +1812,12 @@ void Waver::updatedOptions(QString optionsJSON)
         settings.setValue("eq/eq9", options.value("eq9").toDouble());
         settings.setValue("eq/eq10", options.value("eq10").toDouble());
         settings.setValue("eq/pre_amp", options.value("pre_amp").toDouble());
+    }
+
+    if (peakFPS > maxPeakFPS) {
+        peakFPSMutex.lock();
+        peakFPS = maxPeakFPS;
+        peakFPSMutex.unlock();
     }
 
     if (currentTrack != nullptr) {

@@ -48,8 +48,8 @@ class SoundOutput : public QObject
         static const int    INITIAL_CACHE_BUFFER_COUNT         = 3;
         static const qint64 NOTIFICATION_INTERVAL_MILLISECONDS = 500;
 
-        QAudioFormat                   format;
-        PeakCallback::PeakCallbackInfo peakCallbackInfo;
+        QAudioFormat                    format;
+        PeakCallback::PeakCallbackInfo  peakCallbackInfo;
 
         TimedChunkQueue *chunkQueue;
         QMutex          *chunkQueueMutex;

@@ -38,7 +38,7 @@ class OutputFeeder : public QObject
 
     private:
 
-        static const qint64 PEAK_PERIOD_MICROSECONDS = 1000000 / 25;
+        static const qint64 MICROSECONDS_PER_SECOND = 1000 * 1000;
 
         QAudioOutput *audioOutput;
         QByteArray   *outputBuffer;
@@ -53,7 +53,6 @@ class OutputFeeder : public QObject
 
         int channelCount;
         int channelIndex;
-        int audioFramesPerPeakPeriod;
         int frameCount;
         int dataType;
 
@@ -63,14 +62,16 @@ class OutputFeeder : public QObject
         double sampleMin;
         double sampleRange;
 
-        double lPeak;
-        double rPeak;
-        qint64 peakDelaySum;
+        double  lPeak;
+        double  rPeak;
+        qint64  peakDelaySum;
 
 
     public slots:
 
         void run();
+
+
 };
 
 #endif // OUTPUTFEEDER_H

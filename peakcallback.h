@@ -9,6 +9,7 @@
 #define PEAKCALLBACK_H
 
 #include <QtCore>
+#include <QMutex>
 
 
 class PeakCallback
@@ -21,6 +22,8 @@ class PeakCallback
             PeakCallback                      *callbackObject;
             PeakCallback::PeakCallbackPointer  callbackMethod;
             void                              *trackPointer;
+            qint64                            *peakFPS;
+            QMutex                            *peakFPSMutex;
         };
 
         virtual ~PeakCallback();
