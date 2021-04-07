@@ -103,118 +103,123 @@ void OutputFeeder::run()
         }
 
         bytesToWrite = qMin(audioOutput->bytesFree(), audioOutput->periodSize());
+        outputBufferMutex->lock();
+        if (bytesToWrite > outputBuffer->count()) {
+            bytesToWrite = 0;
+        }
+        outputBufferMutex->unlock();
 
-        if (bytesToWrite <= outputBuffer->count()) {
-            if (dataType != 0) {
-                data      = outputBuffer->data();
-                byteCount = 0;
+        if (bytesToWrite <= 0) {
+            QThread::currentThread()->msleep(10);
+            continue;
+        }
 
-                peakDelaySumMutex.lock();
-                peakDelayTemp = peakDelaySum;
-                peakDelaySumMutex.unlock();
+        if (dataType != 0) {
+            byteCount = 0;
 
-                while (byteCount < bytesToWrite) {
-                    sampleValue = 0;
+            peakDelaySumMutex.lock();
+            peakDelayTemp = peakDelaySum;
+            peakDelaySumMutex.unlock();
 
-                    switch (dataType) {
-                        case 1:
-                            int8  = (qint8 *)data;
-                            sampleValue = *int8;
-                            data      += 1;
-                            byteCount += 1;
-                            break;
-                        case 2:
-                            int16  = (qint16 *)data;
-                            sampleValue = *int16;
-                            data      += 2;
-                            byteCount += 2;
-                            break;
-                        case 3:
-                            int32  = (qint32 *)data;
-                            sampleValue = *int32;
-                            data      += 4;
-                            byteCount += 4;
-                            break;
-                        case 4:
-                            uint8  = (quint8 *)data;
-                            sampleValue = *uint8;
-                            data      += 1;
-                            byteCount += 1;
-                            break;
-                        case 5:
-                            uint16  = (quint16 *)data;
-                            sampleValue = *uint16;
-                            data      += 2;
-                            byteCount += 2;
-                            break;
-                        case 6:
-                            uint32  = (quint32 *)data;
-                            sampleValue = *uint32;
-                            data      += 4;
-                            byteCount += 4;
+            outputBufferMutex->lock();
+            data = outputBuffer->data();
+            while (byteCount < bytesToWrite) {
+                sampleValue = 0;
+
+                switch (dataType) {
+                    case 1:
+                        int8  = (qint8 *)data;
+                        sampleValue = *int8;
+                        data      += 1;
+                        byteCount += 1;
+                        break;
+                    case 2:
+                        int16  = (qint16 *)data;
+                        sampleValue = *int16;
+                        data      += 2;
+                        byteCount += 2;
+                        break;
+                    case 3:
+                        int32  = (qint32 *)data;
+                        sampleValue = *int32;
+                        data      += 4;
+                        byteCount += 4;
+                        break;
+                    case 4:
+                        uint8  = (quint8 *)data;
+                        sampleValue = *uint8;
+                        data      += 1;
+                        byteCount += 1;
+                        break;
+                    case 5:
+                        uint16  = (quint16 *)data;
+                        sampleValue = *uint16;
+                        data      += 2;
+                        byteCount += 2;
+                        break;
+                    case 6:
+                        uint32  = (quint32 *)data;
+                        sampleValue = *uint32;
+                        data      += 4;
+                        byteCount += 4;
+                }
+
+                if (dataType != 2) {
+                    sampleValue = (((sampleValue - sampleMin) / sampleRange) * int16Range) + int16Min;
+                }
+
+                if (channelIndex == 0) {
+                    frameCount++;
+                    if (abs(sampleValue) > lPeak) {
+                        lPeak = abs(sampleValue);
                     }
-
-                    if (dataType != 2) {
-                        sampleValue = (((sampleValue - sampleMin) / sampleRange) * int16Range) + int16Min;
-                    }
-
-                    if (channelIndex == 0) {
-                        frameCount++;
-                        if (abs(sampleValue) > lPeak) {
-                            lPeak = abs(sampleValue);
-                        }
-                    }
-                    else if (channelIndex == 1) {
-                        if (abs(sampleValue) > rPeak) {
-                            rPeak = abs(sampleValue);
-                        }
-                    }
-
-                    channelIndex++;
-                    if (channelIndex >= channelCount) {
-                        channelIndex = 0;
-                    }
-
-                    if (frameCount == audioFramesPerPeakPeriod) {
-                        frameCount = 0;
-
-                        peakCallbackInfo.peakFPSMutex->lock();
-                        peakDelayTemp += MICROSECONDS_PER_SECOND / *peakCallbackInfo.peakFPS;
-                        peakCallbackInfo.peakFPSMutex->unlock();
-
-                        peakDelay = peakDelayTemp - audioOutput->processedUSecs();
-
-                        (peakCallbackInfo.callbackObject->*peakCallbackInfo.callbackMethod)(lPeak / (int16Range / 2), rPeak / (int16Range / 2), peakDelay < 0 ? 0 : peakDelay, peakCallbackInfo.trackPointer);
-
-                        lPeak = 0;
-                        rPeak = 0;
-
-                        peakCallbackInfo.peakFPSMutex->lock();
-                        audioFramesPerPeakPeriod = audioFormat.framesForDuration(MICROSECONDS_PER_SECOND / *peakCallbackInfo.peakFPS);
-                        peakCallbackInfo.peakFPSMutex->unlock();
+                }
+                else if (channelIndex == 1) {
+                    if (abs(sampleValue) > rPeak) {
+                        rPeak = abs(sampleValue);
                     }
                 }
 
-                peakDelaySumMutex.lock();
-                peakDelaySum = peakDelayTemp;
-                peakDelaySumMutex.unlock();
-            }
+                channelIndex++;
+                if (channelIndex >= channelCount) {
+                    channelIndex = 0;
+                }
 
-            outputDeviceMutex.lock();
-            outputBufferMutex->lock();
-            outputDevice->write(outputBuffer->data(), bytesToWrite);
-            outputBuffer->remove(0, bytesToWrite);
+                if (frameCount == audioFramesPerPeakPeriod) {
+                    frameCount = 0;
+
+                    peakCallbackInfo.peakFPSMutex->lock();
+                    peakDelayTemp += MICROSECONDS_PER_SECOND / *peakCallbackInfo.peakFPS;
+                    peakCallbackInfo.peakFPSMutex->unlock();
+
+                    peakDelay = peakDelayTemp - audioOutput->processedUSecs();
+
+                    (peakCallbackInfo.callbackObject->*peakCallbackInfo.callbackMethod)(lPeak / (int16Range / 2), rPeak / (int16Range / 2), peakDelay < 0 ? 0 : peakDelay, peakCallbackInfo.trackPointer);
+
+                    lPeak = 0;
+                    rPeak = 0;
+
+                    peakCallbackInfo.peakFPSMutex->lock();
+                    audioFramesPerPeakPeriod = audioFormat.framesForDuration(MICROSECONDS_PER_SECOND / *peakCallbackInfo.peakFPS);
+                    peakCallbackInfo.peakFPSMutex->unlock();
+                }
+            }
             outputBufferMutex->unlock();
-            outputDeviceMutex.unlock();
+
+            peakDelaySumMutex.lock();
+            peakDelaySum = peakDelayTemp;
+            peakDelaySumMutex.unlock();
         }
 
+        outputBufferMutex->lock();
+        outputDeviceMutex.lock();
+        outputDevice->write(outputBuffer->data(), bytesToWrite);
+        outputDeviceMutex.unlock();
+        outputBuffer->remove(0, bytesToWrite);
+        outputBufferMutex->unlock();
+
         if (!QThread::currentThread()->isInterruptionRequested()) {
-            if (bytesToWrite > 0) {
-                QThread::currentThread()->usleep(audioFormat.durationForBytes(bytesToWrite) / 4 * 3);
-            }
-            else {
-                QThread::currentThread()->msleep(50);
-            }
+            QThread::currentThread()->usleep(audioFormat.durationForBytes(bytesToWrite) / 10 * 9);
         }
     }
 }
