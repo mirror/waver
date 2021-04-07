@@ -29,7 +29,8 @@ ApplicationWindow {
     signal stopButton();
     signal favoriteButton(bool fav);
     signal requestOptions();
-    signal updatedOptions(string optionsJSON)
+    signal updatedOptions(string optionsJSON);
+    signal peakUILag();
 
     onClosing: {
         saveGeometry(x, y, width, height);
@@ -147,9 +148,13 @@ ApplicationWindow {
         peakFPS.text = fpsText;
     }
 
-    function setPeakMeter(l, r)
+    function setPeakMeter(l, r, scheduledTimeMS)
     {
         peakMeter.setPeak(l, r);
+
+        if (Math.abs(Date.now() - scheduledTimeMS) >= 10) {
+            peakUILag();
+        }
     }
 
     function setShuffleCountdown(percent)

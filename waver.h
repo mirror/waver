@@ -106,12 +106,13 @@ class Waver : public QObject, PeakCallback
         QObject    *globalConstants;
 
         PeakCallbackInfo peakCallbackInfo;
-        int              peakTimerCount;
-        int              peakTimerLagCount;
+        int              peakCallbackCount;
         qint64           peakFPS;
         QMutex           peakFPSMutex;
-        qint64           maxPeakFPS;
-        qint64           peakFPSLagCount;
+        qint64           peakFPSMax;
+        int              peakUILagCount;
+        qint64           peakLagCount;
+        qint64           peakLagIgnoreEnd;
         qint64           peakFPSIncreaseStart;
         bool             peakDelayOn;
         qint64           peakDelayMilliseconds;
@@ -188,6 +189,8 @@ class Waver : public QObject, PeakCallback
         void requestOptions();
         void updatedOptions(QString optionsJSON);
 
+        void peakUILag();
+
         void shutdown();
 
 
@@ -227,7 +230,7 @@ class Waver : public QObject, PeakCallback
         void uiSetTrackTags(QVariant tagsText);
         void uiSetTrackBufferData(QVariant memoryUsageText);
         void uiSetTrackReplayGain(QVariant target, QVariant current);
-        void uiSetPeakMeter(QVariant left, QVariant right);
+        void uiSetPeakMeter(QVariant left, QVariant right, QVariant scheduledTimeMS);
         void uiSetPeakFPS(QVariant fpsText);
         void uiSetShuffleCountdown(QVariant percent);
 

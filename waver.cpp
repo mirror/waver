@@ -42,7 +42,7 @@ Waver::Waver() : QObject()
 
     QSettings settings;
     crossfadeTags.append(settings.value("options/crossfade_tags", DEFAULT_CROSSFADE_TAGS).toString().split(","));
-    maxPeakFPS            = settings.value("options/max_peak_fps", DEFAULT_MAX_PEAK_FPS).toInt();
+    peakFPSMax            = settings.value("options/max_peak_fps", DEFAULT_MAX_PEAK_FPS).toInt();
     peakDelayOn           = settings.value("options/peak_delay_on", DEFAULT_PEAK_DELAY_ON).toBool();
     peakDelayMilliseconds = settings.value("options/peak_delay_ms", DEFAULT_PEAK_DELAY_MS).toInt();
 
@@ -55,13 +55,14 @@ Waver::Waver() : QObject()
     peakCallbackInfo.peakFPS        = &peakFPS;
     peakCallbackInfo.peakFPSMutex   = &peakFPSMutex;
 
-    peakTimerCount       = 0;
-    peakTimerLagCount    = 0;
-    peakFPSLagCount = 0;
+    peakCallbackCount    = 0;
+    peakUILagCount       = 0;
+    peakLagCount         = 0;
+    peakLagIgnoreEnd     = 0;
     peakFPSIncreaseStart = 0;
 
     peakFPSMutex.lock();
-    peakFPS = maxPeakFPS;
+    peakFPS = peakFPSMax;
     peakFPSMutex.unlock();
 
     shutdownCompleted = false;
@@ -798,45 +799,53 @@ void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, v
         return;
     }
     if (track == nullptr) {
-        emit uiSetPeakMeter(1, 1);
+        emit uiSetPeakMeter(1, 1, QDateTime::currentMSecsSinceEpoch());
         return;
     }
+
+    peakCallbackCount++;
 
     qint64 delayMilliseconds = delayMicroseconds / 1000 + (peakDelayOn ? peakDelayMilliseconds : 0);
     qint64 scheduledTime     = QDateTime::currentMSecsSinceEpoch() + delayMilliseconds;
 
     QTimer::singleShot(delayMilliseconds, this, [this, lPeak, rPeak, scheduledTime] () {
-        emit uiSetPeakMeter(1 - lPeak, 1 - rPeak);
+        emit uiSetPeakMeter(1 - lPeak, 1 - rPeak, scheduledTime);
+    });
 
-        peakTimerCount++;
+    if (peakCallbackCount % 10 == 0) {
+        if (peakUILagCount > 0)  {
+            peakLagCount++;
 
-        if (abs(QDateTime::currentMSecsSinceEpoch() - scheduledTime) >= 10) {
-            peakTimerLagCount++;
-        }
-
-        if (peakTimerCount % 10 == 0) {
             peakFPSMutex.lock();
-
-            if (peakTimerLagCount > 0)  {
-                peakFPSLagCount++;
-                if (peakFPS > 3) {
-                    peakFPS -= 2;
-                    emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS));
-                }
-                peakFPSIncreaseStart = QDateTime::currentMSecsSinceEpoch() + qMin(peakFPSLagCount * 100, static_cast<qint64>(30000));
-                peakTimerLagCount    = 0;
-            }
-            else if ((peakFPS < maxPeakFPS) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart)) {
-                peakFPS++;
+            if (peakFPS > 3) {
+                peakFPS -= 2;
                 emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS));
             }
-            else if ((peakFPSLagCount > 0) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart + 300000)) {
-                peakFPSLagCount = 0;
-            }
-
             peakFPSMutex.unlock();
+
+            peakLagIgnoreEnd     = QDateTime::currentMSecsSinceEpoch() + 250;
+            peakFPSIncreaseStart = QDateTime::currentMSecsSinceEpoch() + qMin(peakLagCount * 100, static_cast<qint64>(30000));
+            peakUILagCount       = 0;
         }
-    });
+        else if ((peakFPS < peakFPSMax) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart)) {
+            peakFPSMutex.lock();
+            peakFPS++;
+            peakFPSMutex.unlock();
+
+            emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS));
+        }
+        else if ((peakLagCount > 0) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart + 300000)) {
+            peakLagCount = 0;
+        }
+    }
+}
+
+
+void Waver::peakUILag()
+{
+    if (QDateTime::currentMSecsSinceEpoch() > peakLagIgnoreEnd) {
+        peakUILagCount++;
+    }
 }
 
 
@@ -1781,7 +1790,7 @@ void Waver::updatedOptions(QString optionsJSON)
     QVariantMap options = QJsonDocument::fromJson(optionsJSON.toUtf8()).toVariant().toMap();
     QSettings   settings;
 
-    maxPeakFPS            = options.value("max_peak_fps").toInt();
+    peakFPSMax            = options.value("max_peak_fps").toInt();
     peakDelayOn           = options.value("peak_delay_on").toBool();
     peakDelayMilliseconds = options.value("peak_delay_ms").toInt();
 
@@ -1792,7 +1801,7 @@ void Waver::updatedOptions(QString optionsJSON)
     settings.setValue("options/shuffle_delay_seconds", options.value("shuffle_delay_seconds").toInt());
     settings.setValue("options/shuffle_favorite_frequency", options.value("shuffle_favorite_frequency").toInt());
 
-    settings.setValue("options/max_peak_fps", maxPeakFPS);
+    settings.setValue("options/max_peak_fps", peakFPSMax);
     settings.setValue("options/peak_delay_on", peakDelayOn);
     settings.setValue("options/peak_delay_ms", peakDelayMilliseconds);
 
@@ -1814,9 +1823,9 @@ void Waver::updatedOptions(QString optionsJSON)
         settings.setValue("eq/pre_amp", options.value("pre_amp").toDouble());
     }
 
-    if (peakFPS > maxPeakFPS) {
+    if (peakFPS > peakFPSMax) {
         peakFPSMutex.lock();
-        peakFPS = maxPeakFPS;
+        peakFPS = peakFPSMax;
         peakFPSMutex.unlock();
     }
 

@@ -73,7 +73,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(waver, SIGNAL(uiSetTempImage(QVariant)), uiMainWindow, SLOT(setTempImage(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetStatusText(QVariant)), uiMainWindow, SLOT(setStatusText(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetStatusTempText(QVariant)), uiMainWindow, SLOT(setStatusTempText(QVariant)));
-    QObject::connect(waver, SIGNAL(uiSetPeakMeter(QVariant,QVariant)), uiMainWindow, SLOT(setPeakMeter(QVariant,QVariant)));
+    QObject::connect(waver, SIGNAL(uiSetPeakMeter(QVariant,QVariant,QVariant)), uiMainWindow, SLOT(setPeakMeter(QVariant,QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(uiSetPeakFPS(QVariant)), uiMainWindow, SLOT(setPeakFPS(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetShuffleCountdown(QVariant)), uiMainWindow, SLOT(setShuffleCountdown(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetFavorite(QVariant)), uiMainWindow, SLOT(setFavorite(QVariant)));
@@ -112,6 +112,8 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
 
     QObject::connect(uiMainWindow, SIGNAL(requestOptions()), waver, SLOT(requestOptions()));
     QObject::connect(uiMainWindow, SIGNAL(updatedOptions(QString)), waver, SLOT(updatedOptions(QString)));
+
+    QObject::connect(uiMainWindow, SIGNAL(peakUILag()), waver, SLOT(peakUILag()));
 
     QObject::connect(uiMainWindow, SIGNAL(saveGeometry(int,int,int,int)), this, SLOT(uiSaveGeometry(int,int,int,int)));
     QObject::connect(this, SIGNAL(shutdownWaver()), waver, SLOT(shutdown()));
