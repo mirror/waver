@@ -4,7 +4,7 @@
 #    Please visit https://launchpad.net/waver for details
 #
 
-QT += gui multimedia quick quickcontrols2
+QT += dbus gui multimedia quick quickcontrols2
 
 CONFIG += c++11
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x051210
@@ -17,6 +17,7 @@ HEADERS += \
     equalizer.h \
     filescanner.h \
     globals.h \
+    notificationshandler.h \
     outputfeeder.h \
     pcmcache.h \
     peakcallback.h \
@@ -34,6 +35,7 @@ SOURCES += \
     equalizer.cpp \
     filescanner.cpp \
     main.cpp \
+    notificationshandler.cpp \
     outputfeeder.cpp \
     pcmcache.cpp \
     peakcallback.cpp \
@@ -50,6 +52,14 @@ TRANSLATIONS += \
     waver_new_en_US.ts
 
 unix:!android {
+    HEADERS += \
+        mediaplayer2dbusadaptor.h \
+        mediaplayer2playerdbusadaptor.h
+
+    SOURCES += \
+        mediaplayer2dbusadaptor.cpp \
+        mediaplayer2playerdbusadaptor.cpp
+
     LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -lqt5keychain -ltag -lwaveriir
 
     target.path = /opt/waver/bin
@@ -67,5 +77,13 @@ unix:!android {
 }
 
 windows {
+    QT += widgets
+
+    HEADERS += \
+        trayicon.h
+
+    SOURCES += \
+        trayicon.cpp
+
     LIBS += -lqt5keychain #-L$$PWD/mpg123lib/win32
 }

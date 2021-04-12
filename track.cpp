@@ -53,6 +53,9 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
 Track::~Track()
 {
     outputThread.requestInterruption();
+    outputQueueMutex.lock();
+    outputQueue.clear();
+    outputQueueMutex.unlock();
     outputThread.quit();
     outputThread.wait();
     if (soundOutput != nullptr) {
@@ -244,23 +247,7 @@ void Track::cacheError(QString info, QString errorMessage)
 void Track::changeStatus(Status status)
 {
     currentStatus = status;
-
-    QString statusString;
-    switch (currentStatus) {
-        case Idle:
-            statusString = tr("Idle");
-            break;
-        case Decoding:
-            statusString = tr("Decoding");
-            break;
-        case Playing:
-            statusString = tr("Playing");
-            break;
-        case Paused:
-            statusString = tr("Paused");
-            break;
-    }
-    emit statusChanged(trackInfo.id, currentStatus, statusString);
+    emit statusChanged(trackInfo.id, currentStatus, getStatusText());
 }
 
 
@@ -361,6 +348,22 @@ qint64 Track::getPlayedMillseconds()
 Track::Status Track::getStatus()
 {
     return currentStatus;
+}
+
+
+QString Track::getStatusText()
+{
+    switch (currentStatus) {
+        case Idle:
+            return tr("Idle");
+        case Decoding:
+            return tr("Decoding");
+        case Playing:
+            return tr("Playing");
+        case Paused:
+            return tr("Paused");
+    }
+    return tr("Stopped");
 }
 
 

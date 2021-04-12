@@ -61,20 +61,19 @@ Dialog {
             eq10.enabled = true;
             eq10.value = optionsObj.eq10;
         }
-
-        shuffle_autostart.checked = optionsObj.shuffle_autostart === "true" ? true : false;
+        shuffle_autostart.checked = optionsObj.shuffle_autostart;
         shuffle_delay_seconds.value = optionsObj.shuffle_delay_seconds;
         shuffle_count.value = optionsObj.shuffle_count;
         shuffle_favorite_frequency.currentIndex = optionsObj.shuffle_favorite_frequency <= internal.shuffle_favorite_frequent ? 2 : optionsObj.shuffle_favorite_frequency >= internal.shuffle_favorite_rare ? 0 : 1;
         shuffle_operator.currentIndex = optionsObj.shuffle_operator === "or" ? 1 : 0;
         random_lists_count.value = optionsObj.random_lists_count;
 
-        hide_dot_playlists.checked = optionsObj.hide_dot_playlists === "true" ? true : false;
+        hide_dot_playlists.checked = optionsObj.hide_dot_playlists;
         fade_tags.text = optionsObj.fade_tags;
         crossfade_tags.text = optionsObj.crossfade_tags;
 
         max_peak_fps.value = optionsObj.max_peak_fps;
-        peak_delay_on.checked = optionsObj.peak_delay_on === "true" ? true : false;
+        peak_delay_on.checked = optionsObj.peak_delay_on;
         peak_delay_ms.value = optionsObj.peak_delay_ms;
     }
 

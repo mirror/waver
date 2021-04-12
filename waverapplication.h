@@ -18,6 +18,7 @@
 #include <QThread>
 
 #include "globals.h"
+#include "notificationshandler.h"
 #include "waver.h"
 
 
@@ -42,6 +43,8 @@ class WaverApplication : public QGuiApplication
 
         QThread *waverThread;
         Waver   *waver;
+
+        NotificationsHandler *notificationsHandler;
 
 
     public slots:

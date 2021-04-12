@@ -67,9 +67,10 @@ class Track : public QObject
         explicit Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInfo, QObject *parent = 0);
         ~Track();
 
-        Status getStatus();
-        void   setStatus(Status status);
-        void   setPosition(double percent);
+        Status  getStatus();
+        QString getStatusText();
+        void    setStatus(Status status);
+        void    setPosition(double percent);
 
         TrackInfo       getTrackInfo();
         void            attributeAdd(QString key, QVariant value);

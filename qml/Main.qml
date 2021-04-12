@@ -133,6 +133,11 @@ ApplicationWindow {
         playlist.setSelected(index, selected);
     }
 
+    function bringToFront()
+    {
+        applicationWindow.raise();
+    }
+
     function setFavorite(fav)
     {
         favorite.checked = fav
@@ -164,11 +169,14 @@ ApplicationWindow {
 
     function setStatusTempText(statusText)
     {
-        if (!internal.statusTempText.length) {
-            internal.statusTempText = status.text;
-        }
+        statusTemp.text  = statusText;
+        statusTemp.visible = true;
 
-        status.text  = statusText;
+        tags.visible = false;
+        status.visible = false;
+        bufferSize.visible = false;
+        gain.visible = false;
+        peakFPS.visible = false;
 
         statusTempTimer.restart();
     }
@@ -176,8 +184,6 @@ ApplicationWindow {
     function setStatusText(statusText)
     {
         status.text = statusText;
-        statusTempTimer.stop();
-        internal.statusTempText = "";
     }
 
     function setTempImage(image)
@@ -235,7 +241,6 @@ ApplicationWindow {
 
         property double positionerMovedValue: -1
         property double shuffleCountdown: 0.5
-        property string statusTempText: ""
 
         function calculateTitleSize()
         {
@@ -256,13 +261,16 @@ ApplicationWindow {
 
     Timer {
         id: statusTempTimer
-        interval: 2500
+        interval: 3333
 
         onTriggered: {
-            if (internal.statusTempText) {
-                setStatusText(internal.statusTempText);
-                internal.statusTempText = "";
-            }
+            statusTemp.visible = false;
+
+            tags.visible = true;
+            status.visible = true;
+            bufferSize.visible = true;
+            gain.visible = true;
+            peakFPS.visible = true;
         }
     }
     Timer {
@@ -318,6 +326,15 @@ ApplicationWindow {
                 icon.source: "qrc:///icons/star.ico"
                 onClicked: favoriteButton(checked)
             }
+            ToolButton {
+                icon.name: 'search'
+                icon.source: "qrc:///icons/search.ico"
+                enabled: title.text.length && performer.text.length
+                onClicked: {
+                    Qt.openUrlExternally("https://google.com/search?q=" + performer.text + " " + title.text + " lyrics");
+                    Qt.openUrlExternally("https://google.com/search?q=\"" + performer.text + "\" band");
+                }
+            }
             Label {
                 Layout.fillWidth: true
             }
@@ -372,6 +389,16 @@ ApplicationWindow {
                 text: "0FPS"
                 leftPadding: 5
                 width: parent.width / 10 * 1
+            }
+            Label {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                id: statusTemp
+                color: statusTemp.palette.buttonText
+                leftPadding: 5
+                rightPadding: 5
+                visible: false
             }
         }
     }

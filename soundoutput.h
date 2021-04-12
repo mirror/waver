@@ -13,8 +13,6 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QFile>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QIODevice>
 #include <QMutex>
 #include <QObject>

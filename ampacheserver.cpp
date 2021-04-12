@@ -220,6 +220,9 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         else if (action.compare("flag") == 0) {
             opCode = SetFlag;
         }
+        else if (action.compare("song") == 0) {
+            opCode = Song;
+        }
         else {
             emit errorMessage(id, tr("Invalid Network Reply"), tr("Request URL query contains an unknown 'action' item"));
             reply->deleteLater();
@@ -250,7 +253,8 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         { PlaylistSongs, "song" },
         { RadioStations, "live_stream" },
         { Shuffle,       "song" },
-        { Tags,          "tag" }
+        { Tags,          "tag" },
+        { Song,          "song" }
     };
 
     QString   currentElement = "";
@@ -742,6 +746,11 @@ void AmpacheServer::startOperations()
             query.addQueryItem("action", "playlist_generate");
             query.addQueryItem("flag", "1");
             query.addQueryItem("format", "index");
+        }
+        else if (operation.opCode == Song) {
+            query.removeAllQueryItems("limit");
+            query.addQueryItem("action", "song");
+            query.addQueryItem("filter", operation.opData.value("song_id"));
         }
 
         networkAccessManager.get(buildRequest(query, operation.extra));

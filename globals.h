@@ -50,4 +50,11 @@ typedef QVector<QAudioBuffer *> BufferQueue;
 typedef QVector<QByteArray *>   ChunkQueue;
 typedef QVector<TimedChunk>     TimedChunkQueue;
 
+
+enum NotificationDataToSend {
+    All,
+    MetaData,
+    PlaybackStatus
+};
+
 #endif // GLOBALS_H

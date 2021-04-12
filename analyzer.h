@@ -12,8 +12,6 @@
 #include <QByteArray>
 #include <QDateTime>
 #include <QFile>
-#include <QJsonDocument>
-#include <QJsonObject>
 #include <QObject>
 #include <QtGlobal>
 #include <QTimeZone>

@@ -216,6 +216,9 @@ Item {
             }
 
             for (var i = 0; i < explorerItems.count; i++) {
+                if (explorerItems.get(i).id === id) {
+                    continue;
+                }
                 if (explorerItems.get(i).parent === id) {
                     return true;
                 }
@@ -225,10 +228,13 @@ Item {
 
         function isExpandEnabled()
         {
+            if (explorerItems.count <= 0) {
+                return false;
+            }
             if (explorerItemsView.currentIndex < 0) {
                 return false;
             }
-            if (!explorerItems.get(explorerItemsView.currentIndex).busy) {
+            if (explorerItems.get(explorerItemsView.currentIndex).busy) {
                 return false;
             }
             if (!explorerItems.get(explorerItemsView.currentIndex).expandable) {
@@ -242,10 +248,13 @@ Item {
 
         function isRefreshEnabled()
         {
+            if (explorerItems.count <= 0) {
+                return false;
+            }
             if (explorerItemsView.currentIndex < 0) {
                 return false;
             }
-            if (!explorerItems.get(explorerItemsView.currentIndex).busy) {
+            if (explorerItems.get(explorerItemsView.currentIndex).busy) {
                 return false;
             }
             if (!explorerItems.get(explorerItemsView.currentIndex).expandable) {

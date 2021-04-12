@@ -56,8 +56,11 @@ class Waver : public QObject, PeakCallback
         explicit Waver();
         ~Waver();
 
+        Track::TrackInfo getCurrentTrackInfo();
+        Track::Status    getCurrentTrackStatus();
         QList<ErrorItem> getErrorLog();
-        bool isShutdownCompleted();
+        long             getLastPositionMilliseconds();
+        bool             isShutdownCompleted();
 
         void peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, void *trackPointer);
 
@@ -120,13 +123,22 @@ class Waver : public QObject, PeakCallback
         Track                   *previousTrack;
         Track                   *currentTrack;
         QList<Track*>            playlist;
-        QList<Track::TrackInfo>  history;
+        Track::TracksInfo        history;
+        long                     lastPositionMilliseconds;
         QStringList              crossfadeTags;
         bool                     crossfadeInProgress;
 
         QTimer *shuffleCountdownTimer;
         double  shuffleCountdownPercent;
         int     shuffleServerIndex;
+        bool    shuffleFirstAfterStart;
+
+        QStringList       playlistFirstGroupSongIds;
+        Track::TracksInfo playlistFirstGroupTracks;
+
+        bool   stopByShutdown;
+        QMutex shutdownMutex;
+        bool   shutdownCompleted;
 
         int      serverIndex(QString id);
         QVariant globalConstant(QString constName);
@@ -152,10 +164,12 @@ class Waver : public QObject, PeakCallback
 
         void startShuffleCountdown();
         void stopShuffleCountdown();
-        void startShuffleBatch(int srvIndex = 0, int artistId = 0, ShuffleMode mode = None);
+        void startShuffleBatch(int srvIndex = -1, int artistId = 0, ShuffleMode mode = None, QString originalAction = "action_play");
 
-        QMutex shutdownMutex;
-        bool   shutdownCompleted;
+        void explorerNetworkingUISignals(QString id, bool networking);
+
+        void playlistFirstGroupSave();
+        int  playlistFirstGroupLoad();
 
 
     public slots:
@@ -185,6 +199,7 @@ class Waver : public QObject, PeakCallback
         void pauseButton();
         void stopButton();
         void favoriteButton(bool fav);
+        void raiseButton();
 
         void requestOptions();
         void updatedOptions(QString optionsJSON);
@@ -249,6 +264,9 @@ class Waver : public QObject, PeakCallback
         void uiSetStatusTempText(QVariant statusTempText);
 
         void uiHistoryAdd(QVariant title);
+
+        void notify(NotificationDataToSend dataToSend);
+        void uiRaise();
 };
 
 #endif // WAVER_H

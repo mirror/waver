@@ -60,13 +60,13 @@ class AmpacheServer : public QObject
             RadioStations,
             SetFlag,
             Shuffle,
+            Song,
             Tags,
             Unknown
         };
 
         typedef QHash<QString, QString> OpData;
         typedef QList<OpData>           OpResults;
-
 
         explicit AmpacheServer(QUrl host, QString user, QObject *parent = nullptr);
 

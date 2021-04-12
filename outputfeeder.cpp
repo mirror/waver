@@ -102,14 +102,15 @@ void OutputFeeder::run()
             continue;
         }
 
-        bytesToWrite = qMin(audioOutput->bytesFree(), audioOutput->periodSize());
         outputBufferMutex->lock();
+
+        bytesToWrite = qMin(audioOutput->bytesFree(), audioOutput->periodSize());
         if (bytesToWrite > outputBuffer->count()) {
             bytesToWrite = 0;
         }
-        outputBufferMutex->unlock();
 
         if (bytesToWrite <= 0) {
+            outputBufferMutex->unlock();
             QThread::currentThread()->msleep(10);
             continue;
         }
@@ -121,7 +122,6 @@ void OutputFeeder::run()
             peakDelayTemp = peakDelaySum;
             peakDelaySumMutex.unlock();
 
-            outputBufferMutex->lock();
             data = outputBuffer->data();
             while (byteCount < bytesToWrite) {
                 sampleValue = 0;
@@ -204,18 +204,18 @@ void OutputFeeder::run()
                     peakCallbackInfo.peakFPSMutex->unlock();
                 }
             }
-            outputBufferMutex->unlock();
 
             peakDelaySumMutex.lock();
             peakDelaySum = peakDelayTemp;
             peakDelaySumMutex.unlock();
         }
 
-        outputBufferMutex->lock();
         outputDeviceMutex.lock();
         outputDevice->write(outputBuffer->data(), bytesToWrite);
         outputDeviceMutex.unlock();
+
         outputBuffer->remove(0, bytesToWrite);
+
         outputBufferMutex->unlock();
 
         if (!QThread::currentThread()->isInterruptionRequested()) {

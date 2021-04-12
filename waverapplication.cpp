@@ -25,11 +25,17 @@ WaverApplication::WaverApplication(int &argc, char **argv) : QGuiApplication(arg
     else {
         QQuickStyle::setStyle("Material");
     }
+
+    notificationsHandler = nullptr;
 }
 
 
 WaverApplication::~WaverApplication()
 {
+    if (notificationsHandler != nullptr) {
+        delete notificationsHandler;
+    }
+
     emit shutdownWaver();
     while (!waver->isShutdownCompleted()) {
         QThread::currentThread()->msleep(50);
@@ -92,10 +98,6 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(waver, SIGNAL(playlistBusy(QVariant,QVariant)), uiMainWindow, SLOT(playlistBusy(QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(playlistSelected(QVariant,QVariant)), uiMainWindow, SLOT(playlistSelected(QVariant,QVariant)));
 
-    QObject::connect(waver, SIGNAL(optionsAsRequested(QVariant)), uiMainWindow, SLOT(optionsAsRequested(QVariant)));
-
-    QObject::connect(waver, SIGNAL(uiHistoryAdd(QVariant)), uiMainWindow, SLOT(historyAdd(QVariant)));
-
     QObject::connect(uiMainWindow, SIGNAL(addNewServer(QString,QString,QString)), waver, SLOT(addServer(QString,QString,QString)));
     QObject::connect(uiMainWindow, SIGNAL(deleteServer(QString)), waver, SLOT(deleteServer(QString)));
     QObject::connect(uiMainWindow, SIGNAL(explorerItemClicked(QString,int,QString)), waver, SLOT(explorerItemClicked(QString,int,QString)));
@@ -110,16 +112,20 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(uiMainWindow, SIGNAL(stopButton()), waver, SLOT(stopButton()));
     QObject::connect(uiMainWindow, SIGNAL(favoriteButton(bool)), waver, SLOT(favoriteButton(bool)));
 
-    QObject::connect(uiMainWindow, SIGNAL(requestOptions()), waver, SLOT(requestOptions()));
-    QObject::connect(uiMainWindow, SIGNAL(updatedOptions(QString)), waver, SLOT(updatedOptions(QString)));
+    QObject::connect(waver,        SIGNAL(optionsAsRequested(QVariant)), uiMainWindow, SLOT(optionsAsRequested(QVariant)));
+    QObject::connect(uiMainWindow, SIGNAL(requestOptions()),             waver,        SLOT(requestOptions()));
+    QObject::connect(uiMainWindow, SIGNAL(updatedOptions(QString)),      waver,        SLOT(updatedOptions(QString)));
 
-    QObject::connect(uiMainWindow, SIGNAL(peakUILag()), waver, SLOT(peakUILag()));
-
-    QObject::connect(uiMainWindow, SIGNAL(saveGeometry(int,int,int,int)), this, SLOT(uiSaveGeometry(int,int,int,int)));
-    QObject::connect(this, SIGNAL(shutdownWaver()), waver, SLOT(shutdown()));
+    QObject::connect(waver,        SIGNAL(uiHistoryAdd(QVariant)),        uiMainWindow, SLOT(historyAdd(QVariant)));
+    QObject::connect(waver,        SIGNAL(uiRaise()),                     uiMainWindow, SLOT(bringToFront()));
+    QObject::connect(uiMainWindow, SIGNAL(peakUILag()),                   waver,        SLOT(peakUILag()));
+    QObject::connect(uiMainWindow, SIGNAL(saveGeometry(int,int,int,int)), this,         SLOT(uiSaveGeometry(int,int,int,int)));
+    QObject::connect(this,         SIGNAL(shutdownWaver()),               waver,        SLOT(shutdown()));
 
     QSettings settings;
     uiMainWindow->setGeometry(settings.value("MainWindow/x", 150).toInt(), settings.value("MainWindow/y", 150).toInt(), settings.value("MainWindow/width", uiMainWindow->width()).toInt(), settings.value("MainWindow/height", uiMainWindow->height()).toInt());
+
+    notificationsHandler = new NotificationsHandler(waver);
 
     waverThread->start();
 }
