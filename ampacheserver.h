@@ -13,6 +13,7 @@
 #include <QDateTime>
 #include <QGuiApplication>
 #include <QHash>
+#include <QMultiHash>
 #include <QLatin1String>
 #include <QList>
 #include <QNetworkAccessManager>

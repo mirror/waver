@@ -330,10 +330,7 @@ ApplicationWindow {
                 icon.name: 'search'
                 icon.source: "qrc:///icons/search.ico"
                 enabled: title.text.length && performer.text.length
-                onClicked: {
-                    Qt.openUrlExternally("https://google.com/search?q=" + performer.text + " " + title.text + " lyrics");
-                    Qt.openUrlExternally("https://google.com/search?q=\"" + performer.text + "\" band");
-                }
+                onClicked: searchMenu.popup();
             }
             Label {
                 Layout.fillWidth: true
@@ -449,6 +446,19 @@ ApplicationWindow {
 
             onObjectAdded: historyMenu.insertItem(index, object)
             onObjectRemoved: historyMenu.removeItem(object)
+        }
+    }
+
+    Menu {
+        id: searchMenu
+
+        MenuItem {
+            text: qsTr("Lyrics")
+            onTriggered: Qt.openUrlExternally("https://google.com/search?q=" + performer.text + " " + title.text + " lyrics");
+        }
+        MenuItem {
+            text: qsTr("Performer")
+            onTriggered: Qt.openUrlExternally("https://google.com/search?q=\"" + performer.text + "\" band");
         }
     }
 

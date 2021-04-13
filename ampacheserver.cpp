@@ -243,6 +243,9 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         "url",
         "year"
     };
+    QStringList multiElements = {
+        "tag"
+    };
     QHash<OpCode, QString> opElement = {
         { Search,        "song" },
         { BrowseRoot,    "artist" },
@@ -257,11 +260,12 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         { Song,          "song" }
     };
 
-    QString   currentElement = "";
-    OpResults opResults;
-    OpData    opResult;
-    int       errorCode      = 0;
-    QString   errorMsg       = "";
+    QString                      currentElement = "";
+    OpResults                    opResults;
+    OpData                       opResult;
+    QMultiHash<QString, QString> multiElementsValues;
+    int                          errorCode = 0;
+    QString                      errorMsg  = "";
 
     QXmlStreamReader xmlStreamReader(reply);
     while (!xmlStreamReader.atEnd()) {
@@ -278,6 +282,7 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
 
             if (opElement.value(opCode).compare(currentElement) == 0) {
                 opResult.clear();
+                multiElementsValues.clear();
                 if (attributes.hasAttribute("id")) {
                     opResult.insert("id", attributes.value("id").toString());
                     if (opCode == CountFlagged) {
@@ -289,9 +294,10 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
 
         if (tokenType == QXmlStreamReader::EndElement) {
             if ((opElement.value(opCode).compare(xmlStreamReader.name().toString()) == 0) && opResult.size()) {
-                if (opResult.contains("tag")) {
-                    opResult.insert("tags", opResult.values("tag").join("|"));
-                    opResult.remove("tag");
+                foreach(QString element, multiElements) {
+                    if (multiElementsValues.contains(element)) {
+                        opResult.insert(QString("%1s").arg(element), multiElementsValues.values(element).join("|"));
+                    }
                 }
                 opResults.append(opResult);
             }
@@ -316,8 +322,8 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
             }
             else {
                 if (wantedElements.contains(currentElement)) {
-                    if (currentElement.compare("tag") == 0) {
-                        opResult.insertMulti(currentElement, xmlStreamReader.text().toString());
+                    if (multiElements.contains(currentElement)) {
+                        multiElementsValues.insert(currentElement, xmlStreamReader.text().toString());
                     }
                     else {
                         opResult.insert(currentElement, xmlStreamReader.text().toString());

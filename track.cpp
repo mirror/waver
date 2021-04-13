@@ -53,12 +53,23 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
 Track::~Track()
 {
     outputThread.requestInterruption();
+
     outputQueueMutex.lock();
     outputQueue.clear();
     outputQueueMutex.unlock();
+
     outputThread.quit();
     outputThread.wait();
     if (soundOutput != nullptr) {
+        disconnect(soundOutput, &SoundOutput::needChunk,       this, &Track::outputNeedChunk);
+        disconnect(soundOutput, &SoundOutput::positionChanged, this, &Track::outputPositionChanged);
+        disconnect(soundOutput, &SoundOutput::bufferUnderrun,  this, &Track::outputBufferUnderrun);
+        disconnect(soundOutput, &SoundOutput::error,           this, &Track::outputError);
+
+        disconnect(this, &Track::chunkAvailableToOutput, soundOutput, &SoundOutput::chunkAvailable);
+        disconnect(this, &Track::pause,                  soundOutput, &SoundOutput::pause);
+        disconnect(this, &Track::resume,                 soundOutput, &SoundOutput::resume);
+
         delete soundOutput;
     }
 
@@ -66,6 +77,14 @@ Track::~Track()
     equalizerThread.quit();
     equalizerThread.wait();
     if (equalizer != nullptr) {
+        disconnect(equalizer, &Equalizer::chunkEqualized,    this, &Track::pcmChunkFromEqualizer);
+        disconnect(equalizer, &Equalizer::replayGainChanged, this, &Track::equalizerReplayGainChanged);
+
+        disconnect(this, &Track::chunkAvailableToEqualizer, equalizer, &Equalizer::chunkAvailable);
+        disconnect(this, &Track::updateReplayGain,          equalizer, &Equalizer::setReplayGain);
+        disconnect(this, &Track::playBegins,                equalizer, &Equalizer::playBegins);
+        disconnect(this, &Track::requestReplayGainInfo,     equalizer, &Equalizer::requestForReplayGainInfo);
+
         delete equalizer;
     }
 
@@ -73,6 +92,12 @@ Track::~Track()
     analyzerThread.quit();
     analyzerThread.wait();
     if (analyzer != nullptr) {
+        disconnect(analyzer, &Analyzer::replayGain, this, &Track::analyzerReplayGain);
+
+        disconnect(this, &Track::bufferAvailableToAnalyzer, analyzer, &Analyzer::bufferAvailable);
+        disconnect(this, &Track::decoderDone,               analyzer, &Analyzer::decoderDone);
+        disconnect(this, &Track::resetReplayGain,           analyzer, &Analyzer::resetReplayGain);
+
         delete analyzer;
     }
 
@@ -80,6 +105,12 @@ Track::~Track()
     cacheThread.quit();
     cacheThread.wait();
     if (cache != nullptr) {
+        disconnect(cache, &PCMCache::pcmChunk, this, &Track::pcmChunkFromCache);
+        disconnect(cache, &PCMCache::error,    this, &Track::cacheError);
+
+        disconnect(this, &Track::cacheRequestNextPCMChunk,      cache, &PCMCache::requestNextPCMChunk);
+        disconnect(this, &Track::cacheRequestTimestampPCMChunk, cache, &PCMCache::requestTimestampPCMChunk);
+
         delete cache;
     }
 
@@ -87,6 +118,14 @@ Track::~Track()
     decoderThread.quit();
     decoderThread.wait();
     if (decoder != nullptr) {
+        disconnect(decoder, &DecoderGeneric::bufferAvailable, this, &Track::bufferAvailableFromDecoder);
+        disconnect(decoder, &DecoderGeneric::networkStarting, this, &Track::decoderNetworkStarting);
+        disconnect(decoder, &DecoderGeneric::radioTitle,      this, &Track::decoderRadioTitle);
+        disconnect(decoder, &DecoderGeneric::finished,        this, &Track::decoderFinished);
+        disconnect(decoder, &DecoderGeneric::errorMessage,    this, &Track::decoderError);
+
+        disconnect(this, &Track::startDecode, decoder, &DecoderGeneric::start);
+
         delete decoder;
     }
 }
