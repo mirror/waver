@@ -166,7 +166,7 @@ class Track : public QObject
 
     private slots:
 
-        void bufferAvailableFromDecoder(QAudioBuffer buffer);
+        void bufferAvailableFromDecoder(QAudioBuffer *buffer);
         void pcmChunkFromCache(QByteArray PCM, qint64 startMicroseconds, bool fromTimestamp);
         void pcmChunkFromEqualizer(TimedChunk chunk);
 

@@ -10,11 +10,13 @@
 
 #include <QAudioBuffer>
 #include <QAudioFormat>
+#include <QByteArray>
 #include <QFile>
 #include <QMutex>
 #include <QObject>
 #include <QRegExp>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QUuid>
 #include <QVector>
 
@@ -34,11 +36,12 @@ class PCMCache : public QObject
 
         static const qint32 BUFFER_CREATE_MILLISECONDS = 50;
         static const long   DEFAULT_PCM_MEMORY         = 50 * 1024 * 1024;
+        static const long   MAX_PCM_MEMORY             = 500 * 1024 * 1024;
 
         explicit PCMCache(QAudioFormat format, long lengthMilliseconds, bool radioStation, QObject *parent = nullptr);
         ~PCMCache();
 
-        void storeBuffer(QAudioBuffer buffer);
+        void storeBuffer(QAudioBuffer *buffer);
 
         qint64 size();
         bool   isFile();
@@ -55,6 +58,7 @@ class PCMCache : public QObject
         QByteArray *memory;
         QFile      *file;
 
+        qint64 memoryRealSize;
         qint64 readPosition;
 
         bool unfullfilledRequest;

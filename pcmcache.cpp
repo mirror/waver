@@ -15,6 +15,7 @@ PCMCache::PCMCache(QAudioFormat format, long lengthMilliseconds, bool radioStati
 
     file                = nullptr;
     memory              = nullptr;
+    memoryRealSize      = 0;
     readPosition        = 0;
     unfullfilledRequest = false;
 }
@@ -105,44 +106,41 @@ void PCMCache::requestNextPCMChunk()
     }
     unfullfilledRequest = false;
 
+    mutex.lock();
+
     qint64 chunkLength       = format.bytesForDuration(BUFFER_CREATE_MILLISECONDS * 1000);
     qint64 startMicroseconds = format.durationForBytes(readPosition);
 
+    QByteArray PCM;
+
     if (file != nullptr) {
-        if (!file->isOpen()) {
-            return;
-        }
-
-        mutex.lock();
-        if (file->pos() != readPosition) {
-            file->seek(readPosition);
-        }
-        QByteArray PCM = file->read(chunkLength);
-        readPosition += PCM.size();
-        mutex.unlock();
-
-        emit pcmChunk(PCM, startMicroseconds, false);
-        return;
-    }
-
-    if (memory != nullptr) {
-        if (memory->size() < (readPosition + chunkLength)) {
-            chunkLength = memory->size() - readPosition;
-        }
-        if (chunkLength <= 0) {
-            return;
-        }
-
-        mutex.lock();
-        QByteArray PCM = QByteArray(memory->data() + readPosition, chunkLength);
-        if (radioStation) {
-            memory->remove(0, chunkLength);
-        }
-        else {
+        if (file->isOpen()) {
+            if (file->pos() != readPosition) {
+                file->seek(readPosition);
+            }
+            PCM.append(file->read(chunkLength));
             readPosition += PCM.size();
         }
-        mutex.unlock();
+    }
+    else if (memory != nullptr) {
+        if (memoryRealSize < (readPosition + chunkLength)) {
+            chunkLength = memoryRealSize - readPosition;
+        }
+        if (chunkLength > 0) {
+            PCM.append(memory->constData() + readPosition, chunkLength);
+            if (radioStation) {
+                memory->remove(0, chunkLength);
+                memoryRealSize -= chunkLength;
+            }
+            else {
+                readPosition += PCM.size();
+            }
+        }
+    }
 
+    mutex.unlock();
+
+    if (PCM.size()) {
         emit pcmChunk(PCM, startMicroseconds, false);
     }
 }
@@ -150,46 +148,49 @@ void PCMCache::requestNextPCMChunk()
 
 void PCMCache::requestTimestampPCMChunk(long milliseconds)
 {
+    qint64 currentSize = size();
+
+    mutex.lock();
+
     qint64 chunkLength = format.bytesForDuration(BUFFER_CREATE_MILLISECONDS * 1000);
-    qint64 position    = qMin(static_cast<qint64>(format.bytesForDuration(milliseconds * 1000)), size() - chunkLength);
+    qint64 position    = qMin(static_cast<qint64>(format.bytesForDuration(milliseconds * 1000)), currentSize - chunkLength);
     if (position < 0) {
         position = 0;
     }
     qint64 startMicroseconds = format.durationForBytes(position);
 
+    QByteArray PCM;
+
     if (file != nullptr) {
-        if (!file->isOpen()) {
-            return;
+        if (file->isOpen()) {
+            file->seek(position);
+            PCM.append(file->read(chunkLength));
+            readPosition = position + PCM.size();
         }
-
-        mutex.lock();
-        file->seek(position);
-        QByteArray PCM = file->read(chunkLength);
-        readPosition = position + PCM.size();
-        mutex.unlock();
-
-        emit pcmChunk(PCM, startMicroseconds, true);
-        return;
+    }
+    else if (memory != nullptr) {
+        if (memoryRealSize < (position + chunkLength)) {
+            chunkLength = memoryRealSize - position;
+        }
+        if (chunkLength > 0) {
+            PCM.append(memory->constData() + position, chunkLength);
+            readPosition = position + PCM.size();
+        }
     }
 
-    if (memory != nullptr) {
-        if (memory->size() < (position + chunkLength)) {
-            chunkLength = memory->size() - position;
-        }
+    mutex.unlock();
 
-        mutex.lock();
-        QByteArray PCM = QByteArray(memory->data() + position, chunkLength);
-        readPosition = position + PCM.size();
-        mutex.unlock();
-
-        emit pcmChunk(PCM, startMicroseconds, true);
+    if (PCM.size()) {
+        emit pcmChunk(PCM, startMicroseconds, false);
     }
 }
 
 
 void PCMCache::run()
 {
-    if (((lengthMilliseconds <= 0) && !radioStation) || (format.bytesForDuration(lengthMilliseconds * 1000) > availableMemory())) {
+    qint64 bytesNeeded = format.bytesForDuration(lengthMilliseconds * 1000);
+
+    if (((lengthMilliseconds <= 0) && !radioStation) || (bytesNeeded > MAX_PCM_MEMORY) || (bytesNeeded > availableMemory())) {
         file = new QFile(QString("%1/waver_%2").arg(QStandardPaths::writableLocation(QStandardPaths::TempLocation), QUuid::createUuid().toString(QUuid::Id128)));
 
         if (!file->open(QIODevice::ReadWrite)) {
@@ -200,7 +201,12 @@ void PCMCache::run()
     }
 
     if (file == nullptr) {
-        memory = new QByteArray();
+        if (radioStation || (lengthMilliseconds <= 0)) {
+            memory = new QByteArray();
+        }
+        else {
+            memory = new QByteArray(format.bytesForDuration((lengthMilliseconds + 1000) * 1000), 0);
+        }
     }
 }
 
@@ -214,7 +220,7 @@ qint64 PCMCache::size()
         size = file->size();
     }
     else if (memory != nullptr) {
-        size = memory->size();
+        size = memoryRealSize;
     }
     mutex.unlock();
 
@@ -222,14 +228,14 @@ qint64 PCMCache::size()
 }
 
 
-void PCMCache::storeBuffer(QAudioBuffer buffer)
+void PCMCache::storeBuffer(QAudioBuffer *buffer)
 {
     if (file != nullptr) {
         mutex.lock();
         if (!file->atEnd()) {
             file->seek(file->size());
         }
-        file->write(static_cast<char*>(buffer.data()), buffer.byteCount());
+        file->write(static_cast<const char*>(buffer->constData()), buffer->byteCount());
         mutex.unlock();
 
         if (unfullfilledRequest) {
@@ -241,7 +247,13 @@ void PCMCache::storeBuffer(QAudioBuffer buffer)
 
     if (memory != nullptr) {
         mutex.lock();
-        memory->append(static_cast<char*>(buffer.data()), buffer.byteCount());
+        if (radioStation || (lengthMilliseconds <= 0)) {
+            memory->append(static_cast<const char*>(buffer->constData()), buffer->byteCount());
+        }
+        else {
+            memory->replace(memoryRealSize, buffer->byteCount(), static_cast<const char*>(buffer->constData()), buffer->byteCount());
+        }
+        memoryRealSize += buffer->byteCount();
         mutex.unlock();
 
         if (unfullfilledRequest) {

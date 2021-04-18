@@ -380,6 +380,8 @@ Track::TrackInfo Waver::getCurrentTrackInfo()
 {
     if (currentTrack == nullptr) {
         Track::TrackInfo emptyTrackInfo;
+        emptyTrackInfo.track = 0;
+        emptyTrackInfo.year  = 0;
         return emptyTrackInfo;
     }
     return currentTrack->getTrackInfo();
@@ -824,8 +826,6 @@ void Waver::killPreviousTrack()
 void Waver::nextButton()
 {
     if (playlist.size() > 0) {
-        killPreviousTrack();
-
         Track *track = playlist.first();
         playlist.removeFirst();
 
@@ -1734,6 +1734,8 @@ void Waver::stopButton()
 
     foreach (Track *track, playlist) {
         connectTrackSignals(track, false);
+        track->setStatus(Track::Paused);
+        track->setStatus(Track::Idle);
         delete track;
     }
     playlist.clear();
@@ -1831,6 +1833,8 @@ void Waver::trackFinished(QString id)
         history.prepend(previousTrack->getTrackInfo());
         emit uiHistoryAdd(previousTrack->getTrackInfo().attributes.contains("radio_station") ? previousTrack->getTrackInfo().artist : previousTrack->getTrackInfo().title);
 
+        previousTrack->setStatus(Track::Paused);
+        previousTrack->setStatus(Track::Idle);
         delete previousTrack;
         previousTrack = nullptr;
 
@@ -1848,6 +1852,8 @@ void Waver::trackFinished(QString id)
         history.prepend(currentTrack->getTrackInfo());
         emit uiHistoryAdd(currentTrack->getTrackInfo().attributes.contains("radio_station") ? currentTrack->getTrackInfo().artist : currentTrack->getTrackInfo().title);
 
+        currentTrack->setStatus(Track::Paused);
+        currentTrack->setStatus(Track::Idle);
         delete currentTrack;
         currentTrack = nullptr;
 
@@ -1862,9 +1868,13 @@ void Waver::trackFinished(QString id)
         }
     }
     foreach (Track *track, tracksToBeDeleted) {
-        errorMessage(id, tr("Unable to start"), track->getTrackInfo().url.toString());
         connectTrackSignals(track, false);
+
+        errorMessage(id, tr("Unable to start"), track->getTrackInfo().url.toString());
+
         playlist.removeAll(track);
+        track->setStatus(Track::Paused);
+        track->setStatus(Track::Idle);
         delete track;
     }
 

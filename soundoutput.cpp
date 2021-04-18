@@ -251,7 +251,7 @@ void SoundOutput::run()
     feeder = new OutputFeeder(bytesToPlay, bytesToPlayMutex, format, audioOutput, peakCallbackInfo);
     feeder->moveToThread(&feederThread);
 
-    connect(&feederThread, SIGNAL(started()),  feeder, SLOT(run()));
+    connect(&feederThread, SIGNAL(started()), feeder, SLOT(run()));
 
     emit needChunk();
 }

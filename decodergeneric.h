@@ -84,7 +84,7 @@ class DecoderGeneric : public QObject
 
     signals:
 
-        void bufferAvailable(QAudioBuffer buffer);
+        void bufferAvailable(QAudioBuffer *buffer);
         void radioTitle(QString title);
         void finished();
         void errorMessage(QString info, QString error);

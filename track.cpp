@@ -258,7 +258,7 @@ void Track::attributeRemove(QString key)
 }
 
 
-void Track::bufferAvailableFromDecoder(QAudioBuffer buffer)
+void Track::bufferAvailableFromDecoder(QAudioBuffer *buffer)
 {
     cache->storeBuffer(buffer);
 
@@ -267,10 +267,8 @@ void Track::bufferAvailableFromDecoder(QAudioBuffer buffer)
         bufferInfoLastSent = QDateTime::currentMSecsSinceEpoch();
     }
 
-    QAudioBuffer *copy = new QAudioBuffer(QByteArray(static_cast<char *>(buffer.data()), buffer.byteCount()), buffer.format(), buffer.startTime());
-
     analyzerQueueMutex.lock();
-    analyzerQueue.append(copy);
+    analyzerQueue.append(buffer);
     analyzerQueueMutex.unlock();
 
     emit bufferAvailableToAnalyzer();
@@ -569,9 +567,9 @@ void Track::sendFinished()
     if (finishedSent) {
         return;
     }
+    finishedSent = true;
 
     emit finished(trackInfo.id);
-    finishedSent = true;
 }
 
 
@@ -611,9 +609,9 @@ void Track::setStatus(Status status)
     }
 
     if ((status == Decoding) && (currentStatus == Idle)) {
+        analyzerThread.start();
         cacheThread.start();
         decoderThread.start();
-        analyzerThread.start();
 
         emit startDecode();
 
@@ -622,10 +620,10 @@ void Track::setStatus(Status status)
     }
 
     if ((status == Playing) && (currentStatus == Idle)) {
-        cacheThread.start();
-        decoderThread.start();
         analyzerThread.start();
         equalizerThread.start();
+        cacheThread.start();
+        decoderThread.start();
         outputThread.start(QThread::HighestPriority);
 
         emit startDecode();

@@ -44,9 +44,15 @@ void DecoderGeneric::decoderBufferReady()
 
     QAudioBuffer bufferReady = audioDecoder->read();
 
+    if (!bufferReady.isValid()) {
+        return;
+    }
+
     decodedMicroseconds += bufferReady.format().durationForBytes(bufferReady.byteCount());
 
-    emit bufferAvailable(bufferReady);
+    QAudioBuffer *copy = new QAudioBuffer(QByteArray(static_cast<const char *>(bufferReady.constData()), bufferReady.byteCount()), bufferReady.format(), bufferReady.startTime());
+
+    emit bufferAvailable(copy);
 
     if (decodeDelay > 0) {
         QThread::currentThread()->usleep(decodeDelay);
