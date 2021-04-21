@@ -457,7 +457,7 @@ ApplicationWindow {
             onTriggered: Qt.openUrlExternally("https://google.com/search?q=" + performer.text + " " + title.text + " lyrics");
         }
         MenuItem {
-            text: qsTr("Performer")
+            text: qsTr("Artist")
             onTriggered: Qt.openUrlExternally("https://google.com/search?q=\"" + performer.text + "\" band");
         }
     }
