@@ -80,6 +80,7 @@ class Track : public QObject
         qint64          getPlayedMillseconds();
         int             getFadeDurationSeconds();
         QVector<double> getEqualizerBandCenterFrequencies();
+        bool            getNetworkStartingLastState();
 
         void optionsUpdated();
 
@@ -135,6 +136,7 @@ class Track : public QObject
         bool   finishedSent;
         bool   fadeoutStartedSent;
         qint64 bufferInfoLastSent;
+        bool   networkStartingLastState;
 
         int    fadeDurationSeconds;
         qint64 fadeoutStartMilliseconds;
@@ -175,7 +177,8 @@ class Track : public QObject
 
         void decoderRadioTitle(QString title);
         void decoderFinished();
-        void decoderError(QString errorMessage);
+        void decoderError(QString info, QString errorMessage);
+        void decoderInfo(QString info);
         void decoderNetworkStarting(bool starting);
         void underrunTimeout();
 
@@ -194,6 +197,7 @@ class Track : public QObject
     signals:
 
         void error(QString id, QString info, QString error);
+        void info(QString id, QString info);
 
         void playPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds, long decodedMilliseconds);
         void bufferInfo(QString id, bool rawIsFile, unsigned long rawSize, bool pmcIsFile, unsigned long pmcSize);

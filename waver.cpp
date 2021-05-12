@@ -199,6 +199,7 @@ void Waver::connectTrackSignals(Track *track, bool newConnect)
         connect(track, &Track::fadeoutStarted,    this, &Waver::trackFadeoutStarted);
         connect(track, &Track::trackInfoUpdated,  this, &Waver::trackInfoUpdated);
         connect(track, &Track::error,             this, &Waver::trackError);
+        connect(track, &Track::info,              this, &Waver::trackInfo);
         connect(track, &Track::statusChanged,     this, &Waver::trackStatusChanged);
 
         connect(this,  &Waver::requestTrackBufferReplayGainInfo, track, &Track::requestForBufferReplayGainInfo);
@@ -214,6 +215,7 @@ void Waver::connectTrackSignals(Track *track, bool newConnect)
     disconnect(track, &Track::fadeoutStarted,    this, &Waver::trackFadeoutStarted);
     disconnect(track, &Track::trackInfoUpdated,  this, &Waver::trackInfoUpdated);
     disconnect(track, &Track::error,             this, &Waver::trackError);
+    disconnect(track, &Track::info,              this, &Waver::trackInfo);
     disconnect(track, &Track::statusChanged,     this, &Waver::trackStatusChanged);
 
     disconnect(this,  &Waver::requestTrackBufferReplayGainInfo, track, &Track::requestForBufferReplayGainInfo);
@@ -1649,6 +1651,7 @@ void Waver::startNextTrackUISignals()
     emit uiSetTrackTags(trackInfo.tags.join(", "));
     emit uiSetImage(trackInfo.arts.size() ? trackInfo.arts.at(0).toString() : "qrc:/images/waver.png");
     emit uiSetFavorite(trackInfo.attributes.contains("flag"));
+    emit uiSetTrackBusy(currentTrack->getNetworkStartingLastState());
 
     emit requestTrackBufferReplayGainInfo();
 
@@ -1884,6 +1887,12 @@ void Waver::trackFinished(QString id)
     if (shuffleOK && (playlist.size() < 1) && (servers.size() > 0)) {
         startShuffleCountdown();
     }
+}
+
+
+void Waver::trackInfo(QString id, QString info)
+{
+    errorMessage(id, info, "");
 }
 
 

@@ -20,13 +20,14 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
 
     this->peakCallbackInfo = peakCallbackInfo;
 
-    currentStatus       = Idle;
-    stopping            = false;
-    decodingDone        = false;
-    finishedSent        = false;
-    fadeoutStartedSent  = false;
-    posMilliseconds     = 0;
-    bufferInfoLastSent  = 0;
+    currentStatus            = Idle;
+    stopping                 = false;
+    decodingDone             = false;
+    finishedSent             = false;
+    fadeoutStartedSent       = false;
+    posMilliseconds          = 0;
+    bufferInfoLastSent       = 0;
+    networkStartingLastState = false;
 
     fadeDirection            = FadeDirectionNone;
     fadeDurationSeconds      = (trackInfo.attributes.contains("fadeDuration") ? trackInfo.attributes.value("fadeDuration").toInt() : FADE_DURATION_DEFAULT_SECONDS);
@@ -288,9 +289,9 @@ void Track::changeStatus(Status status)
 }
 
 
-void Track::decoderError(QString errorMessage)
+void Track::decoderError(QString info, QString errorMessage)
 {
-    emit error(trackInfo.id, tr("Decoder error"), errorMessage);
+    emit error(trackInfo.id, info, errorMessage);
 
     if ((currentStatus == Playing) && ((decoder->getDecodedMicroseconds() / 1000 - 1000) > posMilliseconds)) {
         decoderFinished();
@@ -319,8 +320,15 @@ void Track::decoderFinished()
 }
 
 
+void Track::decoderInfo(QString info)
+{
+    emit this->info(trackInfo.id, info);
+}
+
+
 void Track::decoderNetworkStarting(bool starting)
 {
+    networkStartingLastState = starting;
     emit networkConnecting(trackInfo.id, starting);
 }
 
@@ -373,6 +381,12 @@ qint64 Track::getLengthMilliseconds()
     }
 
     return 0;
+}
+
+
+bool Track::getNetworkStartingLastState()
+{
+    return networkStartingLastState;
 }
 
 
@@ -747,6 +761,7 @@ void Track::setupDecoder()
     connect(decoder, &DecoderGeneric::radioTitle,      this, &Track::decoderRadioTitle);
     connect(decoder, &DecoderGeneric::finished,        this, &Track::decoderFinished);
     connect(decoder, &DecoderGeneric::errorMessage,    this, &Track::decoderError);
+    connect(decoder, &DecoderGeneric::infoMessage,     this, &Track::decoderInfo);
 
     connect(this, &Track::startDecode, decoder, &DecoderGeneric::start);
 }

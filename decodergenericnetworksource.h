@@ -17,6 +17,7 @@
 #include <QNetworkRequest>
 #include <QString>
 #include <QStringList>
+#include <QThread>
 #include <QTimer>
 #include <QUrl>
 #include <QVector>
@@ -50,8 +51,9 @@ class DecoderGenericNetworkSource : public QIODevice
 
     private:
 
-        static const int CONNECTION_TIMEOUT = 7500;
-        static const int PRE_CACHE_TIMEOUT  = 15000;
+        static const int CONNECTION_ATTEMPTS = 3;
+        static const int CONNECTION_TIMEOUT  = 7500;
+        static const int PRE_CACHE_TIMEOUT   = 15000;
 
         QUrl            url;
         QWaitCondition *waitCondition;
@@ -64,13 +66,14 @@ class DecoderGenericNetworkSource : public QIODevice
 
         QMutex mutex;
 
+        QTimer *connectionTimer;
+        QTimer *preCacheTimer;
+
+        int  connectionAttempt;
         bool downloadStarted;
         bool downloadFinished;
         bool readyEmitted;
         bool errorOnUnderrun;
-
-        //qint64 totalRawBytes;
-        //qint64 totalBufferBytes;
 
         int        rawChunkSize;
         int        rawCount;
@@ -78,10 +81,13 @@ class DecoderGenericNetworkSource : public QIODevice
         int        metaCount;
         QByteArray metaBuffer;
 
+        QNetworkRequest buildNetworkRequest();
+
 
     signals:
 
         void error(QString errorString);
+        void info(QString errorString);
         void ready();
         void radioTitle(QString title);
 

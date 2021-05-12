@@ -134,6 +134,12 @@ void DecoderGeneric::networkError(QString errorString)
 }
 
 
+void DecoderGeneric::networkInfo(QString infoString)
+{
+    emit infoMessage(infoString);
+}
+
+
 void DecoderGeneric::networkRadioTitle(QString title)
 {
     emit radioTitle(title);
@@ -222,6 +228,7 @@ void DecoderGeneric::start()
 
         connect(networkSource, SIGNAL(ready()),             this, SLOT(networkReady()));
         connect(networkSource, SIGNAL(error(QString)),      this, SLOT(networkError(QString)));
+        connect(networkSource, SIGNAL(info(QString)),       this, SLOT(networkInfo(QString)));
         connect(networkSource, SIGNAL(radioTitle(QString)), this, SLOT(networkRadioTitle(QString)));
 
         emit networkStarting(true);
