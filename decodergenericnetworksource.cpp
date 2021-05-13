@@ -49,12 +49,13 @@ DecoderGenericNetworkSource::~DecoderGenericNetworkSource()
     if (networkReply != nullptr) {
         disconnect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
         disconnect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
-
         networkReply->abort();
-        delete networkReply;
+        networkReply->deleteLater();
+        networkReply = nullptr;
     }
     if (networkAccessManager != nullptr) {
         delete networkAccessManager;
+        networkAccessManager = nullptr;
     }
 
     foreach (QByteArray *bufferData, buffer) {
@@ -87,10 +88,18 @@ QNetworkRequest DecoderGenericNetworkSource::buildNetworkRequest()
 
 void DecoderGenericNetworkSource::connectionTimeout()
 {
+    if (downloadFinished) {
+        return;
+    }
+
     // still couldn't start downloading, either this connection sucks or there was some unreported error, let's abort
     if (!downloadStarted) {
-        preCacheTimer->stop();
-        networkReply->abort();
+        if (preCacheTimer != nullptr) {
+            preCacheTimer->stop();
+        }
+        if (networkReply != nullptr) {
+            networkReply->abort();
+        }
 
         connectionAttempt++;
         if (connectionAttempt >= CONNECTION_ATTEMPTS) {
@@ -99,22 +108,28 @@ void DecoderGenericNetworkSource::connectionTimeout()
             return;
         }
 
-        emit info(tr("Connection timeout, retrying"));
+        emit info(tr("Connection timeout, retrying (delay: %1 seconds)").arg(connectionAttempt * 10));
         QThread::currentThread()->sleep(connectionAttempt * 10);
-        emit info(tr("Connection attempt").append(QString(" %1").arg(connectionAttempt + 1)));
+        emit info(tr("Connection attempt %1").arg(connectionAttempt + 1));
 
         QNetworkRequest networkRequest = buildNetworkRequest();
 
-        disconnect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
-        disconnect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
-        delete networkReply;
+        if (networkReply != nullptr) {
+            disconnect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
+            disconnect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
+            networkReply->deleteLater();
+        }
 
         networkReply = networkAccessManager->get(networkRequest);
         connect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
         connect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
 
-        connectionTimer->start(CONNECTION_TIMEOUT * 4 * connectionAttempt);
-        preCacheTimer->start(PRE_CACHE_TIMEOUT * 4 * connectionAttempt);
+        if (connectionTimer != nullptr) {
+            connectionTimer->start(CONNECTION_TIMEOUT * 4 * connectionAttempt);
+        }
+        if (preCacheTimer != nullptr) {
+            preCacheTimer->start(PRE_CACHE_TIMEOUT * 4 * connectionAttempt);
+        }
     }
 }
 
@@ -255,14 +270,20 @@ void DecoderGenericNetworkSource::networkError(QNetworkReply::NetworkError code)
 {
     Q_UNUSED(code);
 
-    connectionTimer->stop();
-    preCacheTimer->stop();
-
+    //if (downloadFinished || (code == QNetworkReply::OperationCanceledError)) {
     if (downloadFinished) {
         return;
     }
 
-    networkReply->abort();
+    if (connectionTimer != nullptr) {
+        connectionTimer->stop();
+    }
+    if (preCacheTimer != nullptr) {
+        preCacheTimer->stop();
+    }
+    if (networkReply != nullptr) {
+        networkReply->abort();
+    }
 
     connectionAttempt++;
     if (connectionAttempt >= CONNECTION_ATTEMPTS) {
@@ -271,22 +292,28 @@ void DecoderGenericNetworkSource::networkError(QNetworkReply::NetworkError code)
         return;
     }
 
-    emit info(tr("Network error, retrying"));
+    emit info(tr("Network error, retrying (delay: %1 seconds)").arg(connectionAttempt * 10));
     QThread::currentThread()->sleep(connectionAttempt * 10);
-    emit info(tr("Connection attempt").append(QString(" %1").arg(connectionAttempt + 1)));
+    emit info(tr("Connection attempt %1").arg(connectionAttempt + 1));
 
     QNetworkRequest networkRequest = buildNetworkRequest();
 
-    disconnect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
-    disconnect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
-    delete networkReply;
+    if (networkReply != nullptr) {
+        disconnect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
+        disconnect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
+        networkReply->deleteLater();
+    }
 
     networkReply = networkAccessManager->get(networkRequest);
     connect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
     connect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
 
-    connectionTimer->start(CONNECTION_TIMEOUT * 4 * connectionAttempt);
-    preCacheTimer->start(PRE_CACHE_TIMEOUT * 4 * connectionAttempt);
+    if (connectionTimer != nullptr) {
+        connectionTimer->start(CONNECTION_TIMEOUT * 4 * connectionAttempt);
+    }
+    if (preCacheTimer != nullptr) {
+        preCacheTimer->start(PRE_CACHE_TIMEOUT * 4 * connectionAttempt);
+    }
 }
 
 
@@ -298,9 +325,15 @@ qint64 DecoderGenericNetworkSource::pos() const
 
 void DecoderGenericNetworkSource::preCacheTimeout()
 {
+    if (downloadFinished) {
+        return;
+    }
+
     // still couldn't pre-cache
     if (!readyEmitted) {
-        networkReply->abort();
+        if (networkReply != nullptr) {
+            networkReply->abort();
+        }
 
         connectionAttempt++;
         if (connectionAttempt >= CONNECTION_ATTEMPTS) {
@@ -309,22 +342,28 @@ void DecoderGenericNetworkSource::preCacheTimeout()
             return;
         }
 
-        emit info(tr("Pre-cache timeout, retrying"));
+        emit info(tr("Pre-cache timeout, retrying (delay: %1 seconds)").arg(connectionAttempt * 10));
         QThread::currentThread()->sleep(connectionAttempt * 10);
-        emit info(tr("Connection attempt").append(QString(" %1").arg(connectionAttempt + 1)));
+        emit info(tr("Connection attempt").arg(connectionAttempt + 1));
 
         QNetworkRequest networkRequest = buildNetworkRequest();
 
-        disconnect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
-        disconnect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
-        delete networkReply;
+        if (networkReply != nullptr) {
+            disconnect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
+            disconnect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
+            networkReply->deleteLater();
+        }
 
         networkReply = networkAccessManager->get(networkRequest);
         connect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
         connect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
 
-        connectionTimer->start(CONNECTION_TIMEOUT * 4 * connectionAttempt);
-        preCacheTimer->start(PRE_CACHE_TIMEOUT * 4 * connectionAttempt);
+        if (connectionTimer != nullptr) {
+            connectionTimer->start(CONNECTION_TIMEOUT * 4 * connectionAttempt);
+        }
+        if (preCacheTimer != nullptr) {
+            preCacheTimer->start(PRE_CACHE_TIMEOUT * 4 * connectionAttempt);
+        }
     }
 }
 
@@ -414,5 +453,4 @@ qint64 DecoderGenericNetworkSource::writeData(const char *data, qint64 len)
 
     return -1;
 }
-
 

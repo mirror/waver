@@ -257,6 +257,7 @@ class Waver : public QObject, PeakCallback
         void playlistClearItems();
         void playlistBufferData(QVariant index, QVariant memoryUsageText);
         void playlistBusy(QVariant index, QVariant busy);
+        void playlistTotalTime(QVariant totalTime);
         void playlistSelected(QVariant index, QVariant busy);
 
         void optionsAsRequested(QVariant optionsObj);

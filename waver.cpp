@@ -1112,10 +1112,28 @@ void Waver::playlistItemDragDropped(int index, int destinationIndex)
 
 void Waver::playlistUpdateUISignals()
 {
+    qint64 totalMilliSeconds = 0;
+    bool   totalIsEstimate   = false;
+
     emit playlistClearItems();
     foreach (Track *track, playlist) {
         Track::TrackInfo trackInfo = track->getTrackInfo();
         emit playlistAddItem(trackInfo.title, trackInfo.artist, trackInfo.attributes.contains("group") ? trackInfo.attributes.value("group") : "", trackInfo.arts.first().toString(), trackInfo.attributes.contains("playlist_selected"));
+
+        qint64 milliseconds = track->getLengthMilliseconds();
+        if (milliseconds > 0) {
+            totalMilliSeconds += milliseconds;
+        }
+        else {
+            totalIsEstimate = true;
+        }
+    }
+
+    if (totalMilliSeconds <= 0) {
+        emit playlistTotalTime("");
+    }
+    else {
+        emit playlistTotalTime(QDateTime::fromMSecsSinceEpoch(totalMilliSeconds).toUTC().toString("hh:mm:ss").replace(QRegExp("^00:"), "").prepend(totalIsEstimate ? "~" : ""));
     }
 }
 

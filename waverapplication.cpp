@@ -96,6 +96,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(waver, SIGNAL(playlistClearItems()), uiMainWindow, SLOT(playlistClearItems()));
     QObject::connect(waver, SIGNAL(playlistBufferData(QVariant,QVariant)), uiMainWindow, SLOT(playlistBufferData(QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(playlistBusy(QVariant,QVariant)), uiMainWindow, SLOT(playlistBusy(QVariant,QVariant)));
+    QObject::connect(waver, SIGNAL(playlistTotalTime(QVariant)), uiMainWindow, SLOT(playlistTotalTime(QVariant)));
     QObject::connect(waver, SIGNAL(playlistSelected(QVariant,QVariant)), uiMainWindow, SLOT(playlistSelected(QVariant,QVariant)));
 
     QObject::connect(uiMainWindow, SIGNAL(addNewServer(QString,QString,QString)), waver, SLOT(addServer(QString,QString,QString)));

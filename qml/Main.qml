@@ -123,6 +123,11 @@ ApplicationWindow {
         playlist.setBusy(index, busy);
     }
 
+    function playlistTotalTime(totalTime)
+    {
+        playlist.setTotalTime(totalTime);
+    }
+
     function playlistClearItems()
     {
         playlist.clearItems();

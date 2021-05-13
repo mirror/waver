@@ -27,7 +27,7 @@ static const int    DEFAULT_MAX_PEAK_FPS  = 25;
 static const bool   DEFAULT_PEAK_DELAY_ON = false;
 static const qint64 DEFAULT_PEAK_DELAY_MS = 333;
 
-static const double DEFAULT_PREAMP = 3.0;
+static const double DEFAULT_PREAMP = 0.0;
 static const double DEFAULT_EQ1    = 6.0;
 static const double DEFAULT_EQ2    = 3.0;
 static const double DEFAULT_EQ3    = 1.5;

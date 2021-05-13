@@ -62,6 +62,19 @@ Item {
         playlistItems.setProperty(index, "selected", selected);
     }
 
+    function setTotalTime(totalTimeText)
+    {
+        if (totalTimeText.length === 0) {
+            totalTime.visible = false;
+            totalTimeBackground.visible = false;
+            return;
+        }
+
+        totalTime.text = totalTimeText;
+        totalTime.visible = true;
+        totalTimeBackground.visible = true;
+    }
+
     QtObject {
         id: internal
 
@@ -363,6 +376,34 @@ Item {
                 }
             }
         }
+    }
+
+
+    Rectangle {
+        id: totalTimeBackground
+
+        anchors.bottom: playlistItemsView.bottom
+        anchors.horizontalCenter: playlistItemsView.horizontalCenter
+        anchors.bottomMargin: 3
+        width: totalTime.width + 4
+        height: totalTime.height
+
+        color: totalTime.palette.highlight
+        radius: 3
+    }
+
+    Label {
+        id: totalTime
+
+        anchors.bottom: playlistItemsView.bottom
+        anchors.horizontalCenter: playlistItemsView.horizontalCenter
+        anchors.bottomMargin: 3
+
+        color: totalTime.palette.highlightedText
+        font.pixelSize: textMetrics.font.pixelSize * 0.8
+        horizontalAlignment: Text.AlignHCenter
+        text: ""
+        wrapMode: Text.NoWrap
     }
 
     Rectangle {

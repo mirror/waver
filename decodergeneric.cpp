@@ -15,6 +15,8 @@ DecoderGeneric::DecoderGeneric(QObject *parent) : QObject(parent)
     networkDeviceSet    = false;
     decodedMicroseconds = 0;
     decodeDelay         = 50;
+
+    networkThread.setObjectName("decoder_network_source");
 }
 
 
