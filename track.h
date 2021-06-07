@@ -30,7 +30,6 @@
 #include "pcmcache.h"
 #include "soundoutput.h"
 
-
 #ifdef QT_DEBUG
     #include <QDebug>
 #endif

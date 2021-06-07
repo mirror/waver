@@ -1,3 +1,10 @@
+/*
+    This file is part of Waver
+    Copyright (C) 2021 Peter Papp
+    Please visit https://launchpad.net/waver for details
+*/
+
+
 #ifndef MEDIAPLAYER2DBUSADAPTOR_H
 #define MEDIAPLAYER2DBUSADAPTOR_H
 

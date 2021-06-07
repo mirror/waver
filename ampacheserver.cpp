@@ -14,7 +14,7 @@ AmpacheServer::AmpacheServer(QUrl host, QString user, QObject *parent) : QObject
     this->user = user;
 
     writeKeychainJob = nullptr;
-    readKeychainJob = nullptr;
+    readKeychainJob  = nullptr;
 
     handshakeInProgress = false;
     authKey             = "";

@@ -1,48 +1,65 @@
+/*
+    This file is part of Waver
+    Copyright (C) 2021 Peter Papp
+    Please visit https://launchpad.net/waver for details
+*/
+
+
+/*
+    historically this used to use QTrayIcon, but that requires Qt's Widgets
+    now using more modern Windows toast notifications
+    see https://github.com/mohabouje/WinToast
+*/
+
+
 #ifndef TRAYICON_H
 #define TRAYICON_H
 
-#include <QAction>
-#include <QIcon>
-#include <QMenu>
+#include <QGuiApplication>
 #include <QObject>
-#include <QSystemTrayIcon>
+#include <QTimer>
+#include <wintoastlib.h>
 
-#include "ipcmessageutils.h"
-#include "pluginglobals.h"
-#include "server.h"
+#include "globals.h"
+#include "track.h"
+#include "waver.h"
+
+using namespace WinToastLib;
 
 
-class TrayIcon : public QObject {
+class TrayIcon : public QObject, IWinToastHandler {
         Q_OBJECT
 
     public:
 
-        explicit TrayIcon(QObject *parent, WaverServer *waverServer);
+        explicit TrayIcon(Waver *waver, QObject *parent);
         ~TrayIcon();
+
+        void toastActivated() const override;
+        void toastActivated(int actionIndex) const override;
+        void toastDismissed(WinToastDismissalReason state) const override;
+        void toastFailed() const override;
 
 
     private:
 
-        WaverServer     *waverServer;
-        IpcMessageUtils *ipcMessageUtils;
-        QAction         *playPauseAction;
-        QMenu           *systemTrayMenu;
-        QSystemTrayIcon *systemTrayIcon;
-
-        bool firstTrack;
+        Waver *waver;
 
         void showMetadataMessage();
 
+        QString          imagesPath;
+        WinToastTemplate toastTemplate;
 
-    public slots:
 
-        void menuPlayPause();
-        void menuNext();
-        void menuShowWaver();
+    private slots:
 
-        void activated(QSystemTrayIcon::ActivationReason reason);
+        void showToast();
 
-        void waverServerIpcSend(QString data);
+
+    signals:
+
+        void pause() const;
+        void play() const;
 };
 
 #endif // TRAYICON_H

@@ -93,7 +93,7 @@ Waver::~Waver()
         delete server;
     }
 
-    delete globalConstantsView;
+    globalConstantsView->deleteLater();
 }
 
 
@@ -157,6 +157,15 @@ void Waver::addServer(QString host, QString user, QString psw)
         settings.setValue("settingsId", servers.at(i)->getSettingsId().toString());
     }
     settings.endArray();
+}
+
+
+void Waver::addToLog(QString id, QString info, QString error)
+{
+    LogItem item = { QDateTime::currentDateTime(), id, info, error };
+    log.append(item);
+
+    emit logUpdate(QString("%1: <%2>, '%3', '%4'\n").arg(item.dateTime.toString(), item.id, item.error, item.info));
 }
 
 
@@ -258,8 +267,7 @@ void Waver::errorMessage(QString id, QString info, QString error)
         qDebug() << id << info << error;
     #endif
 
-    ErrorItem errorItem = { QDateTime::currentDateTime(), id, info, error };
-    errorLog.append(errorItem);
+    addToLog(id, info, error);
 
     emit uiSetStatusTempText(info);
 }
@@ -337,11 +345,11 @@ void Waver::fileScanFinished()
     int counter = 0;
     foreach (QFileInfo dir, fileScanner->getDirs()) {
         counter++;
-        emit explorerAddItem(QString("%1%2").arg(UI_ID_PREFIX_LOCALDIR_SUBDIR).arg(randomGenerator->bounded(RANDOM_MAX)), fileScanner->getUiData(), dir.baseName(), "qrc:/icons/browse.ico", QVariantMap({{ "path", dir.absoluteFilePath() }}), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1%2").arg(UI_ID_PREFIX_LOCALDIR_SUBDIR).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())), fileScanner->getUiData(), dir.baseName(), "qrc:/icons/browse.ico", QVariantMap({{ "path", dir.absoluteFilePath() }}), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
     }
     foreach (QFileInfo file, fileScanner->getFiles()) {
         counter++;
-        emit explorerAddItem(QString("%1%2").arg(UI_ID_PREFIX_LOCALDIR_FILE).arg(randomGenerator->bounded(RANDOM_MAX)), fileScanner->getUiData(), file.fileName(), "qrc:/icons/audio_file.ico", QVariantMap({{ "path", file.absoluteFilePath() }}), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1%2").arg(UI_ID_PREFIX_LOCALDIR_FILE).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())), fileScanner->getUiData(), file.fileName(), "qrc:/icons/audio_file.ico", QVariantMap({{ "path", file.absoluteFilePath() }}), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
     }
 
     emit explorerSetBusy(fileScanner->getUiData(), false);
@@ -396,12 +404,6 @@ Track::Status Waver::getCurrentTrackStatus()
         return Track::Idle;
     }
     return currentTrack->getStatus();
-}
-
-
-QList<Waver::ErrorItem> Waver::getErrorLog()
-{
-    return errorLog;
 }
 
 
@@ -542,7 +544,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
 
                     if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSE) && (currentChar != alphabetFromName(name))) {
                         currentChar = alphabetFromName(name);
-                        QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEALPHABET).arg(randomGenerator->bounded(RANDOM_MAX)).arg(serverId);
+                        QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEALPHABET).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())).arg(serverId);
                         emit explorerAddItem(newId, id, currentChar, "qrc:/icons/browse.ico", QVariantMap({{ "alphabet", currentChar }}), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
                     }
                     if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALPHABET) && extra.value("alphabet").toString().startsWith(alphabetFromName(name))) {
@@ -1163,6 +1165,17 @@ void Waver::raiseButton()
 }
 
 
+void Waver::requestLog()
+{
+    QString logStr;
+    foreach (LogItem item, log) {
+        logStr.append(QString("%1: <%2>, '%3', '%4'\n").arg(item.dateTime.toString(), item.id, item.error, item.info));
+    }
+
+    emit logAsRequested(logStr);
+}
+
+
 void Waver::requestOptions()
 {
     QVariantMap     optionsObj;
@@ -1220,6 +1233,8 @@ void Waver::requestOptions()
 
 void Waver::run()
 {
+    addToLog("waver", "Starting", "Entering run method");
+
     QSettings settings;
 
     shuffleCountdownTimer = new QTimer();
@@ -1923,6 +1938,8 @@ Track::TrackInfo Waver::trackInfoFromFilePath(QString filePath)
     trackInfo.track = 0;
     trackInfo.year  = 0;
 
+#ifndef Q_OS_WINRT
+
     TagLib::FileRef fileRef(QFile::encodeName(filePath).constData());
     if (!fileRef.isNull() && !fileRef.tag()->isEmpty()) {
         trackInfo.title  = TStringToQString(fileRef.tag()->title());
@@ -1930,9 +1947,10 @@ Track::TrackInfo Waver::trackInfoFromFilePath(QString filePath)
         trackInfo.album  = TStringToQString(fileRef.tag()->album());
         trackInfo.year   = fileRef.tag()->year();
         trackInfo.track  = fileRef.tag()->track();
-
         trackInfo.attributes.insert("lengthMilliseconds", fileRef.audioProperties()->lengthInMilliseconds());
     }
+
+#endif
 
     if (trackInfo.title.isEmpty() || trackInfo.artist.isEmpty() || trackInfo.album.isEmpty()) {
         QString trackDirectory;

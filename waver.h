@@ -26,9 +26,15 @@
 #include <QUuid>
 #include <QVariant>
 #include <QVariantMap>
-#include <taglib/fileref.h>
-#include <taglib/tpropertymap.h>
-#include <taglib/tstring.h>
+
+#ifndef Q_OS_WINRT
+    #include <taglib-1.12/taglib/fileref.h>
+    #include <taglib-1.12/taglib/toolkit/tpropertymap.h>
+    #include <taglib-1.12/taglib/toolkit/tstring.h>
+#endif
+#ifdef Q_OS_WIN
+    #include "windows.h"
+#endif
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -46,19 +52,11 @@ class Waver : public QObject, PeakCallback
 
     public:
 
-        struct ErrorItem {
-            QDateTime dateTime;
-            QString   id;
-            QString   info;
-            QString   error;
-        };
-
         explicit Waver();
         ~Waver();
 
         Track::TrackInfo getCurrentTrackInfo();
         Track::Status    getCurrentTrackStatus();
-        QList<ErrorItem> getErrorLog();
         long             getLastPositionMilliseconds();
         bool             isShutdownCompleted();
 
@@ -66,6 +64,13 @@ class Waver : public QObject, PeakCallback
 
 
     private:
+
+        struct LogItem {
+            QDateTime dateTime;
+            QString   id;
+            QString   info;
+            QString   error;
+        };
 
         static const QString UI_ID_PREFIX_LOCALDIR;
         static const QString UI_ID_PREFIX_LOCALDIR_SUBDIR;
@@ -90,15 +95,13 @@ class Waver : public QObject, PeakCallback
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES;
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED;
 
-        static const quint32 RANDOM_MAX = std::numeric_limits<quint32>::max();
-
         enum ShuffleMode {
             None,
             Favorite,
             NeverPlayed
         };
 
-        QList<ErrorItem> errorLog;
+        QList<LogItem> log;
 
         QStringList           localDirs;
         QList<AmpacheServer*> servers;
@@ -171,6 +174,8 @@ class Waver : public QObject, PeakCallback
         void playlistFirstGroupSave();
         int  playlistFirstGroupLoad();
 
+        void addToLog(QString id, QString info, QString error);
+
 
     public slots:
 
@@ -204,6 +209,7 @@ class Waver : public QObject, PeakCallback
 
         void requestOptions();
         void updatedOptions(QString optionsJSON);
+        void requestLog();
 
         void peakUILag();
 
@@ -261,6 +267,8 @@ class Waver : public QObject, PeakCallback
         void playlistSelected(QVariant index, QVariant busy);
 
         void optionsAsRequested(QVariant optionsObj);
+        void logAsRequested(QVariant logText);
+        void logUpdate(QVariant appendText);
 
         void uiSetStatusText(QVariant statusText);
         void uiSetStatusTempText(QVariant statusTempText);

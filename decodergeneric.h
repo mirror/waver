@@ -39,7 +39,7 @@ class DecoderGeneric : public QObject
         explicit DecoderGeneric(QObject *parent = nullptr);
         ~DecoderGeneric();
 
-        void   setParameters(QUrl url, QAudioFormat decodedFormat);
+        void   setParameters(QUrl url, QAudioFormat decodedFormat, qint64 waitUnderBytes);
         qint64 getDecodedMicroseconds();
 
         qint64 size();
@@ -52,6 +52,7 @@ class DecoderGeneric : public QObject
 
         QUrl                         url;
         QAudioFormat                 decodedFormat;
+        qint64                       waitUnderBytes;
         QFile                       *file;
         QThread                      networkThread;
         DecoderGenericNetworkSource *networkSource;

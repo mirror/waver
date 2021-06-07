@@ -1,5 +1,6 @@
 import QtQml 2.3
 import QtQuick 2.12
+import QtQml.Models 2.15
 import QtQuick.Controls 2.3
 import QtQuick.Controls.Material 2.3
 import QtQuick.Controls.Universal 2.3
@@ -30,6 +31,7 @@ ApplicationWindow {
     signal favoriteButton(bool fav);
     signal requestOptions();
     signal updatedOptions(string optionsJSON);
+    signal requestLog();
     signal peakUILag();
 
     onClosing: {
@@ -43,6 +45,11 @@ ApplicationWindow {
         titleSizeRecalcOnResizeTimer.restart();
     }
 
+
+    function bringToFront()
+    {
+        applicationWindow.raise();
+    }
 
     function explorerAddItem(id, parent, title, image, extra, expandable, playable, selectable, selected)
     {
@@ -102,6 +109,19 @@ ApplicationWindow {
         historyModel.insert(0, newDict);
     }
 
+    function logAsRequested(logText)
+    {
+        log.setLog(logText);
+        log.open();
+    }
+
+    function logUpdate(newText)
+    {
+        if (log.visible) {
+            log.addLog(newText);
+        }
+    }
+
     function optionsAsRequested(optionsObj)
     {
         options.setOptions(optionsObj)
@@ -136,11 +156,6 @@ ApplicationWindow {
     function playlistSelected(index, selected)
     {
         playlist.setSelected(index, selected);
-    }
-
-    function bringToFront()
-    {
-        applicationWindow.raise();
     }
 
     function setFavorite(fav)
@@ -421,6 +436,10 @@ ApplicationWindow {
             text: qsTr("Options")
             onTriggered: requestOptions()
         }
+        MenuItem {
+            text: qsTr("Log")
+            onTriggered: requestLog()
+        }
         MenuSeparator { }
         MenuItem {
             text: qsTr("About")
@@ -498,6 +517,14 @@ ApplicationWindow {
         onOptionsSending: {
             updatedOptions(optionsJSON);
         }
+    }
+
+    Log {
+        id: log
+
+        anchors.centerIn: parent
+        height: parent.height * 0.9
+        width: parent.width * 0.9
     }
 
     About {
@@ -752,11 +779,11 @@ ApplicationWindow {
                 Rectangle {
                     id: decodedIndicator
 
-                    x: positioner.handle.x;
-                    y: positioner.background.y;
-                    width: positioner.background.width * (positioner.decodedValue > 1 ? 1 : positioner.decodedValue) - positioner.handle.x + positioner.handle.width / 2;
-                    height: positioner.background.height;
-                    color: positioner.palette.highlight
+                    x     : ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? positioner.visualPosition : positioner.handle.x;
+                    y     : ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? (positioner.height % 2 == 0 ? positioner.height / 2 - 1 : positioner.height / 2 - 2) : positioner.background.y;
+                    width : positioner.background.width * (positioner.decodedValue > 1 ? 1 : positioner.decodedValue) - (((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? positioner.visualPosition - 5 : positioner.handle.x + positioner.handle.width / 2);
+                    height: ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? 2 : positioner.background.height;
+                    color : positioner.palette.highlight
                 }
 
                 onMoved: internal.positionerMovedValue = positioner.value;

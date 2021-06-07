@@ -1,117 +1,98 @@
+/*
+    This file is part of Waver
+    Copyright (C) 2021 Peter Papp
+    Please visit https://launchpad.net/waver for details
+*/
+
+
 #include "trayicon.h"
 
-TrayIcon::TrayIcon(QObject *parent, WaverServer *waverServer) : QObject(parent)
+TrayIcon::TrayIcon(Waver *waver, QObject *parent) : QObject(parent)
 {
-    this->waverServer = waverServer;
+    this->waver = waver;
 
-    firstTrack      = true;
-    playPauseAction = NULL;
-    systemTrayIcon  = NULL;
-    systemTrayMenu  = NULL;
-    ipcMessageUtils = NULL;
+    imagesPath = QGuiApplication::applicationDirPath().append("\\images").replace("/", "\\");
 
-    if (!QSystemTrayIcon::isSystemTrayAvailable()) {
-        return;
+    std::wstring appName = QGuiApplication::instance()->applicationName().toStdWString();
+    const auto   aumi    = WinToast::configureAUMI(QGuiApplication::instance()->organizationName().toStdWString().c_str(), appName.c_str(), L"", QGuiApplication::instance()->applicationVersion().toStdWString().c_str());
+
+    WinToast::instance()->setAppName(appName.c_str());
+    WinToast::instance()->setAppUserModelId(aumi);
+
+    if (WinToast::instance()->initialize()) {
+        toastTemplate = WinToastTemplate(WinToastTemplate::ImageAndText02);
+        toastTemplate.setTextField(appName.c_str(), WinToastTemplate::FirstLine);
+        toastTemplate.setTextField(L"Idle", WinToastTemplate::SecondLine);
+        toastTemplate.setImagePath(QString("%1\\waver.png").arg(imagesPath).toStdWString().c_str());
+        toastTemplate.setAudioOption(WinToastTemplate::Silent);
+        toastTemplate.addAction(tr("Pause").toStdWString().c_str());
+        toastTemplate.addAction(tr("Play").toStdWString().c_str());
+
+        WinToast::instance()->showToast(toastTemplate, this);
+
+        connect(waver, &Waver::notify,   this,  &TrayIcon::showMetadataMessage);
+        connect(this,  &TrayIcon::pause, waver, &Waver::pauseButton);
+        connect(this,  &TrayIcon::play,  waver, &Waver::playButton);
     }
-
-    ipcMessageUtils = new IpcMessageUtils();
-
-    playPauseAction = new QAction(QIcon(":/images/resume.png"), "Play/Pause");
-    connect(playPauseAction, SIGNAL(triggered(bool)), this, SLOT(menuPlayPause()));
-
-    systemTrayMenu = new QMenu("Waver");
-    systemTrayMenu->addAction(playPauseAction);
-    systemTrayMenu->addAction(QIcon(":/images/next.png"),   "Next",       this, SLOT(menuNext()));
-    systemTrayMenu->addAction("Show Waver", this, SLOT(menuShowWaver()));
-
-    systemTrayIcon = new QSystemTrayIcon(QIcon(":/images/waver.png"));
-    systemTrayIcon->setToolTip("Waver");
-    systemTrayIcon->setContextMenu(systemTrayMenu);
-    systemTrayIcon->show();
-
-    connect(systemTrayIcon,    SIGNAL(activated(QSystemTrayIcon::ActivationReason)), this,
-        SLOT(activated(QSystemTrayIcon::ActivationReason)));
-    connect(this->waverServer, SIGNAL(ipcSend(QString)),                             this, SLOT(waverServerIpcSend(QString)));
 }
 
 
 TrayIcon::~TrayIcon()
 {
-    if (systemTrayIcon != NULL) {
-        delete systemTrayIcon;
-    }
-    if (systemTrayMenu != NULL) {
-        delete systemTrayMenu;
-    }
-    if (ipcMessageUtils != NULL) {
-        delete ipcMessageUtils;
-    }
-    if (playPauseAction != NULL) {
-        delete playPauseAction;
-    }
-}
-
-
-void TrayIcon::menuPlayPause()
-{
-    waverServer->notificationsHelper_PlayPause();
-}
-
-
-void TrayIcon::menuNext()
-{
-    waverServer->notificationsHelper_Next();
-}
-
-
-void TrayIcon::menuShowWaver()
-{
-    waverServer->notificationsHelper_Raise();
-}
-
-
-void TrayIcon::activated(QSystemTrayIcon::ActivationReason reason)
-{
-    if (reason == QSystemTrayIcon::Trigger) {
-        showMetadataMessage();
-    }
-}
-
-
-void TrayIcon::waverServerIpcSend(QString data)
-{
-    this->ipcMessageUtils->processIpcString(data);
-
-    for (int i = 0; i < this->ipcMessageUtils->processedCount(); i++) {
-        switch (ipcMessageUtils->processedIpcMessage(i)) {
-            case IpcMessageUtils::Pause:
-                playPauseAction->setIcon(QIcon(":/images/resume.png"));
-                playPauseAction->setText("Resume");
-                break;
-            case IpcMessageUtils::Resume:
-                playPauseAction->setIcon(QIcon(":/images/pause.png"));
-                playPauseAction->setText("Pause");
-                break;
-            case IpcMessageUtils::TrackInfos:
-                if (firstTrack) {
-                    firstTrack = false;
-                    playPauseAction->setIcon(QIcon(":/images/pause.png"));
-                    playPauseAction->setText("Pause");
-                }
-                break;
-            default:
-                break;
-        }
-    }
+    WinToast::instance()->clear();
 }
 
 
 void TrayIcon::showMetadataMessage()
 {
-    if (!QSystemTrayIcon::supportsMessages()) {
-        return;
+    Track::TrackInfo trackInfo = waver->getCurrentTrackInfo();
+
+    WinToast::instance()->clear();
+
+    toastTemplate.setTextField(trackInfo.title.toStdWString().c_str(), WinToastTemplate::FirstLine);
+    toastTemplate.setTextField(trackInfo.artist.toStdWString().c_str(), WinToastTemplate::SecondLine);
+
+    QTimer::singleShot(250, this, &TrayIcon::showToast);
+}
+
+
+void TrayIcon::showToast()
+{
+    WinToast::instance()->showToast(toastTemplate, this);
+}
+
+
+void TrayIcon::toastActivated() const
+{
+    toastActivated(0);
+
+}
+
+
+void TrayIcon::toastActivated(int actionIndex) const
+{
+    WinToast::instance()->clear();
+
+    switch (actionIndex) {
+        case 0:
+            emit pause();
+            break;
+        case 1:
+            emit play();
+            break;
     }
 
-    TrackInfo trackInfo = waverServer->notificationsHelper_Metadata();
-    systemTrayIcon->showMessage(trackInfo.title, trackInfo.performer, QSystemTrayIcon::NoIcon, 4000);
+    QTimer::singleShot(250, this, &TrayIcon::showToast);
+}
+
+
+void TrayIcon::toastDismissed(WinToastDismissalReason state) const
+{
+    Q_UNUSED(state);
+}
+
+
+void TrayIcon::toastFailed() const
+{
+
 }
