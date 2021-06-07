@@ -335,8 +335,7 @@ void DecoderGenericNetworkSource::networkError(QNetworkReply::NetworkError code)
 {
     Q_UNUSED(code);
 
-    //if (downloadFinished || (code == QNetworkReply::OperationCanceledError)) {
-    if (downloadFinished) {
+    if (downloadFinished || (code == QNetworkReply::OperationCanceledError)) {
         return;
     }
 
@@ -437,7 +436,6 @@ qint64 DecoderGenericNetworkSource::readData(char *data, qint64 maxlen)
 {
     #ifdef Q_OS_LINUX
         if ((buffer.count() < 1) && (maxlen > 0) && errorOnUnderrun) {
-            debugFile.close();
             emit error(tr("Download buffer underrun"));
             return 0;
         }
@@ -462,10 +460,6 @@ qint64 DecoderGenericNetworkSource::readData(char *data, qint64 maxlen)
         mutex.unlock();
 
         fakePosition += returnPos;
-
-
-        debugFile.write(QString("readData read size %1\n\r").arg(returnPos).toUtf8().data());
-        debugFile.close();
 
         return returnPos;
     #endif

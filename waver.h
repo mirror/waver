@@ -27,13 +27,19 @@
 #include <QVariant>
 #include <QVariantMap>
 
-#ifndef Q_OS_WINRT
-    #include <taglib-1.12/taglib/fileref.h>
-    #include <taglib-1.12/taglib/toolkit/tpropertymap.h>
-    #include <taglib-1.12/taglib/toolkit/tstring.h>
-#endif
 #ifdef Q_OS_WIN
     #include "windows.h"
+    #ifndef Q_OS_WINRT
+        #include <taglib-1.12/taglib/fileref.h>
+        #include <taglib-1.12/taglib/toolkit/tpropertymap.h>
+        #include <taglib-1.12/taglib/toolkit/tstring.h>
+    #endif
+#endif
+
+#ifdef Q_OS_LINUX
+    #include <taglib/fileref.h>
+    #include <taglib/tpropertymap.h>
+    #include <taglib/tstring.h>
 #endif
 
 #ifdef QT_DEBUG
