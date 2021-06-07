@@ -4,7 +4,8 @@
 #    Please visit https://launchpad.net/waver for details
 #
 
-QT += dbus gui multimedia quick quickcontrols2
+
+QT += gui multimedia quick quickcontrols2
 
 CONFIG += c++11
 DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x051210
@@ -52,6 +53,8 @@ TRANSLATIONS += \
     waver_new_en_US.ts
 
 unix:!android {
+    QT += dbus
+
     HEADERS += \
         mediaplayer2dbusadaptor.h \
         mediaplayer2playerdbusadaptor.h
@@ -77,13 +80,21 @@ unix:!android {
 }
 
 windows {
-    QT += widgets
+    INCLUDEPATH += $$PWD/.. $$PWD/../qt5keychain $$PWD/../qt5keychain/build
 
     HEADERS += \
-        trayicon.h
+        trayicon.h \
+        wintoastlib.h
 
     SOURCES += \
-        trayicon.cpp
+        trayicon.cpp \
+        wintoastlib.cpp
 
-    LIBS += -lqt5keychain #-L$$PWD/mpg123lib/win32
+    !winrt {
+        INCLUDEPATH += $$PWD/../taglib-1.12 $$PWD/../taglib-1.12/taglib/toolkit
+        LIBS += $$PWD/../qt5keychain/build/Release/qt5keychain.lib $$PWD/../build-waveriir/release/waveriir1.lib $$PWD/../taglib-1.12/taglib/Release/tag.lib
+    }
+    winrt {
+        LIBS += $$PWD/../qt5keychain/build-uwp/Release/qt5keychain.lib $$PWD/../build-waveriir-uwp/release/waveriir1.lib
+    }
 }

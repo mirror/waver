@@ -1,3 +1,10 @@
+/*
+    This file is part of Waver
+    Copyright (C) 2021 Peter Papp
+    Please visit https://launchpad.net/waver for details
+*/
+
+
 #include "notificationshandler.h"
 
 
@@ -15,7 +22,7 @@ NotificationsHandler::NotificationsHandler(Waver *waver) : QObject()
     #endif
 
     #ifdef Q_OS_WIN
-    new TrayIcon((QObject *)this, waverServer);
+    new TrayIcon(waver, this);
     #endif
 }
 

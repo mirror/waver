@@ -7,12 +7,16 @@
 
 #include "decodergenericnetworksource.h"
 
-DecoderGenericNetworkSource::DecoderGenericNetworkSource(QUrl url, QWaitCondition *waitCondition)
+
+DecoderGenericNetworkSource::DecoderGenericNetworkSource(QUrl url, QWaitCondition *waitCondition) : QIODevice()
 {
     this->url           = url;
     this->waitCondition = waitCondition;
 
-    fakePosition = 0;
+    fakePosition         = 0;
+    firstBufferPosition  = 0;
+    totalDownloadedBytes = 0;
+    totalExpectedBytes   = std::numeric_limits<qint64>::max();
 
     networkAccessManager = nullptr;
     networkReply         = nullptr;
@@ -22,13 +26,11 @@ DecoderGenericNetworkSource::DecoderGenericNetworkSource(QUrl url, QWaitConditio
     readyEmitted     = false;
     errorOnUnderrun  = true;
 
-    //totalRawBytes    = 0;
-    //totalBufferBytes = 0;
-
-    rawChunkSize = 0;
-    rawCount     = 0;
-    metaSize     = 0;
-    metaCount    = 0;
+    rawChunkSize   = 0;
+    rawCount       = 0;
+    metaSize       = 0;
+    metaCount      = 0;
+    totalMetaBytes = 0;
 }
 
 
@@ -49,13 +51,58 @@ DecoderGenericNetworkSource::~DecoderGenericNetworkSource()
 }
 
 
+bool DecoderGenericNetworkSource::atEnd() const
+{
+
+    return (fakePosition >= totalExpectedBytes);
+}
+
+
+bool DecoderGenericNetworkSource::bufferIndexPositionFromPosition(qint64 position, int *bufferIndex, int *bufferPosition)
+{
+    // this is a helper for the random access mode
+
+    *bufferIndex    = 0;
+    *bufferPosition = 0;
+
+    // some raw data possibly already deleted to keep memory usage low
+    qint64 bufferBytesCount = firstBufferPosition;
+
+    mutex.lock();
+
+    // save this for after the mutex is unlocked
+    int bufferCount = buffer.count();
+
+    // find the byte array that contains the position we're looking for
+    while (*bufferIndex < bufferCount) {
+        if (bufferBytesCount + buffer.at(*bufferIndex)->count() >= position) {
+            break;
+        }
+
+        bufferBytesCount += buffer.at(*bufferIndex)->count();
+        *bufferIndex      = *bufferIndex + 1;
+    }
+
+    mutex.unlock();
+
+    // this means it's not found
+    if (*bufferIndex >= bufferCount) {
+        return false;
+    }
+
+    // this is where the position is, inside the found byte array
+    *bufferPosition = position - bufferBytesCount;
+
+    return true;
+}
+
+
 qint64 DecoderGenericNetworkSource::bytesAvailable() const
 {
     if (downloadFinished && (buffer.count() < 1)) {
-        return 0;
+         return 0;
     }
-
-    return std::numeric_limits<qint64>::max() - fakePosition;
+    return totalDownloadedBytes - fakePosition;
 }
 
 
@@ -84,6 +131,10 @@ bool DecoderGenericNetworkSource::isFinshed()
 
 bool DecoderGenericNetworkSource::isSequential() const
 {
+    // Windows decoder needs random access :(
+    #ifdef Q_OS_WINDOWS
+        return false;
+    #endif
     return true;
 }
 
@@ -130,6 +181,7 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
 
                     // remove this byte, must not pass it to the decoder, pointer needs not to be increased
                     data.remove(pointer, 1);
+                    totalMetaBytes++;
                 }
 
                 // downloaded data might not contain all the metadata, the rest will be in next download chunk
@@ -140,6 +192,7 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
 
                 // remove from data, must not pass it to the decoder, pointer needs not to be increased
                 data.remove(pointer, increment);
+                totalMetaBytes += increment;
 
                 // update metadata bytes counter
                 metaCount += increment;
@@ -153,7 +206,6 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
                         finder.setMinimal(true);
                         if (finder.indexIn(QString(metaBuffer)) >= 0) {
                             // got it, let the decoder know
-                            //emit SHOUTcastTitle(totalRawBytes, finder.cap(1));
                             emit radioTitle(finder.cap(1));
                         }
                     }
@@ -169,7 +221,6 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
                 // increase pointer and counters
                 pointer       += increment;
                 rawCount      += increment;
-                //totalRawBytes += increment;
 
                 // is the end of audio block reached?
                 if (rawCount == rawChunkSize) {
@@ -191,8 +242,19 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
     buffer.append(bufferData);
     mutex.unlock();
 
-    // let the world know when pre-caching is done
-    if (!readyEmitted && (bytesReceived > (bytesTotal > 0 ? qMin(bytesTotal, (qint64)1024 * 1024) : 10240))) {
+    // for available bytes
+    totalDownloadedBytes += bufferData->size();
+
+    // this is used in size()
+    if (bytesTotal > 0) {
+        totalExpectedBytes = bytesTotal - totalMetaBytes;
+    }
+    else {
+        totalExpectedBytes = totalDownloadedBytes;
+    }
+
+    // let the world know when pre-caching is done, bytesTotal is unknown (zero) for radio stations
+    if (!readyEmitted && (bytesReceived > (bytesTotal > 0 ? qMin(bytesTotal, (qint64)1024 * 1024) : 65536))) {
         QTimer::singleShot(250, this, &DecoderGenericNetworkSource::emitReady);
         readyEmitted = true;
     }
@@ -230,43 +292,93 @@ void DecoderGenericNetworkSource::preCacheTimeout()
 
 qint64 DecoderGenericNetworkSource::readData(char *data, qint64 maxlen)
 {
-    if ((buffer.count() < 1) && (maxlen > 0) && errorOnUnderrun) {
-        emit error(tr("Download buffer underrun"));
-        return 0;
-    }
-
-    qint64 returnPos = 0;
-
-    mutex.lock();
-    while ((returnPos < maxlen) && (buffer.count() > 0)) {
-        qint64 copyCount = qMin(maxlen - returnPos, (qint64)buffer.at(0)->count());
-
-        memcpy(data + returnPos, buffer.at(0)->constData(), copyCount);
-        returnPos += copyCount;
-
-        if (copyCount == buffer.at(0)->count()) {
-            delete buffer.at(0);
-            buffer.remove(0);
+    #ifdef Q_OS_LINUX
+        if ((buffer.count() < 1) && (maxlen > 0) && errorOnUnderrun) {
+            debugFile.close();
+            emit error(tr("Download buffer underrun"));
+            return 0;
         }
-        else {
-            buffer.at(0)->remove(0, copyCount);
+
+        qint64 returnPos = 0;
+
+        mutex.lock();
+        while ((returnPos < maxlen) && (buffer.count() > 0)) {
+            qint64 copyCount = qMin(maxlen - returnPos, (qint64)buffer.at(0)->count());
+
+            memcpy(data + returnPos, buffer.at(0)->constData(), copyCount);
+            returnPos += copyCount;
+
+            if (copyCount == buffer.at(0)->count()) {
+                delete buffer.at(0);
+                buffer.remove(0);
+            }
+            else {
+                buffer.at(0)->remove(0, copyCount);
+            }
         }
-    }
-    mutex.unlock();
+        mutex.unlock();
 
-    fakePosition += returnPos;
+        fakePosition += returnPos;
 
-    return returnPos;
+
+        debugFile.write(QString("readData read size %1\n\r").arg(returnPos).toUtf8().data());
+        debugFile.close();
+
+        return returnPos;
+    #endif
+
+    #ifdef Q_OS_WINDOWS
+        int bufferIndex;
+        int bufferPosition;
+
+        if (!bufferIndexPositionFromPosition(fakePosition, &bufferIndex, &bufferPosition)) {
+            emit error(tr("Download buffer underrun"));
+            return 0;
+        }
+
+        qint64 returnPos = 0;
+
+        mutex.lock();
+        while ((returnPos < maxlen) && (bufferIndex < buffer.count())) {
+            qint64 copyCount = qMin(maxlen - returnPos, (qint64)buffer.at(bufferIndex)->count() - bufferPosition);
+
+            memcpy(data + returnPos, buffer.at(bufferIndex)->constData() + bufferPosition, copyCount);
+            returnPos += copyCount;
+
+            bufferIndex++;
+            bufferPosition = 0;
+        }
+        mutex.unlock();
+
+        fakePosition += returnPos;
+
+        return returnPos;
+
+    #endif
+
+    return 0;
 }
 
 
 qint64 DecoderGenericNetworkSource::realBytesAvailable()
 {
     qint64 returnValue = 0;
+    int    bufferIndex = 0;
+
+    if (!isSequential()) {
+        int bufferPosition = 0;
+        if (!bufferIndexPositionFromPosition(fakePosition, &bufferIndex, &bufferPosition)) {
+            return 0;
+        }
+        returnValue += buffer.at(bufferIndex)->size() - bufferPosition;
+        bufferIndex++;
+    }
 
     mutex.lock();
-    foreach (QByteArray *bufferData, buffer) {
-        returnValue += bufferData->count();
+    int i = bufferIndex;
+    while (i < buffer.size()) {
+        returnValue += buffer.at(i)->size();
+        i++;
     }
     mutex.unlock();
 
@@ -286,11 +398,60 @@ void DecoderGenericNetworkSource::run()
 
     networkReply = networkAccessManager->get(networkRequest);
 
-    connect(networkReply, SIGNAL(downloadProgress(qint64, qint64)),   this, SLOT(networkDownloadProgress(qint64, qint64)));
+    connect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
     connect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
 
     QTimer::singleShot(CONNECTION_TIMEOUT, this, SLOT(connectionTimeout()));
     QTimer::singleShot(PRE_CACHE_TIMEOUT, this, SLOT(preCacheTimeout()));
+}
+
+
+bool DecoderGenericNetworkSource::seek(qint64 pos)
+{
+    // make sure seek is possible
+    if (isSequential() || (pos > totalDownloadedBytes)) {
+        return false;
+    }
+
+    // do seek a.k.a. set current position
+    fakePosition = pos;
+
+    // prevent buffer from growing forever
+    // this is based on observation of Windows decoder calling 'seek' throughout the process of decoding: it goes backwards frequently,
+    // but it seems to be safe to delete the bytes from the beginning that are not beyond current position and were not positioned to in past five 'seek' calls
+    if (pos > 0) {
+        seekHistory.append(pos);
+
+        if (seekHistory.size() > 5) {
+            qint64 first = seekHistory.first();
+            seekHistory.removeFirst();
+
+            if ((first < fakePosition) && !seekHistory.contains(first)) {
+                int bufferIndex;
+                int bufferPosition;
+
+                if (bufferIndexPositionFromPosition(first, &bufferIndex, &bufferPosition)) {
+                    int i = 0;
+                    while (i < bufferIndex) {
+                        delete buffer.at(0);
+                        buffer.remove(0);
+                        i++;
+                    }
+                    buffer.at(0)->remove(0, bufferPosition);
+
+                    firstBufferPosition = first;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+
+qint64 DecoderGenericNetworkSource::size() const
+{
+    return totalExpectedBytes;
 }
 
 
@@ -307,5 +468,4 @@ qint64 DecoderGenericNetworkSource::writeData(const char *data, qint64 len)
 
     return -1;
 }
-
 

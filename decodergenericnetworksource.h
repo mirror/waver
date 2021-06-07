@@ -38,10 +38,13 @@ class DecoderGenericNetworkSource : public QIODevice
 
         qint64 readData(char *data, qint64 maxlen)     override;
         qint64 writeData(const char *data, qint64 len) override;
+        bool   seek(qint64 pos)                        override;
 
+        bool   atEnd()          const override;
         bool   isSequential()   const override;
         qint64 bytesAvailable() const override;
         qint64 pos()            const override;
+        qint64 size()           const override;
 
         qint64 realBytesAvailable();
         bool   isFinshed();
@@ -60,7 +63,11 @@ class DecoderGenericNetworkSource : public QIODevice
         QNetworkReply         *networkReply;
 
         QVector<QByteArray *> buffer;
+        qint64                totalDownloadedBytes;
+        qint64                totalExpectedBytes;
         qint64                fakePosition;
+        qint64                firstBufferPosition;
+        QVector<qint64>       seekHistory;
 
         QMutex mutex;
 
@@ -69,14 +76,14 @@ class DecoderGenericNetworkSource : public QIODevice
         bool readyEmitted;
         bool errorOnUnderrun;
 
-        //qint64 totalRawBytes;
-        //qint64 totalBufferBytes;
-
         int        rawChunkSize;
         int        rawCount;
         int        metaSize;
         int        metaCount;
         QByteArray metaBuffer;
+        qint64     totalMetaBytes;
+
+        bool   bufferIndexPositionFromPosition(qint64 position, int *bufferIndex, int *bufferPosition);
 
 
     signals:

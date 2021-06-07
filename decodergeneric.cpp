@@ -15,6 +15,9 @@ DecoderGeneric::DecoderGeneric(QObject *parent) : QObject(parent)
     networkDeviceSet    = false;
     decodedMicroseconds = 0;
     decodeDelay         = 50;
+    waitUnderBytes      = 4096;
+
+    networkThread.setObjectName("decodernetwork");
 }
 
 
@@ -61,7 +64,7 @@ void DecoderGeneric::decoderBufferReady()
     // must prevent input underrun, reading 0 bytes is show-stopper for the decoder
     if (networkSource != nullptr) {
         waitMutex.lock();
-        while ((networkSource->realBytesAvailable() < 4048) && !networkSource->isFinshed() && !QThread::currentThread()->isInterruptionRequested()) {
+        while ((networkSource->realBytesAvailable() < waitUnderBytes) && !networkSource->isFinshed() && !QThread::currentThread()->isInterruptionRequested()) {
             waitCondition.wait(&waitMutex, 1000);
         }
         waitMutex.unlock();
@@ -166,12 +169,13 @@ void DecoderGeneric::setDecodeDelay(unsigned long microseconds)
 }
 
 
-void DecoderGeneric::setParameters(QUrl url, QAudioFormat decodedFormat)
+void DecoderGeneric::setParameters(QUrl url, QAudioFormat decodedFormat, qint64 waitUnderBytes)
 {
     // can be set only once
     if (this->url.isEmpty()) {
-        this->url           = url;
-        this->decodedFormat = decodedFormat;
+        this->url            = url;
+        this->decodedFormat  = decodedFormat;
+        this->waitUnderBytes = waitUnderBytes;
     }
 }
 
@@ -229,3 +233,4 @@ void DecoderGeneric::start()
         networkThread.start();
     }
 }
+

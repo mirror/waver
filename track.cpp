@@ -30,7 +30,13 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
 
     fadeDirection            = FadeDirectionNone;
     fadeDurationSeconds      = (trackInfo.attributes.contains("fadeDuration") ? trackInfo.attributes.value("fadeDuration").toInt() : FADE_DURATION_DEFAULT_SECONDS);
-    fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds() + 1) * 1000) : std::numeric_limits<qint64>::max();
+
+    #ifdef Q_OS_WIN
+        fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds() + 1) * 1000) : 10 * 24 * 60 * 60 * 1000;
+    #elif defined (Q_OS_LINUX)
+        fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds() + 1) * 1000) : std::numeric_limits<qint64>::max();
+    #endif
+
 
     QSettings settings;
     fadeTags.append(settings.value("options/fade_tags", DEFAULT_FADE_TAGS).toString().split(","));
@@ -736,7 +742,12 @@ void Track::setupDecoder()
 {
     decoder = new DecoderGeneric();
 
-    decoder->setParameters(trackInfo.url, desiredPCMFormat);
+    qint64 waitUnderBytes = 4096;
+    #ifdef Q_OS_WINDOWS
+        waitUnderBytes = 65536;
+    #endif
+
+    decoder->setParameters(trackInfo.url, desiredPCMFormat, waitUnderBytes);
     decoder->setDecodeDelay(1500);
     decoder->moveToThread(&decoderThread);
 

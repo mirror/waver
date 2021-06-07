@@ -22,6 +22,10 @@
 
 #include "globals.h"
 
+#ifdef Q_OS_WIN
+    #include "windows.h"
+#endif
+
 #ifdef QT_DEBUG
     #include <QDebug>
 #endif
