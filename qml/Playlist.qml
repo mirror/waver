@@ -57,6 +57,11 @@ Item {
         playlistItems.setProperty(index, "busy", busy);
     }
 
+    function setPlaylistBigBusy(busy)
+    {
+        playlistBigBusy.visible = busy;
+    }
+
     function setSelected(index, selected)
     {
         playlistItems.setProperty(index, "selected", selected);
@@ -411,5 +416,11 @@ Item {
         border.color: borderColor
         color: "transparent"
         visible: borderVisible
+    }
+
+    BusyIndicator {
+        id: playlistBigBusy
+        anchors.fill: parent
+        visible: false
     }
 }

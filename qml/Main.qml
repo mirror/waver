@@ -143,6 +143,11 @@ ApplicationWindow {
         playlist.setBusy(index, busy);
     }
 
+    function  playlistBigBusy(busy)
+    {
+        playlist.setPlaylistBigBusy(busy);
+    }
+
     function playlistTotalTime(totalTime)
     {
         playlist.setTotalTime(totalTime);

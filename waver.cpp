@@ -685,6 +685,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM)) {
             explorerNetworkingUISignals(id, true);
+            emit playlistBigBusy(true);
 
             QObject *opExtra = new QObject();
             opExtra->setProperty("original_action", "action_play");
@@ -699,6 +700,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST)) {
             explorerNetworkingUISignals(id, true);
+            emit playlistBigBusy(true);
 
             QObject *opExtra = new QObject();
             opExtra->setProperty("original_action", "action_play");
@@ -757,6 +759,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM)) {
             explorerNetworkingUISignals(id, true);
+            emit playlistBigBusy(true);
 
             QObject *opExtra = new QObject();
             opExtra->setProperty("original_action", action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
@@ -780,6 +783,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST)) {
             explorerNetworkingUISignals(id, true);
+            emit playlistBigBusy(true);
 
             QObject *opExtra = new QObject();
             opExtra->setProperty("original_action", action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
@@ -1116,6 +1120,8 @@ void Waver::playlistUpdateUISignals()
 {
     qint64 totalMilliSeconds = 0;
     bool   totalIsEstimate   = false;
+
+    emit playlistBigBusy(false);
 
     emit playlistClearItems();
     foreach (Track *track, playlist) {
@@ -1711,6 +1717,7 @@ void Waver::startShuffleBatch(int srvIndex, int artistId, ShuffleMode mode, QStr
     }
 
     explorerNetworkingUISignals(QString("%1%2|%3%4").arg(UI_ID_PREFIX_SERVER_SHUFFLE).arg(srvIndex).arg(UI_ID_PREFIX_SERVER).arg(srvIndex), true);
+    emit playlistBigBusy(true);
 
     QSettings             settings;
     AmpacheServer::OpData opData;
