@@ -333,8 +333,6 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
 
 void DecoderGenericNetworkSource::networkError(QNetworkReply::NetworkError code)
 {
-    Q_UNUSED(code);
-
     if (downloadFinished || (code == QNetworkReply::OperationCanceledError)) {
         return;
     }
@@ -349,10 +347,18 @@ void DecoderGenericNetworkSource::networkError(QNetworkReply::NetworkError code)
         networkReply->abort();
     }
 
+    // session expired (most likely)
+    if (code == QNetworkReply::ContentAccessDenied) {
+        emit sessionExpired();
+        return;
+    }
+
     connectionAttempt++;
     if (connectionAttempt >= CONNECTION_ATTEMPTS) {
         downloadFinished = true;
-        emit error(networkReply->errorString());
+        if (networkReply != nullptr) {
+            emit error(networkReply->errorString());
+        }
         return;
     }
 

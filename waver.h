@@ -203,6 +203,7 @@ class Waver : public QObject, PeakCallback
         void trackFadeoutStarted(QString id);
         void trackError(QString id, QString info, QString error);
         void trackInfo(QString id, QString info);
+        void trackSessionExpired(QString trackId);
         void trackStatusChanged(QString id, Track::Status status, QString statusString);
 
         void previousButton(int index);

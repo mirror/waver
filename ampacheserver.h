@@ -108,6 +108,7 @@ class AmpacheServer : public QObject
         QUuid   settingsId;
 
         bool    handshakeInProgress;
+        bool    sessionExpiredHandshakeStarted;
         QString authKey;
         long    serverVersion;
         int     songCount;

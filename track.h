@@ -178,6 +178,7 @@ class Track : public QObject
         void decoderFinished();
         void decoderError(QString info, QString errorMessage);
         void decoderInfo(QString info);
+        void decoderSessionExpired();
         void decoderNetworkStarting(bool starting);
         void underrunTimeout();
 
@@ -197,6 +198,7 @@ class Track : public QObject
 
         void error(QString id, QString info, QString error);
         void info(QString id, QString info);
+        void sessionExpired(QString id);
 
         void playPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds, long decodedMilliseconds);
         void bufferInfo(QString id, bool rawIsFile, unsigned long rawSize, bool pmcIsFile, unsigned long pmcSize);

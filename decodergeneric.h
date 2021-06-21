@@ -70,6 +70,7 @@ class DecoderGeneric : public QObject
         void networkReady();
         void networkError(QString errorString);
         void networkInfo(QString infoString);
+        void networkSessionExpired();
         void networkRadioTitle(QString title);
 
         void decoderBufferReady();
@@ -91,6 +92,7 @@ class DecoderGeneric : public QObject
         void finished();
         void errorMessage(QString info, QString error);
         void infoMessage(QString info);
+        void sessionExpired();
         void networkStarting(bool starting);
 
 };

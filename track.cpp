@@ -326,6 +326,12 @@ void Track::decoderFinished()
 }
 
 
+void Track::decoderSessionExpired()
+{
+    emit sessionExpired(trackInfo.id);
+}
+
+
 void Track::decoderInfo(QString info)
 {
     emit this->info(trackInfo.id, info);
@@ -773,6 +779,7 @@ void Track::setupDecoder()
     connect(decoder, &DecoderGeneric::finished,        this, &Track::decoderFinished);
     connect(decoder, &DecoderGeneric::errorMessage,    this, &Track::decoderError);
     connect(decoder, &DecoderGeneric::infoMessage,     this, &Track::decoderInfo);
+    connect(decoder, &DecoderGeneric::sessionExpired, this, &Track::decoderSessionExpired);
 
     connect(this, &Track::startDecode, decoder, &DecoderGeneric::start);
 }

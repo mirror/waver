@@ -143,8 +143,8 @@ void Waver::addServer(QString host, QString user, QString psw)
     servers.append(server);
     emit explorerAddItem(id, QVariant::fromValue(nullptr), server->formattedName(), "qrc:/icons/remote.ico", QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
 
-    connect(server, &AmpacheServer::operationFinished, this, &Waver::serverOperationFinished);
-    connect(server, &AmpacheServer::errorMessage, this, &Waver::errorMessage);
+    connect(server, &AmpacheServer::operationFinished,           this,   &Waver::serverOperationFinished);
+    connect(server, &AmpacheServer::errorMessage,                this,   &Waver::errorMessage);
 
     QSettings settings;
 
@@ -209,6 +209,7 @@ void Waver::connectTrackSignals(Track *track, bool newConnect)
         connect(track, &Track::trackInfoUpdated,  this, &Waver::trackInfoUpdated);
         connect(track, &Track::error,             this, &Waver::trackError);
         connect(track, &Track::info,              this, &Waver::trackInfo);
+        connect(track, &Track::sessionExpired,   this, &Waver::trackSessionExpired);
         connect(track, &Track::statusChanged,     this, &Waver::trackStatusChanged);
 
         connect(this,  &Waver::requestTrackBufferReplayGainInfo, track, &Track::requestForBufferReplayGainInfo);
@@ -225,6 +226,7 @@ void Waver::connectTrackSignals(Track *track, bool newConnect)
     disconnect(track, &Track::trackInfoUpdated,  this, &Waver::trackInfoUpdated);
     disconnect(track, &Track::error,             this, &Waver::trackError);
     disconnect(track, &Track::info,              this, &Waver::trackInfo);
+    disconnect(track, &Track::sessionExpired,   this, &Waver::trackSessionExpired);
     disconnect(track, &Track::statusChanged,     this, &Waver::trackStatusChanged);
 
     disconnect(this,  &Waver::requestTrackBufferReplayGainInfo, track, &Track::requestForBufferReplayGainInfo);
@@ -954,7 +956,6 @@ int Waver::playlistFirstGroupLoad()
         settings.setArrayIndex(i);
 
         QObject *opExtra = new QObject();
-        opExtra->setProperty("playlist_first_group_index", QString("%1").arg(i));
         opExtra->setProperty("group", settings.value("group"));
 
         playlistFirstGroupSongIds.append(settings.value("track_id").toString());
@@ -1288,8 +1289,8 @@ void Waver::run()
         servers.at(i)->setId(id);
         servers.at(i)->retreivePassword();
 
-        connect(servers.at(i), &AmpacheServer::operationFinished, this, &Waver::serverOperationFinished);
-        connect(servers.at(i), &AmpacheServer::errorMessage, this, &Waver::errorMessage);
+        connect(servers.at(i), &AmpacheServer::operationFinished,           this,          &Waver::serverOperationFinished);
+        connect(servers.at(i), &AmpacheServer::errorMessage,                this,          &Waver::errorMessage);
 
         emit explorerAddItem(id, QVariant::fromValue(nullptr), servers.at(i)->formattedName(), "qrc:/icons/remote.ico", QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
     }
@@ -1510,14 +1511,55 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
 
             Track::TrackInfo trackInfo = trackInfoFromIdExtra(newId, trackInfoMap);
 
-            int playlistIndex = playlistFirstGroupSongIds.indexOf(result.value("id"));
+            if (opData.contains("session_expired")) {
+                if (opData.value("session_expired").compare("current_track") == 0) {
+                    if (currentTrack != nullptr) {
+                        connectTrackSignals(currentTrack, false);
+                        currentTrack->setStatus(Track::Paused);
+                        currentTrack->setStatus(Track::Idle);
+                        delete currentTrack;
+                        currentTrack = nullptr;
+                    }
+                    actionPlay(trackInfo);
+                }
+                else {
+                    QList<Track*> toBeDeleted;
 
-            trackInfo.attributes.insert("group_id", "playlistFirstGroup");
-            trackInfo.attributes.insert("group", group);
-            trackInfo.attributes.insert("playlist_index", playlistIndex);
+                    for (int i = 0; i < playlist.size(); i++) {
+                        if (playlist.at(i)->getTrackInfo().id.compare(newId) == 0) {
+                            toBeDeleted.append(playlist.at(i));
 
-            playlistFirstGroupTracks.append(trackInfo);
-            playlistFirstGroupSongIds.replace(playlistIndex, "");
+                            if (opData.contains("group")) {
+                                trackInfo.attributes.insert("group_id", "sessionExpiredRestored");
+                                trackInfo.attributes.insert("group", opData.value("group"));
+                                trackInfo.attributes.insert("playlist_index", i);
+                            }
+
+                            Track *track = new Track(trackInfo, peakCallbackInfo);
+                            connectTrackSignals(track);
+                            playlist.replace(i, track);
+                        }
+                    }
+                    playlistUpdateUISignals();
+                    playlistFirstGroupSave();
+
+                    foreach (Track *track, toBeDeleted) {
+                        connectTrackSignals(track, false);
+                        track->setStatus(Track::Idle);
+                        delete track;
+                    }
+                }
+            }
+            else {
+                int playlistIndex = playlistFirstGroupSongIds.indexOf(result.value("id"));
+
+                trackInfo.attributes.insert("group_id", "playlistFirstGroup");
+                trackInfo.attributes.insert("group", group);
+                trackInfo.attributes.insert("playlist_index", playlistIndex);
+
+                playlistFirstGroupTracks.append(trackInfo);
+                playlistFirstGroupSongIds.replace(playlistIndex, "");
+            }
         }
     }
 
@@ -1580,35 +1622,37 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         explorerNetworkingUISignals(shuffleId, false);
     }
     else if (opCode == AmpacheServer::Song) {
-        bool finished = true;
-        foreach(QString songId, playlistFirstGroupSongIds) {
-            if (!songId.isEmpty()) {
-                finished = false;
-                break;
-            }
-        }
-
-        if (finished) {
-            std::sort(playlistFirstGroupTracks.begin(), playlistFirstGroupTracks.end(), [](Track::TrackInfo a, Track::TrackInfo b) {
-                return a.attributes.value("playlist_index").toInt() < b.attributes.value("playlist_index").toInt();
-            });
-
-            for(int i = 0; i < playlistFirstGroupTracks.count(); i++) {
-                Track::TrackInfo trackInfo = playlistFirstGroupTracks.at(i);
-
-                if (i == 0) {
-                    playlist.clear();
-                    actionPlay(trackInfo);
-                }
-                else {
-                    Track *track = new Track(trackInfo, peakCallbackInfo);
-                    connectTrackSignals(track);
-                    playlist.append(track);
+        if (!opData.contains("session_expired")) {
+            bool finished = true;
+            foreach(QString songId, playlistFirstGroupSongIds) {
+                if (!songId.isEmpty()) {
+                    finished = false;
+                    break;
                 }
             }
 
-            playlistUpdateUISignals();
-            playlistFirstGroupSave();
+            if (finished) {
+                std::sort(playlistFirstGroupTracks.begin(), playlistFirstGroupTracks.end(), [](Track::TrackInfo a, Track::TrackInfo b) {
+                    return a.attributes.value("playlist_index").toInt() < b.attributes.value("playlist_index").toInt();
+                });
+
+                for(int i = 0; i < playlistFirstGroupTracks.count(); i++) {
+                    Track::TrackInfo trackInfo = playlistFirstGroupTracks.at(i);
+
+                    if (i == 0) {
+                        playlist.clear();
+                        actionPlay(trackInfo);
+                    }
+                    else {
+                        Track *track = new Track(trackInfo, peakCallbackInfo);
+                        connectTrackSignals(track);
+                        playlist.append(track);
+                    }
+                }
+
+                playlistUpdateUISignals();
+                playlistFirstGroupSave();
+            }
         }
     }
 }
@@ -2083,6 +2127,45 @@ void Waver::trackReplayGainInfo(QString id, double target, double current)
 {
     if ((currentTrack != nullptr) && (currentTrack->getTrackInfo().id.compare(id) == 0)) {
         emit uiSetTrackReplayGain(QString("%1").arg(target, 0, 'f', 2), QString("%1").arg(current, 0, 'f', 2));
+    }
+}
+
+
+void Waver::trackSessionExpired(QString trackId)
+{
+    QStringList idParts = trackId.split("|");
+
+    QString serverId = idParts.last();
+    int srvIndex     = serverIndex(serverId);
+    if ((srvIndex >= servers.size()) || (srvIndex < 0)) {
+        errorMessage(serverId, tr("Server ID can not be found"), serverId);
+        return;
+    }
+
+    emit uiSetStatusText(tr("Networking"));
+    emit uiSetStatusTempText("Session expired, retrying");
+
+    LogItem item = { QDateTime::currentDateTime(), trackId, tr("Session expired, retrying"), tr("Session Expired") };
+    log.append(item);
+
+    if ((currentTrack != nullptr) && (currentTrack->getTrackInfo().id.compare(trackId) == 0)) {
+        QObject *opExtra = new QObject();
+        opExtra->setProperty("session_expired", "current_track");
+        servers.at(srvIndex)->startOperation(AmpacheServer::Song, {{ "song_id", idParts.first().replace(0, 1, "") }}, opExtra);
+    }
+
+    for (int i = 0; i < playlist.size(); i++) {
+        Track::TrackInfo trackInfo = playlist.at(i)->getTrackInfo();
+
+        idParts = trackInfo.id.split("|");
+        if (idParts.last().compare(serverId) == 0) {
+            QObject *opExtra = new QObject();
+            opExtra->setProperty("session_expired", "session_expired");
+            if (trackInfo.attributes.contains("group")) {
+                opExtra->setProperty("group", trackInfo.attributes.value("group").toString());
+            }
+            servers.at(srvIndex)->startOperation(AmpacheServer::Song, {{ "song_id", idParts.first().replace(0, 1, "") }}, opExtra);
+        }
     }
 }
 

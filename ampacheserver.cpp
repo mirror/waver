@@ -16,11 +16,12 @@ AmpacheServer::AmpacheServer(QUrl host, QString user, QObject *parent) : QObject
     writeKeychainJob = nullptr;
     readKeychainJob  = nullptr;
 
-    handshakeInProgress = false;
-    authKey             = "";
-    serverVersion       = 0;
-    songCount           = 0;
-    flaggedCount        = 0;
+    handshakeInProgress            = false;
+    sessionExpiredHandshakeStarted = false;
+    authKey                        = "";
+    serverVersion                  = 0;
+    songCount                      = 0;
+    flaggedCount                   = 0;
 
     shuffled = 0;
 
@@ -149,6 +150,7 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
     bool   isHandshake = action.compare("handshake") == 0;
     OpCode opCode;
     OpData opData;
+    OpData extraData;
 
     opData.insert("serverId", id);
 
@@ -158,6 +160,7 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
             QVariant value = extra->property(name);
             if (value.isValid()) {
                 opData.insert(QString(name), value.toString());
+                extraData.insert(QString(name), value.toString());
             }
         }
         delete extra;
@@ -222,6 +225,8 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         }
         else if (action.compare("song") == 0) {
             opCode = Song;
+            opData.insert("song_id", requestQuery.queryItemValue("filter"));
+
         }
         else {
             emit errorMessage(id, tr("Invalid Network Reply"), tr("Request URL query contains an unknown 'action' item"));
@@ -341,7 +346,21 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
     }
     if (errorCode || errorMsg.length()) {
         if (!isHandshake && (errorMsg.compare("Session Expired", Qt::CaseInsensitive) == 0)) {
-            QTimer::singleShot(50, this, &AmpacheServer::startHandshake);
+            extra = nullptr;
+            if (extraData.size()) {
+                extra = new QObject;
+                foreach(QString name, extraData.keys()) {
+                    extra->setProperty(name.toLatin1().data(), extraData.value(name));
+                    opData.remove(name);
+                }
+            }
+
+            opQueue.prepend({ opCode, opData, extra });
+
+            if (!handshakeInProgress && !sessionExpiredHandshakeStarted) {
+                sessionExpiredHandshakeStarted = true;
+                QTimer::singleShot(50, this, &AmpacheServer::startHandshake);
+            }
             return;
         }
         emit errorMessage(id, tr("Server responded with error message"), QString("%1 %2").arg(errorCode).arg(errorMsg));
@@ -354,7 +373,8 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
             return;
         }
 
-        handshakeInProgress = false;
+        handshakeInProgress            = false;
+        sessionExpiredHandshakeStarted = false;
 
         QObject *opExtra = new QObject();
         opExtra->setProperty("count_flagged", "count_flagged");

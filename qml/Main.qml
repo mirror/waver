@@ -786,7 +786,14 @@ ApplicationWindow {
 
                     x     : ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? positioner.visualPosition : positioner.handle.x;
                     y     : ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? (positioner.height % 2 == 0 ? positioner.height / 2 - 1 : positioner.height / 2 - 2) : positioner.background.y;
-                    width : positioner.background.width * (positioner.decodedValue > 1 ? 1 : positioner.decodedValue) - (((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? positioner.visualPosition - 5 : positioner.handle.x + positioner.handle.width / 2);
+                    width : {
+                        if (((Qt.platform.os === "windows") || (Qt.platform.os === "winrt"))) {
+                            positioner.background.width * (positioner.decodedValue > 1 ? 1 : positioner.decodedValue) - (positioner.visualPosition - 5);
+                        }
+                        else {
+                            positioner.background.width * (positioner.decodedValue > 1 ? 1 : positioner.decodedValue) - positioner.handle.x + positioner.handle.width / 2;
+                        }
+                    }
                     height: ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? 2 : positioner.background.height;
                     color : positioner.palette.highlight
                 }

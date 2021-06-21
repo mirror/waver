@@ -137,6 +137,12 @@ void DecoderGeneric::networkError(QString errorString)
 }
 
 
+void DecoderGeneric::networkSessionExpired()
+{
+    emit sessionExpired();
+}
+
+
 void DecoderGeneric::networkInfo(QString infoString)
 {
     emit infoMessage(infoString);
@@ -233,6 +239,7 @@ void DecoderGeneric::start()
         connect(networkSource, SIGNAL(ready()),             this, SLOT(networkReady()));
         connect(networkSource, SIGNAL(error(QString)),      this, SLOT(networkError(QString)));
         connect(networkSource, SIGNAL(info(QString)),       this, SLOT(networkInfo(QString)));
+        connect(networkSource, SIGNAL(sessionExpired()),   this, SLOT(networkSessionExpired()));
         connect(networkSource, SIGNAL(radioTitle(QString)), this, SLOT(networkRadioTitle(QString)));
 
         emit networkStarting(true);

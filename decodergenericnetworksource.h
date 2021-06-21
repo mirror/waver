@@ -98,6 +98,7 @@ class DecoderGenericNetworkSource : public QIODevice
 
         void error(QString errorString);
         void info(QString errorString);
+        void sessionExpired();
         void ready();
         void radioTitle(QString title);
 
