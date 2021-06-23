@@ -195,6 +195,7 @@ class Waver : public QObject, PeakCallback
         void positioned(double percent);
 
         void trackPlayPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds, long decodedMilliseconds);
+        void trackDecoded(QString id, qint64 length);
         void trackBufferInfo(QString id, bool rawIsFile, unsigned long rawSize, bool pmcIsFile, unsigned long pmcSize);
         void trackNetworkConnecting(QString id, bool busy);
         void trackReplayGainInfo(QString id, double target, double current);

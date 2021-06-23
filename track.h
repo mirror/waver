@@ -203,6 +203,7 @@ class Track : public QObject
         void playPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds, long decodedMilliseconds);
         void bufferInfo(QString id, bool rawIsFile, unsigned long rawSize, bool pmcIsFile, unsigned long pmcSize);
         void replayGainInfo(QString id, double target, double current);
+        void decoded(QString id, qint64 length);
         void fadeoutStarted(QString id);
         void finished(QString id);
         void trackInfoUpdated(QString id);

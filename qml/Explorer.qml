@@ -234,13 +234,13 @@ Item {
             if (explorerItemsView.currentIndex < 0) {
                 return false;
             }
-            if (explorerItems.get(explorerItemsView.currentIndex).busy) {
+            if (explorerItems.get(explorerItemsView.currentIndex) && explorerItems.get(explorerItemsView.currentIndex).busy) {
                 return false;
             }
-            if (!explorerItems.get(explorerItemsView.currentIndex).expandable) {
+            if (explorerItems.get(explorerItemsView.currentIndex) && !explorerItems.get(explorerItemsView.currentIndex).expandable) {
                 return false;
             }
-            if (hasChildren(explorerItems.get(explorerItemsView.currentIndex).id)) {
+            if (explorerItems.get(explorerItemsView.currentIndex) && hasChildren(explorerItems.get(explorerItemsView.currentIndex).id)) {
                 return false;
             }
             return true;
@@ -254,13 +254,13 @@ Item {
             if (explorerItemsView.currentIndex < 0) {
                 return false;
             }
-            if (explorerItems.get(explorerItemsView.currentIndex).busy) {
+            if (explorerItems.get(explorerItemsView.currentIndex) && explorerItems.get(explorerItemsView.currentIndex).busy) {
                 return false;
             }
-            if (!explorerItems.get(explorerItemsView.currentIndex).expandable) {
+            if (explorerItems.get(explorerItemsView.currentIndex) && !explorerItems.get(explorerItemsView.currentIndex).expandable) {
                 return false;
             }
-            if (!hasChildren(explorerItems.get(explorerItemsView.currentIndex).id)) {
+            if (explorerItems.get(explorerItemsView.currentIndex) && !hasChildren(explorerItems.get(explorerItemsView.currentIndex).id)) {
                 return false;
             }
             return true;
@@ -402,6 +402,17 @@ Item {
                                 itemClicked(id, globalConstants.action_collapse, extra);
                             }
                             else {
+                                if (level >= 2) {
+                                    var toBeCollapsed = [];
+                                    for (var i = 0; i < explorerItems.count; i++) {
+                                        if (explorerItems.get(i).level === level) {
+                                            toBeCollapsed.push({ id: explorerItems.get(i).id, extra: explorerItems.get(i).extra });
+                                        }
+                                    }
+                                    for (var j = 0; j < toBeCollapsed.length; j++) {
+                                        itemClicked(toBeCollapsed[j].id, globalConstants.action_collapse, toBeCollapsed[j].extra);
+                                    }
+                                }
                                 itemClicked(id, globalConstants.action_expand, extra);
                             }
                         }

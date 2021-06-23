@@ -312,6 +312,8 @@ void Track::decoderFinished()
 {
     decodingDone = true;
 
+    emit decoded(trackInfo.id, decoder->getDecodedMicroseconds() / 1000);
+
     emit decoderDone();
     emit bufferInfo(trackInfo.id, decoder->isFile(), decoder->size(), cache->isFile(), cache->size());
 
