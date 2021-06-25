@@ -15,6 +15,7 @@ Dialog {
     {
         if (optionsObj.eq_disable) {
             preAmp.enabled = false;
+            eqOn.enabled = false;
             eq1.enabled = false;
             eq2.enabled = false;
             eq3.enabled = false;
@@ -27,38 +28,41 @@ Dialog {
             eq10.enabled = false;
         }
         else {
-            preAmp.enabled = true;
+            preAmp.enabled = eqOn.checked;
             preAmp.value = optionsObj.pre_amp;
 
+            eqOn.enabled = true;
+            eqOn.checked = optionsObj.eq_on;
+
             eq1Label.text = optionsObj.eq1Label;
-            eq1.enabled = true;
+            eq1.enabled = eqOn.checked;
             eq1.value = optionsObj.eq1;
             eq2Label.text = optionsObj.eq2Label;
-            eq2.enabled = true;
+            eq2.enabled = eqOn.checked;
             eq2.value = optionsObj.eq2;
             eq3Label.text = optionsObj.eq3Label;
-            eq3.enabled = true;
+            eq3.enabled = eqOn.checked;
             eq3.value = optionsObj.eq3;
             eq4Label.text = optionsObj.eq4Label;
-            eq4.enabled = true;
+            eq4.enabled = eqOn.checked;
             eq4.value = optionsObj.eq4;
             eq5Label.text = optionsObj.eq5Label;
-            eq5.enabled = true;
+            eq5.enabled = eqOn.checked;
             eq5.value = optionsObj.eq5;
             eq6Label.text = optionsObj.eq6Label;
-            eq6.enabled = true;
+            eq6.enabled = eqOn.checked;
             eq6.value = optionsObj.eq6;
             eq7Label.text = optionsObj.eq7Label;
-            eq7.enabled = true;
+            eq7.enabled = eqOn.checked;
             eq7.value = optionsObj.eq7;
             eq8Label.text = optionsObj.eq8Label;
-            eq8.enabled = true;
+            eq8.enabled = eqOn.checked;
             eq8.value = optionsObj.eq8;
             eq9Label.text = optionsObj.eq9Label;
-            eq9.enabled = true;
+            eq9.enabled = eqOn.checked;
             eq9.value = optionsObj.eq9;
             eq10Label.text = optionsObj.eq10Label;
-            eq10.enabled = true;
+            eq10.enabled = eqOn.checked;
             eq10.value = optionsObj.eq10;
         }
         shuffle_autostart.checked = optionsObj.shuffle_autostart;
@@ -90,7 +94,8 @@ Dialog {
         function sendOptions()
         {
             var optionsObj = {
-                eq_disable: !eq1.enabled,
+                eq_disable: !eqOn.enabled && !eqOn.checked,
+                eq_on: eqOn.checked,
                 pre_amp: preAmp.value,
                 eq1: eq1.value,
                 eq2: eq2.value,
@@ -130,6 +135,25 @@ Dialog {
 
         TabButton {
             text: qsTr("Equalizer")
+            Switch {
+                id: eqOn
+                anchors.right: parent.right
+                anchors.rightMargin: 7
+
+                onCheckedChanged: {
+                    preAmp.enabled = eqOn.checked;
+                    eq1.enabled = eqOn.checked;
+                    eq2.enabled = eqOn.checked;
+                    eq3.enabled = eqOn.checked;
+                    eq4.enabled = eqOn.checked;
+                    eq5.enabled = eqOn.checked;
+                    eq6.enabled = eqOn.checked;
+                    eq7.enabled = eqOn.checked;
+                    eq8.enabled = eqOn.checked;
+                    eq9.enabled = eqOn.checked;
+                    eq10.enabled = eqOn.checked;
+                }
+            }
         }
         TabButton {
             text: qsTr("Shuffle")

@@ -9,7 +9,9 @@ Dialog {
     focus: true
     standardButtons: Dialog.Ok
 
-    signal optionsSending(string optionsJSON)
+    onClosed: {
+        logLabel.text = "";
+    }
 
     function setLog(logText)
     {

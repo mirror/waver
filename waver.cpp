@@ -171,6 +171,10 @@ void Waver::addToLog(QString id, QString info, QString error)
     LogItem item = { QDateTime::currentDateTime(), id, info, error };
     log.append(item);
 
+    while (log.size() > 250) {
+        log.removeFirst();
+    }
+
     emit logUpdate(QString("%1: <%2>, '%3', '%4'\n").arg(item.dateTime.toString(), item.id, item.error, item.info));
 }
 
@@ -654,15 +658,19 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
 
         if (id.startsWith(UI_ID_PREFIX_SERVER_SEARCH)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::Search, {{ "criteria", extra.value("criteria").toString() }});
+            addToLog("waver", tr("Starting operation - Search"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSE)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseRoot, AmpacheServer::OpData());
+            addToLog("waver", tr("Starting operation - Browse Root"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseArtist, {{ "artist", QString(idParts.first()).remove(0, 1) }});
+            addToLog("waver", tr("Starting operation - Browse Artist"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }});
+            addToLog("waver", tr("Starting operation - Browse Album"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLISTS) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLISTS)) {
             QString playlistsId     = QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_PLAYLISTS);
@@ -674,12 +682,15 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             emit explorerRemoveChildren(smartPlaylistId);
 
             servers.at(srvIndex)->startOperation(AmpacheServer::PlaylistRoot, AmpacheServer::OpData());
+            addToLog("waver", tr("Starting operation - Playlist Root"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_RADIOSTATIONS)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::RadioStations, AmpacheServer::OpData());
+            addToLog("waver", tr("Starting operation - Radio Stations"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::Tags, AmpacheServer::OpData());
+            addToLog("waver", tr("Starting operation - Tags"), "");
         }
         return;
     }
@@ -708,6 +719,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             opExtra->setProperty("group", extra.value("group").toString());
 
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }}, opExtra);
+            addToLog("waver", tr("Starting operation - Browse Album"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG)) {
             playlist.clear();
@@ -723,6 +735,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             opExtra->setProperty("group", extra.value("group").toString());
 
             servers.at(srvIndex)->startOperation(AmpacheServer::PlaylistSongs, {{ "playlist", QString(idParts.first()).remove(0, 1) }}, opExtra);
+            addToLog("waver", tr("Starting operation - Playlist Songs"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_RADIOSTATION)) {
             playlist.clear();
@@ -782,6 +795,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             opExtra->setProperty("group", extra.value("group").toString());
 
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }}, opExtra);
+            addToLog("waver", tr("Starting operation - Browse Album"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG)) {
             Track *track = new Track(trackInfoFromIdExtra(id, extra), peakCallbackInfo);
@@ -806,6 +820,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             opExtra->setProperty("group", extra.value("group").toString());
 
             servers.at(srvIndex)->startOperation(AmpacheServer::PlaylistSongs, {{ "playlist", QString(idParts.first()).remove(0, 1) }}, opExtra);
+            addToLog("waver", tr("Starting operation - Playlist Songs"), "");
         }
         return;
     }
@@ -985,6 +1000,7 @@ int Waver::playlistFirstGroupLoad()
         playlistFirstGroupSongIds.append(settings.value("track_id").toString());
 
         groupServer->startOperation(AmpacheServer::Song, {{ "song_id", playlistFirstGroupSongIds.last() }}, opExtra);
+        addToLog("waver", tr("Starting operation - Song"), "");
     }
     settings.endArray();
 
@@ -1145,7 +1161,7 @@ void Waver::playlistItemClicked(int index, int action)
 
 void Waver::playlistItemDragDropped(int index, int destinationIndex)
 {
-    addToLog("waver", tr("Playlist item moved").append(" - %1 to %2").arg(index, destinationIndex), "");
+    addToLog("waver", tr("Playlist item moved").append(" - %1 to %2").arg(index).arg(destinationIndex), "");
 
     Track *track = playlist.at(index);
     playlist.removeAt(index);
@@ -1237,6 +1253,7 @@ void Waver::requestOptions()
     }
     else {
         optionsObj.insert("eq_disable", 0);
+        optionsObj.insert("eq_on", settings.value("eq/on", DEFAULT_EQON).toBool());
 
         QVector<double> eqCenterFrequencies = currentTrack->getEqualizerBandCenterFrequencies();
 
@@ -1384,6 +1401,8 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     }
 
     if (opCode == AmpacheServer::Search) {
+        addToLog("waver", tr("Operation Finished - Search"), "");
+
         parentId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCH, QString(opData.value("serverId")).remove(0, 1), opData.value("serverId"));
 
         std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
@@ -1391,44 +1410,69 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         });
     }
     else if (opCode == AmpacheServer::BrowseRoot) {
+        addToLog("waver", tr("Operation Finished - Browse Root"), "");
+
         cacheKey = QString("%1/browse").arg(servers.at(srvIndex)->getSettingsId().toString());
 
         settings.remove(cacheKey);
         settings.beginWriteArray(cacheKey);
     }
     else if (opCode == AmpacheServer::BrowseArtist) {
-         parentId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEARTIST, opData.value("artist"), opData.value("serverId"));
+        addToLog("waver", tr("Operation Finished - Browse Artist"), "");
 
-         std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
-             return (a.value("year").toInt() < b.value("year").toInt()) || ((a.value("year").toInt() == b.value("year").toInt()) && (a.value("name").compare(b.value("name"), Qt::CaseInsensitive) < 0));
-         });
+        parentId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEARTIST, opData.value("artist"), opData.value("serverId"));
+
+        std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
+            return (a.value("year").toInt() < b.value("year").toInt()) || ((a.value("year").toInt() == b.value("year").toInt()) && (a.value("name").compare(b.value("name"), Qt::CaseInsensitive) < 0));
+        });
     }
     else if (opCode == AmpacheServer::BrowseAlbum) {
-         parentId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEALBUM, opData.value("album"), opData.value("serverId"));
+        addToLog("waver", tr("Operation Finished - Browse Album"), "");
 
-         std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
-             return (a.value("track").toInt() < b.value("track").toInt()) || ((a.value("track").toInt() == b.value("track").toInt()) && (a.value("title").compare(b.value("title"), Qt::CaseInsensitive) < 0));
-         });
+        parentId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEALBUM, opData.value("album"), opData.value("serverId"));
+
+        std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
+            return (a.value("track").toInt() < b.value("track").toInt()) || ((a.value("track").toInt() == b.value("track").toInt()) && (a.value("title").compare(b.value("title"), Qt::CaseInsensitive) < 0));
+        });
+    }
+    else if (opCode == AmpacheServer::CountFlagged) {
+        addToLog("waver", tr("Operation Finished - Count Flagged"), "");
     }
     else if (opCode == AmpacheServer::PlaylistRoot) {
+        addToLog("waver", tr("Operation Finished - Playlist Root"), "");
+
         cacheKey = QString("%1/playlists").arg(servers.at(srvIndex)->getSettingsId().toString());
 
         settings.remove(cacheKey);
         settings.beginWriteArray(cacheKey);
     }
     else if (opCode == AmpacheServer::PlaylistSongs) {
+        addToLog("waver", tr("Operation Finished - Playlist Songs"), "");
+
         parentId = QString("%1%2|%3").arg(opData.value("playlist").startsWith("smart", Qt::CaseInsensitive) ? UI_ID_PREFIX_SERVER_SMARTPLAYLIST : UI_ID_PREFIX_SERVER_PLAYLIST, opData.value("playlist"), opData.value("serverId"));
     }
     else if (opCode == AmpacheServer::RadioStations) {
+        addToLog("waver", tr("Operation Finished - Radio Stations"), "");
+
         cacheKey = QString("%1/radiostations").arg(servers.at(srvIndex)->getSettingsId().toString());
 
         settings.remove(cacheKey);
         settings.beginWriteArray(cacheKey);
     }
+    else if (opCode == AmpacheServer::SetFlag) {
+        addToLog("waver", tr("Operation Finished - Set Flag"), "");
+    }
     else if (opCode == AmpacheServer::Shuffle) {
+        addToLog("waver", tr("Operation Finished - Shuffle"), "");
+
         parentId = QString("%1|%2").arg(QString(opData.value("serverId")).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), opData.value("serverId"));
     }
+    else if (opCode == AmpacheServer::Song) {
+        addToLog("waver", tr("Operation Finished - Song"), "");
+    }
     else if (opCode == AmpacheServer::Tags) {
+        addToLog("waver", tr("Operation Finished - Tags"), "");
+
         cacheKey = QString("%1/tags").arg(servers.at(srvIndex)->getSettingsId().toString());
 
         settings.remove(cacheKey);
@@ -1835,6 +1879,7 @@ void Waver::startShuffleBatch(int srvIndex, int artistId, ShuffleMode mode, QStr
     opExtra->setProperty("original_action", originalAction);
 
     servers.at(srvIndex)->startOperation(AmpacheServer::Shuffle, opData, opExtra);
+    addToLog("waver", tr("Starting operation - Shuffle"), "");
 }
 
 
@@ -1854,6 +1899,8 @@ void Waver::startShuffleCountdown()
     shuffleCountdownPercent = 1.0;
     emit uiSetShuffleCountdown(shuffleCountdownPercent);
     shuffleCountdownTimer->start(1000);
+
+    addToLog("waver", tr("Shuffle countdown started"), "");
 }
 
 
@@ -2232,6 +2279,7 @@ void Waver::trackSessionExpired(QString trackId)
         QObject *opExtra = new QObject();
         opExtra->setProperty("session_expired", "current_track");
         servers.at(srvIndex)->startOperation(AmpacheServer::Song, {{ "song_id", idParts.first().replace(0, 1, "") }}, opExtra);
+        addToLog("waver", tr("Starting operation - Song"), "");
     }
 
     for (int i = 0; i < playlist.size(); i++) {
@@ -2245,6 +2293,7 @@ void Waver::trackSessionExpired(QString trackId)
                 opExtra->setProperty("group", trackInfo.attributes.value("group").toString());
             }
             servers.at(srvIndex)->startOperation(AmpacheServer::Song, {{ "song_id", idParts.first().replace(0, 1, "") }}, opExtra);
+            addToLog("waver", tr("Starting operation - Song"), "");
         }
     }
 }
@@ -2296,6 +2345,7 @@ void Waver::updatedOptions(QString optionsJSON)
     settings.setValue("options/hide_dot_playlists", options.value("hide_dot_playlists").toBool());
 
     if (!options.value("eq_disable").toBool()) {
+        settings.setValue("eq/on",  options.value("eq_on").toBool());
         settings.setValue("eq/eq1", options.value("eq1").toDouble());
         settings.setValue("eq/eq2", options.value("eq2").toDouble());
         settings.setValue("eq/eq3", options.value("eq3").toDouble());

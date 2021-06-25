@@ -470,9 +470,10 @@ void Track::optionsUpdated()
         gains.append(settings.value("eq/eq9",  DEFAULT_EQ9).toDouble());
         gains.append(settings.value("eq/eq10", DEFAULT_EQ10).toDouble());
 
+        bool   on     = settings.value("eq/on", DEFAULT_EQON).toBool();
         double preAmp = settings.value("eq/pre_amp", DEFAULT_PREAMP).toDouble();
 
-        equalizer->setGains(gains, preAmp);
+        equalizer->setGains(on, gains, preAmp);
     }
 }
 
@@ -803,12 +804,13 @@ void Track::setupEqualizer()
     gains.append(settings.value("eq/eq9",  DEFAULT_EQ9).toDouble());
     gains.append(settings.value("eq/eq10", DEFAULT_EQ10).toDouble());
 
+    bool   on     = settings.value("eq/on", DEFAULT_EQON).toBool();
     double preAmp = settings.value("eq/pre_amp", DEFAULT_PREAMP).toDouble();
 
     equalizer = new Equalizer(desiredPCMFormat);
 
     equalizer->setChunkQueue(&equalizerQueue, &equalizerQueueMutex);
-    equalizer->setGains(gains, preAmp);
+    equalizer->setGains(on, gains, preAmp);
     equalizer->moveToThread(&equalizerThread);
 
     connect(&equalizerThread, &QThread::started,  equalizer, &Equalizer::run);

@@ -30,7 +30,7 @@ class Equalizer : public QObject, IIRFilterCallback {
         ~Equalizer();
 
         void setChunkQueue(TimedChunkQueue *chunkQueue, QMutex *chunkQueueMutex);
-        void setGains(QVector<double> gains, double preAmp);
+        void setGains(bool on, QVector<double> gains, double preAmp);
 
         void filterCallback(double *sample, int channelIndex) override;
 
@@ -46,6 +46,7 @@ class Equalizer : public QObject, IIRFilterCallback {
 
         QAudioFormat format;
 
+        bool            on;
         QVector<Band>   bands;
         QVector<double> gains;
         double          preAmp;
@@ -61,6 +62,10 @@ class Equalizer : public QObject, IIRFilterCallback {
         double                 currentReplayGain;
 
         IIRFilterChain *equalizerFilters;
+
+        double eqOffMinValue;
+        double eqOffMaxValue;
+        int    eqOffCurrentChannel;
 
         void createFilters();
 

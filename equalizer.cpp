@@ -12,11 +12,16 @@ Equalizer::Equalizer(QAudioFormat format)
 {
     this->format = format;
 
+    on                = true;
     equalizerFilters  = nullptr;
     replayGain        = 0.0;
     currentReplayGain = replayGain;
     sampleRate        = 0;
     sampleType        = IIRFilter::Unknown;
+
+    eqOffMinValue       = std::numeric_limits<qint16>::min();
+    eqOffMaxValue       = std::numeric_limits<qint16>::max();
+    eqOffCurrentChannel = 0;
 }
 
 
@@ -38,9 +43,38 @@ void Equalizer::chunkAvailable(int maxToProcess)
             return;
         }
 
-        filtersMutex.lock();
-        equalizerFilters->processPCMData(chunk.chunkPointer->data(), chunk.chunkPointer->size(), sampleType, format.channelCount());
-        filtersMutex.unlock();
+        if (on) {
+            filtersMutex.lock();
+            equalizerFilters->processPCMData(chunk.chunkPointer->data(), chunk.chunkPointer->size(), sampleType, format.channelCount());
+            filtersMutex.unlock();
+        }
+        else {
+            // eq is off, but replay gain still must be applied
+
+            double  sample;
+            qint16 *temp;
+            int     processedCount = 0;
+            while (processedCount < chunk.chunkPointer->size()) {
+                temp   = (qint16*)((char *)chunk.chunkPointer->data() + processedCount);
+                sample = *temp;
+
+                filterCallback(&sample, eqOffCurrentChannel);
+                if (sample < eqOffMinValue) {
+                    sample = eqOffMinValue;
+                }
+                if (sample > eqOffMaxValue) {
+                    sample = eqOffMaxValue;
+                }
+
+                *temp = static_cast<qint16>(sample);
+
+                processedCount += sizeof(qint16);
+                eqOffCurrentChannel++;
+                if (eqOffCurrentChannel >= 2) {
+                    eqOffCurrentChannel = 0;
+                }
+            }
+        }
 
         chunkQueueMutex->lock();
         chunkQueue->remove(0);
@@ -143,11 +177,12 @@ void Equalizer::setChunkQueue(TimedChunkQueue *chunkQueue, QMutex *chunkQueueMut
 }
 
 
-void Equalizer::setGains(QVector<double> gains, double preAmp)
+void Equalizer::setGains(bool on, QVector<double> gains, double preAmp)
 {
     this->gains.clear();
     this->gains.append(gains);
 
+    this->on     = on;
     this->preAmp = preAmp;
 
     // minimum 3 maximum 10 bands
