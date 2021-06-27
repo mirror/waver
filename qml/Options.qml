@@ -131,7 +131,6 @@ Dialog {
         anchors.top: parent.top
         anchors.left: parent.left
         anchors.right: parent.right
-        padding: 7
 
         TabButton {
             text: qsTr("Equalizer")
@@ -559,6 +558,13 @@ Dialog {
                         width: parent.parent.width
                         height: 1
                         color: "#AAAAAA"
+                    }
+                }
+                Row {
+                    bottomPadding: 17
+                    Label {
+                        text: qsTr("<b>Fade In / Fade Out</b>")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
                     }
                 }
                 Row {
