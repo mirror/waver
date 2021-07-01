@@ -72,12 +72,24 @@ Dialog {
                     text: "<a href=\"https://launchpad.net/waver\">launchpad.net/waver</a>"
                     width: parent.width / 2 - 1
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.NoButton
+                        cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    }
                 }
                 Label {
                     onLinkActivated: Qt.openUrlExternally(link);
                     text: "Built on the <a href=\"https://www.qt.io/\">Qt framework</a>."
                     width: parent.width / 2
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                    MouseArea {
+                        anchors.fill: parent
+                        acceptedButtons: Qt.NoButton
+                        cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    }
                 }
             }
             Label {
@@ -111,6 +123,12 @@ Dialog {
                 text: "<a href=\"https://launchpad.net/waver\">Waver</a> is <a href=\"https://bazaar.launchpad.net/~waver-developers/waver/trunk/files\">open source</a> software under the <a href=\"https://www.gnu.org/licenses/gpl-3.0.en.html\">GPL v3</a> license."
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                }
             }
             Label {
                 bottomPadding: 31
@@ -119,6 +137,12 @@ Dialog {
                 text: "The <a href=\"https://launchpad.net/waveriir\">Waver IIR</a> library is <a href=\"https://bazaar.launchpad.net/~waver-developers/waveriir/trunk/files\">open source</a> software under the <a href=\"https://www.gnu.org/licenses/gpl-3.0.en.html\">GPL v3</a> license."
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                }
             }
 
             Label {
@@ -137,6 +161,12 @@ Dialog {
                 text: "<a href=\"https://www.qt.io/\">Qt</a> is dual-licensed under commercial and <a href=\"https://github.com/qt\">open source</a> licenses. Version 5.15.2 Copyright (C) 2015 The Qt Company Ltd. Here, the <a href=\"https://www.gnu.org/licenses/gpl-3.0.en.html\">GPL v3</a> licensed version is being used, unmodified, by ways of dynamic linking."
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                }
             }
             Label {
                 bottomPadding: 17
@@ -145,6 +175,12 @@ Dialog {
                 text: "<a href=\"https://taglib.org\">TagLib</a> is <a href=\"https://github.com/taglib/taglib\">open source</a> software under the <a href=\"https://www.gnu.org/licenses/lgpl-3.0.html\">LGPL v3</a> license. Version 1.12 Copyright (C) 2002-2016 Rupert Daniel, Urs Fleisch, Michael Helmling, Allan Sandfeld Jensen, Tsuda Kageyu, Serkan Kalyoncu, Lukas Krejci, Lukáš Lalinský, Martin Nilsson, Alex Novichkov, Ismael Orenstein, Mathias Panzenböck, Anton Sergunov, Aaron VonderHaar, Scott Wheeler. Waver uses it unmodified, by ways of dynamic linking."
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                }
             }
             Label {
                 bottomPadding: 17
@@ -153,6 +189,12 @@ Dialog {
                 text: "<a href=\"https://github.com/frankosterfeld/qtkeychain\">QtKeychain</a> is <a href=\"https://github.com/frankosterfeld/qtkeychain\">open source</a> software under the <a href=\"https://directory.fsf.org/wiki/License:BSD-3-Clause\">Modified BSD</a> license. Version 0.12.0 Copyright (C) 2011-2018 Frank Osterfeld, David Faure, Mathias Hasselmann, Stephen Kelly, Kitware Inc., Nikita Krupen'ko, Alex Merry, Alexander Neundorf, François Revol. Waver uses it unmodified, by ways of dynamic linking."
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                }
             }
             Label {
                 bottomPadding: 31
@@ -161,6 +203,12 @@ Dialog {
                 text: "<a href=\"https://github.com/mohabouje/WinToast\">WinToast</a> is <a href=\"https://github.com/mohabouje/WinToast\">open source</a> software under the <a href=\"https://mit-license.org/\">MIT</a> license. Version 1.2.0 Copyright (C) 2016 Mohammed Boujemaoui Boulaghmoudi. Waver uses it unmodified, by including its entire source code (as recommended by the author)."
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                }
             }
 
             Label {
@@ -178,6 +226,12 @@ Dialog {
                 text: "Waver contains an implementation of <a href=\"https://wiki.hydrogenaud.io/index.php?title=ReplayGain_specification\">ReplayGain</a>."
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                }
             }
         }
     }
