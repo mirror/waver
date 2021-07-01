@@ -33,6 +33,10 @@ class NotificationsHandler : public QObject {
 
         explicit NotificationsHandler(Waver *waver);
         ~NotificationsHandler();
+
+        #ifdef Q_OS_WIN
+           TrayIcon *trayIcon;
+        #endif
 };
 
 #endif // NOTIFICATIONSHANDLER_H

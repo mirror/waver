@@ -58,7 +58,10 @@ long PCMCache::availableMemory()
     memoryStatus.dwLength = sizeof(MEMORYSTATUSEX);
 
     if (GlobalMemoryStatusEx(&memoryStatus)) {
-        return memoryStatus.ullAvailPhys;
+        quint64 availPhys = memoryStatus.ullAvailPhys;
+        long    longMax   = (std::numeric_limits<long>::max)();
+
+        return (availPhys > static_cast<DWORD>(longMax) ? longMax : static_cast<long>(availPhys));
     }
 
 #elif defined (Q_OS_LINUX)
@@ -188,9 +191,10 @@ void PCMCache::requestTimestampPCMChunk(long milliseconds)
 
 void PCMCache::run()
 {
-    qint64 bytesNeeded = format.bytesForDuration(lengthMilliseconds * 1000);
+    qint64 bytesNeeded    = format.bytesForDuration(lengthMilliseconds * 1000);
+    long   bytesAvailable = availableMemory();
 
-    if (((lengthMilliseconds <= 0) && !radioStation) || (bytesNeeded > MAX_PCM_MEMORY) || (bytesNeeded > availableMemory())) {
+    if (((lengthMilliseconds <= 0) && !radioStation) || (bytesNeeded > MAX_PCM_MEMORY) || (bytesNeeded > bytesAvailable)) {
         file = new QFile(QString("%1/waver_%2").arg(QStandardPaths::writableLocation(QStandardPaths::TempLocation), QUuid::createUuid().toString(QUuid::Id128)));
 
         if (!file->open(QIODevice::ReadWrite)) {

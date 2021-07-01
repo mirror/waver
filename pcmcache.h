@@ -16,6 +16,7 @@
 #include <QObject>
 #include <QRegExp>
 #include <QStandardPaths>
+#include <QtGlobal>
 #include <QTimer>
 #include <QUuid>
 #include <QVector>

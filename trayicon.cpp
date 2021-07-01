@@ -11,24 +11,20 @@ TrayIcon::TrayIcon(Waver *waver, QObject *parent) : QObject(parent)
 {
     this->waver = waver;
 
-    imagesPath = QGuiApplication::applicationDirPath().append("\\images").replace("/", "\\");
 
     std::wstring appName = QGuiApplication::instance()->applicationName().toStdWString();
-    const auto   aumi    = WinToast::configureAUMI(QGuiApplication::instance()->organizationName().toStdWString().c_str(), appName.c_str(), L"", QGuiApplication::instance()->applicationVersion().toStdWString().c_str());
+    const auto   aumi    = WinToast::configureAUMI(QGuiApplication::instance()->organizationName().toStdWString(), appName, L"", QGuiApplication::instance()->applicationVersion().toStdWString());
 
-    WinToast::instance()->setAppName(appName.c_str());
+    WinToast::instance()->setAppName(appName);
     WinToast::instance()->setAppUserModelId(aumi);
 
     if (WinToast::instance()->initialize()) {
         toastTemplate = WinToastTemplate(WinToastTemplate::ImageAndText02);
-        toastTemplate.setTextField(appName.c_str(), WinToastTemplate::FirstLine);
-        toastTemplate.setTextField(L"Idle", WinToastTemplate::SecondLine);
-        toastTemplate.setImagePath(QString("%1\\waver.png").arg(imagesPath).toStdWString().c_str());
+        toastTemplate.setImagePath(QString("%1\\waver.png").arg(QGuiApplication::applicationDirPath().append("\\images").replace("/", "\\")).toStdWString());
         toastTemplate.setAudioOption(WinToastTemplate::Silent);
-        toastTemplate.addAction(tr("Pause").toStdWString().c_str());
-        toastTemplate.addAction(tr("Play").toStdWString().c_str());
-
-        WinToast::instance()->showToast(toastTemplate, this);
+        toastTemplate.setDuration(WinToastTemplate::Short);
+        toastTemplate.addAction(tr("Pause").toStdWString());
+        toastTemplate.addAction(tr("Play").toStdWString());
 
         connect(waver, &Waver::notify,   this,  &TrayIcon::showMetadataMessage);
         connect(this,  &TrayIcon::pause, waver, &Waver::pauseButton);
@@ -45,54 +41,75 @@ TrayIcon::~TrayIcon()
 
 void TrayIcon::showMetadataMessage()
 {
-    Track::TrackInfo trackInfo = waver->getCurrentTrackInfo();
-
     WinToast::instance()->clear();
 
-    toastTemplate.setTextField(trackInfo.title.toStdWString().c_str(), WinToastTemplate::FirstLine);
-    toastTemplate.setTextField(trackInfo.artist.toStdWString().c_str(), WinToastTemplate::SecondLine);
+    Track::TrackInfo trackInfo = waver->getCurrentTrackInfo();
+
+    toastTemplate.setTextField(trackInfo.title.toStdWString(), WinToastTemplate::FirstLine);
+    toastTemplate.setTextField(trackInfo.artist.toStdWString(), WinToastTemplate::SecondLine);
 
     QTimer::singleShot(250, this, &TrayIcon::showToast);
+}
+
+
+void TrayIcon::sendPause()
+{
+    emit pause();
+}
+
+
+void TrayIcon::sendPlay()
+{
+    emit play();
 }
 
 
 void TrayIcon::showToast()
 {
-    WinToast::instance()->showToast(toastTemplate, this);
+    WinToast::instance()->showToast(toastTemplate, new WinToastHandler(this));
 }
 
 
-void TrayIcon::toastActivated() const
+WinToastHandler::WinToastHandler(TrayIcon *trayIcon)
+{
+    this->trayIcon = trayIcon;
+}
+
+
+void WinToastHandler::toastActivated() const
 {
     toastActivated(0);
-
 }
 
 
-void TrayIcon::toastActivated(int actionIndex) const
+void WinToastHandler::toastActivated(int actionIndex) const
 {
+    if (trayIcon == nullptr) {
+        return;
+    }
+
     WinToast::instance()->clear();
 
     switch (actionIndex) {
         case 0:
-            emit pause();
+            trayIcon->sendPause();
             break;
         case 1:
-            emit play();
+            trayIcon->sendPlay();
             break;
     }
 
-    QTimer::singleShot(250, this, &TrayIcon::showToast);
+    QTimer::singleShot(250, trayIcon, &TrayIcon::showToast);
 }
 
 
-void TrayIcon::toastDismissed(WinToastDismissalReason state) const
+void WinToastHandler::toastDismissed(WinToastDismissalReason state) const
 {
     Q_UNUSED(state);
 }
 
 
-void TrayIcon::toastFailed() const
+void WinToastHandler::toastFailed() const
 {
 
 }

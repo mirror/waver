@@ -58,7 +58,7 @@ Dialog {
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 }
                 Label {
-                    text: "Copyright 2017-" + internal.currentYear() + " Peter Papp"
+                    text: "Copyright (C) 2017-" + internal.currentYear() + " Peter Papp"
                     width: parent.width / 2
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 }
@@ -134,7 +134,7 @@ Dialog {
                 bottomPadding: 17
                 font.pixelSize: ver.font.pixelSize * .85
                 onLinkActivated: Qt.openUrlExternally(link);
-                text: "<a href=\"https://www.qt.io/\">Qt</a> is dual-licensed under commercial and <a href=\"https://github.com/qt\">open source</a> licenses. Here, the <a href=\"https://www.gnu.org/licenses/gpl-3.0.en.html\">GPL v3</a> licensed version is being used, unmodified, by ways of dynamic linking."
+                text: "<a href=\"https://www.qt.io/\">Qt</a> is dual-licensed under commercial and <a href=\"https://github.com/qt\">open source</a> licenses. Version 5.15.2 Copyright (C) 2015 The Qt Company Ltd. Here, the <a href=\"https://www.gnu.org/licenses/gpl-3.0.en.html\">GPL v3</a> licensed version is being used, unmodified, by ways of dynamic linking."
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }
@@ -142,7 +142,15 @@ Dialog {
                 bottomPadding: 17
                 font.pixelSize: ver.font.pixelSize * .85
                 onLinkActivated: Qt.openUrlExternally(link);
-                text: "<a href=\"https://taglib.org\">TagLib</a> is <a href=\"https://github.com/taglib/taglib\">open source</a> software under the <a href=\"https://www.gnu.org/licenses/lgpl-3.0.html\">LGPL v3</a> license. Waver uses it unmodified, by ways of dynamic linking."
+                text: "<a href=\"https://taglib.org\">TagLib</a> is <a href=\"https://github.com/taglib/taglib\">open source</a> software under the <a href=\"https://www.gnu.org/licenses/lgpl-3.0.html\">LGPL v3</a> license. Version 1.12 Copyright (C) 2002-2016 Rupert Daniel, Urs Fleisch, Michael Helmling, Allan Sandfeld Jensen, Tsuda Kageyu, Serkan Kalyoncu, Lukas Krejci, Lukáš Lalinský, Martin Nilsson, Alex Novichkov, Ismael Orenstein, Mathias Panzenböck, Anton Sergunov, Aaron VonderHaar, Scott Wheeler. Waver uses it unmodified, by ways of dynamic linking."
+                width: parent.width
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+            }
+            Label {
+                bottomPadding: 17
+                font.pixelSize: ver.font.pixelSize * .85
+                onLinkActivated: Qt.openUrlExternally(link);
+                text: "<a href=\"https://github.com/frankosterfeld/qtkeychain\">QtKeychain</a> is <a href=\"https://github.com/frankosterfeld/qtkeychain\">open source</a> software under the <a href=\"https://directory.fsf.org/wiki/License:BSD-3-Clause\">Modified BSD</a> license. Version 0.12.0 Copyright (C) 2011-2018 Frank Osterfeld, David Faure, Mathias Hasselmann, Stephen Kelly, Kitware Inc., Nikita Krupen'ko, Alex Merry, Alexander Neundorf, François Revol. Waver uses it unmodified, by ways of dynamic linking."
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }
@@ -150,7 +158,7 @@ Dialog {
                 bottomPadding: 31
                 font.pixelSize: ver.font.pixelSize * .85
                 onLinkActivated: Qt.openUrlExternally(link);
-                text: "<a href=\"https://github.com/frankosterfeld/qtkeychain\">QtKeychain</a> is <a href=\"https://github.com/frankosterfeld/qtkeychain\">open source</a> software that uses a <a href=\"https://github.com/frankosterfeld/qtkeychain/blob/master/COPYING\">custom</a> license. Waver uses it unmodified, by ways of dynamic linking."
+                text: "<a href=\"https://github.com/mohabouje/WinToast\">WinToast</a> is <a href=\"https://github.com/mohabouje/WinToast\">open source</a> software under the <a href=\"https://mit-license.org/\">MIT</a> license. Version 1.2.0 Copyright (C) 2016 Mohammed Boujemaoui Boulaghmoudi. Waver uses it unmodified, by including its entire source code (as recommended by the author)."
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }

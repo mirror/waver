@@ -22,7 +22,7 @@ NotificationsHandler::NotificationsHandler(Waver *waver) : QObject()
     #endif
 
     #ifdef Q_OS_WIN
-    new TrayIcon(waver, this);
+    trayIcon = new TrayIcon(waver, this);
     #endif
 }
 
@@ -35,5 +35,9 @@ NotificationsHandler::~NotificationsHandler()
         QDBusConnection::sessionBus().unregisterObject("/org/mpris/MediaPlayer2", QDBusConnection::UnregisterTree);
         QDBusConnection::sessionBus().unregisterService("org.mpris.MediaPlayer2.waver");
     }
+    #endif
+
+    #ifdef Q_OS_WIN
+    delete trayIcon;
     #endif
 }

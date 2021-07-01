@@ -16,6 +16,7 @@
 #define TRAYICON_H
 
 #include <QGuiApplication>
+#include <QList>
 #include <QObject>
 #include <QTimer>
 #include <wintoastlib.h>
@@ -27,13 +28,14 @@
 using namespace WinToastLib;
 
 
-class TrayIcon : public QObject, IWinToastHandler {
-        Q_OBJECT
+class TrayIcon;
+
+
+class WinToastHandler : public IWinToastHandler {
 
     public:
 
-        explicit TrayIcon(Waver *waver, QObject *parent);
-        ~TrayIcon();
+        WinToastHandler(TrayIcon *trayIcon = nullptr);
 
         void toastActivated() const override;
         void toastActivated(int actionIndex) const override;
@@ -43,15 +45,33 @@ class TrayIcon : public QObject, IWinToastHandler {
 
     private:
 
-        Waver *waver;
+        TrayIcon *trayIcon;
+};
+
+
+class TrayIcon : public QObject {
+        Q_OBJECT
+
+    public:
+
+        explicit TrayIcon(Waver *waver, QObject *parent);
+        ~TrayIcon();
+
+        void sendPause();
+        void sendPlay();
+
+
+    private:
+
+        Waver    *waver;
+        WinToast  winToast;
 
         void showMetadataMessage();
 
-        QString          imagesPath;
         WinToastTemplate toastTemplate;
 
 
-    private slots:
+    public slots:
 
         void showToast();
 
@@ -61,5 +81,7 @@ class TrayIcon : public QObject, IWinToastHandler {
         void pause() const;
         void play() const;
 };
+
+
 
 #endif // TRAYICON_H

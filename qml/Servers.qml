@@ -64,7 +64,7 @@ Dialog {
         anchors.left: parent.left
         anchors.right: parent.right
 
-        columns: 3
+        //columns: 3
 
         Label {
             Layout.row: 1
@@ -97,8 +97,6 @@ Dialog {
             Layout.row: 2
             Layout.column: 2
             implicitWidth: parent.width / 2
-        }
-        Item {
         }
 
         Label {
