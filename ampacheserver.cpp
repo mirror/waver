@@ -363,6 +363,10 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
             }
             return;
         }
+
+        handshakeInProgress            = false;
+        sessionExpiredHandshakeStarted = false;
+
         emit errorMessage(id, tr("Server responded with error message"), QString("%1 %2").arg(errorCode).arg(errorMsg));
         return;
     }

@@ -1761,6 +1761,8 @@ void Waver::serverPasswordNeeded(QString id)
         return;
     }
 
+    stopShuffleCountdown();
+
     emit uiPromptServerPsw(id, servers.at(srvIndex)->formattedName());
 }
 
