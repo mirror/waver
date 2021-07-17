@@ -189,6 +189,7 @@ class Waver : public QObject, PeakCallback
 
         void addServer(QString host, QString user, QString psw);
         void deleteServer(QString id);
+        void setServerPassword(QString id, QString psw);
         void explorerItemClicked(QString id, int action, QString extraJSON);
         void playlistItemClicked(int index, int action);
         void playlistItemDragDropped(int index, int destinationIndex);
@@ -228,6 +229,7 @@ class Waver : public QObject, PeakCallback
 
         void fileScanFinished();
         void serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer::OpData opData, AmpacheServer::OpResults opResults);
+        void serverPasswordNeeded(QString id);
         void errorMessage(QString id, QString info, QString error);
 
         void startNextTrackUISignals();
@@ -251,6 +253,8 @@ class Waver : public QObject, PeakCallback
         void explorerSetError(QVariant id, QVariant isError, QVariant errorMessage);
         void explorerSetSelected(QVariant id, QVariant selected);
         void explorerToggleSelected(QVariant id);
+
+        void uiPromptServerPsw(QVariant id, QVariant formattedName);
 
         void uiSetTrackData(QVariant titleText, QVariant performerText, QVariant albumText, QVariant trackNumberText, QVariant yearText);
         void uiSetFavorite(QVariant favorite);

@@ -17,6 +17,7 @@ ApplicationWindow {
 
     signal addNewServer(string host, string user, string psw);
     signal deleteServer(string id);
+    signal setServerPassword(string id, string psw);
     signal explorerItemClicked(string id, int action, string extra);
     signal explorerChildrenExtra(string childrenExtraJSON);
     signal playlistItemClicked(int index, int action);
@@ -161,6 +162,12 @@ ApplicationWindow {
     function playlistSelected(index, selected)
     {
         playlist.setSelected(index, selected);
+    }
+
+    function promptServerPsw(id, formattedName)
+    {
+        serverPassword.setIdName(id, formattedName);
+        serverPassword.open();
     }
 
     function setFavorite(fav)
@@ -510,6 +517,16 @@ ApplicationWindow {
             serverDeleteConfirmation.serverId = id;
             serverDeleteConfirmation.open();
         }
+    }
+
+    ServerPassword {
+        id: serverPassword
+
+        anchors.centerIn: parent
+        height: parent.height * 0.9
+        width: parent.width * 0.9
+
+        onSetPassword: setServerPassword(id, psw);
     }
 
     Options {

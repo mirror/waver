@@ -100,8 +100,11 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(waver, SIGNAL(playlistTotalTime(QVariant)), uiMainWindow, SLOT(playlistTotalTime(QVariant)));
     QObject::connect(waver, SIGNAL(playlistSelected(QVariant,QVariant)), uiMainWindow, SLOT(playlistSelected(QVariant,QVariant)));
 
-    QObject::connect(uiMainWindow, SIGNAL(addNewServer(QString,QString,QString)), waver, SLOT(addServer(QString,QString,QString)));
-    QObject::connect(uiMainWindow, SIGNAL(deleteServer(QString)), waver, SLOT(deleteServer(QString)));
+    QObject::connect(waver,        SIGNAL(uiPromptServerPsw(QVariant,QVariant)),  uiMainWindow, SLOT(promptServerPsw(QVariant,QVariant)));
+    QObject::connect(uiMainWindow, SIGNAL(addNewServer(QString,QString,QString)), waver,        SLOT(addServer(QString,QString,QString)));
+    QObject::connect(uiMainWindow, SIGNAL(deleteServer(QString)),                 waver,        SLOT(deleteServer(QString)));
+    QObject::connect(uiMainWindow, SIGNAL(setServerPassword(QString,QString)),    waver,        SLOT(setServerPassword(QString,QString)));
+
     QObject::connect(uiMainWindow, SIGNAL(explorerItemClicked(QString,int,QString)), waver, SLOT(explorerItemClicked(QString,int,QString)));
     QObject::connect(uiMainWindow, SIGNAL(playlistItemClicked(int,int)), waver, SLOT(playlistItemClicked(int,int)));
     QObject::connect(uiMainWindow, SIGNAL(playlistItemDragDropped(int,int)), waver, SLOT(playlistItemDragDropped(int,int)));

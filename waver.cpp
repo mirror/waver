@@ -148,6 +148,7 @@ void Waver::addServer(QString host, QString user, QString psw)
     emit explorerAddItem(id, QVariant::fromValue(nullptr), server->formattedName(), "qrc:/icons/remote.ico", QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
 
     connect(server, &AmpacheServer::operationFinished, this, &Waver::serverOperationFinished);
+    connect(server, &AmpacheServer::passwordNeeded,    this, &Waver::serverPasswordNeeded);
     connect(server, &AmpacheServer::errorMessage,      this, &Waver::errorMessage);
 
     QSettings settings;
@@ -1353,8 +1354,9 @@ void Waver::run()
         servers.at(i)->setId(id);
         servers.at(i)->retreivePassword();
 
-        connect(servers.at(i), &AmpacheServer::operationFinished,           this,          &Waver::serverOperationFinished);
-        connect(servers.at(i), &AmpacheServer::errorMessage,                this,          &Waver::errorMessage);
+        connect(servers.at(i), &AmpacheServer::operationFinished, this, &Waver::serverOperationFinished);
+        connect(servers.at(i), &AmpacheServer::passwordNeeded,    this, &Waver::serverPasswordNeeded);
+        connect(servers.at(i), &AmpacheServer::errorMessage,      this, &Waver::errorMessage);
 
         emit explorerAddItem(id, QVariant::fromValue(nullptr), servers.at(i)->formattedName(), "qrc:/icons/remote.ico", QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
 
@@ -1750,6 +1752,33 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     }
 }
 
+
+void Waver::serverPasswordNeeded(QString id)
+{
+    int srvIndex = serverIndex(id);
+    if ((srvIndex >= servers.size()) || (srvIndex < 0)) {
+        errorMessage(id, tr("Server ID can not be found"), id);
+        return;
+    }
+
+    emit uiPromptServerPsw(id, servers.at(srvIndex)->formattedName());
+}
+
+void Waver::setServerPassword(QString id, QString psw)
+{
+    int srvIndex = serverIndex(id);
+    if ((srvIndex >= servers.size()) || (srvIndex < 0)) {
+        errorMessage(id, tr("Server ID can not be found"), id);
+        return;
+    }
+
+    servers.at(srvIndex)->setPassword(psw);
+    addToLog(id, tr("Server password set"), servers.at(srvIndex)->formattedName());
+
+    if ((currentTrack == nullptr) && (playlist.size() == 0)) {
+        startShuffleCountdown();
+    }
+}
 
 void Waver::shuffleCountdown()
 {

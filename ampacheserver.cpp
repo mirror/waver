@@ -442,6 +442,7 @@ void AmpacheServer::readKeychainJobFinished(QKeychain::Job* job)
 {
     if (job->error()) {
         emit errorMessage(id, tr("Cannot read password from keychain"), job->errorString());
+        emit passwordNeeded(id);
     }
     else {
         this->psw = readKeychainJob->textData();

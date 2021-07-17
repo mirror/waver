@@ -149,6 +149,7 @@ class AmpacheServer : public QObject
 
         void operationFinished(OpCode opCode, OpData opData, OpResults opResults);
         void errorMessage(QString id, QString info, QString error);
+        void passwordNeeded(QString id);
 };
 
 
