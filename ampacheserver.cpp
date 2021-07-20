@@ -798,7 +798,12 @@ void AmpacheServer::startOperations()
 void AmpacheServer::writeKeychainJobFinished(QKeychain::Job* job)
 {
     if (job->error()) {
-        emit errorMessage(id, tr("Cannot save password to keychain"), job->errorString());
+        QString info = tr("Cannot save password to keychain");
+        if (QGuiApplication::instance()->applicationDirPath().contains("snap", Qt::CaseInsensitive)) {
+            info.append(". ").append(tr("Please check the application's permissions."));
+        }
+
+        emit errorMessage(id, info, job->errorString());
     }
 
     disconnect(writeKeychainJob, &WritePasswordJob::finished, this, &AmpacheServer::writeKeychainJobFinished);
