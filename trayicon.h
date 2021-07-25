@@ -59,6 +59,7 @@ class TrayIcon : public QObject {
 
         void sendPause();
         void sendPlay();
+        void sendPlayPause();
 
 
     private:
