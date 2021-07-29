@@ -64,6 +64,16 @@ void TrayIcon::sendPlay()
 }
 
 
+void TrayIcon::sendPlayPause()
+{
+    if (waver->getCurrentTrackStatus() == Track::Playing) {
+        emit pause();
+        return;
+    }
+    emit play();
+}
+
+
 void TrayIcon::showToast()
 {
     WinToast::instance()->showToast(toastTemplate, new WinToastHandler(this));
@@ -78,7 +88,7 @@ WinToastHandler::WinToastHandler(TrayIcon *trayIcon)
 
 void WinToastHandler::toastActivated() const
 {
-    toastActivated(0);
+    toastActivated(2);
 }
 
 
@@ -97,6 +107,8 @@ void WinToastHandler::toastActivated(int actionIndex) const
         case 1:
             trayIcon->sendPlay();
             break;
+        default:
+            trayIcon->sendPlayPause();
     }
 
     QTimer::singleShot(250, trayIcon, &TrayIcon::showToast);
