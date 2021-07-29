@@ -15,7 +15,7 @@ Dialog {
         function isBeta()
         {
             var versionParts = Qt.application.version.split(".");
-            return (versionParts[versionParts.length - 1] % 2 == 0);
+            return (versionParts[1] % 2 == 0);
         }
 
         function currentYear()
@@ -81,7 +81,7 @@ Dialog {
                 }
                 Label {
                     onLinkActivated: Qt.openUrlExternally(link);
-                    text: "Built on the <a href=\"https://www.qt.io/\">Qt framework</a>."
+                    text: "Built on the <a href=\"https://www.qt.io/\">Qt framework</a>"
                     width: parent.width / 2
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
 
@@ -92,10 +92,54 @@ Dialog {
                     }
                 }
             }
+
+            Label {
+                bottomPadding: 17
+                font.bold: true
+                font.italic: true
+                font.pixelSize: ver.font.pixelSize * .85
+                text: qsTr("Privacy")
+                width: parent.width
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+            }
+            Label {
+                bottomPadding: 17
+                font.bold: true
+                font.pixelSize: ver.font.pixelSize * .85
+                text: qsTr("Waver does not collect or send personal information of any kind.")
+                width: parent.width
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+            }
             Label {
                 bottomPadding: 31
+                font.pixelSize: ver.font.pixelSize * .85
+                onLinkActivated: Qt.openUrlExternally(link);
+                text:  {
+                    var privacyLabel = qsTr("However, if you installed Waver from an app store, usage statistics and/or error reports might be collected. Please refer to the following web pages for more information:<br>");
+                    if ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) {
+                        privacyLabel += qsTr("<a href=\"https://privacy.microsoft.com/privacystatement\">Microsoft Privacy Statement</a><br><a href=\"https://privacy.microsoft.com\">Privacy at Microsoft</a>");
+                    }
+                    else {
+                        privacyLabel += qsTr("<a href=\"https://ubuntu.com/legal/data-privacy/snap-store\">Privacy notice - Snaps and Snap store</a><br><a href=\"https://ubuntu.com/legal/data-privacy\">Canonical Data Privacy</a>");
+                    }
+                    return privacyLabel;
+                }
+                width: parent.width
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                }
+            }
+
+            Label {
+                bottomPadding: 17
                 font.bold: true
-                text: qsTr("Waver does not collect or send personal information of any kind.")
+                font.italic: true
+                font.pixelSize: ver.font.pixelSize * .85
+                text: qsTr("Disclaimer")
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }
@@ -110,12 +154,12 @@ Dialog {
             Label {
                 bottomPadding: 17
                 font.bold: true
+                font.italic: true
                 font.pixelSize: ver.font.pixelSize * .85
                 text: qsTr("Licenses")
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }
-
             Label {
                 bottomPadding: 17
                 font.pixelSize: ver.font.pixelSize * .85
@@ -148,12 +192,12 @@ Dialog {
             Label {
                 bottomPadding: 17
                 font.bold: true
+                font.italic: true
                 font.pixelSize: ver.font.pixelSize * .85
                 text: qsTr("Third Party Licenses")
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }
-
             Label {
                 bottomPadding: 17
                 font.pixelSize: ver.font.pixelSize * .85
@@ -214,12 +258,12 @@ Dialog {
             Label {
                 bottomPadding: 17
                 font.bold: true
+                font.italic: true
                 font.pixelSize: ver.font.pixelSize * .85
                 text: qsTr("Miscellaneous")
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }
-
             Label {
                 font.pixelSize: ver.font.pixelSize * .85
                 onLinkActivated: Qt.openUrlExternally(link);
