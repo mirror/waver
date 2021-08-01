@@ -166,8 +166,16 @@ ApplicationWindow {
 
     function promptServerPsw(id, formattedName)
     {
-        serverPassword.setIdName(id, formattedName);
-        serverPassword.open();
+        serverPassword.promptAdd(id, formattedName);
+
+        if (!serverPassword.visible) {
+            serverPassword.open();
+        }
+    }
+
+    function quickStartGuideSetIsSnap(isSnap)
+    {
+        quickStartGuide.setIsSnap(isSnap);
     }
 
     function setFavorite(fav)
@@ -454,6 +462,10 @@ ApplicationWindow {
         }
         MenuSeparator { }
         MenuItem {
+            text: qsTr("Quick Start Guide")
+            onTriggered: quickStartGuide.open()
+        }
+        MenuItem {
             text: qsTr("About")
             onTriggered: aboutWaver.open()
         }
@@ -551,6 +563,14 @@ ApplicationWindow {
 
     About {
         id: aboutWaver
+
+        anchors.centerIn: parent
+        height: parent.height * 0.9
+        width: parent.width * 0.9
+    }
+
+    QuickStart {
+        id: quickStartGuide
 
         anchors.centerIn: parent
         height: parent.height * 0.9

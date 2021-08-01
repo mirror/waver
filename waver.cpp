@@ -1304,6 +1304,8 @@ void Waver::run()
 {
     addToLog("waver", "Starting", "Entering run method");
 
+    emit uiSetIsSnap(QGuiApplication::instance()->applicationDirPath().contains("snap", Qt::CaseInsensitive));
+
     QSettings settings;
 
     shuffleCountdownTimer = new QTimer();

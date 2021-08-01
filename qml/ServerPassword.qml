@@ -9,46 +9,57 @@ Dialog {
     focus: true
     standardButtons: Dialog.Ok | Dialog.Cancel
 
-    function setIdName(id, formattedName)
-    {
-        internal.id = id;
-        serverName.text = formattedName;
-    }
 
     signal setPassword(string id, string psw);
 
-    onAccepted: setPassword(internal.id, psw.text);
-    onOpened  : psw.text = "";
-
-    QtObject {
-        id: internal
-        property string id: "";
+    onAccepted: {
+        for (var i = 0; i < serverPswModel.count; i++) {
+            setPassword(serverPswModel.get(i).server_id, serverPswModel.get(i).server_psw);
+        }
+        serverPswModel.clear();
+    }
+    onRejected: {
+        serverPswModel.clear();
     }
 
-    Label {
-        id: serverName
-
-        anchors.top: parent.top
-        anchors.left: parent.left
-        anchors.right: parent.right
-        bottomPadding: 25
+    function promptAdd(serverId, serverName)
+    {
+        var newDict = {
+            server_id: serverId,
+            server_name: serverName,
+            server_psw: ""
+        }
+        serverPswModel.append(newDict);
     }
-    Label {
-        id: pswLabel
 
-        anchors.verticalCenter: psw.verticalCenter
-        anchors.left: parent.left
-        rightPadding: 15
-
-        text: qsTr("Password")
+    ListModel {
+        id: serverPswModel
     }
-    TextField {
-        id: psw
 
-        anchors.top: serverName.bottom
-        anchors.left: pswLabel.right
-        anchors.right: parent.right
 
-        echoMode: TextInput.PasswordEchoOnEdit
+    ListView {
+        anchors.fill: parent
+        model: serverPswModel
+
+        delegate: Item {
+            height: serverPsw.height + 5
+            width: parent.width
+
+            Label {
+                id: serverName
+                anchors.left: parent.left
+                anchors.top: parent.top
+                rightPadding: 13
+                text: server_name
+            }
+            TextField {
+                id: serverPsw
+                anchors.verticalCenter: serverName.verticalCenter
+                anchors.left: serverName.right
+                anchors.right: parent.right
+                echoMode: TextInput.PasswordEchoOnEdit
+                onEditingFinished: server_psw = text
+            }
+        }
     }
 }

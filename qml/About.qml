@@ -175,7 +175,7 @@ Dialog {
                 }
             }
             Label {
-                bottomPadding: 31
+                bottomPadding: (Qt.platform.os === "windows") || (Qt.platform.os === "winrt") ? 17 : 31
                 font.pixelSize: ver.font.pixelSize * .85
                 onLinkActivated: Qt.openUrlExternally(link);
                 text: "The <a href=\"https://launchpad.net/waveriir\">Waver IIR</a> library is <a href=\"https://bazaar.launchpad.net/~waver-developers/waveriir/trunk/files\">open source</a> software under the <a href=\"https://www.gnu.org/licenses/gpl-3.0.en.html\">GPL v3</a> license."
@@ -186,6 +186,22 @@ Dialog {
                     anchors.fill: parent
                     acceptedButtons: Qt.NoButton
                     cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                }
+            }
+            Label {
+                bottomPadding: 31
+                font.pixelSize: ver.font.pixelSize * .85
+                onLinkActivated: Qt.openUrlExternally(link);
+                text: "If you installed Waver from the Windows Store, then its <a href=\"https://www.microsoft.com/store/standard-application-license-terms\">Standard Application License Terms</a> also apply."
+                visible: (Qt.platform.os === "windows") || (Qt.platform.os === "winrt")
+                width: parent.width
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+
+                MouseArea {
+                    anchors.fill: parent
+                    acceptedButtons: Qt.NoButton
+                    cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor
+                    enabled: (Qt.platform.os === "windows") || (Qt.platform.os === "winrt")
                 }
             }
 
@@ -227,7 +243,7 @@ Dialog {
                 }
             }
             Label {
-                bottomPadding: 17
+                bottomPadding: (Qt.platform.os === "windows") || (Qt.platform.os === "winrt") ? 17 : 31
                 font.pixelSize: ver.font.pixelSize * .85
                 onLinkActivated: Qt.openUrlExternally(link);
                 text: "<a href=\"https://github.com/frankosterfeld/qtkeychain\">QtKeychain</a> is <a href=\"https://github.com/frankosterfeld/qtkeychain\">open source</a> software under the <a href=\"https://directory.fsf.org/wiki/License:BSD-3-Clause\">Modified BSD</a> license. Version 0.12.0 Copyright (C) 2011-2018 Frank Osterfeld, David Faure, Mathias Hasselmann, Stephen Kelly, Kitware Inc., Nikita Krupen'ko, Alex Merry, Alexander Neundorf, François Revol. Waver uses it unmodified, by ways of dynamic linking."
@@ -247,8 +263,10 @@ Dialog {
                 text: "<a href=\"https://github.com/mohabouje/WinToast\">WinToast</a> is <a href=\"https://github.com/mohabouje/WinToast\">open source</a> software under the <a href=\"https://mit-license.org/\">MIT</a> license. Version 1.2.0 Copyright (C) 2016 Mohammed Boujemaoui Boulaghmoudi. Waver uses it unmodified, by including its entire source code (as recommended by the author)."
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                visible: (Qt.platform.os === "windows") || (Qt.platform.os === "winrt")
 
                 MouseArea {
+                    enabled: (Qt.platform.os === "windows") || (Qt.platform.os === "winrt")
                     anchors.fill: parent
                     acceptedButtons: Qt.NoButton
                     cursorShape: parent.hoveredLink ? Qt.PointingHandCursor : Qt.ArrowCursor

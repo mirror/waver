@@ -10,6 +10,7 @@
 #include <QByteArray>
 #include <QDateTime>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QJsonDocument>
 #include <QList>
 #include <QMutex>
@@ -290,6 +291,7 @@ class Waver : public QObject, PeakCallback
 
         void notify(NotificationDataToSend dataToSend);
         void uiRaise();
+        void uiSetIsSnap(QVariant isSnap);
 };
 
 #endif // WAVER_H
