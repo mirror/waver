@@ -38,7 +38,12 @@ long AmpacheServer::apiVersionFromString(QString apiVersionString)
     bool OK         = false;
     long apiVersion = apiVersionString.toLong(&OK);
 
-    if (!OK) {
+    if (OK) {
+        if (apiVersion == 500000) {
+            apiVersion = 5000000;
+        }
+    }
+    else {
         QStringList versionParts = apiVersionString.split(".");
         if (versionParts.size() == 3) {
             long majorApiVersion = 0;
@@ -217,7 +222,7 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
                 opCode = Shuffle;
             }
         }
-        else if (action.compare("tags") == 0) {
+        else if ((action.compare("tags") == 0) || (action.compare("genres") == 0)) {
             opCode = Tags;
         }
         else if (action.compare("flag") == 0) {
@@ -242,6 +247,7 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         "flag",
         "name",
         "tag",
+        "genre",
         "time",
         "title",
         "track",
@@ -249,7 +255,8 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         "year"
     };
     QStringList multiElements = {
-        "tag"
+        "tag",
+        "genre"
     };
     QHash<OpCode, QString> opElement = {
         { Search,        "song" },
@@ -261,9 +268,14 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         { PlaylistSongs, "song" },
         { RadioStations, "live_stream" },
         { Shuffle,       "song" },
-        { Tags,          "tag" },
         { Song,          "song" }
     };
+    if (serverVersion >= 5000000) {
+        opElement.insert(Tags, "genre");
+    }
+    else {
+        opElement.insert(Tags, "tag");
+    }
 
     QString                      currentElement = "";
     OpResults                    opResults;
@@ -369,6 +381,14 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
 
         emit errorMessage(id, tr("Server responded with error message"), QString("%1 %2").arg(errorCode).arg(errorMsg));
         return;
+    }
+
+    if (serverVersion >= 5000000) {
+        for (int i = 0; i < opResults.size(); i++) {
+            if (opResults[i].contains("genres") && !opResults[i].contains("tags")) {
+                opResults[i].insert("tags", opResults[i].value("genres"));
+            }
+        }
     }
 
     if (isHandshake) {
@@ -609,9 +629,6 @@ void AmpacheServer::startOperations()
 
         QUrlQuery query;
         query.addQueryItem("auth", authKey);
-        if ((serverVersion != 424000) && (serverVersion != 425000)) {
-            query.addQueryItem("limit", "none");
-        }
 
         if (operation.opCode == Search) {
             query.addQueryItem("action", "advanced_search");
@@ -756,7 +773,12 @@ void AmpacheServer::startOperations()
             }
         }
         else if (operation.opCode == Tags) {
-            query.addQueryItem("action", "tags");
+            if (serverVersion >= 5000000) {
+                query.addQueryItem("action", "genres");
+            }
+            else {
+                query.addQueryItem("action", "tags");
+            }
         }
         else if (operation.opCode == SetFlag) {
             query.removeAllQueryItems("limit");
@@ -782,6 +804,10 @@ void AmpacheServer::startOperations()
             query.removeAllQueryItems("limit");
             query.addQueryItem("action", "song");
             query.addQueryItem("filter", operation.opData.value("song_id"));
+        }
+
+        if ((serverVersion != 424000) && (serverVersion != 425000) && !query.hasQueryItem("limit")) {
+            query.addQueryItem("limit", "none");
         }
 
         networkAccessManager.get(buildRequest(query, operation.extra));
