@@ -690,6 +690,7 @@ ApplicationWindow {
 
                 onTextChanged: {
                     internal.calculateTitleSize();
+                    titleSizeRecalcOnResizeTimer.restart();
                 }
             }
 
@@ -712,6 +713,7 @@ ApplicationWindow {
 
                 onTextChanged: {
                     internal.calculatePerformerSize();
+                    titleSizeRecalcOnResizeTimer.restart();
                 }
             }
 
