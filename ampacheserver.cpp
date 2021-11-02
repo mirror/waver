@@ -39,8 +39,8 @@ long AmpacheServer::apiVersionFromString(QString apiVersionString)
     long apiVersion = apiVersionString.toLong(&OK);
 
     if (OK) {
-        if (apiVersion == 500000) {
-            apiVersion = 5000000;
+        if ((apiVersion >= 500000) && (apiVersion < 1000000)) {
+            apiVersion *= 10;
         }
     }
     else {
@@ -293,8 +293,13 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
 
             QXmlStreamAttributes attributes = xmlStreamReader.attributes();
 
-            if ((currentElement.compare("error") == 0) && attributes.hasAttribute("code")) {
-                errorCode = attributes.value("code").toInt();
+            if (currentElement.compare("error") == 0) {
+                if (attributes.hasAttribute("code")) {
+                    errorCode = attributes.value("code").toInt();
+                }
+                else if (attributes.hasAttribute("errorCode")) {
+                    errorCode = attributes.value("errorCode").toInt();
+                }
             }
 
             if (opElement.value(opCode).compare(currentElement) == 0) {
@@ -322,8 +327,8 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         }
 
         if (tokenType == QXmlStreamReader::Characters) {
-            if (currentElement.compare("error") == 0) {
-                errorMsg = xmlStreamReader.text().toString();
+            if ((currentElement.compare("error") == 0) || (currentElement.compare("errorMessage") == 0)) {
+                errorMsg = xmlStreamReader.text().toString().trimmed();
             }
 
             if (isHandshake) {
@@ -370,6 +375,7 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
             opQueue.prepend({ opCode, opData, extra });
 
             if (!handshakeInProgress && !sessionExpiredHandshakeStarted) {
+                emit errorMessage(id, tr("Renewing handshake"), QString("%1 %2").arg(errorCode).arg(errorMsg));
                 sessionExpiredHandshakeStarted = true;
                 QTimer::singleShot(50, this, &AmpacheServer::startHandshake);
             }

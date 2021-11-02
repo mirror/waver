@@ -1,6 +1,5 @@
 import QtQml 2.3
 import QtQuick 2.12
-//import QtQml.Models 2.15
 import QtQuick.Controls 2.3
 import QtQuick.Controls.Material 2.3
 import QtQuick.Controls.Universal 2.3
@@ -279,13 +278,15 @@ ApplicationWindow {
     QtObject {
         id: internal
 
+        readonly property int outlinePixelSize: 28
+
         property double positionerMovedValue: -1
         property double shuffleCountdown: 0.5
 
         function calculateTitleSize()
         {
             title.font.pixelSize = 99;
-            while ((title.width > track.width - art.width) || (title.height > art.height / 12 * 5)) {
+            while ((title.font.pixelSize >= 8) && ((title.width > track.width - art.width) || (title.height > art.height / 12 * 5))) {
                 title.font.pixelSize--;
             }
         }
@@ -293,7 +294,7 @@ ApplicationWindow {
         function calculatePerformerSize()
         {
             performer.font.pixelSize = 99;
-            while ((performer.width > track.width - art.width) || (performer.contentHeight > performer.height - 20)) {
+            while ((performer.font.pixelSize >= 8) && ((performer.width > track.width - art.width) || (performer.contentHeight > performer.height - 20))) {
                 performer.font.pixelSize--;
             }
         }
@@ -684,7 +685,7 @@ ApplicationWindow {
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 text: "title"
-                style: Text.Outline
+                style: { font.pixelSize >= internal.outlinePixelSize ? Text.Outline : Text.Normal }
                 styleColor: title.palette.windowText
                 wrapMode: Text.Wrap
 
@@ -706,7 +707,7 @@ ApplicationWindow {
                 color: performer.palette.highlight
                 horizontalAlignment: Text.AlignHCenter
                 text: "performer"
-                style: Text.Outline
+                style: { font.pixelSize >= internal.outlinePixelSize ? Text.Outline : Text.Normal }
                 styleColor: performer.palette.windowText
                 verticalAlignment: Text.AlignVCenter
                 wrapMode: Text.Wrap
@@ -752,7 +753,7 @@ ApplicationWindow {
                 anchors.verticalCenter: albumBackground.verticalCenter
 
                 color: title.palette.highlightedText
-                font.pixelSize: textMetrics.font.pixelSize * 1.5
+                font.pixelSize: textMetrics.font.pixelSize * (Math.min(title.font.pixelSize, performer.font.pixelSize) >= internal.outlinePixelSize ? 1.5 : 1)
                 horizontalAlignment: Text.AlignHCenter
                 text: "album"
                 wrapMode: Text.Wrap

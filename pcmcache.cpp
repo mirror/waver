@@ -13,11 +13,12 @@ PCMCache::PCMCache(QAudioFormat format, long lengthMilliseconds, bool radioStati
     this->lengthMilliseconds = lengthMilliseconds;
     this->radioStation       = radioStation;
 
-    file                = nullptr;
-    memory              = nullptr;
-    memoryRealSize      = 0;
-    readPosition        = 0;
-    unfullfilledRequest = false;
+    file                  = nullptr;
+    memory                = nullptr;
+    memoryRealSize        = 0;
+    readPosition          = 0;
+    radioFakeReadPosition = 0;
+    unfullfilledRequest   = false;
 }
 
 
@@ -112,7 +113,7 @@ void PCMCache::requestNextPCMChunk()
     mutex.lock();
 
     qint64 chunkLength       = format.bytesForDuration(BUFFER_CREATE_MILLISECONDS * 1000);
-    qint64 startMicroseconds = format.durationForBytes(readPosition);
+    qint64 startMicroseconds = radioStation ? format.durationForBytes(radioFakeReadPosition) : format.durationForBytes(readPosition);
 
     QByteArray PCM;
 
@@ -134,6 +135,7 @@ void PCMCache::requestNextPCMChunk()
             if (radioStation) {
                 memory->remove(0, chunkLength);
                 memoryRealSize -= chunkLength;
+                radioFakeReadPosition += chunkLength;
             }
             else {
                 readPosition += PCM.size();
@@ -144,7 +146,7 @@ void PCMCache::requestNextPCMChunk()
     mutex.unlock();
 
     if (PCM.size()) {
-        emit pcmChunk(PCM, startMicroseconds, false);
+        emit pcmChunk(PCM, startMicroseconds);
     }
 }
 
@@ -184,7 +186,7 @@ void PCMCache::requestTimestampPCMChunk(long milliseconds)
     mutex.unlock();
 
     if (PCM.size()) {
-        emit pcmChunk(PCM, startMicroseconds, false);
+        emit pcmChunk(PCM, startMicroseconds);
     }
 }
 

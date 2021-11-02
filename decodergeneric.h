@@ -24,6 +24,7 @@
 #include <QWaitCondition>
 
 #include "decodergenericnetworksource.h"
+#include "radiotitlecallback.h"
 
 #ifdef QT_DEBUG
     #include <QDebug>
@@ -36,7 +37,7 @@ class DecoderGeneric : public QObject
 
     public:
 
-        explicit DecoderGeneric(QObject *parent = nullptr);
+        explicit DecoderGeneric(RadioTitleCallback::RadioTitleCallbackInfo radioTitleCallbackInfo, QObject *parent = nullptr);
         ~DecoderGeneric();
 
         void   setParameters(QUrl url, QAudioFormat decodedFormat, qint64 waitUnderBytes);
@@ -64,14 +65,16 @@ class DecoderGeneric : public QObject
         unsigned long decodeDelay;
         qint64        decodedMicroseconds;
 
+        RadioTitleCallback::RadioTitleCallbackInfo radioTitleCallbackInfo;
+
 
     private slots:
 
         void networkReady();
+        void networkChanged();
         void networkError(QString errorString);
         void networkInfo(QString infoString);
         void networkSessionExpired();
-        void networkRadioTitle(QString title);
 
         void decoderBufferReady();
         void decoderFinished();
@@ -88,7 +91,7 @@ class DecoderGeneric : public QObject
     signals:
 
         void bufferAvailable(QAudioBuffer *buffer);
-        void radioTitle(QString title);
+        void networkBufferChanged();
         void finished();
         void errorMessage(QString info, QString error);
         void infoMessage(QString info);

@@ -65,6 +65,7 @@ class PCMCache : public QObject
 
         qint64 memoryRealSize;
         qint64 readPosition;
+        qint64 radioFakeReadPosition;
 
         bool unfullfilledRequest;
 
@@ -81,7 +82,7 @@ class PCMCache : public QObject
 
     signals:
 
-        void pcmChunk(QByteArray PCM, qint64 startMicroseconds, bool fromTimestamp);
+        void pcmChunk(QByteArray PCM, qint64 startMicroseconds);
         void error(QString info, QString error);
 
 };

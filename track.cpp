@@ -29,8 +29,8 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
     bufferInfoLastSent       = 0;
     networkStartingLastState = false;
 
-    fadeDirection            = FadeDirectionNone;
-    fadeDurationSeconds      = (trackInfo.attributes.contains("fadeDuration") ? trackInfo.attributes.value("fadeDuration").toInt() : FADE_DURATION_DEFAULT_SECONDS);
+    fadeDirection       = FadeDirectionNone;
+    fadeDurationSeconds = (trackInfo.attributes.contains("fadeDuration") ? trackInfo.attributes.value("fadeDuration").toInt() : FADE_DURATION_DEFAULT_SECONDS);
 
     #ifdef Q_OS_WIN
         fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds() + 1) * 1000) : 10 * 24 * 60 * 60 * 1000;
@@ -127,7 +127,6 @@ Track::~Track()
     if (decoder != nullptr) {
         disconnect(decoder, &DecoderGeneric::bufferAvailable, this, &Track::bufferAvailableFromDecoder);
         disconnect(decoder, &DecoderGeneric::networkStarting, this, &Track::decoderNetworkStarting);
-        disconnect(decoder, &DecoderGeneric::radioTitle,      this, &Track::decoderRadioTitle);
         disconnect(decoder, &DecoderGeneric::finished,        this, &Track::decoderFinished);
         disconnect(decoder, &DecoderGeneric::errorMessage,    this, &Track::decoderError);
 
@@ -347,9 +346,12 @@ void Track::decoderNetworkStarting(bool starting)
 }
 
 
-void Track::decoderRadioTitle(QString title)
+void Track::decoderNetworkBufferChanged()
 {
-    radioTitlePositions.append({ decoder->getDecodedMicroseconds() + equalizerQueue.size() * PCMCache::BUFFER_CREATE_MILLISECONDS * 1000 + outputQueue.size() * PCMCache::BUFFER_CREATE_MILLISECONDS * 1000 + soundOutput->remainingMilliseconds() * 1000 - PCMCache::BUFFER_CREATE_MILLISECONDS * 1000, title });
+    if (QDateTime::currentMSecsSinceEpoch() >= (bufferInfoLastSent + 40)) {
+        emit bufferInfo(trackInfo.id, decoder->isFile(), decoder->size(), cache->isFile(), cache->size());
+        bufferInfoLastSent = QDateTime::currentMSecsSinceEpoch();
+    }
 }
 
 
@@ -518,7 +520,20 @@ void Track::outputPositionChanged(qint64 posMilliseconds)
 
     if (!decodingDone) {
         unsigned long delay = static_cast<unsigned long>(pow(4, log10(qMax(decoder->getDecodedMicroseconds() / 1000 - posMilliseconds, 1ll))));
+        #ifdef Q_OS_WINDOWS
+            delay *= 3;
+            if (trackInfo.attributes.contains("radio_station")) {
+                delay = qMax(delay, 10000ul);
+            }
+        #endif
         decoder->setDecodeDelay(delay);
+    }
+
+    while ((radioTitlePositions.size() > 0) && (radioTitlePositions.first().microsecondsTimestamp <= posMilliseconds * 1000)) {
+        trackInfo.title = radioTitlePositions.first().title;
+        radioTitlePositions.removeFirst();
+        emit trackInfoUpdated(trackInfo.id);
+        emit resetReplayGain();
     }
 
     if (decodingDone && (posMilliseconds >= decoder->getDecodedMicroseconds() / 1000)) {
@@ -529,22 +544,15 @@ void Track::outputPositionChanged(qint64 posMilliseconds)
         sendFadeoutStarted();
         return;
     }
-
-    if ((radioTitlePositions.size() > 0) && (radioTitlePositions.first().microSecondsTimestamp <= (posMilliseconds * 1000))) {
-        trackInfo.title = radioTitlePositions.first().title;
-        radioTitlePositions.removeFirst();
-        emit trackInfoUpdated(trackInfo.id);
-        emit resetReplayGain();
-    }
 }
 
 
-void Track::pcmChunkFromCache(QByteArray chunk, qint64 startMicroseconds, bool fromTimestamp)
+void Track::pcmChunkFromCache(QByteArray chunk, qint64 startMicroseconds)
 {
     QByteArray *copy = new QByteArray(chunk.data(), chunk.size());
 
     equalizerQueueMutex.lock();
-    equalizerQueue.append({ copy, startMicroseconds, fromTimestamp });
+    equalizerQueue.append({ copy, startMicroseconds });
     equalizerQueueMutex.unlock();
 
     emit chunkAvailableToEqualizer(1);
@@ -570,6 +578,12 @@ void Track::pcmChunkFromEqualizer(TimedChunk chunk)
     if (outputThread.isRunning()) {
         emit chunkAvailableToOutput();
     }
+}
+
+
+void Track::radioTitleCallback(QString title)
+{
+    radioTitlePositions.append({ decoder->getDecodedMicroseconds(), title });
 }
 
 
@@ -763,7 +777,7 @@ void Track::setupCache()
 
 void Track::setupDecoder()
 {
-    decoder = new DecoderGeneric();
+    decoder = new DecoderGeneric({ this, (RadioTitleCallback::RadioTitleCallbackPointer)&Track::radioTitleCallback });
 
     qint64 waitUnderBytes = 4096;
     #ifdef Q_OS_WINDOWS
@@ -776,13 +790,13 @@ void Track::setupDecoder()
 
     connect(&decoderThread, &QThread::started,  decoder, &DecoderGeneric::run);
 
-    connect(decoder, &DecoderGeneric::bufferAvailable, this, &Track::bufferAvailableFromDecoder);
-    connect(decoder, &DecoderGeneric::networkStarting, this, &Track::decoderNetworkStarting);
-    connect(decoder, &DecoderGeneric::radioTitle,      this, &Track::decoderRadioTitle);
-    connect(decoder, &DecoderGeneric::finished,        this, &Track::decoderFinished);
-    connect(decoder, &DecoderGeneric::errorMessage,    this, &Track::decoderError);
-    connect(decoder, &DecoderGeneric::infoMessage,     this, &Track::decoderInfo);
-    connect(decoder, &DecoderGeneric::sessionExpired, this, &Track::decoderSessionExpired);
+    connect(decoder, &DecoderGeneric::bufferAvailable,      this, &Track::bufferAvailableFromDecoder);
+    connect(decoder, &DecoderGeneric::networkBufferChanged, this, &Track::decoderNetworkBufferChanged);
+    connect(decoder, &DecoderGeneric::networkStarting,      this, &Track::decoderNetworkStarting);
+    connect(decoder, &DecoderGeneric::finished,             this, &Track::decoderFinished);
+    connect(decoder, &DecoderGeneric::errorMessage,         this, &Track::decoderError);
+    connect(decoder, &DecoderGeneric::infoMessage,          this, &Track::decoderInfo);
+    connect(decoder, &DecoderGeneric::sessionExpired,       this, &Track::decoderSessionExpired);
 
     connect(this, &Track::startDecode, decoder, &DecoderGeneric::start);
 }

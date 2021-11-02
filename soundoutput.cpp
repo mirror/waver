@@ -113,7 +113,7 @@ void SoundOutput::chunkAvailable()
         initialCachingDone = true;
     }
 
-    if ((chunkQueue->count() > 0) && ((beginningMicroseconds < 0) || chunkQueue->at(0).fromTimestamp)) {
+    if ((chunkQueue->count() > 0) && (beginningMicroseconds < 0)) {
         notificationCounter   = 0;
         beginningMicroseconds = chunkQueue->at(0).startMicroseconds;
     }
@@ -176,8 +176,6 @@ void SoundOutput::fillBytesToPlay()
 
 void SoundOutput::pause()
 {
-    // TODO: Radio looses elapsed time after pause-resume, this also messes up song titles extracted from stream
-
     if (feeder != nullptr) {
         feeder->setOutputDevice(nullptr);
     }

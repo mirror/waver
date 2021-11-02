@@ -28,6 +28,7 @@
 #include "equalizer.h"
 #include "globals.h"
 #include "pcmcache.h"
+#include "radiotitlecallback.h"
 #include "soundoutput.h"
 
 #ifdef QT_DEBUG
@@ -35,7 +36,7 @@
 #endif
 
 
-class Track : public QObject
+class Track : public QObject, RadioTitleCallback
 {
     Q_OBJECT
 
@@ -83,6 +84,8 @@ class Track : public QObject
 
         void optionsUpdated();
 
+        void radioTitleCallback(QString title);
+
 
     private:
 
@@ -97,10 +100,9 @@ class Track : public QObject
 
 
         struct RadioTitlePosition {
-            qint64  microSecondsTimestamp;
+            qint64  microsecondsTimestamp;
             QString title;
         };
-
 
         TrackInfo   trackInfo;
         QStringList fadeTags;
@@ -168,18 +170,18 @@ class Track : public QObject
     private slots:
 
         void bufferAvailableFromDecoder(QAudioBuffer *buffer);
-        void pcmChunkFromCache(QByteArray PCM, qint64 startMicroseconds, bool fromTimestamp);
+        void pcmChunkFromCache(QByteArray PCM, qint64 startMicroseconds);
         void pcmChunkFromEqualizer(TimedChunk chunk);
 
         void sendFinished();
         void sendFadeoutStarted();
 
-        void decoderRadioTitle(QString title);
         void decoderFinished();
         void decoderError(QString info, QString errorMessage);
         void decoderInfo(QString info);
         void decoderSessionExpired();
         void decoderNetworkStarting(bool starting);
+        void decoderNetworkBufferChanged();
         void underrunTimeout();
 
         void cacheError(QString info, QString errorMessage);
@@ -207,7 +209,7 @@ class Track : public QObject
         void fadeoutStarted(QString id);
         void finished(QString id);
         void trackInfoUpdated(QString id);
-        void statusChanged(QString id, Status status, QString statusString);
+        void statusChanged(QString id, Track::Status status, QString statusString);
 
         void startDecode();
         void decoderDone();

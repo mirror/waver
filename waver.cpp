@@ -915,6 +915,8 @@ void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, v
     });
 
     if (peakCallbackCount % 10 == 0) {
+        int milliseconds = 10000;
+
         if (peakUILagCount > 0)  {
             peakLagCount++;
 
@@ -925,8 +927,8 @@ void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, v
             }
             peakFPSMutex.unlock();
 
-            peakLagIgnoreEnd     = QDateTime::currentMSecsSinceEpoch() + 2500;
-            peakFPSIncreaseStart = QDateTime::currentMSecsSinceEpoch() + qMin(peakLagCount * 100, static_cast<qint64>(30000));
+            peakLagIgnoreEnd     = QDateTime::currentMSecsSinceEpoch() + 500;
+            peakFPSIncreaseStart = QDateTime::currentMSecsSinceEpoch() + qMin(peakLagCount * 50, static_cast<qint64>(milliseconds));
             peakUILagCount       = 0;
         }
         else if ((peakFPS < peakFPSMax) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart)) {
@@ -936,7 +938,7 @@ void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, v
 
             emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS));
         }
-        else if ((peakLagCount > 0) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart + 300000)) {
+        else if ((peakLagCount > 0) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart + milliseconds * 10)) {
             peakLagCount = 0;
         }
     }

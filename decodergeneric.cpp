@@ -7,14 +7,16 @@
 
 #include "decodergeneric.h"
 
-DecoderGeneric::DecoderGeneric(QObject *parent) : QObject(parent)
+DecoderGeneric::DecoderGeneric(RadioTitleCallback::RadioTitleCallbackInfo radioTitleCallbackInfo, QObject *parent) : QObject(parent)
 {
+    this->radioTitleCallbackInfo = radioTitleCallbackInfo;
+
     audioDecoder        = nullptr;
     file                = nullptr;
     networkSource       = nullptr;
     networkDeviceSet    = false;
     decodedMicroseconds = 0;
-    decodeDelay         = 50;
+    decodeDelay         = 1500;
     waitUnderBytes      = 4096;
 
     networkThread.setObjectName("decodernetwork");
@@ -66,6 +68,7 @@ void DecoderGeneric::decoderBufferReady()
         waitMutex.lock();
         while ((networkSource->realBytesAvailable() < waitUnderBytes) && !networkSource->isFinshed() && !QThread::currentThread()->isInterruptionRequested()) {
             waitCondition.wait(&waitMutex, 1000);
+            emit networkBufferChanged();
         }
         waitMutex.unlock();
     }
@@ -149,12 +152,6 @@ void DecoderGeneric::networkInfo(QString infoString)
 }
 
 
-void DecoderGeneric::networkRadioTitle(QString title)
-{
-    emit radioTitle(title);
-}
-
-
 void DecoderGeneric::networkReady()
 {
     emit networkStarting(false);
@@ -164,6 +161,12 @@ void DecoderGeneric::networkReady()
         audioDecoder->setSourceDevice(networkSource);
         audioDecoder->start();
     }
+}
+
+
+void DecoderGeneric::networkChanged()
+{
+    emit networkBufferChanged();
 }
 
 
@@ -229,7 +232,7 @@ void DecoderGeneric::start()
         audioDecoder->start();
     }
     else {
-        networkSource = new DecoderGenericNetworkSource(url, &waitCondition);
+        networkSource = new DecoderGenericNetworkSource(url, &waitCondition, radioTitleCallbackInfo);
         networkSource->setErrorOnUnderrun(false);
         networkSource->moveToThread(&networkThread);
 
@@ -237,9 +240,10 @@ void DecoderGeneric::start()
         connect(&networkThread, SIGNAL(finished()), networkSource, SLOT(deleteLater()));
 
         connect(networkSource, SIGNAL(ready()),             this, SLOT(networkReady()));
+        connect(networkSource, SIGNAL(changed()),           this, SLOT(networkChanged()));
         connect(networkSource, SIGNAL(error(QString)),      this, SLOT(networkError(QString)));
         connect(networkSource, SIGNAL(info(QString)),       this, SLOT(networkInfo(QString)));
-        connect(networkSource, SIGNAL(sessionExpired()),   this, SLOT(networkSessionExpired()));
+        connect(networkSource, SIGNAL(sessionExpired()),    this, SLOT(networkSessionExpired()));
         connect(networkSource, SIGNAL(radioTitle(QString)), this, SLOT(networkRadioTitle(QString)));
 
         emit networkStarting(true);

@@ -22,6 +22,7 @@ HEADERS += \
     outputfeeder.h \
     pcmcache.h \
     peakcallback.h \
+    radiotitlecallback.h \
     replaygaincalculator.h \
     soundoutput.h \
     track.h \
@@ -40,6 +41,7 @@ SOURCES += \
     outputfeeder.cpp \
     pcmcache.cpp \
     peakcallback.cpp \
+    radiotitlecallback.cpp \
     replaygaincalculator.cpp \
     soundoutput.cpp \
     track.cpp \

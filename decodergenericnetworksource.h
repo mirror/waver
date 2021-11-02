@@ -9,6 +9,7 @@
 #define DECODERGENERICNETWORKSOURCE_H
 
 #include <QByteArray>
+#include <QDateTime>
 #include <QGuiApplication>
 #include <QIODevice>
 #include <QMutex>
@@ -23,6 +24,8 @@
 #include <QVector>
 #include <QWaitCondition>
 
+#include "radiotitlecallback.h"
+
 #ifdef QT_DEBUG
     #include <QDebug>
 #endif
@@ -34,7 +37,7 @@ class DecoderGenericNetworkSource : public QIODevice
 
     public:
 
-        DecoderGenericNetworkSource(QUrl url, QWaitCondition *waitCondition);
+        DecoderGenericNetworkSource(QUrl url, QWaitCondition *waitCondition, RadioTitleCallback::RadioTitleCallbackInfo radioTitleCallbackInfo);
         ~DecoderGenericNetworkSource();
 
         qint64 readData(char *data, qint64 maxlen)     override;
@@ -57,6 +60,11 @@ class DecoderGenericNetworkSource : public QIODevice
         static const int CONNECTION_ATTEMPTS = 3;
         static const int CONNECTION_TIMEOUT  = 7500;
         static const int PRE_CACHE_TIMEOUT   = 15000;
+
+        struct RadioTitlePosition {
+            qint64  compressedBytes;
+            QString title;
+        };
 
         QUrl            url;
         QWaitCondition *waitCondition;
@@ -89,7 +97,10 @@ class DecoderGenericNetworkSource : public QIODevice
         QByteArray metaBuffer;
         qint64     totalMetaBytes;
 
-        bool   bufferIndexPositionFromPosition(qint64 position, int *bufferIndex, int *bufferPosition);
+        RadioTitleCallback::RadioTitleCallbackInfo radioTitleCallbackInfo;
+        QVector<RadioTitlePosition>                radioTitlePositions;
+
+        bool bufferIndexPositionFromPosition(qint64 position, int *bufferIndex, int *bufferPosition);
 
         QNetworkRequest buildNetworkRequest();
 
@@ -100,7 +111,7 @@ class DecoderGenericNetworkSource : public QIODevice
         void info(QString errorString);
         void sessionExpired();
         void ready();
-        void radioTitle(QString title);
+        void changed();
 
 
     public slots:

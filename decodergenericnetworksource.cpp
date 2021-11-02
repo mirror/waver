@@ -8,10 +8,11 @@
 #include "decodergenericnetworksource.h"
 
 
-DecoderGenericNetworkSource::DecoderGenericNetworkSource(QUrl url, QWaitCondition *waitCondition) : QIODevice()
+DecoderGenericNetworkSource::DecoderGenericNetworkSource(QUrl url, QWaitCondition *waitCondition, RadioTitleCallback::RadioTitleCallbackInfo radioTitleCallbackInfo) : QIODevice()
 {
-    this->url           = url;
-    this->waitCondition = waitCondition;
+    this->url                    = url;
+    this->waitCondition          = waitCondition;
+    this->radioTitleCallbackInfo = radioTitleCallbackInfo;
 
     fakePosition         = 0;
     firstBufferPosition  = 0;
@@ -272,8 +273,8 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
                         QRegExp finder("StreamTitle='(.+)';");
                         finder.setMinimal(true);
                         if (finder.indexIn(QString(metaBuffer)) >= 0) {
-                            // got it, let the decoder know
-                            emit radioTitle(finder.cap(1));
+                            // got it
+                            radioTitlePositions.append({ totalDownloadedBytes + pointer, finder.cap(1) });
                         }
                     }
 
@@ -286,8 +287,8 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
                 int increment = qMin(rawChunkSize - rawCount, data.count() - pointer);
 
                 // increase pointer and counters
-                pointer       += increment;
-                rawCount      += increment;
+                pointer  += increment;
+                rawCount += increment;
 
                 // is the end of audio block reached?
                 if (rawCount == rawChunkSize) {
@@ -320,10 +321,18 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
         totalExpectedBytes = totalDownloadedBytes;
     }
 
-    // let the world know when pre-caching is done, bytesTotal is unknown (zero) for radio stations
-    if (!readyEmitted && (bytesReceived > (bytesTotal > 0 ? qMin(bytesTotal, (qint64)1024 * 1024) : 65536))) {
-        QTimer::singleShot(250, this, &DecoderGenericNetworkSource::emitReady);
-        readyEmitted = true;
+    if (!readyEmitted) {
+        emit changed();
+
+        // let the world know when pre-caching is done, bytesTotal is unknown (zero) for radio stations
+        qint64 radioMin = 65536;
+        #ifdef Q_OS_WINDOWS
+            radioMin = 262144;
+        #endif
+        if ((bytesReceived > (bytesTotal > 0 ? qMin(bytesTotal, (qint64)1024 * 1024) : radioMin))) {
+            QTimer::singleShot(250, this, &DecoderGenericNetworkSource::emitReady);
+            readyEmitted = true;
+        }
     }
 
     // wake up the decoder thread
@@ -440,6 +449,13 @@ void DecoderGenericNetworkSource::preCacheTimeout()
 
 qint64 DecoderGenericNetworkSource::readData(char *data, qint64 maxlen)
 {
+    if (isSequential()) {
+        while ((radioTitlePositions.size() > 0) && (fakePosition >= radioTitlePositions.first().compressedBytes)) {
+            (radioTitleCallbackInfo.callbackObject->*radioTitleCallbackInfo.callbackMethod)(radioTitlePositions.first().title);
+            radioTitlePositions.removeFirst();
+        }
+    }
+
     #ifdef Q_OS_LINUX
         if ((buffer.count() < 1) && (maxlen > 0) && errorOnUnderrun) {
             emit error(tr("Download buffer underrun"));
@@ -578,7 +594,6 @@ bool DecoderGenericNetworkSource::seek(qint64 pos)
             if ((first < fakePosition) && !seekHistory.contains(first)) {
                 int bufferIndex;
                 int bufferPosition;
-
                 if (bufferIndexPositionFromPosition(first, &bufferIndex, &bufferPosition)) {
                     int i = 0;
                     while (i < bufferIndex) {
@@ -587,6 +602,11 @@ bool DecoderGenericNetworkSource::seek(qint64 pos)
                         i++;
                     }
                     buffer.at(0)->remove(0, bufferPosition);
+
+                    while ((radioTitlePositions.size() > 0) && (first >= radioTitlePositions.first().compressedBytes)) {
+                        (radioTitleCallbackInfo.callbackObject->*radioTitleCallbackInfo.callbackMethod)(radioTitlePositions.first().title);
+                        radioTitlePositions.removeFirst();
+                    }
 
                     firstBufferPosition = first;
                 }

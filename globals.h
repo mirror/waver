@@ -44,7 +44,6 @@ static const double DEFAULT_EQ10   = 12.0;
 struct TimedChunk {
     QByteArray *chunkPointer;
     qint64      startMicroseconds;
-    bool        fromTimestamp;
 };
 
 typedef QVector<QAudioBuffer *> BufferQueue;
