@@ -153,6 +153,11 @@ void PCMCache::requestNextPCMChunk()
 
 void PCMCache::requestTimestampPCMChunk(long milliseconds)
 {
+    if (radioStation) {
+        unfullfilledRequest = true;
+        return;
+    }
+
     qint64 currentSize = size();
 
     mutex.lock();

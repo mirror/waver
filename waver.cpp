@@ -393,17 +393,17 @@ QString Waver::formatFrequencyValue(double hertz)
 }
 
 
-QString Waver::formatMemoryValue(unsigned long bytes)
+QString Waver::formatMemoryValue(unsigned long bytes, bool padded)
 {
     if (bytes > (1024 * 1024)) {
-        return QString("%1MB").arg(static_cast<double>(bytes) / (1024 * 1024), 0, 'f', 2);
+        return QString("%1MB").arg(static_cast<double>(bytes) / (1024 * 1024), padded ? 7 : 0, 'f', 2);
     }
 
     if (bytes > 1024) {
-        return QString("%1KB").arg(static_cast<double>(bytes) / 1024, 0, 'f', 2);
+        return QString("%1KB").arg(static_cast<double>(bytes) / 1024, padded ? 7 : 0, 'f', 2);
     }
 
-    return QString("%1B").arg(static_cast<double>(bytes), 0, 'f', 0);
+    return QString(padded ? "%1B " : "%1B").arg(static_cast<double>(bytes), padded ? 7 : 0, 'f', 0);
 }
 
 
@@ -923,7 +923,7 @@ void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, v
             peakFPSMutex.lock();
             if (peakFPS > 3) {
                 peakFPS -= 2;
-                emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS));
+                emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS, 2).replace(" ", "&nbsp;"));
             }
             peakFPSMutex.unlock();
 
@@ -936,7 +936,7 @@ void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, v
             peakFPS++;
             peakFPSMutex.unlock();
 
-            emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS));
+            emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS, 2).replace(" ", "&nbsp;"));
         }
         else if ((peakLagCount > 0) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart + milliseconds * 10)) {
             peakLagCount = 0;
@@ -1980,7 +1980,7 @@ void Waver::stopShuffleCountdown()
 
 void Waver::trackBufferInfo(QString id, bool rawIsFile, unsigned long rawSize, bool pmcIsFile, unsigned long pmcSize)
 {
-    QString memoryUsageText = QString("%1 <i>%2</i> / %3 <i>%4</i>").arg(formatMemoryValue(rawSize)).arg(rawIsFile ? 'F' : 'N').arg(formatMemoryValue(pmcSize)).arg(pmcIsFile ? 'F' : 'M');
+    QString memoryUsageText = QString("%1 <i>%2</i> / %3 <i>%4</i>").arg(formatMemoryValue(rawSize, true).replace(" ", "&nbsp;")).arg(rawIsFile ? 'F' : 'N').arg(formatMemoryValue(pmcSize)).arg(pmcIsFile ? 'F' : 'M');
 
     if ((currentTrack != nullptr) && (getCurrentTrackInfo().id.compare(id) == 0)) {
         emit uiSetTrackBufferData(memoryUsageText);
@@ -2289,7 +2289,7 @@ void Waver::trackPlayPosition(QString id, bool decoderFinished, long knownDurati
 void Waver::trackReplayGainInfo(QString id, double target, double current)
 {
     if ((currentTrack != nullptr) && (getCurrentTrackInfo().id.compare(id) == 0)) {
-        emit uiSetTrackReplayGain(QString("%1").arg(target, 0, 'f', 2), QString("%1").arg(current, 0, 'f', 2));
+        emit uiSetTrackReplayGain(QString("%1").arg(target, 0, 'f', 2), QString("%1").arg(current, 6, 'f', 2).replace(" ", "&nbsp;"));
     }
 }
 

@@ -583,7 +583,12 @@ void Track::pcmChunkFromEqualizer(TimedChunk chunk)
 
 void Track::radioTitleCallback(QString title)
 {
-    radioTitlePositions.append({ decoder->getDecodedMicroseconds(), title });
+    int decodingCompensation = 2500;
+    #if defined (Q_OS_WINDOWS)
+        decodingCompensation *= -1;
+    #endif
+
+    radioTitlePositions.append({ decoder->getDecodedMicroseconds() + decodingCompensation, title });
 }
 
 
@@ -723,6 +728,11 @@ void Track::setStatus(Status status)
     }
 
     if ((status == Playing) && (currentStatus == Paused)) {
+        if (decodingDone && (posMilliseconds >= decoder->getDecodedMicroseconds() / 1000 - 15000)) {
+            sendFinished();
+            return;
+        }
+
         fadeDirection       = FadeDirectionIn;
         fadePercent         = 0;
         fadeFrameCount      = 0;

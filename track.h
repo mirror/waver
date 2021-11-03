@@ -98,7 +98,6 @@ class Track : public QObject, RadioTitleCallback
         static const int  FADE_DURATION_DEFAULT_SECONDS = 4;
         static const long USEC_PER_SEC                  = 1000 * 1000;
 
-
         struct RadioTitlePosition {
             qint64  microsecondsTimestamp;
             QString title;

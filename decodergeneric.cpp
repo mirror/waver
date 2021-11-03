@@ -244,7 +244,6 @@ void DecoderGeneric::start()
         connect(networkSource, SIGNAL(error(QString)),      this, SLOT(networkError(QString)));
         connect(networkSource, SIGNAL(info(QString)),       this, SLOT(networkInfo(QString)));
         connect(networkSource, SIGNAL(sessionExpired()),    this, SLOT(networkSessionExpired()));
-        connect(networkSource, SIGNAL(radioTitle(QString)), this, SLOT(networkRadioTitle(QString)));
 
         emit networkStarting(true);
 

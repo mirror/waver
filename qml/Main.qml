@@ -408,7 +408,10 @@ ApplicationWindow {
                 anchors.left: status.right
                 anchors.verticalCenter: parent.verticalCenter
                 id: bufferSize
-                text: "0B / 0B"
+                text: ""
+                font.family: "Monospace"
+                font.pixelSize: textMetrics.font.pixelSize * 0.8
+                textFormat: Qt.RichText
                 leftPadding: 5
                 width: parent.width / 10 * 2
             }
@@ -416,7 +419,10 @@ ApplicationWindow {
                 anchors.left: bufferSize.right
                 anchors.verticalCenter: parent.verticalCenter
                 id: gain
-                text: "0dB / 0dB"
+                text: ""
+                font.family: "Monospace"
+                font.pixelSize: textMetrics.font.pixelSize * 0.8
+                textFormat: Qt.RichText
                 leftPadding: 5
                 width: parent.width / 10 * 2
             }
@@ -424,7 +430,10 @@ ApplicationWindow {
                 anchors.left: gain.right
                 anchors.verticalCenter: parent.verticalCenter
                 id: peakFPS
-                text: "0FPS"
+                text: ""
+                font.family: "Monospace"
+                font.pixelSize: textMetrics.font.pixelSize * 0.8
+                textFormat: Qt.RichText
                 leftPadding: 5
                 width: parent.width / 10 * 1
             }

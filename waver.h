@@ -163,7 +163,7 @@ class Waver : public QObject, PeakCallback
         void startNextTrack();
 
         QChar            alphabetFromName(QString name);
-        QString          formatMemoryValue(unsigned long bytes);
+        QString          formatMemoryValue(unsigned long bytes, bool padded = false);
         QString          formatFrequencyValue(double hertz);
         Track::TrackInfo trackInfoFromFilePath(QString filePath);
         Track::TrackInfo trackInfoFromIdExtra(QString id, QVariantMap extra);
