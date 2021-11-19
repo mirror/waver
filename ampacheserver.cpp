@@ -727,6 +727,25 @@ void AmpacheServer::startOperations()
                 }
                 operation.extra->setProperty("shuffle_limit", randomListCount);
             }
+            else if (operation.opData.contains("recently_added")) {
+                shuffleRegular.clear();
+                shuffleRegularCompleted = false;
+                shuffleFavorites.clear();
+                shuffleFavoritesCompleted = true;
+
+                query.addQueryItem("action", "advanced_search");
+                query.addQueryItem("type", "song");
+                query.addQueryItem("random", "1");
+                query.addQueryItem("rule_1", "recent_added");
+                query.addQueryItem("rule_1_operator", "0");
+                query.addQueryItem("rule_1_input", "100");
+                query.addQueryItem("limit", QString("%1").arg(randomListCount));
+
+                if (operation.extra == nullptr) {
+                    operation.extra = new QObject();
+                }
+                operation.extra->setProperty("shuffle_limit", randomListCount);
+            }
             else {
                 shuffleRegular.clear();
                 shuffleRegularCompleted = false;

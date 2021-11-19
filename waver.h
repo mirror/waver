@@ -101,11 +101,13 @@ class Waver : public QObject, PeakCallback
         static const QString UI_ID_PREFIX_SERVER_SHUFFLETAG;
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES;
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED;
+        static const QString UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED;
 
         enum ShuffleMode {
             None,
             Favorite,
-            NeverPlayed
+            NeverPlayed,
+            RecentlyAdded
         };
 
         QList<LogItem> log;

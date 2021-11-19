@@ -242,7 +242,7 @@ ApplicationWindow {
 
     function setTrackData(titleText, performerText, albumText, trackNumberText, yearText)
     {
-        title.text       = titleText;
+        title.text       = titleText.replace(" {", "\n{");
         performer.text   = performerText;
         album.text       = albumText;
         trackNumber.text = "#" + trackNumberText;

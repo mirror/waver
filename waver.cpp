@@ -6,28 +6,29 @@
 
 #include "waver.h"
 
-const QString Waver::UI_ID_PREFIX_LOCALDIR                   = "A";
-const QString Waver::UI_ID_PREFIX_LOCALDIR_SUBDIR            = "B";
-const QString Waver::UI_ID_PREFIX_LOCALDIR_FILE              = "C";
-const QString Waver::UI_ID_PREFIX_SERVER                     = "D";
-const QString Waver::UI_ID_PREFIX_SERVER_SEARCH              = "E";
-const QString Waver::UI_ID_PREFIX_SERVER_SEARCHRESULT        = "F";
-const QString Waver::UI_ID_PREFIX_SERVER_BROWSE              = "G";
-const QString Waver::UI_ID_PREFIX_SERVER_BROWSEALPHABET      = "H";
-const QString Waver::UI_ID_PREFIX_SERVER_BROWSEARTIST        = "I";
-const QString Waver::UI_ID_PREFIX_SERVER_BROWSEALBUM         = "J";
-const QString Waver::UI_ID_PREFIX_SERVER_BROWSESONG          = "K";
-const QString Waver::UI_ID_PREFIX_SERVER_PLAYLISTS           = "L";
-const QString Waver::UI_ID_PREFIX_SERVER_PLAYLIST            = "M";
-const QString Waver::UI_ID_PREFIX_SERVER_SMARTPLAYLISTS      = "N";
-const QString Waver::UI_ID_PREFIX_SERVER_SMARTPLAYLIST       = "O";
-const QString Waver::UI_ID_PREFIX_SERVER_PLAYLIST_ITEM       = "P";
-const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATIONS       = "R";
-const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATION        = "S";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE             = "T";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLETAG          = "U";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES   = "V";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED = "X";
+const QString Waver::UI_ID_PREFIX_LOCALDIR                     = "A";
+const QString Waver::UI_ID_PREFIX_LOCALDIR_SUBDIR              = "B";
+const QString Waver::UI_ID_PREFIX_LOCALDIR_FILE                = "C";
+const QString Waver::UI_ID_PREFIX_SERVER                       = "D";
+const QString Waver::UI_ID_PREFIX_SERVER_SEARCH                = "E";
+const QString Waver::UI_ID_PREFIX_SERVER_SEARCHRESULT          = "F";
+const QString Waver::UI_ID_PREFIX_SERVER_BROWSE                = "G";
+const QString Waver::UI_ID_PREFIX_SERVER_BROWSEALPHABET        = "H";
+const QString Waver::UI_ID_PREFIX_SERVER_BROWSEARTIST          = "I";
+const QString Waver::UI_ID_PREFIX_SERVER_BROWSEALBUM           = "J";
+const QString Waver::UI_ID_PREFIX_SERVER_BROWSESONG            = "K";
+const QString Waver::UI_ID_PREFIX_SERVER_PLAYLISTS             = "L";
+const QString Waver::UI_ID_PREFIX_SERVER_PLAYLIST              = "M";
+const QString Waver::UI_ID_PREFIX_SERVER_SMARTPLAYLISTS        = "N";
+const QString Waver::UI_ID_PREFIX_SERVER_SMARTPLAYLIST         = "O";
+const QString Waver::UI_ID_PREFIX_SERVER_PLAYLIST_ITEM         = "P";
+const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATIONS         = "R";
+const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATION          = "S";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE               = "T";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLETAG            = "U";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES     = "V";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED   = "X";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED = "Y";
 
 
 Waver::Waver() : QObject()
@@ -515,18 +516,20 @@ void Waver::itemActionServer(QString id, int action, QVariantMap extra)
 
         emit explorerRemoveChildren(id);
 
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SEARCH), id),              id, tr("Search"),          "qrc:/icons/search.ico",        QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_BROWSE), id),              id, tr("Browse"),          "qrc:/icons/browse.ico",        QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_PLAYLISTS), id),           id, tr("Playlists"),       "qrc:/icons/playlist.ico",      QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SMARTPLAYLISTS), id),      id, tr("Smart Playlists"), "qrc:/icons/playlist.ico",      QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_RADIOSTATIONS), id),       id, tr("Radio Stations"),  "qrc:/icons/radio_station.ico", QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), id),             id, tr("Shuffle"),         "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), true, true,  QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES), id),   id, tr("Favorites"),        "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED), id), id, tr("Never Played"),    "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SEARCH), id),                id, tr("Search"),          "qrc:/icons/search.ico",        QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_BROWSE), id),                id, tr("Browse"),          "qrc:/icons/browse.ico",        QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_PLAYLISTS), id),             id, tr("Playlists"),       "qrc:/icons/playlist.ico",      QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SMARTPLAYLISTS), id),        id, tr("Smart Playlists"), "qrc:/icons/playlist.ico",      QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_RADIOSTATIONS), id),         id, tr("Radio Stations"),  "qrc:/icons/radio_station.ico", QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), id),               id, tr("Shuffle"),         "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), true, true,  QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES), id),     id, tr("Favorites"),       "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED), id),   id, tr("Never Played"),    "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED), id), id, tr("Recently Added"),  "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
 
-        emit explorerDisableQueueable(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), id));
-        emit explorerDisableQueueable(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES), id));
-        emit explorerDisableQueueable(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED), id));
+        emit explorerDisableQueueable(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE),               id));
+        emit explorerDisableQueueable(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES),     id));
+        emit explorerDisableQueueable(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED),   id));
+        emit explorerDisableQueueable(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED), id));
     }
     else if (action == globalConstant("action_collapse")) {
         emit explorerRemoveChildren(id);
@@ -751,15 +754,15 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE)) {
             startShuffleBatch(srvIndex);
-            return;
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES)) {
             startShuffleBatch(srvIndex, 0, Favorite);
-            return;
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED)) {
             startShuffleBatch(srvIndex, 0, NeverPlayed);
-            return;
+        }
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED)) {
+            startShuffleBatch(srvIndex, 0, RecentlyAdded);
         }
         return;
     }
@@ -1904,6 +1907,9 @@ void Waver::startShuffleBatch(int srvIndex, int artistId, ShuffleMode mode, QStr
     }
     else if (mode == NeverPlayed) {
         opData.insert("never_played", "never_played");
+    }
+    else if (mode == RecentlyAdded) {
+        opData.insert("recently_added", "recently_added");
     }
 
     if (!QStringList({"action_play", "action_playnext", "action_enqueue"}).contains(originalAction)) {
