@@ -733,12 +733,18 @@ void AmpacheServer::startOperations()
                 shuffleFavorites.clear();
                 shuffleFavoritesCompleted = true;
 
+                QDateTime dateLimit = QDateTime::currentDateTime().addDays(-14);
+
                 query.addQueryItem("action", "advanced_search");
                 query.addQueryItem("type", "song");
                 query.addQueryItem("random", "1");
+                query.addQueryItem("operator", "or");
                 query.addQueryItem("rule_1", "recent_added");
                 query.addQueryItem("rule_1_operator", "0");
                 query.addQueryItem("rule_1_input", "100");
+                query.addQueryItem("rule_2", "added");
+                query.addQueryItem("rule_2_operator", "1");
+                query.addQueryItem("rule_2_input", dateLimit.toString("yyyy-MM-dd"));
                 query.addQueryItem("limit", QString("%1").arg(randomListCount));
 
                 if (operation.extra == nullptr) {
