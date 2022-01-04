@@ -393,6 +393,8 @@ ApplicationWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 id: tags
                 text: "-"
+                elide: Text.ElideRight
+                maximumLineCount: 1
                 leftPadding: 5
                 width: parent.width / 10 * 3
             }
