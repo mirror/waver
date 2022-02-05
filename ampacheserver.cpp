@@ -767,7 +767,7 @@ void AmpacheServer::startOperations()
                     for (int i = 0; i < shuffleTagStrings.size(); i++) {
                         query.addQueryItem(QString("rule_%1").arg(i + 1), "tag");
                         query.addQueryItem(QString("rule_%1_operator").arg(i + 1), "4");
-                        query.addQueryItem(QString("rule_%1_input").arg(i + 1), shuffleTagStrings.at(i));
+                        query.addQueryItem(QString("rule_%1_input").arg(i + 1), QUrl::toPercentEncoding(shuffleTagStrings.at(i)));
                     }
                 }
                 else {
@@ -789,8 +789,14 @@ void AmpacheServer::startOperations()
                     }
 
                     if (limitFavorite > 0) {
+                        QVariant originalAction = operation.extra->property("original_action");
+
                         QObject *opExtra = new QObject();
                         opExtra->setProperty("favorite", "favorite");
+                        if (originalAction.isValid()) {
+                            opExtra->setProperty("original_action", originalAction);
+                        }
+
                         opQueue.append({ Shuffle, {{ "favorite", "favorite" }, { "limit", QString("%1").arg(limitFavorite) }}, opExtra });
                     }
                     else {

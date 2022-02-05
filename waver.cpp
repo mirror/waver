@@ -22,13 +22,13 @@ const QString Waver::UI_ID_PREFIX_SERVER_PLAYLIST              = "M";
 const QString Waver::UI_ID_PREFIX_SERVER_SMARTPLAYLISTS        = "N";
 const QString Waver::UI_ID_PREFIX_SERVER_SMARTPLAYLIST         = "O";
 const QString Waver::UI_ID_PREFIX_SERVER_PLAYLIST_ITEM         = "P";
-const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATIONS         = "R";
-const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATION          = "S";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE               = "T";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLETAG            = "U";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES     = "V";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED   = "X";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED = "Y";
+const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATIONS         = "Q";
+const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATION          = "R";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE               = "S";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLETAG            = "T";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES     = "U";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED   = "V";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED = "X";
 
 
 Waver::Waver() : QObject()

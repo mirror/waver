@@ -396,15 +396,17 @@ ApplicationWindow {
                 elide: Text.ElideRight
                 maximumLineCount: 1
                 leftPadding: 5
-                width: parent.width / 10 * 3
+                width: parent.width / 10 * 4
             }
             Label {
                 anchors.left: tags.right
                 anchors.verticalCenter: parent.verticalCenter
                 id: status
                 text: qsTr("Idle")
+                font.family: "Monospace"
+                font.pixelSize: textMetrics.font.pixelSize * 0.8
                 leftPadding: 5
-                width: parent.width / 10 * 2
+                width: parent.width / 10 * 1
             }
             Label {
                 anchors.left: status.right
