@@ -132,7 +132,7 @@ void Equalizer::filterCallback(double *sample, int channelIndex)
             currentReplayGain = currentReplayGain + ((changePerSec / sampleRate) * (difference < 0 ? -1.0 : 1.0));
         }
 
-        emit replayGainChanged(replayGain, currentReplayGain);
+        emit replayGainChanged(currentReplayGain);
     }
 
     *sample = *sample * pow(10, (currentReplayGain + preAmp) / 20);
@@ -157,7 +157,7 @@ void Equalizer::playBegins()
 
 void Equalizer::requestForReplayGainInfo()
 {
-    emit replayGainChanged(replayGain, currentReplayGain);
+    emit replayGainChanged(currentReplayGain);
 }
 
 
@@ -230,5 +230,4 @@ void Equalizer::setGains(bool on, QVector<double> gains, double preAmp)
 void Equalizer::setReplayGain(double replayGain)
 {
     this->replayGain = replayGain;
-    emit replayGainChanged(replayGain, currentReplayGain);
 }

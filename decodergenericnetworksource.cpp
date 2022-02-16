@@ -14,10 +14,11 @@ DecoderGenericNetworkSource::DecoderGenericNetworkSource(QUrl url, QWaitConditio
     this->waitCondition          = waitCondition;
     this->radioTitleCallbackInfo = radioTitleCallbackInfo;
 
-    fakePosition         = 0;
-    firstBufferPosition  = 0;
-    totalDownloadedBytes = 0;
-    totalExpectedBytes   = std::numeric_limits<qint64>::max();
+    fakePosition          = 0;
+    firstBufferPosition   = 0;
+    totalDownloadedBytes  = 0;
+    maxRealBytesAvailable = 0;
+    totalExpectedBytes    = std::numeric_limits<qint64>::max();
 
     networkAccessManager = nullptr;
     networkReply         = nullptr;
@@ -185,6 +186,12 @@ void DecoderGenericNetworkSource::connectionTimeout()
 }
 
 
+qint64 DecoderGenericNetworkSource::downloadedSize()
+{
+    return totalDownloadedBytes;
+}
+
+
 void DecoderGenericNetworkSource::emitReady()
 {
     emit ready();
@@ -204,6 +211,12 @@ bool DecoderGenericNetworkSource::isSequential() const
         return false;
     #endif
     return true;
+}
+
+
+qint64 DecoderGenericNetworkSource::mostRealBytesAvailable()
+{
+    return maxRealBytesAvailable;
 }
 
 
@@ -329,7 +342,7 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
         #ifdef Q_OS_WINDOWS
             radioMin = 262144;
         #endif
-        if ((bytesReceived > (bytesTotal > 0 ? qMin(bytesTotal, (qint64)1024 * 1024) : radioMin))) {
+        if ((bytesReceived >= (bytesTotal > 0 ? qMin(bytesTotal, (qint64)1024 * 1024) : radioMin))) {
             QTimer::singleShot(250, this, &DecoderGenericNetworkSource::emitReady);
             readyEmitted = true;
         }
@@ -540,6 +553,10 @@ qint64 DecoderGenericNetworkSource::realBytesAvailable()
         i++;
     }
     mutex.unlock();
+
+    if (readyEmitted && returnValue > maxRealBytesAvailable) {
+        maxRealBytesAvailable = returnValue;
+    }
 
     return returnValue;
 }

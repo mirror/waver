@@ -80,22 +80,22 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(waver, SIGNAL(uiSetStatusText(QVariant)), uiMainWindow, SLOT(setStatusText(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetStatusTempText(QVariant)), uiMainWindow, SLOT(setStatusTempText(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetPeakMeter(QVariant,QVariant,QVariant)), uiMainWindow, SLOT(setPeakMeter(QVariant,QVariant,QVariant)));
+    QObject::connect(waver, SIGNAL(uiSetPeakMeterReplayGain(QVariant)), uiMainWindow, SLOT(setPeakMeterReplayGain(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetPeakFPS(QVariant)), uiMainWindow, SLOT(setPeakFPS(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetShuffleCountdown(QVariant)), uiMainWindow, SLOT(setShuffleCountdown(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetFavorite(QVariant)), uiMainWindow, SLOT(setFavorite(QVariant)));
 
-    QObject::connect(waver, SIGNAL(uiSetTrackBufferData(QVariant)), uiMainWindow, SLOT(setTrackBufferData(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetTrackBusy(QVariant)), uiMainWindow, SLOT(setTrackBusy(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetTrackData(QVariant,QVariant,QVariant,QVariant,QVariant)), uiMainWindow, SLOT(setTrackData(QVariant,QVariant,QVariant,QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(uiSetTrackLength(QVariant)), uiMainWindow, SLOT(setTrackLength(QVariant)));
-    QObject::connect(waver, SIGNAL(uiSetTrackPosition(QVariant,QVariant,QVariant)), uiMainWindow, SLOT(setTrackPosition(QVariant,QVariant,QVariant)));
-    QObject::connect(waver, SIGNAL(uiSetTrackReplayGain(QVariant,QVariant)), uiMainWindow, SLOT(setTrackReplayGain(QVariant,QVariant)));
+    QObject::connect(waver, SIGNAL(uiSetTrackPosition(QVariant,QVariant)), uiMainWindow, SLOT(setTrackPosition(QVariant,QVariant)));
+    QObject::connect(waver, SIGNAL(uiSetTrackDecoding(QVariant,QVariant)), uiMainWindow, SLOT(setTrackDecoding(QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(uiSetTrackTags(QVariant)), uiMainWindow, SLOT(setTrackTags(QVariant)));
 
     QObject::connect(waver, SIGNAL(playlistAddItem(QVariant,QVariant,QVariant,QVariant,QVariant)), uiMainWindow, SLOT(playlistAddItem(QVariant,QVariant,QVariant,QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(playlistClearItems()), uiMainWindow, SLOT(playlistClearItems()));
-    QObject::connect(waver, SIGNAL(playlistBufferData(QVariant,QVariant)), uiMainWindow, SLOT(playlistBufferData(QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(playlistBusy(QVariant,QVariant)), uiMainWindow, SLOT(playlistBusy(QVariant,QVariant)));
+    QObject::connect(waver, SIGNAL(playlistDecoding(QVariant,QVariant,QVariant)), uiMainWindow, SLOT(playlistDecoding(QVariant,QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(playlistBigBusy(QVariant)), uiMainWindow, SLOT(playlistBigBusy(QVariant)));
     QObject::connect(waver, SIGNAL(playlistTotalTime(QVariant)), uiMainWindow, SLOT(playlistTotalTime(QVariant)));
     QObject::connect(waver, SIGNAL(playlistSelected(QVariant,QVariant)), uiMainWindow, SLOT(playlistSelected(QVariant,QVariant)));

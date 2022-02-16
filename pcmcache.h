@@ -49,6 +49,7 @@ class PCMCache : public QObject
         void storeBuffer(QAudioBuffer *buffer);
 
         qint64 size();
+        qint64 mostSize();
         bool   isFile();
 
 
@@ -64,6 +65,7 @@ class PCMCache : public QObject
         QFile      *file;
 
         qint64 memoryRealSize;
+        qint64 maxSize;
         qint64 readPosition;
         qint64 radioFakeReadPosition;
 

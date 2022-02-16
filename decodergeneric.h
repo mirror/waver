@@ -40,10 +40,10 @@ class DecoderGeneric : public QObject
         explicit DecoderGeneric(RadioTitleCallback::RadioTitleCallbackInfo radioTitleCallbackInfo, QObject *parent = nullptr);
         ~DecoderGeneric();
 
-        void   setParameters(QUrl url, QAudioFormat decodedFormat, qint64 waitUnderBytes);
+        void   setParameters(QUrl url, QAudioFormat decodedFormat, qint64 waitUnderBytes, bool isRadio);
         qint64 getDecodedMicroseconds();
 
-        qint64 size();
+        double downloadPercent();
         bool   isFile();
 
 
@@ -51,9 +51,11 @@ class DecoderGeneric : public QObject
 
         QAudioDecoder *audioDecoder;
 
-        QUrl                         url;
-        QAudioFormat                 decodedFormat;
-        qint64                       waitUnderBytes;
+        QUrl         url;
+        QAudioFormat decodedFormat;
+        qint64       waitUnderBytes;
+        bool         isRadio;
+
         QFile                       *file;
         QThread                      networkThread;
         DecoderGenericNetworkSource *networkSource;

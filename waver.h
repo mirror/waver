@@ -48,12 +48,13 @@
 #endif
 
 #include "ampacheserver.h"
+#include "decodingcallback.h"
 #include "filescanner.h"
 #include "peakcallback.h"
 #include "track.h"
 
 
-class Waver : public QObject, PeakCallback
+class Waver : public QObject, PeakCallback, DecodingCallback
 {
     Q_OBJECT
 
@@ -68,6 +69,7 @@ class Waver : public QObject, PeakCallback
         bool             isShutdownCompleted();
 
         void peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, void *trackPointer);
+        void decodingCallback(double downloadPercent, double PCMPercent, void *trackPointer);
 
 
     private:
@@ -131,6 +133,8 @@ class Waver : public QObject, PeakCallback
         qint64           peakFPSIncreaseStart;
         bool             peakDelayOn;
         qint64           peakDelayMilliseconds;
+
+        DecodingCallbackInfo decodingCallbackInfo;
 
         Track                   *previousTrack;
         Track                   *currentTrack;
@@ -198,11 +202,10 @@ class Waver : public QObject, PeakCallback
         void playlistItemDragDropped(int index, int destinationIndex);
         void positioned(double percent);
 
-        void trackPlayPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds, long decodedMilliseconds);
+        void trackPlayPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
         void trackDecoded(QString id, qint64 length);
-        void trackBufferInfo(QString id, bool rawIsFile, unsigned long rawSize, bool pmcIsFile, unsigned long pmcSize);
         void trackNetworkConnecting(QString id, bool busy);
-        void trackReplayGainInfo(QString id, double target, double current);
+        void trackReplayGainInfo(QString id, double current);
         void trackInfoUpdated(QString id);
         void trackFinished(QString id);
         void trackFadeoutStarted(QString id);
@@ -263,11 +266,11 @@ class Waver : public QObject, PeakCallback
         void uiSetFavorite(QVariant favorite);
         void uiSetTrackBusy(QVariant busy);
         void uiSetTrackLength(QVariant lengthText);
-        void uiSetTrackPosition(QVariant positionText, QVariant positionPercent, QVariant decodedPercent);
+        void uiSetTrackPosition(QVariant positionText, QVariant positionPercent);
+        void uiSetTrackDecoding(QVariant downloadPercent, QVariant pcmPercent);
         void uiSetTrackTags(QVariant tagsText);
-        void uiSetTrackBufferData(QVariant memoryUsageText);
-        void uiSetTrackReplayGain(QVariant target, QVariant current);
-        void uiSetPeakMeter(QVariant left, QVariant right, QVariant scheduledTimeMS);
+        void uiSetPeakMeter(QVariant leftPercent, QVariant rightPercent, QVariant scheduledTimeMS);
+        void uiSetPeakMeterReplayGain(QVariant gainPercent);
         void uiSetPeakFPS(QVariant fpsText);
         void uiSetShuffleCountdown(QVariant percent);
 
@@ -278,6 +281,7 @@ class Waver : public QObject, PeakCallback
         void playlistClearItems();
         void playlistBufferData(QVariant index, QVariant memoryUsageText);
         void playlistBusy(QVariant index, QVariant busy);
+        void playlistDecoding(QVariant index, QVariant downloadPercent, QVariant pcmPercent);
         void playlistBigBusy(QVariant busy);
         void playlistTotalTime(QVariant totalTime);
         void playlistSelected(QVariant index, QVariant busy);

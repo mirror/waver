@@ -25,8 +25,10 @@
 
 #include "analyzer.h"
 #include "decodergeneric.h"
+#include "decodingcallback.h"
 #include "equalizer.h"
 #include "globals.h"
+#include "peakcallback.h"
 #include "pcmcache.h"
 #include "radiotitlecallback.h"
 #include "soundoutput.h"
@@ -64,7 +66,7 @@ class Track : public QObject, RadioTitleCallback
         typedef QVector<TrackInfo> TracksInfo;
 
 
-        explicit Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInfo, QObject *parent = 0);
+        explicit Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInfo, DecodingCallback::DecodingCallbackInfo decodingCallbackInfo, QObject *parent = 0);
         ~Track();
 
         Status  getStatus();
@@ -95,8 +97,9 @@ class Track : public QObject, RadioTitleCallback
             FadeDirectionOut
         };
 
-        static const int  FADE_DURATION_DEFAULT_SECONDS = 4;
-        static const long USEC_PER_SEC                  = 1000 * 1000;
+        static const int  FADE_DURATION_DEFAULT_SECONDS  = 4;
+        static const long USEC_PER_SEC                   = 1000 * 1000;
+        static const int  DECODING_CB_DELAY_MILLISECONDS = 40;
 
         struct RadioTitlePosition {
             qint64  microsecondsTimestamp;
@@ -106,7 +109,8 @@ class Track : public QObject, RadioTitleCallback
         TrackInfo   trackInfo;
         QStringList fadeTags;
 
-        PeakCallback::PeakCallbackInfo peakCallbackInfo;
+        PeakCallback::PeakCallbackInfo         peakCallbackInfo;
+        DecodingCallback::DecodingCallbackInfo decodingCallbackInfo;
 
         QAudioFormat desiredPCMFormat;
 
@@ -135,7 +139,7 @@ class Track : public QObject, RadioTitleCallback
         bool   decodingDone;
         bool   finishedSent;
         bool   fadeoutStartedSent;
-        qint64 bufferInfoLastSent;
+        qint64 decodingInfoLastSent;
         bool   networkStartingLastState;
 
         int    fadeDurationSeconds;
@@ -159,6 +163,8 @@ class Track : public QObject, RadioTitleCallback
         void applyFade(QByteArray *chunk);
 
         void changeStatus(Status status);
+
+        double decodedPercent();
 
 
     public slots:
@@ -187,7 +193,7 @@ class Track : public QObject, RadioTitleCallback
 
         void analyzerReplayGain(double replayGain);
 
-        void equalizerReplayGainChanged(double target, double current);
+        void equalizerReplayGainChanged(double current);
 
         void outputPositionChanged(qint64 posMilliseconds);
         void outputNeedChunk();
@@ -201,9 +207,8 @@ class Track : public QObject, RadioTitleCallback
         void info(QString id, QString info);
         void sessionExpired(QString id);
 
-        void playPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds, long decodedMilliseconds);
-        void bufferInfo(QString id, bool rawIsFile, unsigned long rawSize, bool pmcIsFile, unsigned long pmcSize);
-        void replayGainInfo(QString id, double target, double current);
+        void playPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
+        void replayGainInfo(QString id, double current);
         void decoded(QString id, qint64 length);
         void fadeoutStarted(QString id);
         void finished(QString id);

@@ -117,6 +117,29 @@ void DecoderGeneric::decoderFinished()
 }
 
 
+double DecoderGeneric::downloadPercent()
+{
+    if (isFile() || (networkSource == nullptr)) {
+        return 0;
+    }
+
+    qint64 total = isRadio ? networkSource->mostRealBytesAvailable() : networkSource->size();
+    if (total <= 0) {
+        return 0;
+    }
+
+    double percent = static_cast<double>(isRadio ? networkSource->realBytesAvailable() : networkSource->downloadedSize()) / total;
+    if (percent < 0) {
+        percent = 0;
+    }
+    if (percent > 1) {
+        percent = 1;
+    }
+
+    return percent;
+}
+
+
 qint64 DecoderGeneric::getDecodedMicroseconds()
 {
     return decodedMicroseconds;
@@ -184,30 +207,15 @@ void DecoderGeneric::setDecodeDelay(unsigned long microseconds)
 }
 
 
-void DecoderGeneric::setParameters(QUrl url, QAudioFormat decodedFormat, qint64 waitUnderBytes)
+void DecoderGeneric::setParameters(QUrl url, QAudioFormat decodedFormat, qint64 waitUnderBytes, bool isRadio)
 {
     // can be set only once
     if (this->url.isEmpty()) {
         this->url            = url;
         this->decodedFormat  = decodedFormat;
         this->waitUnderBytes = waitUnderBytes;
+        this->isRadio        = isRadio;
     }
-}
-
-
-qint64 DecoderGeneric::size()
-{
-    if (url.isLocalFile()) {
-        if (file != nullptr) {
-            return file->size();
-        }
-    }
-    else {
-        if (networkSource != nullptr) {
-            return networkSource->realBytesAvailable();
-        }
-    }
-    return 0;
 }
 
 

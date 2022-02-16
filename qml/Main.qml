@@ -133,14 +133,14 @@ ApplicationWindow {
         playlist.addItem(title, artist, group, image, selected);
     }
 
-    function playlistBufferData(index, memoryUsageText)
-    {
-        playlist.setBufferData(index, memoryUsageText);
-    }
-
     function playlistBusy(index, busy)
     {
         playlist.setBusy(index, busy);
+    }
+
+    function playlistDecoding(index, downloadPercent, pcmPercent)
+    {
+        playlist.setDecoding(index, downloadPercent, pcmPercent)
     }
 
     function  playlistBigBusy(busy)
@@ -201,6 +201,11 @@ ApplicationWindow {
         }
     }
 
+    function setPeakMeterReplayGain(g)
+    {
+        peakMeter.setReplayGain(g);
+    }
+
     function setShuffleCountdown(percent)
     {
         internal.shuffleCountdown = percent
@@ -213,8 +218,6 @@ ApplicationWindow {
 
         tags.visible = false;
         status.visible = false;
-        bufferSize.visible = false;
-        gain.visible = false;
         peakFPS.visible = false;
 
         statusTempTimer.restart();
@@ -228,11 +231,6 @@ ApplicationWindow {
     function setTempImage(image)
     {
         art.swapTempImage(image);
-    }
-
-    function setTrackBufferData(memoryUsageText)
-    {
-        bufferSize.text = memoryUsageText;
     }
 
     function setTrackBusy(busy)
@@ -254,19 +252,23 @@ ApplicationWindow {
         length.text = lengthText;
     }
 
-    function setTrackPosition(positionText, positionPercent, decodedPercent)
+    function setTrackPosition(positionText, positionPercent)
     {
         position.text = positionText;
 
         if (!positioner.pressed) {
             positioner.value = positionPercent;
         }
-        positioner.decodedValue = decodedPercent;
     }
 
-    function setTrackReplayGain(target, current)
+    function setTrackDecoding(downloadPercent, pcmPercent)
     {
-        gain.text = "".concat(current, "dB / ", target, "dB");
+        if (positioner.downloadedPercent !== downloadPercent) {
+            positioner.downloadedPercent = downloadPercent;
+        }
+        if (positioner.decodedPercent !== pcmPercent) {
+            positioner.decodedPercent = pcmPercent
+        }
     }
 
     function setTrackTags(tagsText)
@@ -309,8 +311,6 @@ ApplicationWindow {
 
             tags.visible = true;
             status.visible = true;
-            bufferSize.visible = true;
-            gain.visible = true;
             peakFPS.visible = true;
         }
     }
@@ -396,7 +396,7 @@ ApplicationWindow {
                 elide: Text.ElideRight
                 maximumLineCount: 1
                 leftPadding: 5
-                width: parent.width / 10 * 4
+                width: parent.width / 10 * 8
             }
             Label {
                 anchors.left: tags.right
@@ -406,32 +406,10 @@ ApplicationWindow {
                 font.family: "Monospace"
                 font.pixelSize: textMetrics.font.pixelSize * 0.8
                 leftPadding: 5
-                width: parent.width / 10 * 1
+                width: parent.width / 10
             }
             Label {
                 anchors.left: status.right
-                anchors.verticalCenter: parent.verticalCenter
-                id: bufferSize
-                text: ""
-                font.family: "Monospace"
-                font.pixelSize: textMetrics.font.pixelSize * 0.8
-                textFormat: Qt.RichText
-                leftPadding: 5
-                width: parent.width / 10 * 2
-            }
-            Label {
-                anchors.left: bufferSize.right
-                anchors.verticalCenter: parent.verticalCenter
-                id: gain
-                text: ""
-                font.family: "Monospace"
-                font.pixelSize: textMetrics.font.pixelSize * 0.8
-                textFormat: Qt.RichText
-                leftPadding: 5
-                width: parent.width / 10 * 2
-            }
-            Label {
-                anchors.left: gain.right
                 anchors.verticalCenter: parent.verticalCenter
                 id: peakFPS
                 text: ""
@@ -439,7 +417,7 @@ ApplicationWindow {
                 font.pixelSize: textMetrics.font.pixelSize * 0.8
                 textFormat: Qt.RichText
                 leftPadding: 5
-                width: parent.width / 10 * 1
+                width: parent.width / 10
             }
             Label {
                 anchors.left: parent.left
@@ -823,7 +801,8 @@ ApplicationWindow {
             Slider {
                 id: positioner
 
-                property double decodedValue: 0.5
+                property double decodedPercent: 0.4
+                property double downloadedPercent: 0.6
 
                 anchors.left: position.right
                 anchors.right: length.left
@@ -834,21 +813,26 @@ ApplicationWindow {
                 live: true
                 value: 0.25
 
-                Rectangle {
-                    id: decodedIndicator
+                background: Rectangle {
+                    x: positioner.leftPadding
+                    y: positioner.topPadding + positioner.availableHeight / 2 - height / 2
+                    width: positioner.availableWidth * positioner.downloadedPercent
+                    height: 1
+                    color: positioner.palette.windowText
 
-                    x     : ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? positioner.visualPosition : positioner.handle.x;
-                    y     : ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? (positioner.height % 2 == 0 ? positioner.height / 2 - 1 : positioner.height / 2 - 2) : positioner.background.y;
-                    width : {
-                        if (((Qt.platform.os === "windows") || (Qt.platform.os === "winrt"))) {
-                            positioner.background.width * (positioner.decodedValue > 1 ? 1 : positioner.decodedValue) - (positioner.visualPosition - 5);
-                        }
-                        else {
-                            positioner.background.width * (positioner.decodedValue > 1 ? 1 : positioner.decodedValue) - positioner.handle.x + positioner.handle.width / 2;
-                        }
+                    Rectangle {
+                        x: positioner.downloadedPercent < positioner.decodedPercent ? parent.width : 0
+                        width: positioner.availableWidth * positioner.decodedPercent - x
+                        height: 1
+                        color: positioner.palette.highlight;
                     }
-                    height: ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? 2 : positioner.background.height;
-                    color : positioner.palette.highlight
+
+                    Rectangle {
+                        y: -1
+                        width: positioner.visualPosition * parent.width
+                        height: 3
+                        color: ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? Universal.accent : Material.accent;
+                    }
                 }
 
                 onMoved: internal.positionerMovedValue = positioner.value;

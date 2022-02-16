@@ -15,6 +15,7 @@ HEADERS += \
     analyzer.h \
     decodergeneric.h \
     decodergenericnetworksource.h \
+    decodingcallback.h \
     equalizer.h \
     filescanner.h \
     globals.h \
@@ -34,6 +35,7 @@ SOURCES += \
     analyzer.cpp \
     decodergeneric.cpp \
     decodergenericnetworksource.cpp \
+    decodingcallback.cpp \
     equalizer.cpp \
     filescanner.cpp \
     main.cpp \

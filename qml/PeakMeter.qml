@@ -20,8 +20,20 @@ Item {
             r = 1;
         }
 
-        lPeak.width = scaleBackground.height * l;
-        rPeak.width = scaleBackground.height * r;
+        lPeak.width = scaleBackground.width * l;
+        rPeak.width = scaleBackground.width * r;
+    }
+
+    function setReplayGain(g)
+    {
+        if (g < 0) {
+            g = 0;
+        }
+        if (g > 1) {
+            g = 1;
+        }
+
+        replayGain.width = replayGainBackground.width * g;
     }
 
 
@@ -35,15 +47,15 @@ Item {
     Rectangle {
         id: scaleBackground
 
-        width: parent.height - 10
-        height: parent.width - 10
+        width: parent.width - 10
+        height: parent.height - 10
         anchors.centerIn: parent
-        rotation: 90
         gradient: Gradient {
-            GradientStop { position: 1.0;  color: "darkgreen" }
-            GradientStop { position: 0.33; color: "green" }
-            GradientStop { position: 0.2;  color: "orange" }
-            GradientStop { position: 0;    color: "red" }
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0;    color: "darkgreen" }
+            GradientStop { position: 0.2;  color: "green" }
+            GradientStop { position: 0.33; color: "orange" }
+            GradientStop { position: 1;    color: "red" }
         }
     }
 
@@ -51,6 +63,23 @@ Item {
         width: parent.width - 2
         height: 5
         anchors.centerIn: parent
+    }
+
+    Rectangle {
+        id: replayGainBackground
+
+        width: parent.width - 10
+        height: 3
+        anchors.centerIn: parent
+
+        gradient: Gradient {
+            orientation: Gradient.Horizontal
+            GradientStop { position: 0;     color: "#88006400" }   // same colors as peak meter + transparency
+            GradientStop { position: 0.167; color: "#88008000" }
+            GradientStop { position: 0.275; color: "#88ffa500" }
+            GradientStop { position: 0.833; color: "#88ff0000" }
+            GradientStop { position: 1;     color: "#88800000" }   // maroon
+        }
     }
 
     Rectangle {
@@ -72,6 +101,16 @@ Item {
         anchors.bottomMargin: 5
         anchors.rightMargin: 5
         height: 5
+        width: 0
+    }
+
+    Rectangle {
+        id: replayGain
+
+        anchors.verticalCenter: parent.verticalCenter
+        anchors.right: parent.right
+        anchors.rightMargin: 5
+        height: 3
         width: 0
     }
 }

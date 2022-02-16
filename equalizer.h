@@ -83,7 +83,7 @@ class Equalizer : public QObject, IIRFilterCallback {
     signals:
 
         void chunkEqualized(TimedChunk chunk);
-        void replayGainChanged(double target, double current);
+        void replayGainChanged(double current);
 };
 
 #endif // EQUALIZER_H

@@ -16,6 +16,7 @@ PCMCache::PCMCache(QAudioFormat format, long lengthMilliseconds, bool radioStati
     file                  = nullptr;
     memory                = nullptr;
     memoryRealSize        = 0;
+    maxSize               = 0;
     readPosition          = 0;
     radioFakeReadPosition = 0;
     unfullfilledRequest   = false;
@@ -102,6 +103,12 @@ bool PCMCache::isFile()
 }
 
 
+qint64 PCMCache::mostSize()
+{
+    return maxSize;
+}
+
+
 void PCMCache::requestNextPCMChunk()
 {
     if (readPosition >= size()) {
@@ -114,7 +121,7 @@ void PCMCache::requestNextPCMChunk()
 
     qint64 chunkLength       = format.bytesForDuration(BUFFER_CREATE_MILLISECONDS * 1000);
     qint64 startMicroseconds = radioStation ? format.durationForBytes(radioFakeReadPosition) : format.durationForBytes(readPosition);
-
+#800000
     QByteArray PCM;
 
     if (file != nullptr) {
@@ -234,6 +241,10 @@ qint64 PCMCache::size()
         size = memoryRealSize;
     }
     mutex.unlock();
+
+    if (size > maxSize) {
+        maxSize = size;
+    }
 
     return size;
 }

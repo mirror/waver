@@ -51,8 +51,10 @@ class DecoderGenericNetworkSource : public QIODevice
         qint64 size()           const override;
 
         qint64 realBytesAvailable();
+        qint64 mostRealBytesAvailable();
         bool   isFinshed();
         void   setErrorOnUnderrun(bool errorOnUnderrun);
+        qint64 downloadedSize();
 
 
     private:
@@ -77,6 +79,7 @@ class DecoderGenericNetworkSource : public QIODevice
         qint64                totalExpectedBytes;
         qint64                fakePosition;
         qint64                firstBufferPosition;
+        qint64                maxRealBytesAvailable;
         QVector<qint64>       seekHistory;
 
         QMutex mutex;

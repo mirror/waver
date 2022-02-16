@@ -7,7 +7,7 @@
 #include "track.h"
 
 
-Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInfo, QObject *parent) : QObject(parent)
+Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInfo, DecodingCallback::DecodingCallbackInfo decodingCallbackInfo, QObject *parent) : QObject(parent)
 {
     decoderThread.setObjectName("decoder");
     analyzerThread.setObjectName("analyzer");
@@ -16,9 +16,11 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
 
     this->trackInfo = trackInfo;
 
-    peakCallbackInfo.trackPointer = static_cast<void *>(this);
+    peakCallbackInfo.trackPointer     = static_cast<void *>(this);
+    decodingCallbackInfo.trackPointer = static_cast<void *>(this);
 
-    this->peakCallbackInfo = peakCallbackInfo;
+    this->peakCallbackInfo     = peakCallbackInfo;
+    this->decodingCallbackInfo = decodingCallbackInfo;
 
     currentStatus            = Idle;
     stopping                 = false;
@@ -26,7 +28,7 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
     finishedSent             = false;
     fadeoutStartedSent       = false;
     posMilliseconds          = 0;
-    bufferInfoLastSent       = 0;
+    decodingInfoLastSent     = 0;
     networkStartingLastState = false;
 
     fadeDirection       = FadeDirectionNone;
@@ -268,9 +270,9 @@ void Track::bufferAvailableFromDecoder(QAudioBuffer *buffer)
 {
     cache->storeBuffer(buffer);
 
-    if (QDateTime::currentMSecsSinceEpoch() >= (bufferInfoLastSent + 40)) {
-        emit bufferInfo(trackInfo.id, decoder->isFile(), decoder->size(), cache->isFile(), cache->size());
-        bufferInfoLastSent = QDateTime::currentMSecsSinceEpoch();
+    if (QDateTime::currentMSecsSinceEpoch() >= (decodingInfoLastSent + DECODING_CB_DELAY_MILLISECONDS)) {
+        (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(decoder->downloadPercent(), decodedPercent(), this);
+        decodingInfoLastSent = QDateTime::currentMSecsSinceEpoch();
     }
 
     analyzerQueueMutex.lock();
@@ -294,6 +296,28 @@ void Track::changeStatus(Status status)
 }
 
 
+double Track::decodedPercent()
+{
+    bool isRadio = trackInfo.attributes.contains("radio_station");
+
+    qint64 total = isRadio ? cache->mostSize() : getLengthMilliseconds();
+    if (total <= 0) {
+        // -1 indicates indeterminate progress
+        return -1;
+    }
+
+    double percent = static_cast<double>(isRadio ? cache->size() : getDecodedMilliseconds()) / total;
+    if (percent < 0) {
+        percent = 0;
+    }
+    if (percent > 1) {
+        percent = 1;
+    }
+
+    return percent;
+}
+
+
 void Track::decoderError(QString info, QString errorMessage)
 {
     emit error(trackInfo.id, info, errorMessage);
@@ -314,7 +338,7 @@ void Track::decoderFinished()
     emit decoded(trackInfo.id, decoder->getDecodedMicroseconds() / 1000);
 
     emit decoderDone();
-    emit bufferInfo(trackInfo.id, decoder->isFile(), decoder->size(), cache->isFile(), cache->size());
+    (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(decoder->downloadPercent(), decodedPercent(), this);
 
     trackInfo.attributes.insert("lengthMilliseconds", decoder->getDecodedMicroseconds() / 1000);
     emit trackInfoUpdated(trackInfo.id);
@@ -322,7 +346,7 @@ void Track::decoderFinished()
     fadeoutStartMilliseconds = (decoder->getDecodedMicroseconds() / 1000) - ((getFadeDurationSeconds() + 1) * 1000);
 
     if (currentStatus == Paused) {
-        emit playPosition(trackInfo.id, true, decoder->getDecodedMicroseconds() / 1000, posMilliseconds, decoder->getDecodedMicroseconds() / 1000);
+        emit playPosition(trackInfo.id, true, decoder->getDecodedMicroseconds() / 1000, posMilliseconds);
     }
 }
 
@@ -348,16 +372,16 @@ void Track::decoderNetworkStarting(bool starting)
 
 void Track::decoderNetworkBufferChanged()
 {
-    if (QDateTime::currentMSecsSinceEpoch() >= (bufferInfoLastSent + 40)) {
-        emit bufferInfo(trackInfo.id, decoder->isFile(), decoder->size(), cache->isFile(), cache->size());
-        bufferInfoLastSent = QDateTime::currentMSecsSinceEpoch();
+    if (QDateTime::currentMSecsSinceEpoch() >= (decodingInfoLastSent + DECODING_CB_DELAY_MILLISECONDS)) {
+        (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(decoder->downloadPercent(), decodedPercent(), this);
+        decodingInfoLastSent = QDateTime::currentMSecsSinceEpoch();
     }
 }
 
 
-void Track::equalizerReplayGainChanged(double target, double current)
+void Track::equalizerReplayGainChanged(double current)
 {
-    emit replayGainInfo(trackInfo.id, target, current);
+    emit replayGainInfo(trackInfo.id, current);
 }
 
 
@@ -516,7 +540,7 @@ void Track::outputPositionChanged(qint64 posMilliseconds)
 {
     this->posMilliseconds = posMilliseconds;
 
-    emit playPosition(trackInfo.id, decodingDone, getLengthMilliseconds(), posMilliseconds, decoder->getDecodedMicroseconds() / 1000);
+    emit playPosition(trackInfo.id, decodingDone, getLengthMilliseconds(), posMilliseconds);
 
     if (!decodingDone) {
         unsigned long delay = static_cast<unsigned long>(pow(4, log10(qMax(decoder->getDecodedMicroseconds() / 1000 - posMilliseconds, 1ll))));
@@ -594,7 +618,7 @@ void Track::radioTitleCallback(QString title)
 
 void Track::requestForBufferReplayGainInfo()
 {
-    emit bufferInfo(trackInfo.id, decoder->isFile(), decoder->size(), cache->isFile(), cache->size());
+    (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(decoder->downloadPercent(), decodedPercent(), this);
     emit requestReplayGainInfo();
 }
 
@@ -692,7 +716,7 @@ void Track::setStatus(Status status)
 
         changeStatus(Playing);
 
-        emit bufferInfo(trackInfo.id, decoder->isFile(), decoder->size(), cache->isFile(), cache->size());
+        (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(decoder->downloadPercent(), decodedPercent(), this);
 
         return;
     }
@@ -794,7 +818,7 @@ void Track::setupDecoder()
         waitUnderBytes = 65536;
     #endif
 
-    decoder->setParameters(trackInfo.url, desiredPCMFormat, waitUnderBytes);
+    decoder->setParameters(trackInfo.url, desiredPCMFormat, waitUnderBytes, trackInfo.attributes.contains("radio_station"));
     decoder->setDecodeDelay(1500);
     decoder->moveToThread(&decoderThread);
 

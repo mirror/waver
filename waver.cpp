@@ -70,6 +70,10 @@ Waver::Waver() : QObject()
     peakFPS = peakFPSMax;
     peakFPSMutex.unlock();
 
+    decodingCallbackInfo.callbackObject = (DecodingCallback *)this;
+    decodingCallbackInfo.callbackMethod = (DecodingCallback::DecodingCallbackPointer)&Waver::decodingCallback;
+    decodingCallbackInfo.trackPointer   = nullptr;
+
     stopByShutdown    = false;
     shutdownCompleted = false;
 
@@ -104,7 +108,7 @@ Waver::~Waver()
 
 void Waver::actionPlay(Track::TrackInfo trackInfo)
 {
-    Track *track = new Track(trackInfo, peakCallbackInfo);
+    Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
     connectTrackSignals(track);
 
     actionPlay(track);
@@ -200,12 +204,12 @@ void Waver::clearTrackUISignals()
     emit uiSetTrackData("", "", "", "", "");
     emit uiSetTrackBusy(false);
     emit uiSetTrackLength("");
-    emit uiSetTrackPosition("", 0, 0);
+    emit uiSetTrackPosition("", 0);
     emit uiSetTrackTags("");
-    emit uiSetTrackBufferData("");
-    emit uiSetTrackReplayGain("", "");
     emit uiSetImage("qrc:/images/waver.png");
     emit uiSetStatusText(tr("Stopped"));
+    emit uiSetPeakMeter(0, 0, QDateTime::currentMSecsSinceEpoch() + 100);
+    emit uiSetPeakMeterReplayGain(0);
 }
 
 
@@ -214,7 +218,6 @@ void Waver::connectTrackSignals(Track *track, bool newConnect)
     if (newConnect) {
         connect(track, &Track::playPosition,      this, &Waver::trackPlayPosition);
         connect(track, &Track::decoded,           this, &Waver::trackDecoded);
-        connect(track, &Track::bufferInfo,        this, &Waver::trackBufferInfo);
         connect(track, &Track::networkConnecting, this, &Waver::trackNetworkConnecting);
         connect(track, &Track::replayGainInfo,    this, &Waver::trackReplayGainInfo);
         connect(track, &Track::finished,          this, &Waver::trackFinished);
@@ -232,7 +235,6 @@ void Waver::connectTrackSignals(Track *track, bool newConnect)
 
     disconnect(track, &Track::playPosition,      this, &Waver::trackPlayPosition);
     disconnect(track, &Track::decoded,           this, &Waver::trackDecoded);
-    disconnect(track, &Track::bufferInfo,        this, &Waver::trackBufferInfo);
     disconnect(track, &Track::networkConnecting, this, &Waver::trackNetworkConnecting);
     disconnect(track, &Track::replayGainInfo,    this, &Waver::trackReplayGainInfo);
     disconnect(track, &Track::finished,          this, &Waver::trackFinished);
@@ -490,7 +492,7 @@ void Waver::itemActionLocal(QString id, int action, QVariantMap extra)
 
         Track::TrackInfo trackInfo = trackInfoFromFilePath(extra.value("path").toString());
 
-        Track *track = new Track(trackInfo, peakCallbackInfo);
+        Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
         connectTrackSignals(track);
 
         if (action == globalConstant("action_enqueue")) {
@@ -769,7 +771,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
 
     if ((action == globalConstant("action_playnext")) || (action == globalConstant("action_enqueue"))) {
         if (id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT)) {
-            Track *track = new Track(trackInfoFromIdExtra(id, extra), peakCallbackInfo);
+            Track *track = new Track(trackInfoFromIdExtra(id, extra), peakCallbackInfo, decodingCallbackInfo);
             connectTrackSignals(track);
 
             if (action == globalConstant("action_enqueue")) {
@@ -802,7 +804,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             addToLog("waver", tr("Starting operation - Browse Album"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG)) {
-            Track *track = new Track(trackInfoFromIdExtra(id, extra), peakCallbackInfo);
+            Track *track = new Track(trackInfoFromIdExtra(id, extra), peakCallbackInfo, decodingCallbackInfo);
             connectTrackSignals(track);
 
             if (action == globalConstant("action_enqueue")) {
@@ -1537,7 +1539,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                     actionPlay(trackInfo);
                 }
                 else {
-                    Track *track = new Track(trackInfo, peakCallbackInfo);
+                    Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
                     connectTrackSignals(track);
 
                     if (originalAction.compare("action_enqueue") == 0) {
@@ -1584,7 +1586,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                     actionPlay(trackInfo);
                 }
                 else {
-                    Track *track = new Track(trackInfo, peakCallbackInfo);
+                    Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
                     connectTrackSignals(track);
 
                     if (originalAction.compare("action_enqueue") == 0) {
@@ -1637,7 +1639,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                                 trackInfo.attributes.insert("playlist_index", i);
                             }
 
-                            Track *track = new Track(trackInfo, peakCallbackInfo);
+                            Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
                             connectTrackSignals(track);
                             playlist.replace(i, track);
                         }
@@ -1746,7 +1748,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                         actionPlay(trackInfo);
                     }
                     else {
-                        Track *track = new Track(trackInfo, peakCallbackInfo);
+                        Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
                         connectTrackSignals(track);
                         playlist.append(track);
                     }
@@ -1984,23 +1986,7 @@ void Waver::stopShuffleCountdown()
 }
 
 
-void Waver::trackBufferInfo(QString id, bool rawIsFile, unsigned long rawSize, bool pmcIsFile, unsigned long pmcSize)
-{
-    QString memoryUsageText = QString("%1 <i>%2</i> / %3 <i>%4</i>").arg(formatMemoryValue(rawSize, true).replace(" ", "&nbsp;")).arg(rawIsFile ? 'F' : 'N').arg(formatMemoryValue(pmcSize)).arg(pmcIsFile ? 'F' : 'M');
-
-    if ((currentTrack != nullptr) && (getCurrentTrackInfo().id.compare(id) == 0)) {
-        emit uiSetTrackBufferData(memoryUsageText);
-        return;
-    }
-
-    for (int i = 0; i < playlist.size(); i++) {
-        if (id.compare(playlist.at(i)->getTrackInfo().id) == 0) {
-            emit playlistBufferData(i, memoryUsageText);
-            return;
-        }
-    }
-}
-
+// TODO remove this, remove entire log
 void Waver::trackDecoded(QString id, qint64 length)
 {
     QString logString = tr("Decoding finished, PCM %1 ms").arg(length);
@@ -2016,6 +2002,21 @@ void Waver::trackDecoded(QString id, qint64 length)
     foreach (Track *track, playlist) {
         if (id.compare(track->getTrackInfo().id) == 0) {
             addToLog(id, track->getTrackInfo().title, logString);
+        }
+    }
+}
+
+
+void Waver::decodingCallback(double downloadPercent, double PCMPercent, void *trackPointer)
+{
+     if (currentTrack == trackPointer) {
+        emit uiSetTrackDecoding(downloadPercent, PCMPercent);
+        return;
+    }
+
+    for (int i = 0; i < playlist.size(); i++) {
+        if (playlist.at(i) == trackPointer) {
+            emit playlistDecoding(i, downloadPercent, PCMPercent);
         }
     }
 }
@@ -2258,7 +2259,8 @@ void Waver::trackInfoUpdated(QString id)
 }
 
 
-void Waver::trackPlayPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds, long decodedMilliseconds)
+// TODO remove position percent, handle it in trackDecodingInfo
+void Waver::trackPlayPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds)
 {
     Q_UNUSED(decoderFinished);
 
@@ -2277,14 +2279,11 @@ void Waver::trackPlayPosition(QString id, bool decoderFinished, long knownDurati
     lastPositionMilliseconds = positionMilliseconds;
 
     double positionPercent = 0;
-    double decodedPercent  = 0;
-
     if (knownDurationMilliseconds > 0) {
         positionPercent = static_cast<double>(positionMilliseconds) / knownDurationMilliseconds;
-        decodedPercent  = static_cast<double>(decodedMilliseconds) / knownDurationMilliseconds;
     }
 
-    emit uiSetTrackPosition(QDateTime::fromMSecsSinceEpoch(positionMilliseconds).toUTC().toString("hh:mm:ss"), positionPercent, decodedPercent);
+    emit uiSetTrackPosition(QDateTime::fromMSecsSinceEpoch(positionMilliseconds).toUTC().toString("hh:mm:ss"), positionPercent);
 
     if ((track == currentTrack) && (knownDurationMilliseconds > 0) && (knownDurationMilliseconds - positionMilliseconds <= 20000) && (playlist.size() > 0) && (playlist.at(0)->getStatus() == Track::Idle)) {
         playlist.at(0)->setStatus(Track::Decoding);
@@ -2292,10 +2291,17 @@ void Waver::trackPlayPosition(QString id, bool decoderFinished, long knownDurati
 }
 
 
-void Waver::trackReplayGainInfo(QString id, double target, double current)
+void Waver::trackReplayGainInfo(QString id, double current)
 {
     if ((currentTrack != nullptr) && (getCurrentTrackInfo().id.compare(id) == 0)) {
-        emit uiSetTrackReplayGain(QString("%1").arg(target, 0, 'f', 2), QString("%1").arg(current, 6, 'f', 2).replace(" ", "&nbsp;"));
+        if (current < -12) {
+            current = -12;
+        }
+        if (current > 6) {
+            current = 6;
+        }
+        current = (current + 12) / 18;
+        emit uiSetPeakMeterReplayGain(1 - current);
     }
 }
 

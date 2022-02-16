@@ -22,6 +22,7 @@ Item {
             selected = false;
         }
 
+        // TODO remove rawPercent
         var newDict = {
             title: title,
             artist: artist,
@@ -29,8 +30,9 @@ Item {
             image: image,
             selected: selected,
             busy: false,
+            downloadPercent: 0,
+            pcmPercent: 0,
             isError: false,
-            memoryUsage: "",
             errorMessage: "",
         }
 
@@ -47,14 +49,19 @@ Item {
         playlistItems.clear();
     }
 
-    function setBufferData(index, memoryUsageText)
-    {
-        playlistItems.setProperty(index, "memoryUsage", memoryUsageText);
-    }
-
     function setBusy(index, busy)
     {
         playlistItems.setProperty(index, "busy", busy);
+    }
+
+    function setDecoding(index, downloadPercent, pcmPercent)
+    {
+        if (playlistItems.get(index).downloadPercent !== downloadPercent) {
+            playlistItems.setProperty(index, "downloadPercent", downloadPercent);
+        }
+        if (playlistItems.get(index).pcmPercent !== pcmPercent) {
+            playlistItems.setProperty(index, "pcmPercent", pcmPercent);
+        }
     }
 
     function setPlaylistBigBusy(busy)
@@ -312,10 +319,34 @@ Item {
 
                     anchors.fill: itemImage
 
-                    width: visible ? imageSize : 0
-                    height: imageSize
-
                     visible: busy
+                }
+
+                ProgressBar {
+                    id: pcmProgress
+
+                    anchors.left: itemImage.left
+                    anchors.right: itemImage.right
+                    anchors.bottom: itemImage.bottom
+                    height: itemImage.height / 8
+
+                    background: Rectangle {
+                        width: downloadPercent * parent.availableWidth
+                        height: parent.height
+                        color: Qt.rgba(pcmProgress.palette.highlight.r, pcmProgress.palette.highlight.g, pcmProgress.palette.highlight.b, 0.5)
+                        visible: pcmPercent >= 0
+                    }
+                    contentItem: Rectangle {
+                        width: pcmProgress.visualPosition * parent.availableWidth
+                        height: parent.height
+                        color: pcmProgress.palette.highlight
+                        visible: pcmProgress.visualPosition !== 0
+                    }
+
+                    from: 0
+                    to: 1
+                    value: pcmPercent < 0 ? 0 : pcmPercent
+                    indeterminate: pcmPercent < 0
                 }
 
                 Image {
@@ -349,23 +380,12 @@ Item {
                 Label {
                     id: groupLabel
 
-                    anchors.right: memoryUsageLabel.left
-                    anchors.rightMargin: 5
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    font.pixelSize: imageSize <= 36 ? originalFontSize.font.pixelSize * 0.75 : originalFontSize.font.pixelSize
-                    text: "<i>" + group + "</i>"
-                }
-
-                Label {
-                    id: memoryUsageLabel
-
                     anchors.right: parent.right
                     anchors.rightMargin: 5
                     anchors.verticalCenter: parent.verticalCenter
 
                     font.pixelSize: imageSize <= 36 ? originalFontSize.font.pixelSize * 0.75 : originalFontSize.font.pixelSize
-                    text: memoryUsage
+                    text: "<i>" + group + "</i>"
                 }
 
                 ToolTip {
