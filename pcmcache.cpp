@@ -121,7 +121,7 @@ void PCMCache::requestNextPCMChunk()
 
     qint64 chunkLength       = format.bytesForDuration(BUFFER_CREATE_MILLISECONDS * 1000);
     qint64 startMicroseconds = radioStation ? format.durationForBytes(radioFakeReadPosition) : format.durationForBytes(readPosition);
-#800000
+
     QByteArray PCM;
 
     if (file != nullptr) {
