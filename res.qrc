@@ -34,7 +34,6 @@
         <file>icons/move_to_top.ico</file>
         <file>qml/Options.qml</file>
         <file>qml/About.qml</file>
-        <file>qml/Log.qml</file>
         <file>qml/ServerPassword.qml</file>
         <file>qml/QuickStart.qml</file>
     </qresource>

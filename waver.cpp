@@ -76,8 +76,6 @@ Waver::Waver() : QObject()
 
     stopByShutdown    = false;
     shutdownCompleted = false;
-
-    addToLog("waver", tr("Waver constructed"), "");
 }
 
 
@@ -101,8 +99,6 @@ Waver::~Waver()
     }
 
     globalConstantsView->deleteLater();
-
-    addToLog("waver", tr("Waver destructed"), "");
 }
 
 
@@ -167,21 +163,6 @@ void Waver::addServer(QString host, QString user, QString psw)
         settings.setValue("settingsId", servers.at(i)->getSettingsId().toString());
     }
     settings.endArray();
-
-    addToLog(id, tr("Server added"), server->formattedName());
-}
-
-
-void Waver::addToLog(QString id, QString info, QString error)
-{
-    LogItem item = { QDateTime::currentDateTime(), id, info, error };
-    log.append(item);
-
-    while (log.size() > 250) {
-        log.removeFirst();
-    }
-
-    emit logUpdate(QString("%1: <%2>, '%3', '%4'\n").arg(item.dateTime.toString(), item.id, item.error, item.info));
 }
 
 
@@ -217,7 +198,6 @@ void Waver::connectTrackSignals(Track *track, bool newConnect)
 {
     if (newConnect) {
         connect(track, &Track::playPosition,      this, &Waver::trackPlayPosition);
-        connect(track, &Track::decoded,           this, &Waver::trackDecoded);
         connect(track, &Track::networkConnecting, this, &Waver::trackNetworkConnecting);
         connect(track, &Track::replayGainInfo,    this, &Waver::trackReplayGainInfo);
         connect(track, &Track::finished,          this, &Waver::trackFinished);
@@ -225,7 +205,7 @@ void Waver::connectTrackSignals(Track *track, bool newConnect)
         connect(track, &Track::trackInfoUpdated,  this, &Waver::trackInfoUpdated);
         connect(track, &Track::error,             this, &Waver::trackError);
         connect(track, &Track::info,              this, &Waver::trackInfo);
-        connect(track, &Track::sessionExpired,   this, &Waver::trackSessionExpired);
+        connect(track, &Track::sessionExpired,    this, &Waver::trackSessionExpired);
         connect(track, &Track::statusChanged,     this, &Waver::trackStatusChanged);
 
         connect(this,  &Waver::requestTrackBufferReplayGainInfo, track, &Track::requestForBufferReplayGainInfo);
@@ -234,7 +214,6 @@ void Waver::connectTrackSignals(Track *track, bool newConnect)
     }
 
     disconnect(track, &Track::playPosition,      this, &Waver::trackPlayPosition);
-    disconnect(track, &Track::decoded,           this, &Waver::trackDecoded);
     disconnect(track, &Track::networkConnecting, this, &Waver::trackNetworkConnecting);
     disconnect(track, &Track::replayGainInfo,    this, &Waver::trackReplayGainInfo);
     disconnect(track, &Track::finished,          this, &Waver::trackFinished);
@@ -278,8 +257,6 @@ void Waver::deleteServer(QString id)
         settings.setValue("settingsId", servers.at(i)->getSettingsId().toString());
     }
     settings.endArray();
-
-    addToLog(id, tr("Server deleted"), formattedName);
 }
 
 
@@ -288,8 +265,6 @@ void Waver::errorMessage(QString id, QString info, QString error)
     #ifdef QT_DEBUG
         qDebug() << id << info << error;
     #endif
-
-    addToLog(id, info, error);
 
     emit uiSetStatusTempText(info);
 }
@@ -353,8 +328,6 @@ void Waver::favoriteButton(bool fav)
     }
 
     servers.at(srvIndex)->startOperation(AmpacheServer::SetFlag, { { "song_id", idParts.first().mid(1) }, { "flag", fav ? "1" : "0" } });
-
-    addToLog(getCurrentTrackInfo().id, getCurrentTrackInfo().title, fav ? tr("Favorite flag added") : tr("Favorite flag removed"));
 }
 
 
@@ -664,19 +637,15 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
 
         if (id.startsWith(UI_ID_PREFIX_SERVER_SEARCH)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::Search, {{ "criteria", extra.value("criteria").toString() }});
-            addToLog("waver", tr("Starting operation - Search"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSE)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseRoot, AmpacheServer::OpData());
-            addToLog("waver", tr("Starting operation - Browse Root"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseArtist, {{ "artist", QString(idParts.first()).remove(0, 1) }});
-            addToLog("waver", tr("Starting operation - Browse Artist"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }});
-            addToLog("waver", tr("Starting operation - Browse Album"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLISTS) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLISTS)) {
             QString playlistsId     = QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_PLAYLISTS);
@@ -688,15 +657,12 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             emit explorerRemoveChildren(smartPlaylistId);
 
             servers.at(srvIndex)->startOperation(AmpacheServer::PlaylistRoot, AmpacheServer::OpData());
-            addToLog("waver", tr("Starting operation - Playlist Root"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_RADIOSTATIONS)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::RadioStations, AmpacheServer::OpData());
-            addToLog("waver", tr("Starting operation - Radio Stations"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::Tags, AmpacheServer::OpData());
-            addToLog("waver", tr("Starting operation - Tags"), "");
         }
         return;
     }
@@ -725,7 +691,6 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             opExtra->setProperty("group", extra.value("group").toString());
 
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }}, opExtra);
-            addToLog("waver", tr("Starting operation - Browse Album"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG)) {
             playlist.clear();
@@ -741,7 +706,6 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             opExtra->setProperty("group", extra.value("group").toString());
 
             servers.at(srvIndex)->startOperation(AmpacheServer::PlaylistSongs, {{ "playlist", QString(idParts.first()).remove(0, 1) }}, opExtra);
-            addToLog("waver", tr("Starting operation - Playlist Songs"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_RADIOSTATION)) {
             playlist.clear();
@@ -801,7 +765,6 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             opExtra->setProperty("group", extra.value("group").toString());
 
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }}, opExtra);
-            addToLog("waver", tr("Starting operation - Browse Album"), "");
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG)) {
             Track *track = new Track(trackInfoFromIdExtra(id, extra), peakCallbackInfo, decodingCallbackInfo);
@@ -826,7 +789,6 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             opExtra->setProperty("group", extra.value("group").toString());
 
             servers.at(srvIndex)->startOperation(AmpacheServer::PlaylistSongs, {{ "playlist", QString(idParts.first()).remove(0, 1) }}, opExtra);
-            addToLog("waver", tr("Starting operation - Playlist Songs"), "");
         }
         return;
     }
@@ -863,8 +825,6 @@ void Waver::killPreviousTrack()
         previousTrack->setStatus(Track::Paused);
         previousTrack->setStatus(Track::Idle);
 
-        addToLog(previousTrack->getTrackInfo().id, previousTrack->getTrackInfo().title, tr("Track killed"));
-
         delete previousTrack;
         previousTrack = nullptr;
     }
@@ -873,8 +833,6 @@ void Waver::killPreviousTrack()
 
 void Waver::nextButton()
 {
-    addToLog("waver", tr("Next button pressed"), "");
-
     if (playlist.size() > 0) {
         Track *track = playlist.first();
         playlist.removeFirst();
@@ -886,8 +844,6 @@ void Waver::nextButton()
 
 void Waver::pauseButton()
 {
-    addToLog("waver", tr("Pause button pressed"), "");
-
     if (currentTrack != nullptr) {
         currentTrack->setStatus(Track::Paused);
         emit notify(PlaybackStatus);
@@ -920,15 +876,15 @@ void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, v
     });
 
     if (peakCallbackCount % 10 == 0) {
-        int milliseconds = 10000;
+        int milliseconds = 3000;
 
-        if (peakUILagCount > 0)  {
+        if (peakUILagCount > 0) {
             peakLagCount++;
 
             peakFPSMutex.lock();
             if (peakFPS > 3) {
                 peakFPS -= 2;
-                emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS, 2).replace(" ", "&nbsp;"));
+                emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS));
             }
             peakFPSMutex.unlock();
 
@@ -941,9 +897,10 @@ void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, v
             peakFPS++;
             peakFPSMutex.unlock();
 
-            emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS, 2).replace(" ", "&nbsp;"));
+            emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS));
         }
-        else if ((peakLagCount > 0) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart + milliseconds * 10)) {
+
+        if ((peakLagCount > 0) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart + milliseconds)) {
             peakLagCount = 0;
         }
     }
@@ -960,8 +917,6 @@ void Waver::peakUILag()
 
 void Waver::playButton()
 {
-    addToLog("waver", tr("Play button pressed"), "");
-
     if (currentTrack != nullptr) {
         currentTrack->setStatus(Track::Playing);
         emit notify(PlaybackStatus);
@@ -996,7 +951,6 @@ int Waver::playlistFirstGroupLoad()
 
     if (tracksSize > 0) {
         emit uiSetStatusText(tr("Networking"));
-        addToLog("waver", tr("Playlist First Group loaded").append(" - %1").arg(tracksSize), "");
     }
 
     for (int i = 0; i < tracksSize; i++) {
@@ -1008,7 +962,6 @@ int Waver::playlistFirstGroupLoad()
         playlistFirstGroupSongIds.append(settings.value("track_id").toString());
 
         groupServer->startOperation(AmpacheServer::Song, {{ "song_id", playlistFirstGroupSongIds.last() }}, opExtra);
-        addToLog("waver", tr("Starting operation - Song"), "");
     }
     settings.endArray();
 
@@ -1068,8 +1021,6 @@ void Waver::playlistFirstGroupSave()
 void Waver::playlistItemClicked(int index, int action)
 {
     if (action == globalConstant("action_play")) {
-        addToLog("waver", tr("Playlist item action: Play").append(" - %1").arg(index), "");
-
         Track *track = playlist.at(index);
         playlist.removeAt(index);
         actionPlay(track);
@@ -1077,8 +1028,6 @@ void Waver::playlistItemClicked(int index, int action)
     }
 
     if (action == globalConstant("action_move_to_top")) {
-        addToLog("waver", tr("Playlist item action: Move To Top").append(" - %1").arg(index), "");
-
         if (playlist.at(index)->getTrackInfo().attributes.contains("playlist_selected")) {
             int topIndex = 0;
             for (int i = 0; i < playlist.size(); i++) {
@@ -1101,8 +1050,6 @@ void Waver::playlistItemClicked(int index, int action)
     }
 
     if (action == globalConstant("action_remove")) {
-        addToLog("waver", tr("Playlist item action: Remove").append(" - %1").arg(index), "");
-
         if (playlist.at(index)->getTrackInfo().attributes.contains("playlist_selected")) {
             int i = 0;
             while (i < playlist.size()) {
@@ -1123,8 +1070,6 @@ void Waver::playlistItemClicked(int index, int action)
     }
 
     if (action == globalConstant("action_select")) {
-        addToLog("waver", tr("Playlist item action: Select").append(" - %1").arg(index), "");
-
         if (playlist.at(index)->getTrackInfo().attributes.contains("playlist_selected")) {
             playlist.at(index)->attributeRemove("playlist_selected");
             emit playlistSelected(index, false);
@@ -1136,8 +1081,6 @@ void Waver::playlistItemClicked(int index, int action)
     }
 
     if (action == globalConstant("action_select_group")) {
-        addToLog("waver", tr("Playlist item action: Select Group").append(" - %1").arg(index), "");
-
         if (!playlist.at(index)->getTrackInfo().attributes.contains("group_id")) {
             return;
         }
@@ -1152,8 +1095,6 @@ void Waver::playlistItemClicked(int index, int action)
     }
 
     if ((action == globalConstant("action_select_all")) || (action == globalConstant("action_deselect_all"))) {
-        addToLog("waver", tr("Playlist item action: Select All or Deselect All").append(" - %1").arg(index), "");
-
         for (int i = 0; i < playlist.size(); i++) {
             if (action == globalConstant("action_select_all")) {
                 playlist.at(i)->attributeAdd("playlist_selected", "playlist_selected");
@@ -1169,8 +1110,6 @@ void Waver::playlistItemClicked(int index, int action)
 
 void Waver::playlistItemDragDropped(int index, int destinationIndex)
 {
-    addToLog("waver", tr("Playlist item moved").append(" - %1 to %2").arg(index).arg(destinationIndex), "");
-
     Track *track = playlist.at(index);
     playlist.removeAt(index);
     playlist.insert(destinationIndex, track);
@@ -1211,8 +1150,6 @@ void Waver::playlistUpdateUISignals()
 
 void Waver::positioned(double percent)
 {
-    addToLog("waver", tr("Positioner used").append(" - %1").arg(percent), "");
-
     if (currentTrack == nullptr) {
         return;
     }
@@ -1222,8 +1159,6 @@ void Waver::positioned(double percent)
 
 void Waver::previousButton(int index)
 {
-    addToLog("waver", tr("Previous button pressed"), "");
-
     if (history.count() <= index) {
         return;
     }
@@ -1234,20 +1169,7 @@ void Waver::previousButton(int index)
 
 void Waver::raiseButton()
 {
-    addToLog("waver", tr("Raise button pressed"), "");
-
     emit uiRaise();
-}
-
-
-void Waver::requestLog()
-{
-    QString logStr;
-    foreach (LogItem item, log) {
-        logStr.append(QString("%1: <%2>, '%3', '%4'\n").arg(item.dateTime.toString(), item.id, item.error, item.info));
-    }
-
-    emit logAsRequested(logStr);
 }
 
 
@@ -1309,8 +1231,6 @@ void Waver::requestOptions()
 
 void Waver::run()
 {
-    addToLog("waver", "Starting", "Entering run method");
-
     emit uiSetIsSnap(QGuiApplication::instance()->applicationDirPath().contains("snap", Qt::CaseInsensitive));
 
     QSettings settings;
@@ -1339,7 +1259,6 @@ void Waver::run()
         QString id   = QString("%1%2").arg(UI_ID_PREFIX_LOCALDIR).arg(i);
         QString path = QFileInfo(localDirs.at(i)).absoluteFilePath();
         emit explorerAddItem(id, QVariant::fromValue(nullptr), QFileInfo(localDirs.at(i)).baseName(), "qrc:/icons/local.ico", QVariantMap({{ "path", path }}), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        addToLog(id, tr("Folder added"), path);
     }
 
 
@@ -1368,8 +1287,6 @@ void Waver::run()
         connect(servers.at(i), &AmpacheServer::errorMessage,      this, &Waver::errorMessage);
 
         emit explorerAddItem(id, QVariant::fromValue(nullptr), servers.at(i)->formattedName(), "qrc:/icons/remote.ico", QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-
-        addToLog(id, tr("Server added"), servers.at(i)->formattedName());
     }
 
     if (servers.count()) {
@@ -1407,13 +1324,22 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     QString group          = opData.contains("group")           ? opData.value("group")           : "";
     QUuid   groupId        = QUuid::createUuid();
 
+    bool allTheSameArtist = true;
+    if (opResults.size() > 1) {
+        QString allTheSameArtistName = opResults.at(0).value("artist", "");
+        for(int i = 1; i < opResults.size(); i++) {
+            if (opResults.at(i).value("artist", "").compare(allTheSameArtistName)) {
+                allTheSameArtist = false;
+                break;
+            }
+        }
+    }
+
     if (opResults.count() <= 0) {
         errorMessage(servers.at(srvIndex)->getId(), tr("The Ampache server returned an empty result set"), tr("No error occured, but the results are empty"));
     }
 
     if (opCode == AmpacheServer::Search) {
-        addToLog("waver", tr("Operation Finished - Search"), "");
-
         parentId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCH, QString(opData.value("serverId")).remove(0, 1), opData.value("serverId"));
 
         std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
@@ -1421,16 +1347,12 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         });
     }
     else if (opCode == AmpacheServer::BrowseRoot) {
-        addToLog("waver", tr("Operation Finished - Browse Root"), "");
-
         cacheKey = QString("%1/browse").arg(servers.at(srvIndex)->getSettingsId().toString());
 
         settings.remove(cacheKey);
         settings.beginWriteArray(cacheKey);
     }
     else if (opCode == AmpacheServer::BrowseArtist) {
-        addToLog("waver", tr("Operation Finished - Browse Artist"), "");
-
         parentId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEARTIST, opData.value("artist"), opData.value("serverId"));
 
         std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
@@ -1438,52 +1360,31 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         });
     }
     else if (opCode == AmpacheServer::BrowseAlbum) {
-        addToLog("waver", tr("Operation Finished - Browse Album"), "");
-
         parentId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEALBUM, opData.value("album"), opData.value("serverId"));
 
         std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
             return (a.value("track").toInt() < b.value("track").toInt()) || ((a.value("track").toInt() == b.value("track").toInt()) && (a.value("title").compare(b.value("title"), Qt::CaseInsensitive) < 0));
         });
     }
-    else if (opCode == AmpacheServer::CountFlagged) {
-        addToLog("waver", tr("Operation Finished - Count Flagged"), "");
-    }
     else if (opCode == AmpacheServer::PlaylistRoot) {
-        addToLog("waver", tr("Operation Finished - Playlist Root"), "");
-
         cacheKey = QString("%1/playlists").arg(servers.at(srvIndex)->getSettingsId().toString());
 
         settings.remove(cacheKey);
         settings.beginWriteArray(cacheKey);
     }
     else if (opCode == AmpacheServer::PlaylistSongs) {
-        addToLog("waver", tr("Operation Finished - Playlist Songs"), "");
-
         parentId = QString("%1%2|%3").arg(opData.value("playlist").startsWith("smart", Qt::CaseInsensitive) ? UI_ID_PREFIX_SERVER_SMARTPLAYLIST : UI_ID_PREFIX_SERVER_PLAYLIST, opData.value("playlist"), opData.value("serverId"));
     }
     else if (opCode == AmpacheServer::RadioStations) {
-        addToLog("waver", tr("Operation Finished - Radio Stations"), "");
-
         cacheKey = QString("%1/radiostations").arg(servers.at(srvIndex)->getSettingsId().toString());
 
         settings.remove(cacheKey);
         settings.beginWriteArray(cacheKey);
     }
-    else if (opCode == AmpacheServer::SetFlag) {
-        addToLog("waver", tr("Operation Finished - Set Flag"), "");
-    }
     else if (opCode == AmpacheServer::Shuffle) {
-        addToLog("waver", tr("Operation Finished - Shuffle"), "");
-
         parentId = QString("%1|%2").arg(QString(opData.value("serverId")).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), opData.value("serverId"));
     }
-    else if (opCode == AmpacheServer::Song) {
-        addToLog("waver", tr("Operation Finished - Song"), "");
-    }
     else if (opCode == AmpacheServer::Tags) {
-        addToLog("waver", tr("Operation Finished - Tags"), "");
-
         cacheKey = QString("%1/tags").arg(servers.at(srvIndex)->getSettingsId().toString());
 
         settings.remove(cacheKey);
@@ -1551,9 +1452,12 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                 }
             }
             else {
-                QString displayTitle = result.value("title");
+                QString displayTitle = QString("<b>%1</b>").arg(result.value("title"));
                 if (result.value("track").toInt()) {
                     displayTitle = displayTitle.prepend("%1. ").arg(result.value("track"));
+                }
+                if (!allTheSameArtist) {
+                    displayTitle = displayTitle.append(" %1").arg(result.value("artist"));
                 }
 
                 emit explorerAddItem(newId, parentId, displayTitle, "qrc:/icons/audio_file.ico", trackInfoMap, false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
@@ -1784,7 +1688,6 @@ void Waver::setServerPassword(QString id, QString psw)
     }
 
     servers.at(srvIndex)->setPassword(psw);
-    addToLog(id, tr("Server password set"), servers.at(srvIndex)->formattedName());
 
     if ((currentTrack == nullptr) && (playlist.size() == 0)) {
         startShuffleCountdown();
@@ -1849,8 +1752,6 @@ void Waver::startNextTrack()
     else {
         startNextTrackUISignals();
     }
-
-    addToLog(currentTrack->getTrackInfo().id, currentTrack->getTrackInfo().title, tr("Track started"));
 }
 
 
@@ -1922,7 +1823,6 @@ void Waver::startShuffleBatch(int srvIndex, int artistId, ShuffleMode mode, QStr
     opExtra->setProperty("original_action", originalAction);
 
     servers.at(srvIndex)->startOperation(AmpacheServer::Shuffle, opData, opExtra);
-    addToLog("waver", tr("Starting operation - Shuffle"), "");
 }
 
 
@@ -1942,15 +1842,11 @@ void Waver::startShuffleCountdown()
     shuffleCountdownPercent = 1.0;
     emit uiSetShuffleCountdown(shuffleCountdownPercent);
     shuffleCountdownTimer->start(1000);
-
-    addToLog("waver", tr("Shuffle countdown started"), "");
 }
 
 
 void Waver::stopButton()
 {
-    addToLog("waver", tr("Stop button pressed"), "");
-
     stopShuffleCountdown();
 
     killPreviousTrack();
@@ -1986,27 +1882,6 @@ void Waver::stopShuffleCountdown()
 }
 
 
-// TODO remove this, remove entire log
-void Waver::trackDecoded(QString id, qint64 length)
-{
-    QString logString = tr("Decoding finished, PCM %1 ms").arg(length);
-
-    if ((previousTrack != nullptr) && (id.compare(previousTrack->getTrackInfo().id) == 0)) {
-        addToLog(id, previousTrack->getTrackInfo().title, logString);
-    }
-
-    if ((currentTrack != nullptr) && (getCurrentTrackInfo().id.compare(id) == 0)) {
-        addToLog(id,getCurrentTrackInfo().title, logString);
-    }
-
-    foreach (Track *track, playlist) {
-        if (id.compare(track->getTrackInfo().id) == 0) {
-            addToLog(id, track->getTrackInfo().title, logString);
-        }
-    }
-}
-
-
 void Waver::decodingCallback(double downloadPercent, double PCMPercent, void *trackPointer)
 {
      if (currentTrack == trackPointer) {
@@ -2034,14 +1909,12 @@ void Waver::trackNetworkConnecting(QString id, bool busy)
 
     if ((currentTrack != nullptr) && (getCurrentTrackInfo().id.compare(id) == 0)) {
         emit uiSetTrackBusy(busy);
-        addToLog(id, getCurrentTrackInfo().title, busy ? tr("Networking - Busy") : tr("Networking - Not busy"));
         return;
     }
 
     for (int i = 0; i < playlist.size(); i++) {
         if (id.compare(playlist.at(i)->getTrackInfo().id) == 0) {
             emit playlistBusy(i, busy);
-            addToLog(id, playlist.at(i)->getTrackInfo().title, busy ? tr("Networking - Busy") : tr("Networking - Not busy"));
             return;
         }
     }
@@ -2063,8 +1936,6 @@ void Waver::trackFadeoutStarted(QString id)
         return;
     }
 
-    addToLog(id, getCurrentTrackInfo().title, tr("Fadeout Started"));
-
     if (isCrossfade(currentTrack, playlist.first())) {
         killPreviousTrack();
 
@@ -2080,8 +1951,6 @@ void Waver::trackFinished(QString id)
     bool shuffleOK = true;
 
     if ((previousTrack != nullptr) && (id.compare(previousTrack->getTrackInfo().id) == 0)) {
-        addToLog(id, previousTrack->getTrackInfo().title, tr("Track Finished"));
-
         connectTrackSignals(previousTrack, false);
 
         history.prepend(previousTrack->getTrackInfo());
@@ -2097,8 +1966,6 @@ void Waver::trackFinished(QString id)
     }
 
     if ((currentTrack != nullptr) && (id.compare(getCurrentTrackInfo().id) == 0)) {
-        addToLog(id, getCurrentTrackInfo().title, tr("Track Finished"));
-
         if (currentTrack->getPlayedMillseconds() < 1000) {
             errorMessage(id, tr("Unable to start"), getCurrentTrackInfo().url.toString());
         }
@@ -2120,7 +1987,6 @@ void Waver::trackFinished(QString id)
     QList<Track *> tracksToBeDeleted;
     foreach (Track *track, playlist) {
         if (id.compare(track->getTrackInfo().id) == 0) {
-            addToLog(id, track->getTrackInfo().title, tr("Track Finished"));
             tracksToBeDeleted.append(track);
         }
     }
@@ -2259,7 +2125,6 @@ void Waver::trackInfoUpdated(QString id)
 }
 
 
-// TODO remove position percent, handle it in trackDecodingInfo
 void Waver::trackPlayPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds)
 {
     Q_UNUSED(decoderFinished);
@@ -2320,13 +2185,10 @@ void Waver::trackSessionExpired(QString trackId)
     emit uiSetStatusText(tr("Networking"));
     emit uiSetStatusTempText("Session expired, retrying");
 
-    addToLog(trackId, tr("Session expired, retrying"), tr("Session Expired"));
-
     if ((currentTrack != nullptr) && (getCurrentTrackInfo().id.compare(trackId) == 0)) {
         QObject *opExtra = new QObject();
         opExtra->setProperty("session_expired", "current_track");
         servers.at(srvIndex)->startOperation(AmpacheServer::Song, {{ "song_id", idParts.first().replace(0, 1, "") }}, opExtra);
-        addToLog("waver", tr("Starting operation - Song"), "");
     }
 
     for (int i = 0; i < playlist.size(); i++) {
@@ -2340,7 +2202,6 @@ void Waver::trackSessionExpired(QString trackId)
                 opExtra->setProperty("group", trackInfo.attributes.value("group").toString());
             }
             servers.at(srvIndex)->startOperation(AmpacheServer::Song, {{ "song_id", idParts.first().replace(0, 1, "") }}, opExtra);
-            addToLog("waver", tr("Starting operation - Song"), "");
         }
     }
 }
@@ -2348,21 +2209,10 @@ void Waver::trackSessionExpired(QString trackId)
 
 void Waver::trackStatusChanged(QString id, Track::Status status, QString statusString)
 {
-    QString logString = tr("Status Changed").append(" - %1 %2").arg(status).arg(statusString);
-
-    if ((previousTrack != nullptr) && (id.compare(previousTrack->getTrackInfo().id) == 0)) {
-        addToLog(id, previousTrack->getTrackInfo().title, logString);
-    }
+    Q_UNUSED(status);
 
     if ((currentTrack != nullptr) && (getCurrentTrackInfo().id.compare(id) == 0)) {
         emit uiSetStatusText(statusString);
-        addToLog(id,getCurrentTrackInfo().title, logString);
-    }
-
-    foreach (Track *track, playlist) {
-        if (id.compare(track->getTrackInfo().id) == 0) {
-            addToLog(id, track->getTrackInfo().title, logString);
-        }
     }
 }
 

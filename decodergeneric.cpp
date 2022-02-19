@@ -152,6 +152,12 @@ bool DecoderGeneric::isFile()
 }
 
 
+void DecoderGeneric::networkChanged()
+{
+    emit networkBufferChanged();
+}
+
+
 void DecoderGeneric::networkError(QString errorString)
 {
     emit errorMessage(tr("Network error"), errorString);
@@ -184,12 +190,6 @@ void DecoderGeneric::networkReady()
         audioDecoder->setSourceDevice(networkSource);
         audioDecoder->start();
     }
-}
-
-
-void DecoderGeneric::networkChanged()
-{
-    emit networkBufferChanged();
 }
 
 

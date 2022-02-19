@@ -22,7 +22,6 @@ Item {
             selected = false;
         }
 
-        // TODO remove rawPercent
         var newDict = {
             title: title,
             artist: artist,

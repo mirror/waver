@@ -109,19 +109,6 @@ ApplicationWindow {
         historyModel.insert(0, newDict);
     }
 
-    function logAsRequested(logText)
-    {
-        log.setLog(logText);
-        log.open();
-    }
-
-    function logUpdate(newText)
-    {
-        if (log.visible) {
-            log.addLog(newText);
-        }
-    }
-
     function optionsAsRequested(optionsObj)
     {
         options.setOptions(optionsObj)
@@ -404,7 +391,7 @@ ApplicationWindow {
                 id: status
                 text: qsTr("Idle")
                 font.family: "Monospace"
-                font.pixelSize: textMetrics.font.pixelSize * 0.8
+                font.pixelSize: textMetrics.font.pixelSize * 0.75
                 leftPadding: 5
                 width: parent.width / 10
             }
@@ -414,7 +401,7 @@ ApplicationWindow {
                 id: peakFPS
                 text: ""
                 font.family: "Monospace"
-                font.pixelSize: textMetrics.font.pixelSize * 0.8
+                font.pixelSize: textMetrics.font.pixelSize * 0.75
                 textFormat: Qt.RichText
                 leftPadding: 5
                 width: parent.width / 10
@@ -447,10 +434,6 @@ ApplicationWindow {
         MenuItem {
             text: qsTr("Options")
             onTriggered: requestOptions()
-        }
-        MenuItem {
-            text: qsTr("Log")
-            onTriggered: requestLog()
         }
         MenuSeparator { }
         MenuItem {
@@ -543,14 +526,6 @@ ApplicationWindow {
         onOptionsSending: {
             updatedOptions(optionsJSON);
         }
-    }
-
-    Log {
-        id: log
-
-        anchors.centerIn: parent
-        height: parent.height * 0.9
-        width: parent.width * 0.9
     }
 
     About {

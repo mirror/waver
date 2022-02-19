@@ -112,8 +112,6 @@ class Waver : public QObject, PeakCallback, DecodingCallback
             RecentlyAdded
         };
 
-        QList<LogItem> log;
-
         QStringList           localDirs;
         QList<AmpacheServer*> servers;
 
@@ -187,8 +185,6 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void playlistFirstGroupSave();
         int  playlistFirstGroupLoad();
 
-        void addToLog(QString id, QString info, QString error);
-
 
     public slots:
 
@@ -203,7 +199,6 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void positioned(double percent);
 
         void trackPlayPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);
-        void trackDecoded(QString id, qint64 length);
         void trackNetworkConnecting(QString id, bool busy);
         void trackReplayGainInfo(QString id, double current);
         void trackInfoUpdated(QString id);
@@ -224,7 +219,6 @@ class Waver : public QObject, PeakCallback, DecodingCallback
 
         void requestOptions();
         void updatedOptions(QString optionsJSON);
-        void requestLog();
 
         void peakUILag();
 
@@ -287,8 +281,6 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void playlistSelected(QVariant index, QVariant busy);
 
         void optionsAsRequested(QVariant optionsObj);
-        void logAsRequested(QVariant logText);
-        void logUpdate(QVariant appendText);
 
         void uiSetStatusText(QVariant statusText);
         void uiSetStatusTempText(QVariant statusTempText);
