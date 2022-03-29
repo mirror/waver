@@ -12,6 +12,9 @@ const QString Waver::UI_ID_PREFIX_LOCALDIR_FILE                = "C";
 const QString Waver::UI_ID_PREFIX_SERVER                       = "D";
 const QString Waver::UI_ID_PREFIX_SERVER_SEARCH                = "E";
 const QString Waver::UI_ID_PREFIX_SERVER_SEARCHRESULT          = "F";
+const QString Waver::UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM    = "f";
+const QString Waver::UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST   = "[";
+const QString Waver::UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST = "]";
 const QString Waver::UI_ID_PREFIX_SERVER_BROWSE                = "G";
 const QString Waver::UI_ID_PREFIX_SERVER_BROWSEALPHABET        = "H";
 const QString Waver::UI_ID_PREFIX_SERVER_BROWSEARTIST          = "I";
@@ -637,6 +640,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
 
         if (id.startsWith(UI_ID_PREFIX_SERVER_SEARCH)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::Search, {{ "criteria", extra.value("criteria").toString() }});
+            searchCaches(srvIndex, extra.value("criteria").toString());
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSE)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseRoot, AmpacheServer::OpData());
@@ -668,12 +672,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
     }
 
     if (action == globalConstant("action_play")) {
-        if (id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT)) {
-            playlist.clear();
-            Track::TrackInfo trackInfo = trackInfoFromIdExtra(id, extra);
-            actionPlay(trackInfo);
-        }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST)) {
+        if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST)) {
             bool OK = false;
             int  artistId = QString(idParts.first()).remove(0, 1).toInt(&OK);
 
@@ -682,28 +681,34 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             }
             return;
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM)) {
             explorerNetworkingUISignals(id, true);
             emit playlistBigBusy(true);
 
             QObject *opExtra = new QObject();
             opExtra->setProperty("original_action", "action_play");
             opExtra->setProperty("group", extra.value("group").toString());
+            if (extra.contains("from_search")) {
+                opExtra->setProperty("from_search", extra.value("from_search").toString());
+            }
 
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }}, opExtra);
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT)) {
             playlist.clear();
             Track::TrackInfo trackInfo = trackInfoFromIdExtra(id, extra);
             actionPlay(trackInfo);
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST)) {
             explorerNetworkingUISignals(id, true);
             emit playlistBigBusy(true);
 
             QObject *opExtra = new QObject();
             opExtra->setProperty("original_action", "action_play");
             opExtra->setProperty("group", extra.value("group").toString());
+            if (extra.contains("from_search")) {
+                opExtra->setProperty("from_search", extra.value("from_search").toString());
+            }
 
             servers.at(srvIndex)->startOperation(AmpacheServer::PlaylistSongs, {{ "playlist", QString(idParts.first()).remove(0, 1) }}, opExtra);
         }
@@ -734,21 +739,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
     }
 
     if ((action == globalConstant("action_playnext")) || (action == globalConstant("action_enqueue"))) {
-        if (id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT)) {
-            Track *track = new Track(trackInfoFromIdExtra(id, extra), peakCallbackInfo, decodingCallbackInfo);
-            connectTrackSignals(track);
-
-            if (action == globalConstant("action_enqueue")) {
-                playlist.append(track);
-            }
-            else {
-                playlist.prepend(track);
-            }
-
-            playlistUpdateUISignals();
-            playlistFirstGroupSave();
-        }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST)) {
+        if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST)) {
             bool OK = false;
             int  artistId = QString(idParts.first()).remove(0, 1).toInt(&OK);
 
@@ -756,17 +747,20 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
                 startShuffleBatch(srvIndex, artistId, None, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
             }
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM)) {
             explorerNetworkingUISignals(id, true);
             emit playlistBigBusy(true);
 
             QObject *opExtra = new QObject();
             opExtra->setProperty("original_action", action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
             opExtra->setProperty("group", extra.value("group").toString());
+            if (extra.contains("from_search")) {
+                opExtra->setProperty("from_search", extra.value("from_search").toString());
+            }
 
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }}, opExtra);
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT)) {
             Track *track = new Track(trackInfoFromIdExtra(id, extra), peakCallbackInfo, decodingCallbackInfo);
             connectTrackSignals(track);
 
@@ -780,13 +774,16 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             playlistUpdateUISignals();
             playlistFirstGroupSave();
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST)) {
             explorerNetworkingUISignals(id, true);
             emit playlistBigBusy(true);
 
             QObject *opExtra = new QObject();
             opExtra->setProperty("original_action", action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
             opExtra->setProperty("group", extra.value("group").toString());
+            if (extra.contains("from_search")) {
+                opExtra->setProperty("from_search", extra.value("from_search").toString());
+            }
 
             servers.at(srvIndex)->startOperation(AmpacheServer::PlaylistSongs, {{ "playlist", QString(idParts.first()).remove(0, 1) }}, opExtra);
         }
@@ -1295,6 +1292,51 @@ void Waver::run()
 }
 
 
+void Waver::searchCaches(int srvIndex, QString criteria)
+{
+    QSettings settings;
+
+    QString parentId          = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCH, servers.at(srvIndex)->getId().remove(0, 1), servers.at(srvIndex)->getId());
+    QString browseCacheKey    = QString("%1/browse").arg(servers.at(srvIndex)->getSettingsId().toString());
+    QString playlistsCacheKey = QString("%1/playlists").arg(servers.at(srvIndex)->getSettingsId().toString());
+    bool    hideDotPlaylists  = settings.value("options/hide_dot_playlists", DEFAULT_HIDE_DOT_PLAYLIST).toBool();
+
+    if (settings.contains(QString("%1/1/id").arg(browseCacheKey))) {
+        int browseSize = settings.beginReadArray(browseCacheKey);
+        for (int i = 0; i < browseSize; i++) {
+            settings.setArrayIndex(i);
+
+            QString name = settings.value("name").toString();
+
+            if (name.contains(criteria, Qt::CaseInsensitive)) {
+                QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST, settings.value("id").toString(), servers.at(srvIndex)->getId());
+                emit explorerAddItem(newId, parentId, QString("<i>%1</i>").arg(name), settings.value("art").toString(), QVariantMap({{ "art", settings.value("art").toString() }, { "group", name }, { "from_search", "from_search" }}), false, true, false, false);
+            }
+        }
+        settings.endArray();
+    }
+
+    if (settings.contains(QString("%1/1/id").arg(playlistsCacheKey))) {
+        int playlistsSize = settings.beginReadArray(playlistsCacheKey);
+        for (int i = 0; i < playlistsSize; i++) {
+            settings.setArrayIndex(i);
+
+            QString playlistName = settings.value("name").toString();
+
+            if (playlistName.startsWith(".") && hideDotPlaylists) {
+                continue;
+            }
+
+            if (playlistName.contains(criteria, Qt::CaseInsensitive)) {
+                QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST, settings.value("id").toString(), servers.at(srvIndex)->getId());
+                emit explorerAddItem(newId, parentId, QString("<i>%1</i>").arg(playlistName), "qrc:/icons/playlist.ico", QVariantMap({{ "group", playlistName }, { "from_search", "from_search" }}), false, true, false, false);
+            }
+        }
+        settings.endArray();
+    }
+}
+
+
 int Waver::serverIndex(QString id)
 {
     for(int i = 0; i < servers.size(); i++) {
@@ -1339,7 +1381,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         errorMessage(servers.at(srvIndex)->getId(), tr("The Ampache server returned an empty result set"), tr("No error occured, but the results are empty"));
     }
 
-    if (opCode == AmpacheServer::Search) {
+    if ((opCode == AmpacheServer::Search) || (opCode == AmpacheServer::SearchAlbums)) {
         parentId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCH, QString(opData.value("serverId")).remove(0, 1), opData.value("serverId"));
 
         std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
@@ -1353,14 +1395,14 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         settings.beginWriteArray(cacheKey);
     }
     else if (opCode == AmpacheServer::BrowseArtist) {
-        parentId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEARTIST, opData.value("artist"), opData.value("serverId"));
+        parentId = QString("%1%2|%3").arg(opData.contains("from_search") ? UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST : UI_ID_PREFIX_SERVER_BROWSEARTIST, opData.value("artist"), opData.value("serverId"));
 
         std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
             return (a.value("year").toInt() < b.value("year").toInt()) || ((a.value("year").toInt() == b.value("year").toInt()) && (a.value("name").compare(b.value("name"), Qt::CaseInsensitive) < 0));
         });
     }
     else if (opCode == AmpacheServer::BrowseAlbum) {
-        parentId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEALBUM, opData.value("album"), opData.value("serverId"));
+        parentId = QString("%1%2|%3").arg(opData.contains("from_search") ? UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM : UI_ID_PREFIX_SERVER_BROWSEALBUM, opData.value("album"), opData.value("serverId"));
 
         std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
             return (a.value("track").toInt() < b.value("track").toInt()) || ((a.value("track").toInt() == b.value("track").toInt()) && (a.value("title").compare(b.value("title"), Qt::CaseInsensitive) < 0));
@@ -1373,7 +1415,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         settings.beginWriteArray(cacheKey);
     }
     else if (opCode == AmpacheServer::PlaylistSongs) {
-        parentId = QString("%1%2|%3").arg(opData.value("playlist").startsWith("smart", Qt::CaseInsensitive) ? UI_ID_PREFIX_SERVER_SMARTPLAYLIST : UI_ID_PREFIX_SERVER_PLAYLIST, opData.value("playlist"), opData.value("serverId"));
+        parentId = QString("%1%2|%3").arg(opData.contains("from_search") ? UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST : opData.value("playlist").startsWith("smart", Qt::CaseInsensitive) ? UI_ID_PREFIX_SERVER_SMARTPLAYLIST : UI_ID_PREFIX_SERVER_PLAYLIST, opData.value("playlist"), opData.value("serverId"));
     }
     else if (opCode == AmpacheServer::RadioStations) {
         cacheKey = QString("%1/radiostations").arg(servers.at(srvIndex)->getSettingsId().toString());
@@ -1403,7 +1445,12 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                 trackInfoMap.insert(key, result.value(key));
             }
 
-            emit explorerAddItem(newId, parentId, result.value("name"), result.value("art"), trackInfoMap, false, true, false, false);
+            emit explorerAddItem(newId, parentId, QString("<b>%1</b>").arg(result.value("name")), result.value("art"), trackInfoMap, false, true, false, false);
+        }
+        else if (opCode == AmpacheServer::SearchAlbums) {
+            QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM, result.value("id"), opData.value("serverId"));
+
+            emit explorerAddItem(newId, parentId, result.value("name"), result.value("art"), QVariantMap({{ "art", result.value("art") }, { "group", result.value("name") }, { "from_search", "from_search" }}), false, true, false, false);
         }
         else if (opCode == AmpacheServer::BrowseRoot) {
            settings.setArrayIndex(i);

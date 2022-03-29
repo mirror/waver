@@ -52,6 +52,7 @@ class AmpacheServer : public QObject
 
         enum OpCode {
             Search,
+            SearchAlbums,
             BrowseRoot,
             BrowseArtist,
             BrowseAlbum,

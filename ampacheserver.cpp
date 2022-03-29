@@ -184,6 +184,10 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
                 opCode = Shuffle;
             }
         }
+        else if (action.compare("albums") == 0) {
+            opCode = SearchAlbums;
+            opData.insert("criteria", requestQuery.queryItemValue("filter"));
+        }
         else if (action.compare("artists") == 0) {
             opCode = BrowseRoot;
         }
@@ -260,6 +264,7 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
     };
     QHash<OpCode, QString> opElement = {
         { Search,        "song" },
+        { SearchAlbums,  "album"},
         { BrowseRoot,    "artist" },
         { BrowseArtist,  "album" },
         { BrowseAlbum,   "song" },
@@ -637,10 +642,16 @@ void AmpacheServer::startOperations()
         query.addQueryItem("auth", authKey);
 
         if (operation.opCode == Search) {
+            opQueue.append({ SearchAlbums, operation.opData, operation.extra });
+
             query.addQueryItem("action", "advanced_search");
             query.addQueryItem("rule_1", "title");
             query.addQueryItem("rule_1_operator", "0");
             query.addQueryItem("rule_1_input", operation.opData.value("criteria"));
+        }
+        else if (operation.opCode == SearchAlbums) {
+            query.addQueryItem("action", "albums");
+            query.addQueryItem("filter", operation.opData.value("criteria"));
         }
         else if (operation.opCode == BrowseRoot) {
             query.addQueryItem("action", "artists");

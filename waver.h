@@ -87,6 +87,9 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         static const QString UI_ID_PREFIX_SERVER;
         static const QString UI_ID_PREFIX_SERVER_SEARCH;
         static const QString UI_ID_PREFIX_SERVER_SEARCHRESULT;
+        static const QString UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM;
+        static const QString UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST;
+        static const QString UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST;
         static const QString UI_ID_PREFIX_SERVER_BROWSE;
         static const QString UI_ID_PREFIX_SERVER_BROWSEALPHABET;
         static const QString UI_ID_PREFIX_SERVER_BROWSEARTIST;
@@ -184,6 +187,8 @@ class Waver : public QObject, PeakCallback, DecodingCallback
 
         void playlistFirstGroupSave();
         int  playlistFirstGroupLoad();
+
+        void searchCaches(int srvIndex, QString criteria);
 
 
     public slots:
