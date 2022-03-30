@@ -537,19 +537,22 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             if (settings.contains(QString("%1/1/id").arg(browseCacheKey))) {
                 QRandomGenerator *randomGenerator = QRandomGenerator::global();
                 QChar             currentChar;
+                QString           added;
 
                 int browseSize = settings.beginReadArray(browseCacheKey);
                 for (int i = 0; i < browseSize; i++) {
                     settings.setArrayIndex(i);
 
-                    QString name = settings.value("name").toString();
+                    QString name     = settings.value("name").toString();
+                    QChar   alphabet = alphabetFromName(name);
 
-                    if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSE) && (currentChar != alphabetFromName(name))) {
-                        currentChar = alphabetFromName(name);
+                    if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSE) && (currentChar != alphabet) && !added.contains(alphabet)) {
+                        currentChar = alphabet;
+                        added.append(alphabet);
                         QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEALPHABET).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())).arg(serverId);
                         emit explorerAddItem(newId, id, currentChar, "qrc:/icons/browse.ico", QVariantMap({{ "alphabet", currentChar }}), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
                     }
-                    if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALPHABET) && extra.value("alphabet").toString().startsWith(alphabetFromName(name))) {
+                    if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALPHABET) && extra.value("alphabet").toString().startsWith(alphabet)) {
                         QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEARTIST, settings.value("id").toString(), serverId);
                         emit explorerAddItem(newId, id, name, settings.value("art"), QVariantMap({{ "art", settings.value("art") }}), true, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
                     }
@@ -948,6 +951,7 @@ int Waver::playlistFirstGroupLoad()
 
     if (tracksSize > 0) {
         emit uiSetStatusText(tr("Networking"));
+        emit playlistBigBusy(true);
     }
 
     for (int i = 0; i < tracksSize; i++) {
@@ -998,16 +1002,17 @@ void Waver::playlistFirstGroupSave()
     settings.setValue("track_id", idParts.at(0).mid(1));
     settings.setValue("group", getCurrentTrackInfo().attributes.value("group"));
 
-    int i = 0;
-    while ((i < playlist.count()) && playlist.at(i)->getTrackInfo().attributes.contains("group_id") && !groupId.compare(playlist.at(i)->getTrackInfo().attributes.value("group_id").toString())) {
-        settings.setArrayIndex(i + 1);
-
+    int savedIndex = 0;
+    for (int i = 0; i < playlist.count(); i++) {
         Track::TrackInfo trackInfo = playlist.at(i)->getTrackInfo();
 
-        settings.setValue("track_id", trackInfo.id.split("|").at(0).mid(1));
-        settings.setValue("group", trackInfo.attributes.value("group"));
+        if (trackInfo.attributes.contains("group_id") && (groupId.compare(trackInfo.attributes.value("group_id").toString()) == 0)) {
+            savedIndex++;
+            settings.setArrayIndex(savedIndex);
 
-        i++;
+            settings.setValue("track_id", trackInfo.id.split("|").at(0).mid(1));
+            settings.setValue("group", trackInfo.attributes.value("group"));
+        }
     }
 
     settings.endArray();
