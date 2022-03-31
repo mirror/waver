@@ -884,7 +884,6 @@ void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, v
             peakFPSMutex.lock();
             if (peakFPS > 3) {
                 peakFPS -= 2;
-                emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS));
             }
             peakFPSMutex.unlock();
 
@@ -896,8 +895,6 @@ void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, v
             peakFPSMutex.lock();
             peakFPS++;
             peakFPSMutex.unlock();
-
-            emit uiSetPeakFPS(QString("%1FPS").arg(peakFPS));
         }
 
         if ((peakLagCount > 0) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart + milliseconds)) {

@@ -174,11 +174,6 @@ ApplicationWindow {
         art.swapImage(image);
     }
 
-    function setPeakFPS(fpsText)
-    {
-        peakFPS.text = fpsText;
-    }
-
     function setPeakMeter(l, r, scheduledTimeMS)
     {
         peakMeter.setPeak(l, r);
@@ -205,7 +200,6 @@ ApplicationWindow {
 
         tags.visible = false;
         status.visible = false;
-        peakFPS.visible = false;
 
         statusTempTimer.restart();
     }
@@ -298,7 +292,6 @@ ApplicationWindow {
 
             tags.visible = true;
             status.visible = true;
-            peakFPS.visible = true;
         }
     }
     Timer {
@@ -382,8 +375,8 @@ ApplicationWindow {
                 text: "-"
                 elide: Text.ElideRight
                 maximumLineCount: 1
-                leftPadding: 5
-                width: parent.width / 10 * 8
+                leftPadding: 10
+                width: parent.width / 10 * 9
             }
             Label {
                 anchors.left: tags.right
@@ -392,18 +385,8 @@ ApplicationWindow {
                 text: qsTr("Idle")
                 font.family: "Monospace"
                 font.pixelSize: textMetrics.font.pixelSize * 0.75
-                leftPadding: 5
-                width: parent.width / 10
-            }
-            Label {
-                anchors.left: status.right
-                anchors.verticalCenter: parent.verticalCenter
-                id: peakFPS
-                text: ""
-                font.family: "Monospace"
-                font.pixelSize: textMetrics.font.pixelSize * 0.75
-                textFormat: Qt.RichText
-                leftPadding: 5
+                horizontalAlignment: Text.AlignRight
+                rightPadding: 10
                 width: parent.width / 10
             }
             Label {

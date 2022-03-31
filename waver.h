@@ -270,7 +270,6 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void uiSetTrackTags(QVariant tagsText);
         void uiSetPeakMeter(QVariant leftPercent, QVariant rightPercent, QVariant scheduledTimeMS);
         void uiSetPeakMeterReplayGain(QVariant gainPercent);
-        void uiSetPeakFPS(QVariant fpsText);
         void uiSetShuffleCountdown(QVariant percent);
 
         void uiSetImage(QVariant image);

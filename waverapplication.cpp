@@ -81,7 +81,6 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(waver, SIGNAL(uiSetStatusTempText(QVariant)), uiMainWindow, SLOT(setStatusTempText(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetPeakMeter(QVariant,QVariant,QVariant)), uiMainWindow, SLOT(setPeakMeter(QVariant,QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(uiSetPeakMeterReplayGain(QVariant)), uiMainWindow, SLOT(setPeakMeterReplayGain(QVariant)));
-    QObject::connect(waver, SIGNAL(uiSetPeakFPS(QVariant)), uiMainWindow, SLOT(setPeakFPS(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetShuffleCountdown(QVariant)), uiMainWindow, SLOT(setShuffleCountdown(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetFavorite(QVariant)), uiMainWindow, SLOT(setFavorite(QVariant)));
 
