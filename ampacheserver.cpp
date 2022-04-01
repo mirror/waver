@@ -594,6 +594,27 @@ QStringList AmpacheServer::shuffleTagsToStringList()
 }
 
 
+QString AmpacheServer::tagIdToString(int tagId)
+{
+    QString returnValue;
+
+    QSettings settings;
+    QString   cacheKey = QString("%1/tags").arg(settingsId.toString());
+
+    int tagsSize = settings.beginReadArray(cacheKey);
+    for (int i = 0; i < tagsSize; i++) {
+        settings.setArrayIndex(i);
+        if (settings.value("id").toInt() == tagId) {
+            returnValue = settings.value("name").toString();
+            break;
+        }
+    }
+    settings.endArray();
+
+    return returnValue;
+}
+
+
 void AmpacheServer::startHandshake()
 {
     if (handshakeInProgress) {
@@ -769,7 +790,30 @@ void AmpacheServer::startOperations()
                 shuffleFavorites.clear();
                 shuffleFavoritesCompleted = false;
 
-                if (shuffleTags.size()) {
+                bool favOK = true;
+
+                if (operation.opData.contains("shuffle_tag")) {
+                    bool OK = false;
+                    int  shuffleTag = operation.opData.value("shuffle_tag").toInt(&OK);
+                    if (OK) {
+                        QString shuffleTagString = tagIdToString(shuffleTag);
+                        if (shuffleTagString.isEmpty()) {
+                            query.addQueryItem("action", "playlist_generate");
+                        }
+                        else {
+                            query.addQueryItem("action", "advanced_search");
+                            query.addQueryItem("random", "1");
+                            query.addQueryItem(QString("rule_1"), "tag");
+                            query.addQueryItem(QString("rule_1_operator"), "4");
+                            query.addQueryItem(QString("rule_1_input"), QUrl::toPercentEncoding(shuffleTagString));
+                            favOK = false;
+                        }
+                    }
+                    else {
+                        query.addQueryItem("action", "playlist_generate");
+                    }
+                }
+                else if (shuffleTags.size()) {
                     query.addQueryItem("action", "advanced_search");
                     query.addQueryItem("random", "1");
                     query.addQueryItem("operator", settings.value("options/shuffle_operator", DEFAULT_SHUFFLE_OPERATOR).toString());
@@ -792,7 +836,7 @@ void AmpacheServer::startOperations()
                     int limitRegular  = 0;
                     int limitFavorite = 0;
                     for (int i = shuffled; i < shuffled + limit; i++) {
-                        if ((i + 1) % favoriteFrequency == 0) {
+                        if (favOK && ((i + 1) % favoriteFrequency == 0)) {
                             limitFavorite++;
                             continue;
                         }

@@ -133,6 +133,7 @@ class AmpacheServer : public QObject
         QNetworkRequest buildRequest(QUrlQuery query, QObject *extra);
         long            apiVersionFromString(QString apiVersionString);
         QStringList     shuffleTagsToStringList();
+        QString         tagIdToString(int tagId);
 
 
     private slots:

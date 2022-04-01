@@ -503,11 +503,6 @@ void Waver::itemActionServer(QString id, int action, QVariantMap extra)
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES), id),     id, tr("Favorites"),       "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED), id),   id, tr("Never Played"),    "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED), id), id, tr("Recently Added"),  "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-
-        emit explorerDisableQueueable(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE),               id));
-        emit explorerDisableQueueable(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES),     id));
-        emit explorerDisableQueueable(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED),   id));
-        emit explorerDisableQueueable(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED), id));
     }
     else if (action == globalConstant("action_collapse")) {
         emit explorerRemoveChildren(id);
@@ -614,7 +609,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
 
                     QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SHUFFLETAG, settings.value("id").toString(), serverId);
 
-                    emit explorerAddItem(newId, id, settings.value("name"), "qrc:/icons/tag.ico", QVariant::fromValue(nullptr), false, false, true, servers.at(srvIndex)->isShuffleTagSelected(settings.value("id").toInt()));
+                    emit explorerAddItem(newId, id, settings.value("name"), "qrc:/icons/tag.ico", QVariant::fromValue(nullptr), false, true, true, servers.at(srvIndex)->isShuffleTagSelected(settings.value("id").toInt()));
                 }
                 settings.endArray();
                 return;
@@ -738,6 +733,14 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED)) {
             startShuffleBatch(srvIndex, 0, RecentlyAdded);
         }
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLETAG)) {
+            bool OK = false;
+            int  tagId = QString(idParts.first()).remove(0, 1).toInt(&OK);
+
+            if (OK) {
+                startShuffleBatch(srvIndex, 0, None, "action_play", tagId);
+            }
+        }
         return;
     }
 
@@ -745,7 +748,6 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST)) {
             bool OK = false;
             int  artistId = QString(idParts.first()).remove(0, 1).toInt(&OK);
-
             if (OK) {
                 startShuffleBatch(srvIndex, artistId, None, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
             }
@@ -789,6 +791,25 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             }
 
             servers.at(srvIndex)->startOperation(AmpacheServer::PlaylistSongs, {{ "playlist", QString(idParts.first()).remove(0, 1) }}, opExtra);
+        }
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE)) {
+            startShuffleBatch(srvIndex, 0, None, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
+        }
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES)) {
+            startShuffleBatch(srvIndex, 0, Favorite, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
+        }
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED)) {
+            startShuffleBatch(srvIndex, 0, NeverPlayed, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
+        }
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED)) {
+            startShuffleBatch(srvIndex, 0, RecentlyAdded, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
+        }
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLETAG)) {
+            bool OK = false;
+            int  tagId = QString(idParts.first()).remove(0, 1).toInt(&OK);
+            if (OK) {
+                startShuffleBatch(srvIndex, 0, None, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue", tagId);
+            }
         }
         return;
     }
@@ -1830,7 +1851,7 @@ void Waver::startNextTrackUISignals()
 }
 
 
-void Waver::startShuffleBatch(int srvIndex, int artistId, ShuffleMode mode, QString originalAction)
+void Waver::startShuffleBatch(int srvIndex, int artistId, ShuffleMode mode, QString originalAction, int shuffleTag)
 {
     if (srvIndex < 0) {
         srvIndex = shuffleServerIndex;
@@ -1862,6 +1883,10 @@ void Waver::startShuffleBatch(int srvIndex, int artistId, ShuffleMode mode, QStr
     }
     else if (mode == RecentlyAdded) {
         opData.insert("recently_added", "recently_added");
+    }
+
+    if (shuffleTag != 0) {
+        opData.insert("shuffle_tag", QString("%1").arg(shuffleTag));
     }
 
     if (!QStringList({"action_play", "action_playnext", "action_enqueue"}).contains(originalAction)) {

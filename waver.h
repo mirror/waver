@@ -181,7 +181,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
 
         void startShuffleCountdown();
         void stopShuffleCountdown();
-        void startShuffleBatch(int srvIndex = -1, int artistId = 0, ShuffleMode mode = None, QString originalAction = "action_play");
+        void startShuffleBatch(int srvIndex = -1, int artistId = 0, ShuffleMode mode = None, QString originalAction = "action_play", int shuffleTag = 0);
 
         void explorerNetworkingUISignals(QString id, bool networking);
 
