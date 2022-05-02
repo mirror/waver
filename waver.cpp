@@ -269,7 +269,7 @@ void Waver::errorMessage(QString id, QString info, QString error)
         qDebug() << id << info << error;
     #endif
 
-    emit uiSetStatusTempText(info);
+    emit uiSetStatusTempText(QString("%1 <i>%2</i>").arg(info, error));
 }
 
 
@@ -569,8 +569,13 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
                     QString playlistName = settings.value("name").toString();
 
                     if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLISTS) && !playlistId.startsWith("smart", Qt::CaseInsensitive) && (!playlistName.startsWith(".") || !hideDotPlaylists)) {
+                        QString art = settings.value("art", "").toString();
+                        if (art.isEmpty()) {
+                            art ="qrc:/icons/playlist.ico";
+                        }
+
                         QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_PLAYLIST, playlistId, serverId);
-                        emit explorerAddItem(newId, id, playlistName, "qrc:/icons/playlist.ico", QVariantMap({{ "group", playlistName }}), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+                        emit explorerAddItem(newId, id, playlistName, art, QVariantMap({{ "group", playlistName }, { "art", art }}), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
                     }
                     if (id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLISTS) && playlistId.startsWith("smart", Qt::CaseInsensitive) && (!playlistName.startsWith(".") || !hideDotPlaylists)) {
                         QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SMARTPLAYLIST, playlistId, serverId);
@@ -1351,8 +1356,14 @@ void Waver::searchCaches(int srvIndex, QString criteria)
             }
 
             if (playlistName.contains(criteria, Qt::CaseInsensitive)) {
+
+                QString art = settings.value("art", "").toString();
+                if (art.isEmpty() || settings.value("id").toString().startsWith("smart")) {
+                    art ="qrc:/icons/playlist.ico";
+                }
+
                 QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST, settings.value("id").toString(), servers.at(srvIndex)->getId());
-                emit explorerAddItem(newId, parentId, QString("<i>%1</i>").arg(playlistName), "qrc:/icons/playlist.ico", QVariantMap({{ "group", playlistName }, { "from_search", "from_search" }}), false, true, false, false);
+                emit explorerAddItem(newId, parentId, QString("<i>%1</i>").arg(playlistName), art, QVariantMap({{ "group", playlistName }, { "from_search", "from_search" }, { "art", art }}), false, true, false, false);
             }
         }
         settings.endArray();
@@ -1401,7 +1412,17 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     }
 
     if (opResults.count() <= 0) {
-        errorMessage(servers.at(srvIndex)->getId(), tr("The Ampache server returned an empty result set"), tr("No error occured, but the results are empty"));
+        if (opData.contains("count_flagged")) {
+            if (servers.at(srvIndex)->getServerVersion() == 5000000) {
+                errorMessage(servers.at(srvIndex)->getId(), tr("No favorite tracks can be found. Favorites do not work with Ampache server version 5.0.0, update recommended."), "");
+            }
+            else {
+                errorMessage(servers.at(srvIndex)->getId(), tr("No favorite tracks can be found"), "");
+            }
+        }
+        else {
+            errorMessage(servers.at(srvIndex)->getId(), tr("The Ampache server returned an empty result set"), tr("No error occured, but the results are empty"));
+        }
     }
 
     if ((opCode == AmpacheServer::Search) || (opCode == AmpacheServer::SearchAlbums)) {
@@ -1537,6 +1558,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
             settings.setArrayIndex(i);
             settings.setValue("id", result.value("id"));
             settings.setValue("name", result.value("name"));
+            settings.setValue("art", result.value("art"));
         }
         else if ((opCode == AmpacheServer::PlaylistSongs) || (opCode == AmpacheServer::Shuffle)) {
             QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_PLAYLIST_ITEM, result.value("id"), opData.value("serverId"));

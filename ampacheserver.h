@@ -72,6 +72,7 @@ class AmpacheServer : public QObject
 
         explicit AmpacheServer(QUrl host, QString user, QObject *parent = nullptr);
 
+        long    getServerVersion();
         QUrl    getHost();
         QString getUser();
 

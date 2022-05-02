@@ -97,6 +97,12 @@ QString AmpacheServer::getId()
 }
 
 
+long AmpacheServer::getServerVersion()
+{
+    return serverVersion;
+}
+
+
 QUuid AmpacheServer::getSettingsId()
 {
     return settingsId;
@@ -176,12 +182,18 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
     }
     else {
         if (action.compare("advanced_search") == 0) {
-            if (limit <= 0) {
-                opCode = Search;
-                opData.insert("criteria", requestQuery.queryItemValue("rule_1_input"));
+            if (opData.contains("count_flagged")) {
+                opCode = CountFlagged;
+                flaggedCount = 0;
             }
             else {
-                opCode = Shuffle;
+                if (limit <= 0) {
+                    opCode = Search;
+                    opData.insert("criteria", requestQuery.queryItemValue("rule_1_input"));
+                }
+                else {
+                    opCode = Shuffle;
+                }
             }
         }
         else if (action.compare("albums") == 0) {
@@ -199,13 +211,13 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
             opCode = BrowseAlbum;
             opData.insert("album", requestQuery.queryItemValue("filter"));
         }
+        else if (action.compare("playlists") == 0) {
+            opCode = PlaylistRoot;
+        }
         else if (action.compare("get_indexes") == 0) {
             QString type = requestQuery.queryItemValue("type");
             if (type.compare("live_stream") == 0) {
                 opCode = RadioStations;
-            }
-            else if (type.compare("playlist") == 0) {
-                opCode = PlaylistRoot;
             }
             else {
                 emit errorMessage(id, tr("Invalid Network Reply"), tr("Request URL query contains an unknown 'type' item"));
@@ -686,8 +698,7 @@ void AmpacheServer::startOperations()
             query.addQueryItem("filter", operation.opData.value("album"));
         }
         else if (operation.opCode == PlaylistRoot) {
-            query.addQueryItem("action", "get_indexes");
-            query.addQueryItem("type", "playlist");
+            query.addQueryItem("action", "playlists");
         }
         else if (operation.opCode == PlaylistSongs) {
             query.addQueryItem("action", "playlist_songs");
@@ -703,9 +714,18 @@ void AmpacheServer::startOperations()
             int randomListCount = settings.value("options/random_lists_count", DEFAULT_RANDOM_LISTS_COUNT).toInt();
 
             if (operation.opData.contains("favorite")) {
-                query.addQueryItem("action", "playlist_generate");
-                query.addQueryItem("mode", "random");
-                query.addQueryItem("flag", "1");
+                if ((serverVersion < 5000000) || (serverVersion >= 5200000)) {
+                    query.addQueryItem("action", "playlist_generate");
+                    query.addQueryItem("mode", "random");
+                    query.addQueryItem("flag", "1");
+                }
+                else {
+                    query.addQueryItem("action", "advanced_search");
+                    query.addQueryItem("random", "1");
+                    query.addQueryItem("rule_1", "favorite");
+                    query.addQueryItem("rule_1_operator", "0");
+                    query.addQueryItem("rule_1_input", "%");
+                }
 
                 int limit = operation.opData.value("limit", "0").toInt();
                 if (limit <= 0) {
@@ -734,9 +754,19 @@ void AmpacheServer::startOperations()
                 shuffleFavorites.clear();
                 shuffleFavoritesCompleted = true;
 
-                query.addQueryItem("action", "playlist_generate");
-                query.addQueryItem("mode", "random");
-                query.addQueryItem("flag", "1");
+                if ((serverVersion < 5000000) || (serverVersion >= 5200000)) {
+                    query.addQueryItem("action", "playlist_generate");
+                    query.addQueryItem("mode", "random");
+                    query.addQueryItem("flag", "1");
+                }
+                else {
+                    query.addQueryItem("action", "advanced_search");
+                    query.addQueryItem("random", "1");
+                    query.addQueryItem("rule_1", "favorite");
+                    query.addQueryItem("rule_1_operator", "0");
+                    query.addQueryItem("rule_1_input", "%");
+                }
+
                 query.addQueryItem("limit", QString("%1").arg(randomListCount));
 
                 if (operation.extra == nullptr) {
@@ -860,6 +890,9 @@ void AmpacheServer::startOperations()
 
                     limit = limitRegular;
                 }
+                else {
+                    shuffleFavoritesCompleted = true;
+                }
 
                 query.addQueryItem("limit", QString("%1").arg(limit));
             }
@@ -887,10 +920,19 @@ void AmpacheServer::startOperations()
             }
         }
         else if (operation.opCode == CountFlagged) {
+            if ((serverVersion < 5000000) || (serverVersion >= 5200000)) {
+                query.addQueryItem("action", "playlist_generate");
+                query.addQueryItem("flag", "1");
+                query.addQueryItem("format", "index");
+            }
+            else {
+                query.addQueryItem("action", "advanced_search");
+                query.addQueryItem("random", "1");
+                query.addQueryItem("rule_1", "favorite");
+                query.addQueryItem("rule_1_operator", "0");
+                query.addQueryItem("rule_1_input", "%");
+            }
             query.removeAllQueryItems("limit");
-            query.addQueryItem("action", "playlist_generate");
-            query.addQueryItem("flag", "1");
-            query.addQueryItem("format", "index");
         }
         else if (operation.opCode == Song) {
             query.removeAllQueryItems("limit");

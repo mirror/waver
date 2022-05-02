@@ -395,6 +395,9 @@ ApplicationWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 id: statusTemp
                 color: statusTemp.palette.buttonText
+                font.family: "Monospace"
+                font.pixelSize: textMetrics.font.pixelSize * 0.75
+                elide: Text.ElideRight
                 leftPadding: 5
                 rightPadding: 5
                 visible: false

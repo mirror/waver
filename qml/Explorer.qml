@@ -416,7 +416,7 @@ Item {
                                 itemClicked(id, globalConstants.action_expand, extra);
                             }
                         }
-                        else if (id.startsWith("F")) {
+                        else if (id.startsWith("F") || id.startsWith("f") || id.startsWith("[") || id.startsWith("]") || id.startsWith("M")) {
                             itemClicked(id, globalConstants.action_noop, extra);
                         }
                     }
