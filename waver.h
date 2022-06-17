@@ -290,6 +290,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void uiSetStatusTempText(QVariant statusTempText);
 
         void uiHistoryAdd(QVariant title);
+        void uiHistoryRemove(QVariant count);
 
         void notify(NotificationDataToSend dataToSend);
         void uiRaise();

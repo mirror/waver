@@ -1189,6 +1189,20 @@ void Waver::previousButton(int index)
     }
 
     actionPlay(history.at(index));
+    index++;
+
+    int i = 0;
+    while (i < index) {
+        Track *track = new Track(history.at(i), peakCallbackInfo, decodingCallbackInfo);
+        connectTrackSignals(track);
+        playlist.prepend(track);
+        i++;
+    }
+    playlistUpdateUISignals();
+    playlistFirstGroupSave();
+
+    history.remove(0, index + 1);
+    emit uiHistoryRemove(index + 1);
 }
 
 
@@ -2049,8 +2063,10 @@ void Waver::trackFinished(QString id)
     if ((previousTrack != nullptr) && (id.compare(previousTrack->getTrackInfo().id) == 0)) {
         connectTrackSignals(previousTrack, false);
 
-        history.prepend(previousTrack->getTrackInfo());
-        emit uiHistoryAdd(previousTrack->getTrackInfo().attributes.contains("radio_station") ? previousTrack->getTrackInfo().artist : previousTrack->getTrackInfo().title);
+        Track::TrackInfo trackInfo    = previousTrack->getTrackInfo();
+        QString          displayTitle = trackInfo.attributes.contains("radio_station") ? QString("<b>%1</b>").arg(trackInfo.artist) : QString("<b>%1</b> %2").arg(trackInfo.title, trackInfo.artist);
+        history.prepend(trackInfo);
+        emit uiHistoryAdd(displayTitle);
 
         previousTrack->setStatus(Track::Paused);
         previousTrack->setStatus(Track::Idle);
@@ -2068,8 +2084,10 @@ void Waver::trackFinished(QString id)
 
         connectTrackSignals(currentTrack, false);
 
-        history.prepend(getCurrentTrackInfo());
-        emit uiHistoryAdd(getCurrentTrackInfo().attributes.contains("radio_station") ? getCurrentTrackInfo().artist : getCurrentTrackInfo().title);
+        Track::TrackInfo trackInfo    = getCurrentTrackInfo();
+        QString          displayTitle = trackInfo.attributes.contains("radio_station") ? QString("<b>%1</b>").arg(trackInfo.artist) : QString("<b>%1</b> %2").arg(trackInfo.title, trackInfo.artist);
+        history.prepend(trackInfo);
+        emit uiHistoryAdd(displayTitle);
 
         currentTrack->setStatus(Track::Paused);
         currentTrack->setStatus(Track::Idle);

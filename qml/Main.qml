@@ -109,6 +109,11 @@ ApplicationWindow {
         historyModel.insert(0, newDict);
     }
 
+    function historyRemove(count)
+    {
+        historyModel.remove(0, count);
+    }
+
     function optionsAsRequested(optionsObj)
     {
         options.setOptions(optionsObj)
@@ -444,12 +449,14 @@ ApplicationWindow {
     Menu {
         id: historyMenu
         leftMargin: 10
+        width: parent.width * .8
 
         Instantiator {
             model: historyModel
 
             delegate: MenuItem {
                 text: title
+                font.pixelSize: textMetrics.font.pixelSize * .9
                 onTriggered: previousButton(index)
             }
 

@@ -714,7 +714,7 @@ void AmpacheServer::startOperations()
             int randomListCount = settings.value("options/random_lists_count", DEFAULT_RANDOM_LISTS_COUNT).toInt();
 
             if (operation.opData.contains("favorite")) {
-                if ((serverVersion < 5000000) || (serverVersion >= 5200000)) {
+                if (serverVersion < 5000000) {
                     query.addQueryItem("action", "playlist_generate");
                     query.addQueryItem("mode", "random");
                     query.addQueryItem("flag", "1");

@@ -121,6 +121,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(uiMainWindow, SIGNAL(updatedOptions(QString)),      waver,        SLOT(updatedOptions(QString)));
 
     QObject::connect(waver,        SIGNAL(uiHistoryAdd(QVariant)),        uiMainWindow, SLOT(historyAdd(QVariant)));
+    QObject::connect(waver,        SIGNAL(uiHistoryRemove(QVariant)),     uiMainWindow, SLOT(historyRemove(QVariant)));
     QObject::connect(waver,        SIGNAL(uiRaise()),                     uiMainWindow, SLOT(bringToFront()));
     QObject::connect(waver,        SIGNAL(uiSetIsSnap(QVariant)),         uiMainWindow, SLOT(quickStartGuideSetIsSnap(QVariant)));
     QObject::connect(uiMainWindow, SIGNAL(peakUILag()),                   waver,        SLOT(peakUILag()));
