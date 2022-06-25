@@ -94,12 +94,10 @@ Item {
     }
 
     Rectangle {
-        id: replayGain
-
         color: borderColor
         anchors.verticalCenter: parent.verticalCenter
-        height: parent.height - 6
-        width: 1
+        height: 3
+        width: 3
         x: internal.replayGainValue * scaleBackground.width + scaleBackground.x;
     }
 }
