@@ -32,8 +32,14 @@ Item {
         if (g > 1) {
             g = 1;
         }
+        internal.replayGainValue = g
+    }
 
-        replayGain.width = replayGainBackground.width * g;
+
+    QtObject {
+        id: internal
+
+        property double replayGainValue: 0
     }
 
 
@@ -66,23 +72,6 @@ Item {
     }
 
     Rectangle {
-        id: replayGainBackground
-
-        width: parent.width - 10
-        height: 3
-        anchors.centerIn: parent
-
-        gradient: Gradient {
-            orientation: Gradient.Horizontal
-            GradientStop { position: 0;     color: "#88006400" }   // same colors as peak meter + transparency
-            GradientStop { position: 0.167; color: "#88008000" }
-            GradientStop { position: 0.275; color: "#88ffa500" }
-            GradientStop { position: 0.833; color: "#88ff0000" }
-            GradientStop { position: 1;     color: "#88800000" }   // maroon
-        }
-    }
-
-    Rectangle {
         id: lPeak
 
         anchors.top: parent.top
@@ -107,10 +96,10 @@ Item {
     Rectangle {
         id: replayGain
 
+        color: borderColor
         anchors.verticalCenter: parent.verticalCenter
-        anchors.right: parent.right
-        anchors.rightMargin: 5
-        height: 3
-        width: 0
+        height: parent.height - 6
+        width: 1
+        x: internal.replayGainValue * scaleBackground.width + scaleBackground.x;
     }
 }

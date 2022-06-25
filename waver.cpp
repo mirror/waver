@@ -2279,8 +2279,7 @@ void Waver::trackReplayGainInfo(QString id, double current)
         if (current > 6) {
             current = 6;
         }
-        current = (current + 12) / 18;
-        emit uiSetPeakMeterReplayGain(1 - current);
+        emit uiSetPeakMeterReplayGain((current + 12) / 18);
     }
 }
 
