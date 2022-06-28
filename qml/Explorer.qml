@@ -8,7 +8,9 @@ import QtQuick.Layouts 1.3
 
 Item {
     property bool  borderVisible: true
+    property bool  isFocused: false
     property color borderColor: "#666666"
+    property color focusBorderColor: ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? Universal.accent : Material.accent;
     property int   imageSize: 24
 
 
@@ -81,6 +83,23 @@ Item {
         return servers;
     }
 
+
+    function moveSelectionDown()
+    {
+        if ((explorerItems.count >= 1) && (explorerItemsView.currentIndex < explorerItems.count - 1)) {
+            explorerItemsView.currentIndex++;
+        }
+    }
+
+
+    function moveSelectionUp()
+    {
+        if ((explorerItems.count >= 1) && (explorerItemsView.currentIndex > 0)) {
+            explorerItemsView.currentIndex--;
+        }
+    }
+
+
     function removeAboveLevel(id)
     {
         var index = internal.findItem(id);
@@ -99,6 +118,7 @@ Item {
         }
     }
 
+
     function removeChildren(id)
     {
         var i = 0;
@@ -113,6 +133,7 @@ Item {
         }
     }
 
+
     function removeItem(id)
     {
         var index = internal.findItem(id);
@@ -121,6 +142,7 @@ Item {
             explorerItems.remove(index);
         }
     }
+
 
     function setBusy(id, busy)
     {
@@ -132,6 +154,7 @@ Item {
         explorerItems.setProperty(index, "busy", busy);
     }
 
+
     function setError(id, isError, errorMessage)
     {
         var index = internal.findItem(id);
@@ -142,6 +165,7 @@ Item {
         explorerItems.setProperty(index, "isError", isError);
         explorerItems.setProperty(index, "errorMessage", errorMessage);
     }
+
 
     function setFlagExtra(id, flag)
     {
@@ -155,6 +179,7 @@ Item {
         explorerItems.get(index).extra = extra;
     }
 
+
     function setSelected(id, selected)
     {
         var index = internal.findItem(id);
@@ -165,6 +190,17 @@ Item {
         explorerItems.setProperty(index, "selected", selected);
     }
 
+
+    function simulateRightClick()
+    {
+        if (explorerItemsView.currentItem != null) {
+            explorerMenu.x = 20
+            explorerMenu.y = explorerItemsView.currentItem.y
+            explorerMenu.open();
+        }
+    }
+
+
     function toggleSelected(id)
     {
         var index = internal.findItem(id);
@@ -174,6 +210,7 @@ Item {
 
         explorerItems.setProperty(index, "selected", !explorerItems.get(index).selected);
     }
+
 
     QtObject {
         id: internal
@@ -338,6 +375,7 @@ Item {
             onTriggered: itemClicked(explorerItems.get(explorerItemsView.currentIndex).id, globalConstants.action_enqueue, explorerItems.get(explorerItemsView.currentIndex).extra);
             text: qsTr("Enqueue")
         }
+        // TODO Scatter - add each song in random position
         MenuSeparator { }
         MenuItem {
             id: selectExplorerMenu
@@ -360,6 +398,7 @@ Item {
         highlight: Rectangle {
             color: "LightSteelBlue";
         }
+        highlightFollowsCurrentItem: true
         highlightMoveDuration: 500
         highlightMoveVelocity: 500
         delegate: explorerElement
@@ -367,11 +406,13 @@ Item {
 
         ScrollBar.vertical: ScrollBar {
         }
+
+        // TODO add drag-and-drop functionality ie. from explorer into playlist qeueue
     }
 
     Rectangle {
         anchors.fill: parent
-        border.color: borderColor
+        border.color: isFocused ? focusBorderColor : borderColor
         color: "transparent"
         visible: borderVisible
     }
@@ -390,7 +431,6 @@ Item {
 
             MouseArea {
                 anchors.fill: parent
-
                 acceptedButtons: Qt.LeftButton | Qt.RightButton
 
                 onClicked: {

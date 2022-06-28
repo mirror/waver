@@ -1182,6 +1182,19 @@ void Waver::positioned(double percent)
 }
 
 
+void Waver::ppButton()
+{
+    Track::Status status = getCurrentTrackStatus();
+
+    if (status == Track::Playing) {
+        pauseButton();
+    }
+    if (status == Track::Paused) {
+        playButton();
+    }
+}
+
+
 void Waver::previousButton(int index)
 {
     if (history.count() <= index) {

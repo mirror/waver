@@ -218,6 +218,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void nextButton();
         void playButton();
         void pauseButton();
+        void ppButton();
         void stopButton();
         void favoriteButton(bool fav);
         void raiseButton();

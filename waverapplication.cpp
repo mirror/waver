@@ -113,6 +113,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(uiMainWindow, SIGNAL(nextButton()), waver, SLOT(nextButton()));
     QObject::connect(uiMainWindow, SIGNAL(playButton()), waver, SLOT(playButton()));
     QObject::connect(uiMainWindow, SIGNAL(pauseButton()), waver, SLOT(pauseButton()));
+    QObject::connect(uiMainWindow, SIGNAL(ppButton()), waver, SLOT(ppButton()));
     QObject::connect(uiMainWindow, SIGNAL(stopButton()), waver, SLOT(stopButton()));
     QObject::connect(uiMainWindow, SIGNAL(favoriteButton(bool)), waver, SLOT(favoriteButton(bool)));
 

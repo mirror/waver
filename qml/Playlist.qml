@@ -10,7 +10,9 @@ Item {
     id: playlistRoot
 
     property bool  borderVisible: true
+    property bool  isFocused: false
     property color borderColor: "#666666"
+    property color focusBorderColor: ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? Universal.accent : Material.accent;
     property int   imageSize: 36
 
     signal itemClicked(int index, int action);
@@ -46,6 +48,20 @@ Item {
     {
         internal.currentIndex = playlistItemsView.currentIndex;
         playlistItems.clear();
+    }
+
+    function moveSelectionDown()
+    {
+        if ((playlistItems.count >= 1) && (playlistItemsView.currentIndex < playlistItems.count - 1)) {
+            playlistItemsView.currentIndex++;
+        }
+    }
+
+    function moveSelectionUp()
+    {
+        if ((playlistItems.count >= 1) && (playlistItemsView.currentIndex > 0)) {
+            playlistItemsView.currentIndex--;
+        }
     }
 
     function setBusy(index, busy)
@@ -85,6 +101,16 @@ Item {
         totalTime.visible = true;
         totalTimeBackground.visible = true;
     }
+
+    function simulateRightClick()
+    {
+        if (playlistItemsView.currentItem != null) {
+            playlistMenu.x = 20
+            playlistMenu.y = playlistItemsView.currentItem.y
+            playlistMenu.open();
+        }
+    }
+
 
     QtObject {
         id: internal
@@ -198,8 +224,6 @@ Item {
         highlightMoveDuration: 500
         highlightMoveVelocity: 500
         delegate: playlistElement
-        focus: true
-        keyNavigationEnabled: true
         model: playlistItems
 
         ScrollBar.vertical: ScrollBar {
@@ -432,7 +456,7 @@ Item {
 
     Rectangle {
         anchors.fill: parent
-        border.color: borderColor
+        border.color: isFocused ? focusBorderColor : borderColor
         color: "transparent"
         visible: borderVisible
     }

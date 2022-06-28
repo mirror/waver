@@ -27,6 +27,7 @@ ApplicationWindow {
     signal nextButton();
     signal playButton();
     signal pauseButton();
+    signal ppButton();
     signal stopButton();
     signal favoriteButton(bool fav);
     signal requestOptions();
@@ -45,6 +46,11 @@ ApplicationWindow {
         titleSizeRecalcOnResizeTimer.restart();
     }
 
+    onActiveChanged: {
+        if (active) {
+            rightSide.focus = true;
+        }
+    }
 
     function bringToFront()
     {
@@ -242,7 +248,7 @@ ApplicationWindow {
     {
         position.text = positionText;
 
-        if (!positioner.pressed) {
+        if (!positioner.pressed && !internal.kbPositioning) {
             positioner.value = positionPercent;
         }
     }
@@ -270,6 +276,8 @@ ApplicationWindow {
 
         property double positionerMovedValue: -1
         property double shuffleCountdown: 0.5
+        property bool kbPositioning: false
+        property int kbLastFocused: 0
 
         function calculateTitleSize()
         {
@@ -285,6 +293,40 @@ ApplicationWindow {
             while ((performer.font.pixelSize >= 8) && ((performer.width > track.width - art.width) || (performer.contentHeight > performer.height - 20))) {
                 performer.font.pixelSize--;
             }
+        }
+
+        function rememberKBLastFocused()
+        {
+            kbLastFocused = 0;
+            if (explorer.isFocused) {
+                kbLastFocused = 1;
+            }
+            else if (playlist.isFocused) {
+                kbLastFocused = 2;
+            }
+        }
+
+        function restoreKBLastFocused()
+        {
+            if (explorer.isFocused || playlist.isFocused) {
+                return false;
+            }
+
+            if ((kbLastFocused < 1) || (kbLastFocused > 2)) {
+                kbLastFocused = 1;
+            }
+
+            if (kbLastFocused == 1) {
+                explorer.isFocused = true;
+                playlist.isFocused = false;
+            }
+            else {
+                explorer.isFocused = false;
+                playlist.isFocused = true;
+            }
+
+            focusTimer.restart();
+            return true;
         }
     }
 
@@ -308,11 +350,22 @@ ApplicationWindow {
             internal.calculatePerformerSize();
         }
     }
+    Timer {
+        id: focusTimer
+        interval: 15000
+
+        onTriggered: {
+            internal.rememberKBLastFocused();
+            explorer.isFocused = false;
+            playlist.isFocused = false;
+        }
+    }
 
 
     header: ToolBar {
         RowLayout {
             anchors.fill: parent
+            Keys.forwardTo: rightSide
 
             ToolButton {
                 icon.name: 'media-skip-backward'
@@ -322,28 +375,34 @@ ApplicationWindow {
                         historyMenu.popup();
                     }
                 }
+                Keys.forwardTo: rightSide
             }
             ToolButton {
                 icon.name: 'media-playback-start'
                 icon.source: "qrc:///icons/play.ico"
                 onClicked: playButton()
+                Keys.forwardTo: rightSide
             }
             ToolButton {
                 icon.name: 'media-playback-pause'
                 icon.source: "qrc:///icons/pause.ico"
                 onClicked: pauseButton()
+                Keys.forwardTo: rightSide
             }
             ToolButton {
                 icon.name: 'media-playback-stop'
                 icon.source: "qrc:///icons/stop.ico"
                 onClicked: stopButton()
+                Keys.forwardTo: rightSide
             }
             ToolButton {
                 icon.name: 'media-skip-forward'
                 icon.source: "qrc:///icons/skip_next.ico"
                 onClicked: nextButton()
+                Keys.forwardTo: rightSide
             }
             ToolSeparator {
+                Keys.forwardTo: rightSide
             }
             ToolButton {
                 id: favorite
@@ -351,12 +410,14 @@ ApplicationWindow {
                 icon.name: 'starred'
                 icon.source: "qrc:///icons/star.ico"
                 onClicked: favoriteButton(checked)
+                Keys.forwardTo: rightSide
             }
             ToolButton {
                 icon.name: 'search'
                 icon.source: "qrc:///icons/search.ico"
                 enabled: title.text.length && performer.text.length
                 onClicked: searchMenu.popup();
+                Keys.forwardTo: rightSide
             }
             Label {
                 Layout.fillWidth: true
@@ -365,6 +426,7 @@ ApplicationWindow {
                 icon.name: 'open-menu'
                 icon.source: "qrc:///icons/menu.ico"
                 onClicked: menu.popup();
+                Keys.forwardTo: rightSide
             }
         }
     }
@@ -477,7 +539,6 @@ ApplicationWindow {
             onTriggered: Qt.openUrlExternally("https://google.com/search?q=\"" + performer.text + "\" band");
         }
     }
-
 
     TextMetrics {
         id: textMetrics
@@ -623,6 +684,83 @@ ApplicationWindow {
         anchors.left: explorer.right
         anchors.right: parent.right
         anchors.margins: 5
+
+        Keys.enabled: true
+        Keys.onPressed: {
+            if (event.key === Qt.Key_Space) {
+                ppButton();
+            }
+            else if (event.key === Qt.Key_Left) {
+                internal.kbPositioning = true;
+                if (positioner.value > .025) {
+                    positioner.value -= .025
+                }
+            }
+            else if (event.key === Qt.Key_Right) {
+                internal.kbPositioning = true;
+                if (positioner.value < .975) {
+                    positioner.value += .025;
+                }
+            }
+            else if (event.key === Qt.Key_PageDown) {
+                previousButton(0);
+            }
+            else if (event.key === Qt.Key_PageUp) {
+                nextButton();
+            }
+            else if (event.key === Qt.Key_Tab) {
+                if (internal.restoreKBLastFocused()) {
+                    return;
+                }
+
+                if (explorer.isFocused) {
+                    explorer.isFocused = false;
+                    playlist.isFocused = true;
+                }
+                else {
+                    explorer.isFocused = true;
+                    playlist.isFocused = false;
+                }
+
+                internal.rememberKBLastFocused();
+            }
+            else if (event.key === Qt.Key_Down) {
+                internal.restoreKBLastFocused();
+                if (explorer.isFocused) {
+                    explorer.moveSelectionDown();
+                }
+                else if (playlist.isFocused) {
+                    playlist.moveSelectionDown();
+                }
+            }
+            else if (event.key === Qt.Key_Up) {
+                internal.restoreKBLastFocused();
+                if (explorer.isFocused) {
+                    explorer.moveSelectionUp();
+                }
+                else if (playlist.isFocused) {
+                    playlist.moveSelectionUp();
+                }
+            }
+            else if ((event.key === Qt.Key_Enter) || (event.key === Qt.Key_Return)) {
+                internal.restoreKBLastFocused();
+                if (explorer.isFocused) {
+                    explorer.simulateRightClick();
+                }
+                else if (playlist.isFocused) {
+                    playlist.simulateRightClick();
+                }
+            }
+
+            event.accepted = true;
+        }
+        Keys.onReleased: {
+            if (((event.key === Qt.Key_Left) || (event.key === Qt.Key_Right)) && !event.isAutoRepeat) {
+                internal.kbPositioning = false;
+                positioned(positioner.value);
+            }
+            event.accepted = true;
+        }
 
         Item {
             id: track

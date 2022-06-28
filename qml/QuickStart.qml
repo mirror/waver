@@ -253,6 +253,23 @@ Dialog {
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }
+
+            Label {
+                bottomPadding: 17
+                font.bold: true
+                font.italic: true
+                font.pixelSize: header.font.pixelSize * .85
+                text: qsTr("Keyboard Shortcuts")
+                width: parent.width
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+            }
+            Label {
+                bottomPadding: 31
+                font.pixelSize: header.font.pixelSize * .85
+                text: qsTr("Pause/Play: Space\nSeek: Left/Right Arrow\nPrevious/Next: Page Down/Up\nSwitch Focus: Tab\nMove Selection: Down/Up Arrow\nActions: Enter")
+                width: parent.width
+                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+            }
         }
     }
 }
