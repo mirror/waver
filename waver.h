@@ -181,7 +181,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
 
         void startShuffleCountdown();
         void stopShuffleCountdown();
-        void startShuffleBatch(int srvIndex = -1, int artistId = 0, ShuffleMode mode = None, QString originalAction = "action_play", int shuffleTag = 0);
+        void startShuffleBatch(int srvIndex = -1, int artistId = 0, ShuffleMode mode = None, QString originalAction = "action_play", int shuffleTag = 0, int insertDestinationindex = 0);
 
         void explorerNetworkingUISignals(QString id, bool networking);
 
@@ -201,6 +201,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void explorerItemClicked(QString id, int action, QString extraJSON);
         void playlistItemClicked(int index, int action);
         void playlistItemDragDropped(int index, int destinationIndex);
+        void playlistExplorerItemDragDropped(QString id, QString extraJSON, int destinationIndex);
         void positioned(double percent);
 
         void trackPlayPosition(QString id, bool decoderFinished, long knownDurationMilliseconds, long positionMilliseconds);

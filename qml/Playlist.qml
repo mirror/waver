@@ -17,6 +17,7 @@ Item {
 
     signal itemClicked(int index, int action);
     signal itemDragDropped(int index, int destinationIndex)
+    signal explorerItemDragDroped(string id, int destinationIndex)
 
     function addItem(title, artist, group, image, selected)
     {
@@ -286,11 +287,24 @@ Item {
             DropArea {
                 anchors.fill: parent
                 onEntered: {
-                    if (internal.dropTempIndex !== index) {
-                        var tmp = index;
-                        playlistItems.move(internal.dropTargetIndex, index, 1);
-                        internal.dropTargetIndex = tmp;
-                        playlistItemsView.positionViewAtIndex(tmp > index ? tmp + 1 : tmp - 1, ListView.Visible);
+                    if (drag.keys.length) {
+                        return;
+                    }
+
+                    var tmp = index;
+                    playlistItems.move(internal.dropTargetIndex, index, 1);
+                    internal.dropTargetIndex = tmp;
+                    playlistItemsView.positionViewAtIndex(tmp > index ? tmp + 1 : tmp - 1, ListView.Visible);
+                }
+                onDropped: {
+                    if (!drop.keys.length) {
+                        // re-ordering playlist item is handled in onReleased event of MouseArea
+                        return;
+                    }
+
+                    if ((drop.keys[0] === "Explorer") && (drop.keys.length > 1)) {
+                        playlistItemsView.currentIndex = index;
+                        explorerItemDragDroped(drop.keys[1], index);
                     }
                 }
             }

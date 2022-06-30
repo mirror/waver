@@ -107,6 +107,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(uiMainWindow, SIGNAL(explorerItemClicked(QString,int,QString)), waver, SLOT(explorerItemClicked(QString,int,QString)));
     QObject::connect(uiMainWindow, SIGNAL(playlistItemClicked(int,int)), waver, SLOT(playlistItemClicked(int,int)));
     QObject::connect(uiMainWindow, SIGNAL(playlistItemDragDropped(int,int)), waver, SLOT(playlistItemDragDropped(int,int)));
+    QObject::connect(uiMainWindow, SIGNAL(playlistExplorerItemDragDropped(QString,QString,int)), waver, SLOT(playlistExplorerItemDragDropped(QString,QString,int)));
     QObject::connect(uiMainWindow, SIGNAL(positioned(double)), waver, SLOT(positioned(double)));
 
     QObject::connect(uiMainWindow, SIGNAL(previousButton(int)), waver, SLOT(previousButton(int)));

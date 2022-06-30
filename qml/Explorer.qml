@@ -7,12 +7,13 @@ import QtQuick.Layouts 1.3
 
 
 Item {
+    id: explorerRoot
+
     property bool  borderVisible: true
     property bool  isFocused: false
     property color borderColor: "#666666"
     property color focusBorderColor: ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? Universal.accent : Material.accent;
     property int   imageSize: 24
-
 
     signal itemClicked(string id, int action, var extra);
 
@@ -67,6 +68,17 @@ Item {
         if (index >= 0) {
             explorerItems.get(index).queueable = false;
         }
+    }
+
+
+    function getExtra(id)
+    {
+        var index = internal.findItem(id);
+        if (index < 0) {
+            return;
+        }
+
+        return explorerItems.get(index).extra;
     }
 
 
@@ -406,8 +418,6 @@ Item {
 
         ScrollBar.vertical: ScrollBar {
         }
-
-        // TODO add drag-and-drop functionality ie. from explorer into playlist qeueue
     }
 
     Rectangle {
@@ -425,107 +435,179 @@ Item {
     Component {
         id: explorerElement
 
-        Item {
-            height: imageSize + (imageSize / 12)
-            width: parent.width
+        MouseArea {
+            id: explorerElementMouseArea
 
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.LeftButton | Qt.RightButton
+            property bool held: false
 
-                onClicked: {
-                    explorerItemsView.currentIndex = index;
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: explorerElementItem.height
 
-                    if (mouse.button == Qt.LeftButton) {
-                        if (expandable) {
-                            if (internal.hasChildren(id)) {
-                                itemClicked(id, globalConstants.action_collapse, extra);
-                            }
-                            else {
-                                if (level >= 2) {
-                                    var toBeCollapsed = [];
-                                    for (var i = 0; i < explorerItems.count; i++) {
-                                        if (explorerItems.get(i).level === level) {
-                                            toBeCollapsed.push({ id: explorerItems.get(i).id, extra: explorerItems.get(i).extra });
-                                        }
-                                    }
-                                    for (var j = 0; j < toBeCollapsed.length; j++) {
-                                        itemClicked(toBeCollapsed[j].id, globalConstants.action_collapse, toBeCollapsed[j].extra);
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+            drag.axis: Drag.XandYAxis
+            drag.target: dragger.visible ? dragger : undefined
+
+            onClicked: {
+                explorerItemsView.currentIndex = index;
+
+                if (mouse.button == Qt.LeftButton) {
+                    if (expandable) {
+                        if (internal.hasChildren(id)) {
+                            itemClicked(id, globalConstants.action_collapse, extra);
+                        }
+                        else {
+                            if (level >= 2) {
+                                var toBeCollapsed = [];
+                                for (var i = 0; i < explorerItems.count; i++) {
+                                    if (explorerItems.get(i).level === level) {
+                                        toBeCollapsed.push({ id: explorerItems.get(i).id, extra: explorerItems.get(i).extra });
                                     }
                                 }
-                                itemClicked(id, globalConstants.action_expand, extra);
+                                for (var j = 0; j < toBeCollapsed.length; j++) {
+                                    itemClicked(toBeCollapsed[j].id, globalConstants.action_collapse, toBeCollapsed[j].extra);
+                                }
                             }
-                        }
-                        else if (id.startsWith("F") || id.startsWith("f") || id.startsWith("[") || id.startsWith("]") || id.startsWith("M")) {
-                            itemClicked(id, globalConstants.action_noop, extra);
+                            itemClicked(id, globalConstants.action_expand, extra);
                         }
                     }
-                    else if (mouse.button == Qt.RightButton) {
-                        explorerMenu.x = mouse.x
-                        explorerMenu.y = explorerItemsView.currentItem.y
-                        explorerMenu.open(busyIndicator);
+                    else if (id.startsWith("F") || id.startsWith("f") || id.startsWith("[") || id.startsWith("]") || id.startsWith("M")) {
+                        itemClicked(id, globalConstants.action_noop, extra);
                     }
                 }
-
-                onDoubleClicked: {
-                    explorerItemsView.currentIndex = index;
-
-                    if (playable) {
-                        itemClicked(id, globalConstants.action_play, extra);
-                    }
+                else if (mouse.button == Qt.RightButton) {
+                    explorerMenu.x = mouse.x
+                    explorerMenu.y = explorerItemsView.currentItem.y
+                    explorerMenu.open(busyIndicator);
                 }
             }
 
-            Image {
-                id: itemImage
+            onDoubleClicked: {
+                explorerItemsView.currentIndex = index;
 
-                anchors.left: parent.left
-                anchors.leftMargin: level * (imageSize / 3) + 5
-                anchors.verticalCenter: parent.verticalCenter
-
-                height: imageSize
-                width: (image === null) || (image.length === 0) ? 0 : imageSize
-
-                source: image
+                if (playable) {
+                    itemClicked(id, globalConstants.action_play, extra);
+                }
             }
 
-            BusyIndicator {
-                id: busyIndicator
-
-                anchors.left: itemImage.right
-                anchors.verticalCenter: parent.verticalCenter
-
-                width: visible ? imageSize : 0
-                height: imageSize
-
-                visible: busy
+            onPressAndHold: {
+                if (playable && queueable) {
+                    explorerItemsView.interactive = false
+                    explorerItemsView.currentIndex = index
+                    var coordinates = mapToItem(explorerRoot.parent, 20, mouseY);
+                    dragger.x = coordinates.x;
+                    dragger.y = coordinates.y;
+                    held = true;
+                }
             }
 
-            Label {
-                id: titleLabel
+            onReleased: {
+                if (held) {
+                    dragger.Drag.drop();
+                    held = false;
 
-                anchors.left: busyIndicator.right
-                anchors.leftMargin: 5
-                anchors.right: parent.right
-                anchors.rightMargin: 2
-                anchors.verticalCenter: parent.verticalCenter
-
-                color: internal.getLabelColor(isError);
-                elide: "ElideMiddle"
-                font.pixelSize: imageSize <= 16 ? originalFontSize.font.pixelSize * 0.8 : originalFontSize.font.pixelSize
-                text: (selectable && selected ? "\u2713 " : "") + title
+                    explorerItemsView.interactive = true
+                }
             }
 
-            ToolTip {
-                delay: 500
-                text: isError ? errorMessage : title
-                visible: hoverHandler.hovered && (isError || titleLabel.truncated)
-                y: hoverHandler.point.position.y + imageSize
-                x: hoverHandler.point.position.x
-            }
+            Item {
+                id: explorerElementItem
 
-            HoverHandler {
-                id: hoverHandler
+                height: imageSize + (imageSize / 12)
+                width: parent.width
+
+                Rectangle {
+                    id: dragger
+
+                    x: 0
+                    y: 0
+                    height: imageSize + (imageSize / 12)
+                    width: 360
+                    color: ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? Universal.accent : Material.accent;
+                    visible: explorerElementMouseArea.held
+
+                    Drag.active: visible
+                    Drag.hotSpot.x: width / 2
+                    Drag.hotSpot.y: height / 2
+                    Drag.source: explorerElementMouseArea
+                    Drag.keys: {
+                        var explorerItem = explorerItems.get(index);
+                        if (explorerItem) {
+                            return [ "Explorer", explorerItem.id ]
+                        }
+                        return [];
+                    }
+
+                    states: State {
+                        when: visible
+
+                        ParentChange {
+                            target: dragger;
+                            parent: explorerRoot.parent;
+                        }
+                    }
+
+                    Label {
+                        anchors.centerIn: parent
+
+                        elide: "ElideMiddle"
+                        font.pixelSize: imageSize <= 16 ? originalFontSize.font.pixelSize * 0.8 : originalFontSize.font.pixelSize
+                        text: title
+                    }
+                }
+
+                Image {
+                    id: itemImage
+
+                    anchors.left: parent.left
+                    anchors.leftMargin: level * (imageSize / 3) + 5
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    height: imageSize
+                    width: (image === null) || (image.length === 0) ? 0 : imageSize
+
+                    source: image
+                }
+
+                BusyIndicator {
+                    id: busyIndicator
+
+                    anchors.left: itemImage.right
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    width: visible ? imageSize : 0
+                    height: imageSize
+
+                    visible: busy
+                }
+
+                Label {
+                    id: titleLabel
+
+                    anchors.left: busyIndicator.right
+                    anchors.leftMargin: 5
+                    anchors.right: parent.right
+                    anchors.rightMargin: 2
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    color: internal.getLabelColor(isError);
+                    elide: "ElideMiddle"
+                    font.pixelSize: imageSize <= 16 ? originalFontSize.font.pixelSize * 0.8 : originalFontSize.font.pixelSize
+                    text: (selectable && selected ? "\u2713 " : "") + title
+                }
+
+                ToolTip {
+                    delay: 500
+                    text: isError ? errorMessage : title
+                    visible: hoverHandler.hovered && !explorerElementMouseArea.held && (isError || titleLabel.truncated)
+                    y: hoverHandler.point.position.y + imageSize
+                    x: hoverHandler.point.position.x
+                }
+
+                HoverHandler {
+                    id: hoverHandler
+                }
             }
         }
     }

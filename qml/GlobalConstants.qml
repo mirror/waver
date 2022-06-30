@@ -8,10 +8,11 @@ Item {
     readonly property int action_move_to_top : 5
     readonly property int action_play        : 6
     readonly property int action_playnext    : 7
-    readonly property int action_refresh     : 8
-    readonly property int action_remove      : 9
-    readonly property int action_select      : 10
-    readonly property int action_select_group: 11
-    readonly property int action_select_all  : 12
-    readonly property int action_deselect_all: 13
+    readonly property int action_insert      : 8
+    readonly property int action_refresh     : 9
+    readonly property int action_remove      : 10
+    readonly property int action_select      : 11
+    readonly property int action_select_group: 12
+    readonly property int action_select_all  : 13
+    readonly property int action_deselect_all: 14
 }

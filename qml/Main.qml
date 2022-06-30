@@ -21,6 +21,7 @@ ApplicationWindow {
     signal explorerChildrenExtra(string childrenExtraJSON);
     signal playlistItemClicked(int index, int action);
     signal playlistItemDragDropped(int index, int destinationIndex);
+    signal playlistExplorerItemDragDropped(string id, string extra, int destinationIndex);
     signal positioned(double percent);
     signal saveGeometry(int x, int y, int width, int height);
     signal previousButton(int index);
@@ -984,6 +985,10 @@ ApplicationWindow {
 
             onItemClicked: playlistItemClicked(index, action)
             onItemDragDropped: playlistItemDragDropped(index, destinationIndex)
+            onExplorerItemDragDroped: {
+                var extra = explorer.getExtra(id);
+                playlistExplorerItemDragDropped(id, JSON.stringify(extra), destinationIndex);
+            }
         }
 
         Rectangle {

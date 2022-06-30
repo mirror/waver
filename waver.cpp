@@ -749,12 +749,22 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         return;
     }
 
-    if ((action == globalConstant("action_playnext")) || (action == globalConstant("action_enqueue"))) {
+    if ((action == globalConstant("action_playnext")) || (action == globalConstant("action_enqueue")) || (action == globalConstant("action_insert"))) {
+        QString actionStr =
+                action == globalConstant("action_playnext") ? "action_playnext" :
+                action == globalConstant("action_enqueue")  ? "action_enqueue"  :
+                                                              "action_insert";
+        bool OK = false;
+        int destinationIndex = extra.value("destination_index", 0).toInt(&OK);
+        if (!OK || (destinationIndex < 0) || (destinationIndex >= playlist.count())) {
+            destinationIndex = 0;
+        }
+
         if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST)) {
             bool OK = false;
             int  artistId = QString(idParts.first()).remove(0, 1).toInt(&OK);
             if (OK) {
-                startShuffleBatch(srvIndex, artistId, None, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
+                startShuffleBatch(srvIndex, artistId, None, actionStr, 0, destinationIndex);
             }
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM)) {
@@ -762,10 +772,13 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             emit playlistBigBusy(true);
 
             QObject *opExtra = new QObject();
-            opExtra->setProperty("original_action", action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
+            opExtra->setProperty("original_action", actionStr);
             opExtra->setProperty("group", extra.value("group").toString());
             if (extra.contains("from_search")) {
                 opExtra->setProperty("from_search", extra.value("from_search").toString());
+            }
+            if (destinationIndex > 0) {
+                opExtra->setProperty("destination_index", QString("%1").arg(destinationIndex));
             }
 
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }}, opExtra);
@@ -777,8 +790,11 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             if (action == globalConstant("action_enqueue")) {
                 playlist.append(track);
             }
-            else {
+            else if (action == globalConstant("action_enqueue")) {
                 playlist.prepend(track);
+            }
+            else if (action == globalConstant("action_insert")) {
+                playlist.insert(destinationIndex, track);
             }
 
             playlistUpdateUISignals();
@@ -789,31 +805,34 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             emit playlistBigBusy(true);
 
             QObject *opExtra = new QObject();
-            opExtra->setProperty("original_action", action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
+            opExtra->setProperty("original_action", actionStr);
             opExtra->setProperty("group", extra.value("group").toString());
             if (extra.contains("from_search")) {
                 opExtra->setProperty("from_search", extra.value("from_search").toString());
+            }
+            if (destinationIndex > 0) {
+                opExtra->setProperty("destination_index", QString("%1").arg(destinationIndex));
             }
 
             servers.at(srvIndex)->startOperation(AmpacheServer::PlaylistSongs, {{ "playlist", QString(idParts.first()).remove(0, 1) }}, opExtra);
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE)) {
-            startShuffleBatch(srvIndex, 0, None, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
+            startShuffleBatch(srvIndex, 0, None, actionStr, 0, destinationIndex);
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES)) {
-            startShuffleBatch(srvIndex, 0, Favorite, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
+            startShuffleBatch(srvIndex, 0, Favorite, actionStr, 0, destinationIndex);
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED)) {
-            startShuffleBatch(srvIndex, 0, NeverPlayed, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
+            startShuffleBatch(srvIndex, 0, NeverPlayed, actionStr, 0, destinationIndex);
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED)) {
-            startShuffleBatch(srvIndex, 0, RecentlyAdded, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue");
+            startShuffleBatch(srvIndex, 0, RecentlyAdded, actionStr, 0, destinationIndex);
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLETAG)) {
             bool OK = false;
             int  tagId = QString(idParts.first()).remove(0, 1).toInt(&OK);
             if (OK) {
-                startShuffleBatch(srvIndex, 0, None, action == globalConstant("action_playnext") ? "action_playnext" : "action_enqueue", tagId);
+                startShuffleBatch(srvIndex, 0, None, actionStr, tagId, destinationIndex);
             }
         }
         return;
@@ -1143,6 +1162,19 @@ void Waver::playlistItemDragDropped(int index, int destinationIndex)
 }
 
 
+void Waver::playlistExplorerItemDragDropped(QString id, QString extraJSON, int destinationIndex)
+{
+    bool OK = false;
+    int actionInsert = globalConstant("action_insert").toInt(&OK);
+
+    if (OK) {
+        QVariantMap extra = QJsonDocument::fromJson(extraJSON.toUtf8()).toVariant().toMap();
+        extra.insert("destination_index", destinationIndex);
+        itemActionServerItem(id, actionInsert, extra);
+    }
+}
+
+
 void Waver::playlistUpdateUISignals()
 {
     qint64 totalMilliSeconds = 0;
@@ -1427,6 +1459,12 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     QString group          = opData.contains("group")           ? opData.value("group")           : "";
     QUuid   groupId        = QUuid::createUuid();
 
+    bool OK = false;
+    int destinationIndex = opData.value("destination_index", 0).toInt(&OK);
+    if (!OK || (destinationIndex < 0) || (destinationIndex >= playlist.count())) {
+        destinationIndex = 0;
+    }
+
     bool allTheSameArtist = true;
     if (opResults.size() > 1) {
         QString allTheSameArtistName = opResults.at(0).value("artist", "");
@@ -1548,7 +1586,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                 trackInfoMap.insert(key, result.value(key));
             }
 
-            if ((originalAction.compare("action_play") == 0) || (originalAction.compare("action_playnext") == 0) || (originalAction.compare("action_enqueue") == 0)) {
+            if ((originalAction.compare("action_play") == 0) || (originalAction.compare("action_playnext") == 0) || (originalAction.compare("action_enqueue") == 0) || (originalAction.compare("action_insert") == 0)) {
                 Track::TrackInfo trackInfo = trackInfoFromIdExtra(newId, trackInfoMap);
                 trackInfo.attributes.insert("group_id", groupId.toString());
                 trackInfo.attributes.insert("group", QString("%1 %2.").arg(group).arg(i + 1));
@@ -1563,6 +1601,9 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
 
                     if (originalAction.compare("action_enqueue") == 0) {
                         playlist.append(track);
+                    }
+                    else if (originalAction.compare("action_insert") == 0) {
+                        playlist.insert(destinationIndex + i, track);
                     }
                     else {
                         playlist.insert(originalAction.compare("action_play") == 0 ? i - 1 : i, track);
@@ -1596,7 +1637,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                 trackInfoMap.insert(key, result.value(key));
             }
 
-            if ((originalAction.compare("action_play") == 0) || (originalAction.compare("action_playnext") == 0) || (originalAction.compare("action_enqueue") == 0)) {
+            if ((originalAction.compare("action_play") == 0) || (originalAction.compare("action_playnext") == 0) || (originalAction.compare("action_enqueue") == 0) || (originalAction.compare("action_insert") == 0)) {
                 Track::TrackInfo trackInfo = trackInfoFromIdExtra(newId, trackInfoMap);
 
                 if (opCode == AmpacheServer::PlaylistSongs) {
@@ -1614,6 +1655,9 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
 
                     if (originalAction.compare("action_enqueue") == 0) {
                         playlist.append(track);
+                    }
+                    else if (originalAction.compare("action_insert") == 0) {
+                        playlist.insert(destinationIndex + i, track);
                     }
                     else {
                         playlist.insert(originalAction.compare("action_play") == 0 ? i - 1 : i, track);
@@ -1707,7 +1751,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     else if (opCode == AmpacheServer::BrowseAlbum) {
         explorerNetworkingUISignals(parentId, false);
 
-        if ((originalAction.compare("action_play") == 0) || (originalAction.compare("action_playnext") == 0) || (originalAction.compare("action_enqueue") == 0)) {
+        if ((originalAction.compare("action_play") == 0) || (originalAction.compare("action_playnext") == 0) || (originalAction.compare("action_enqueue") == 0) || (originalAction.compare("action_insert") == 0)) {
             playlistUpdateUISignals();
             playlistFirstGroupSave();
         }
@@ -1727,7 +1771,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     else if ((opCode == AmpacheServer::PlaylistSongs) || (opCode == AmpacheServer::Shuffle)) {
         explorerNetworkingUISignals(parentId, false);
 
-        if ((originalAction.compare("action_play") == 0) || (originalAction.compare("action_playnext") == 0) || (originalAction.compare("action_enqueue") == 0)) {
+        if ((originalAction.compare("action_play") == 0) || (originalAction.compare("action_playnext") == 0) || (originalAction.compare("action_enqueue") == 0) || (originalAction.compare("action_insert") == 0)) {
             playlistUpdateUISignals();
             playlistFirstGroupSave();
         }
@@ -1900,7 +1944,7 @@ void Waver::startNextTrackUISignals()
 }
 
 
-void Waver::startShuffleBatch(int srvIndex, int artistId, ShuffleMode mode, QString originalAction, int shuffleTag)
+void Waver::startShuffleBatch(int srvIndex, int artistId, ShuffleMode mode, QString originalAction, int shuffleTag, int insertDestinationindex)
 {
     if (srvIndex < 0) {
         srvIndex = shuffleServerIndex;
@@ -1938,12 +1982,15 @@ void Waver::startShuffleBatch(int srvIndex, int artistId, ShuffleMode mode, QStr
         opData.insert("shuffle_tag", QString("%1").arg(shuffleTag));
     }
 
-    if (!QStringList({"action_play", "action_playnext", "action_enqueue"}).contains(originalAction)) {
+    if (!QStringList({"action_play", "action_playnext", "action_enqueue", "action_insert"}).contains(originalAction)) {
         originalAction = "action_play";
     }
 
     QObject *opExtra = new QObject();
     opExtra->setProperty("original_action", originalAction);
+    if (insertDestinationindex > 0) {
+        opExtra->setProperty("destination_index", QString("%1").arg(insertDestinationindex));
+    }
 
     servers.at(srvIndex)->startOperation(AmpacheServer::Shuffle, opData, opExtra);
 }
