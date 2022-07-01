@@ -187,7 +187,7 @@ Dialog {
             Label {
                 bottomPadding: 17
                 font.pixelSize: header.font.pixelSize * .85
-                text: qsTr("Use the tree view on the left side to explore and play content. Double-click on an artist, an album, a track, a playlist, a smart playlist, or (if your Ampache server supports it) a radio station, to play it immediately. Right-click to access more options like Play Next and Enqueue.")
+                text: qsTr("Use the tree view on the left side to explore and play content. Double-click on an artist, an album, a track, a playlist, a smart playlist, or (if your Ampache server supports it) a radio station, to play it immediately. Right-click to access more options like Play Next and Enqueue. You can also drag and drop these items on another item in the playlist (see below) to insert them to a specific position.")
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }

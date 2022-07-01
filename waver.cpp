@@ -523,16 +523,16 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         return;
     }
 
-    QSettings settings;
+    QSettings         settings;
+    QRandomGenerator *randomGenerator = QRandomGenerator::global();
 
     if (action == globalConstant("action_expand")) {
         if ((id.startsWith(UI_ID_PREFIX_SERVER_BROWSE) || id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALPHABET))) {
             QString browseCacheKey = QString("%1/browse").arg(servers.at(srvIndex)->getSettingsId().toString());
 
             if (settings.contains(QString("%1/1/id").arg(browseCacheKey))) {
-                QRandomGenerator *randomGenerator = QRandomGenerator::global();
-                QChar             currentChar;
-                QString           added;
+                QChar   currentChar;
+                QString added;
 
                 int browseSize = settings.beginReadArray(browseCacheKey);
                 for (int i = 0; i < browseSize; i++) {
@@ -802,7 +802,6 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
                     playlist.append(track);
                 }
                 else {
-                    QRandomGenerator *randomGenerator = QRandomGenerator::global();
                     playlist.insert(randomGenerator->bounded(playlist.size()), track);
                 }
             }
@@ -1486,6 +1485,8 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         }
     }
 
+    QRandomGenerator *randomGenerator = QRandomGenerator::global();
+
     if (opResults.count() <= 0) {
         if (opData.contains("count_flagged")) {
             if (servers.at(srvIndex)->getServerVersion() == 5000000) {
@@ -1626,7 +1627,6 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                             playlist.append(track);
                         }
                         else {
-                            QRandomGenerator *randomGenerator = QRandomGenerator::global();
                             playlist.insert(randomGenerator->bounded(playlist.size()), track);
                         }
                     }
@@ -1695,7 +1695,6 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                             playlist.append(track);
                         }
                         else {
-                            QRandomGenerator *randomGenerator = QRandomGenerator::global();
                             playlist.insert(randomGenerator->bounded(playlist.size()), track);
                         }
                     }
