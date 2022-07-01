@@ -387,7 +387,17 @@ Item {
             onTriggered: itemClicked(explorerItems.get(explorerItemsView.currentIndex).id, globalConstants.action_enqueue, explorerItems.get(explorerItemsView.currentIndex).extra);
             text: qsTr("Enqueue")
         }
-        // TODO Scatter - add each song in random position
+        MenuItem {
+            id: playShuffledExplorerMenu
+
+            enabled: explorerItemsView.currentIndex < 0 ? false : !explorerItems.get(explorerItemsView.currentIndex).busy && explorerItems.get(explorerItemsView.currentIndex).playable && explorerItems.get(explorerItemsView.currentIndex).queueable
+            icon.source: "qrc:///icons/shuffle.ico"
+            icon.height: 24
+            icon.width: 24
+
+            onTriggered: itemClicked(explorerItems.get(explorerItemsView.currentIndex).id, globalConstants.action_enqueueshuffled, explorerItems.get(explorerItemsView.currentIndex).extra);
+            text: qsTr("Shuffle")
+        }
         MenuSeparator { }
         MenuItem {
             id: selectExplorerMenu

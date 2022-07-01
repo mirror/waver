@@ -749,11 +749,12 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         return;
     }
 
-    if ((action == globalConstant("action_playnext")) || (action == globalConstant("action_enqueue")) || (action == globalConstant("action_insert"))) {
+    if ((action == globalConstant("action_playnext")) || (action == globalConstant("action_enqueue")) || (action == globalConstant("action_insert")) || (action == globalConstant("action_enqueueshuffled"))) {
         QString actionStr =
                 action == globalConstant("action_playnext") ? "action_playnext" :
                 action == globalConstant("action_enqueue")  ? "action_enqueue"  :
-                                                              "action_insert";
+                action == globalConstant("action_insert")   ? "action_insert"   :
+                                                              "action_enqueueshuffled";
         bool OK = false;
         int destinationIndex = extra.value("destination_index", 0).toInt(&OK);
         if (!OK || (destinationIndex < 0) || (destinationIndex >= playlist.count())) {
@@ -795,6 +796,15 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             }
             else if (action == globalConstant("action_insert")) {
                 playlist.insert(destinationIndex, track);
+            }
+            else if (action == globalConstant("action_enqueueshuffled")) {
+                if (playlist.size() < 1) {
+                    playlist.append(track);
+                }
+                else {
+                    QRandomGenerator *randomGenerator = QRandomGenerator::global();
+                    playlist.insert(randomGenerator->bounded(playlist.size()), track);
+                }
             }
 
             playlistUpdateUISignals();
@@ -1586,7 +1596,13 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                 trackInfoMap.insert(key, result.value(key));
             }
 
-            if ((originalAction.compare("action_play") == 0) || (originalAction.compare("action_playnext") == 0) || (originalAction.compare("action_enqueue") == 0) || (originalAction.compare("action_insert") == 0)) {
+            if (
+                    (originalAction.compare("action_play") == 0)          ||
+                    (originalAction.compare("action_playnext") == 0)      ||
+                    (originalAction.compare("action_enqueue") == 0)       ||
+                    (originalAction.compare("action_insert") == 0)        ||
+                    (originalAction.compare("action_enqueueshuffled") == 0)
+               ) {
                 Track::TrackInfo trackInfo = trackInfoFromIdExtra(newId, trackInfoMap);
                 trackInfo.attributes.insert("group_id", groupId.toString());
                 trackInfo.attributes.insert("group", QString("%1 %2.").arg(group).arg(i + 1));
@@ -1604,6 +1620,15 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                     }
                     else if (originalAction.compare("action_insert") == 0) {
                         playlist.insert(destinationIndex + i, track);
+                    }
+                    else if (originalAction.compare("action_enqueueshuffled") == 0) {
+                        if (playlist.size() < 1) {
+                            playlist.append(track);
+                        }
+                        else {
+                            QRandomGenerator *randomGenerator = QRandomGenerator::global();
+                            playlist.insert(randomGenerator->bounded(playlist.size()), track);
+                        }
                     }
                     else {
                         playlist.insert(originalAction.compare("action_play") == 0 ? i - 1 : i, track);
@@ -1637,7 +1662,13 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                 trackInfoMap.insert(key, result.value(key));
             }
 
-            if ((originalAction.compare("action_play") == 0) || (originalAction.compare("action_playnext") == 0) || (originalAction.compare("action_enqueue") == 0) || (originalAction.compare("action_insert") == 0)) {
+            if (
+                    (originalAction.compare("action_play") == 0)          ||
+                    (originalAction.compare("action_playnext") == 0)      ||
+                    (originalAction.compare("action_enqueue") == 0)       ||
+                    (originalAction.compare("action_insert") == 0)        ||
+                    (originalAction.compare("action_enqueueshuffled") == 0)
+               ) {
                 Track::TrackInfo trackInfo = trackInfoFromIdExtra(newId, trackInfoMap);
 
                 if (opCode == AmpacheServer::PlaylistSongs) {
@@ -1658,6 +1689,15 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                     }
                     else if (originalAction.compare("action_insert") == 0) {
                         playlist.insert(destinationIndex + i, track);
+                    }
+                    else if (originalAction.compare("action_enqueueshuffled") == 0) {
+                        if (playlist.size() < 1) {
+                            playlist.append(track);
+                        }
+                        else {
+                            QRandomGenerator *randomGenerator = QRandomGenerator::global();
+                            playlist.insert(randomGenerator->bounded(playlist.size()), track);
+                        }
                     }
                     else {
                         playlist.insert(originalAction.compare("action_play") == 0 ? i - 1 : i, track);
@@ -1751,7 +1791,13 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     else if (opCode == AmpacheServer::BrowseAlbum) {
         explorerNetworkingUISignals(parentId, false);
 
-        if ((originalAction.compare("action_play") == 0) || (originalAction.compare("action_playnext") == 0) || (originalAction.compare("action_enqueue") == 0) || (originalAction.compare("action_insert") == 0)) {
+        if (
+                (originalAction.compare("action_play") == 0)          ||
+                (originalAction.compare("action_playnext") == 0)      ||
+                (originalAction.compare("action_enqueue") == 0)       ||
+                (originalAction.compare("action_insert") == 0)        ||
+                (originalAction.compare("action_enqueueshuffled") == 0)
+           ) {
             playlistUpdateUISignals();
             playlistFirstGroupSave();
         }
@@ -1771,7 +1817,13 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     else if ((opCode == AmpacheServer::PlaylistSongs) || (opCode == AmpacheServer::Shuffle)) {
         explorerNetworkingUISignals(parentId, false);
 
-        if ((originalAction.compare("action_play") == 0) || (originalAction.compare("action_playnext") == 0) || (originalAction.compare("action_enqueue") == 0) || (originalAction.compare("action_insert") == 0)) {
+        if (
+                (originalAction.compare("action_play") == 0)          ||
+                (originalAction.compare("action_playnext") == 0)      ||
+                (originalAction.compare("action_enqueue") == 0)       ||
+                (originalAction.compare("action_insert") == 0)        ||
+                (originalAction.compare("action_enqueueshuffled") == 0)
+           ) {
             playlistUpdateUISignals();
             playlistFirstGroupSave();
         }
@@ -1982,7 +2034,7 @@ void Waver::startShuffleBatch(int srvIndex, int artistId, ShuffleMode mode, QStr
         opData.insert("shuffle_tag", QString("%1").arg(shuffleTag));
     }
 
-    if (!QStringList({"action_play", "action_playnext", "action_enqueue", "action_insert"}).contains(originalAction)) {
+    if (!QStringList({"action_play", "action_playnext", "action_enqueue", "action_insert", "action_enqueueshuffled"}).contains(originalAction)) {
         originalAction = "action_play";
     }
 
