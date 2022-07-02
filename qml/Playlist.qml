@@ -254,11 +254,24 @@ Item {
             drag.target: held ? playlistElementItem : undefined
 
             onClicked: {
+                var prevIndex = playlistItemsView.currentIndex;
                 playlistItemsView.currentIndex = index;
 
                 if (mouse.button == Qt.LeftButton) {
                     if ((mouse.x >= selectedImage.x) && (mouse.x <= selectedImage.x + selectedImage.width)) {
-                        itemClicked(index, globalConstants.action_select);
+                        if (mouse.modifiers == Qt.ShiftModifier) {
+                            var clickedSelected = playlistItems.get(index).selected;
+                            var increment = index > prevIndex ? -1 : 1;
+
+                            var i = index;
+                            while ((i >= 0) && (i < playlistItems.count) && (i !== (prevIndex + increment)) && (playlistItems.get(i).selected === clickedSelected)) {
+                                itemClicked(i, globalConstants.action_select);
+                                i += increment;
+                            }
+                        }
+                        else {
+                            itemClicked(index, globalConstants.action_select);
+                        }
                     }
                 }
                 else if (mouse.button == Qt.RightButton) {
