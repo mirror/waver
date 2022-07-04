@@ -791,7 +791,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             if (action == globalConstant("action_enqueue")) {
                 playlist.append(track);
             }
-            else if (action == globalConstant("action_enqueue")) {
+            else if (action == globalConstant("action_playnext")) {
                 playlist.prepend(track);
             }
             else if (action == globalConstant("action_insert")) {
@@ -1598,10 +1598,10 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
             }
 
             if (
-                    (originalAction.compare("action_play") == 0)          ||
-                    (originalAction.compare("action_playnext") == 0)      ||
-                    (originalAction.compare("action_enqueue") == 0)       ||
-                    (originalAction.compare("action_insert") == 0)        ||
+                    (originalAction.compare("action_play") == 0)            ||
+                    (originalAction.compare("action_playnext") == 0)        ||
+                    (originalAction.compare("action_enqueue") == 0)         ||
+                    (originalAction.compare("action_insert") == 0)          ||
                     (originalAction.compare("action_enqueueshuffled") == 0)
                ) {
                 Track::TrackInfo trackInfo = trackInfoFromIdExtra(newId, trackInfoMap);
