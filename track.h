@@ -85,6 +85,7 @@ class Track : public QObject, RadioTitleCallback
         bool            getNetworkStartingLastState();
 
         void optionsUpdated();
+        void requestDecodingCallback();
 
         void radioTitleCallback(QString title);
 

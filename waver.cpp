@@ -1203,6 +1203,8 @@ void Waver::playlistUpdateUISignals()
         else {
             totalIsEstimate = true;
         }
+
+        track->requestDecodingCallback();
     }
 
     if (totalMilliSeconds <= 0) {

@@ -331,6 +331,17 @@ void Track::decoderError(QString info, QString errorMessage)
 }
 
 
+void Track::requestDecodingCallback()
+{
+    double dlp = decoder->downloadPercent();
+    double dcp = decodedPercent();
+
+    if ((dlp > 0) || (dcp > 0)) {
+        (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(dlp, dcp, this);
+    }
+}
+
+
 void Track::decoderFinished()
 {
     decodingDone = true;
