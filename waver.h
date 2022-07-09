@@ -108,6 +108,8 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED;
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED;
 
+        static const qint64 STARTING_INDEX_MILLISECONDS = 14 * 24 * 60 * 60 * 1000;
+
         enum ShuffleMode {
             None,
             Favorite,
@@ -187,6 +189,9 @@ class Waver : public QObject, PeakCallback, DecodingCallback
 
         void playlistFirstGroupSave();
         int  playlistFirstGroupLoad();
+
+        bool    playlistAttributeSave(AmpacheServer *server, QString playlistId, QString attribute, QString value);
+        QString playlistAttributeLoad(AmpacheServer *server, QString playlistId, QString attribute);
 
         void searchCaches(int srvIndex, QString criteria);
 

@@ -4,6 +4,7 @@ import QtQuick 2.12
 Item {
     property bool  borderVisible: true
     property color borderColor: "#666666"
+    property color replayGainColor: "#AAAAAA"
 
     function setPeak(l, r)
     {
@@ -94,7 +95,7 @@ Item {
     }
 
     Rectangle {
-        color: borderColor
+        color: replayGainColor
         anchors.verticalCenter: parent.verticalCenter
         height: 3
         width: 3

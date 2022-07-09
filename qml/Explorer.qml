@@ -388,15 +388,15 @@ Item {
             text: qsTr("Enqueue")
         }
         MenuItem {
-            id: playShuffledExplorerMenu
+            id: enqueueShuffledExplorerMenu
 
             enabled: explorerItemsView.currentIndex < 0 ? false : !explorerItems.get(explorerItemsView.currentIndex).busy && explorerItems.get(explorerItemsView.currentIndex).playable && explorerItems.get(explorerItemsView.currentIndex).queueable
-            icon.source: "qrc:///icons/shuffle.ico"
+            icon.source: "qrc:///icons/enqueue_shuffled.ico"
             icon.height: 24
             icon.width: 24
 
             onTriggered: itemClicked(explorerItems.get(explorerItemsView.currentIndex).id, globalConstants.action_enqueueshuffled, explorerItems.get(explorerItemsView.currentIndex).extra);
-            text: qsTr("Shuffle")
+            text: qsTr("Randomize")
         }
         MenuSeparator { }
         MenuItem {
