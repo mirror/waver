@@ -19,7 +19,10 @@ static const int     DEFAULT_SHUFFLE_DELAY_SECONDS      = 10;
 static const int     DEFAULT_SHUFFLE_FAVORITE_FREQUENCY = 4;
 static const bool    DEFAULT_SHUFFLE_AUTOSTART          = true;
 
-static const bool    DEFAULT_HIDE_DOT_PLAYLIST = true;
+static const bool    DEFAULT_HIDE_DOT_PLAYLIST    = true;
+static const bool    DEFAULT_STARTING_INDEX_APPLY = true;
+static const int     DEFAULT_STARTING_INDEX_DAYS  = 30;
+
 static const QString DEFAULT_FADE_TAGS         = "live,medley,nonstop";
 static const QString DEFAULT_CROSSFADE_TAGS    = "live";
 

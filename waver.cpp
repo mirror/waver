@@ -1379,6 +1379,9 @@ void Waver::requestOptions()
     optionsObj.insert("shuffle_operator", settings.value("options/shuffle_operator", DEFAULT_SHUFFLE_OPERATOR));
 
     optionsObj.insert("hide_dot_playlists", settings.value("options/hide_dot_playlists", DEFAULT_HIDE_DOT_PLAYLIST).toBool());
+    optionsObj.insert("starting_index_apply", settings.value("options/starting_index_apply", DEFAULT_STARTING_INDEX_APPLY).toBool());
+    optionsObj.insert("starting_index_days", settings.value("options/starting_index_days", DEFAULT_STARTING_INDEX_DAYS));
+
     optionsObj.insert("fade_tags", settings.value("options/fade_tags", DEFAULT_FADE_TAGS));
     optionsObj.insert("crossfade_tags", settings.value("options/crossfade_tags", DEFAULT_CROSSFADE_TAGS));
 
@@ -1606,15 +1609,21 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     else if (opCode == AmpacheServer::PlaylistSongs) {
         parentId      = QString("%1%2|%3").arg(opData.contains("from_search") ? UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST : opData.value("playlist").startsWith("smart", Qt::CaseInsensitive) ? UI_ID_PREFIX_SERVER_SMARTPLAYLIST : UI_ID_PREFIX_SERVER_PLAYLIST, opData.value("playlist"), opData.value("serverId"));
 
-        bool OK = false;
-        int last_played_index = playlistAttributeLoad(servers.at(srvIndex), opData.value("playlist"), "last_played_index").toInt(&OK);
-        if (OK) {
-            last_played_index++;
-            if ((last_played_index >= 0) && (last_played_index < opResults.size())) {
-                qint64 last_played_time = playlistAttributeLoad(servers.at(srvIndex), opData.value("playlist"), "last_played_time").toLongLong(&OK);
-                if (OK && (QDateTime::currentMSecsSinceEpoch() - last_played_time < STARTING_INDEX_MILLISECONDS)) {
-                    startingIndex = last_played_index;
-                    playlistAttributeSave(servers.at(srvIndex), opData.value("playlist"), "last_played_time", "0");
+        if (settings.value("options/starting_index_apply", DEFAULT_STARTING_INDEX_APPLY).toBool()) {
+            bool OK;
+
+            qint64 startingIndexDays = settings.value("options/starting_index_days", DEFAULT_STARTING_INDEX_DAYS).toLongLong(&OK);
+            if (OK & (startingIndexDays >= 0)) {
+                int lastPlayedIndex = playlistAttributeLoad(servers.at(srvIndex), opData.value("playlist"), "last_played_index").toInt(&OK);
+                if (OK) {
+                    lastPlayedIndex++;
+                    if ((lastPlayedIndex >= 0) && (lastPlayedIndex < opResults.size())) {
+                        qint64 last_played_time = playlistAttributeLoad(servers.at(srvIndex), opData.value("playlist"), "last_played_time").toLongLong(&OK);
+                        if (OK && (QDateTime::currentMSecsSinceEpoch() - last_played_time < startingIndexDays * 24 * 60 * 60 * 1000)) {
+                            startingIndex = lastPlayedIndex;
+                            playlistAttributeSave(servers.at(srvIndex), opData.value("playlist"), "last_played_time", "0");
+                        }
+                    }
                 }
             }
         }
@@ -2573,6 +2582,8 @@ void Waver::updatedOptions(QString optionsJSON)
 
     settings.setValue("options/fade_tags", options.value("fade_tags").toString());
     settings.setValue("options/crossfade_tags", options.value("crossfade_tags").toString());
+    settings.setValue("options/starting_index_apply", options.value("starting_index_apply").toBool());
+    settings.setValue("options/starting_index_days", options.value("starting_index_days").toLongLong());
     settings.setValue("options/hide_dot_playlists", options.value("hide_dot_playlists").toBool());
 
     if (!options.value("eq_disable").toBool()) {

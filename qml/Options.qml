@@ -73,6 +73,8 @@ Dialog {
         random_lists_count.value = optionsObj.random_lists_count;
 
         hide_dot_playlists.checked = optionsObj.hide_dot_playlists;
+        starting_index_apply.checked = optionsObj.starting_index_apply
+        starting_index_days.value = optionsObj.starting_index_days
         fade_tags.text = optionsObj.fade_tags;
         crossfade_tags.text = optionsObj.crossfade_tags;
 
@@ -114,6 +116,8 @@ Dialog {
                 shuffle_favorite_frequency: shuffle_favorite_frequency.currentIndex == 0 ? shuffle_favorite_rare : shuffle_favorite_frequency.currentIndex == 1 ? shuffle_favorite_normal : shuffle_favorite_frequent,
                 shuffle_operator: shuffle_operator.currentIndex == 0 ? 'and' : 'or',
                 hide_dot_playlists: hide_dot_playlists.checked,
+                starting_index_apply: starting_index_apply.checked,
+                starting_index_days: starting_index_days.value,
                 fade_tags: fade_tags.text,
                 crossfade_tags: crossfade_tags.text,
                 max_peak_fps: max_peak_fps.value,
@@ -494,6 +498,24 @@ Dialog {
                     CheckBox {
                         id: hide_dot_playlists
                         text: qsTr("Hide playlists whose name starts with a dot")
+                    }
+                }
+                Row {
+                    CheckBox {
+                        id: starting_index_apply
+                        anchors.verticalCenter: starting_index_days.verticalCenter
+                        text: qsTr("Remember playlists' last played track for")
+                    }
+                    SpinBox {
+                        id: starting_index_days
+                        editable: true
+                        from: 3
+                        to: 365
+                    }
+                    Label {
+                        anchors.rightMargin: 17
+                        anchors.verticalCenter: starting_index_days.verticalCenter
+                        text: qsTr("days")
                     }
                 }
                 Row {

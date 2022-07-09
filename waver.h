@@ -108,8 +108,6 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED;
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED;
 
-        static const qint64 STARTING_INDEX_MILLISECONDS = 14 * 24 * 60 * 60 * 1000;
-
         enum ShuffleMode {
             None,
             Favorite,
