@@ -757,7 +757,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
                                                               "action_enqueueshuffled";
         bool OK = false;
         int destinationIndex = extra.value("destination_index", 0).toInt(&OK);
-        if (!OK || (destinationIndex < 0) || (destinationIndex >= playlist.count())) {
+        if (!OK || (destinationIndex < 0) || (destinationIndex > playlist.count())) {
             destinationIndex = 0;
         }
 
@@ -1542,7 +1542,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
 
     bool OK = false;
     int destinationIndex = opData.value("destination_index", 0).toInt(&OK);
-    if (!OK || (destinationIndex < 0) || (destinationIndex >= playlist.count())) {
+    if (!OK || (destinationIndex < 0) || (destinationIndex > playlist.count())) {
         destinationIndex = 0;
     }
 

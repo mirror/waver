@@ -47,7 +47,12 @@ Item {
 
     function clearItems()
     {
-        internal.currentIndex = playlistItemsView.currentIndex;
+        if (playlistItemsView.currentIndex < 0) {
+            internal.currentIndex = playlistItems.count;
+        }
+        else {
+            internal.currentIndex = playlistItemsView.currentIndex;
+        }
         playlistItems.clear();
     }
 
@@ -116,7 +121,7 @@ Item {
     QtObject {
         id: internal
 
-        property int currentIndex   : 0
+        property int currentIndex   : -1
         property int dropSourceIndex: 0
         property int dropTargetIndex: 0
 
@@ -229,11 +234,43 @@ Item {
 
         ScrollBar.vertical: ScrollBar {
         }
+
+        footer: playlistFooter
     }
 
 
     ListModel {
         id: playlistItems
+    }
+
+    Component {
+        id: playlistFooter
+
+        Rectangle {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: {
+                var h = playlistItemsView.height - playlistItems.count * (imageSize + (imageSize / 12));
+                if (h < 0) {
+                    h = imageSize + (imageSize / 12);
+                }
+                return h;
+            }
+
+            DropArea {
+                anchors.fill: parent
+                onDropped: {
+                    if (!drop.keys.length) {
+                        return;
+                    }
+
+                    if ((drop.keys[0] === "Explorer") && (drop.keys.length > 1)) {
+                        playlistItemsView.currentIndex = playlistItems.count - 1;
+                        explorerItemDragDroped(drop.keys[1], playlistItems.count);
+                    }
+                }
+            }
+        }
     }
 
     Component {
@@ -299,6 +336,7 @@ Item {
 
             DropArea {
                 anchors.fill: parent
+                z: 99
                 onEntered: {
                     if (drag.keys.length) {
                         return;
