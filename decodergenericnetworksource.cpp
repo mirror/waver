@@ -198,7 +198,7 @@ void DecoderGenericNetworkSource::emitReady()
 }
 
 
-bool DecoderGenericNetworkSource::isFinshed()
+bool DecoderGenericNetworkSource::isDownloadFinished()
 {
     return downloadFinished;
 }
@@ -495,6 +495,38 @@ qint64 DecoderGenericNetworkSource::readData(char *data, qint64 maxlen)
         mutex.unlock();
 
         fakePosition += returnPos;
+
+        #if QT_VERSION >= QT_VERSION_CHECK(5, 14, 0)
+            /*
+            This is a rather ugly workaround for the following change:
+
+            --- Qt/5.12.10/Src/qtmultimedia/src/gsttools/qgstappsrc.cpp
+            +++ Qt/5.14.2/Src/qtmultimedia/src/gsttools/qgstappsrc.cpp
+            @@ -195,10 +187,10 @@
+                              }
+              #endif
+                          }
+            -         } else {
+            +         } else if (!m_sequential) {
+                          sendEOS();
+                      }
+            -     } else if (m_stream->atEnd()) {
+            +     } else if (m_stream->atEnd() && !m_sequential) {
+                      sendEOS();
+                  }
+              }
+
+            Not sure what was the reason for this, but this causes QAudioDecoder not to
+            emit the finished signal unless the source device is deleted first (or is a
+            random access device).
+
+            TODO: Check if this class works as a random access device under Linux when Qt is version 5.14 or higher.
+                  Also see if there's a way to check gstreamer version, I believe it should be 1.20 or higher.
+            */
+            if (atEnd()) {
+                emit destroyed();
+            }
+        #endif
 
         return returnPos;
     #endif

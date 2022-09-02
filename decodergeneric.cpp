@@ -66,7 +66,7 @@ void DecoderGeneric::decoderBufferReady()
     // must prevent input underrun, reading 0 bytes is show-stopper for the decoder
     if (networkSource != nullptr) {
         waitMutex.lock();
-        while ((networkSource->realBytesAvailable() < waitUnderBytes) && !networkSource->isFinshed() && !QThread::currentThread()->isInterruptionRequested()) {
+        while ((networkSource->realBytesAvailable() < waitUnderBytes) && !networkSource->isDownloadFinished() && !QThread::currentThread()->isInterruptionRequested()) {
             waitCondition.wait(&waitMutex, 1000);
             emit networkBufferChanged();
         }

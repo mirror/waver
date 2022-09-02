@@ -52,7 +52,7 @@ class DecoderGenericNetworkSource : public QIODevice
 
         qint64 realBytesAvailable();
         qint64 mostRealBytesAvailable();
-        bool   isFinshed();
+        bool   isDownloadFinished();
         void   setErrorOnUnderrun(bool errorOnUnderrun);
         qint64 downloadedSize();
 
