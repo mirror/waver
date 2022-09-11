@@ -521,9 +521,9 @@ qint64 DecoderGenericNetworkSource::readData(char *data, qint64 maxlen)
             random access device).
 
             TODO: Check if this class works as a random access device under Linux when Qt is version 5.14 or higher.
-                  Also see if there's a way to check gstreamer version, I believe it should be 1.20 or higher.
+                  Also see if there's a way to check gstreamer version instead of Qt version (I believe it should be 1.20 or higher).
             */
-            if (atEnd()) {
+            if (!totalMetaBytes && atEnd()) {
                 emit destroyed();
             }
         #endif
