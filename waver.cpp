@@ -731,18 +731,17 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             startShuffleBatch(srvIndex);
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES)) {
-            startShuffleBatch(srvIndex, 0, Favorite);
+            startShuffleBatch(srvIndex, tr("Favorites"), 0, Favorite);
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED)) {
-            startShuffleBatch(srvIndex, 0, NeverPlayed);
+            startShuffleBatch(srvIndex, tr("Never Played"), 0, NeverPlayed);
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED)) {
-            startShuffleBatch(srvIndex, 0, RecentlyAdded);
+            startShuffleBatch(srvIndex, tr("Recently Added"), 0, RecentlyAdded);
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLETAG)) {
             bool OK = false;
             int  tagId = QString(idParts.first()).remove(0, 1).toInt(&OK);
-
             if (OK) {
                 startShuffleBatch(srvIndex, extra.value("group").toString(), 0, None, "action_play", tagId);
             }
