@@ -190,6 +190,7 @@ void Waver::clearTrackUISignals()
     emit uiSetTrackLength("");
     emit uiSetTrackPosition("", 0);
     emit uiSetTrackTags("");
+    emit uiSetTrackAmpacheURL("");
     emit uiSetImage("qrc:/images/waver.png");
     emit uiSetStatusText(tr("Stopped"));
     emit uiSetPeakMeter(0, 0, QDateTime::currentMSecsSinceEpoch() + 100);
@@ -2090,6 +2091,7 @@ void Waver::startNextTrackUISignals()
     emit uiSetImage(trackInfo.arts.size() ? trackInfo.arts.at(0).toString() : "qrc:/images/waver.png");
     emit uiSetFavorite(trackInfo.attributes.contains("flag"));
     emit uiSetTrackBusy(currentTrack->getNetworkStartingLastState());
+    emit uiSetTrackAmpacheURL(trackURL(trackInfo.id).toString(QUrl::FullyEncoded));
 
     emit requestTrackBufferReplayGainInfo();
 
@@ -2468,6 +2470,7 @@ void Waver::trackInfoUpdated(QString id)
         emit uiSetTrackTags(trackInfo.tags.join(", "));
         emit uiSetImage(trackInfo.arts.size() ? trackInfo.arts.at(0).toString() : "qrc:/images/waver.png");
         emit uiSetFavorite(trackInfo.attributes.contains("flag"));
+        emit uiSetTrackAmpacheURL(trackURL(trackInfo.id).toString(QUrl::FullyEncoded));
     }
 }
 
@@ -2560,6 +2563,20 @@ void Waver::trackStatusChanged(QString id, Track::Status status, QString statusS
     if ((currentTrack != nullptr) && (getCurrentTrackInfo().id.compare(id) == 0)) {
         emit uiSetStatusText(statusString);
     }
+}
+
+
+QUrl Waver::trackURL(QString id)
+{
+    QStringList idParts  = id.split("|");
+    QString     serverId = idParts.last();
+    int         srvIndex = serverIndex(serverId);
+
+    QUrl returnValue = servers.at(srvIndex)->getHost();
+    returnValue.setPath("/song.php");
+    returnValue.setQuery("action=show_song&song_id=" + idParts.first().mid(1));
+
+    return returnValue;
 }
 
 

@@ -174,6 +174,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         QString          formatFrequencyValue(double hertz);
         Track::TrackInfo trackInfoFromFilePath(QString filePath);
         Track::TrackInfo trackInfoFromIdExtra(QString id, QVariantMap extra);
+        QUrl             trackURL(QString id);
 
         void connectTrackSignals(Track *track, bool newConnect = true);
         bool isCrossfade(Track *track1, Track *track2);
@@ -273,6 +274,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void uiSetTrackPosition(QVariant positionText, QVariant positionPercent);
         void uiSetTrackDecoding(QVariant downloadPercent, QVariant pcmPercent);
         void uiSetTrackTags(QVariant tagsText);
+        void uiSetTrackAmpacheURL(QVariant ampacheURL);
         void uiSetPeakMeter(QVariant leftPercent, QVariant rightPercent, QVariant scheduledTimeMS);
         void uiSetPeakMeterReplayGain(QVariant gainPercent);
         void uiSetShuffleCountdown(QVariant percent);

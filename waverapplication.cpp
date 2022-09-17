@@ -90,6 +90,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(waver, SIGNAL(uiSetTrackPosition(QVariant,QVariant)), uiMainWindow, SLOT(setTrackPosition(QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(uiSetTrackDecoding(QVariant,QVariant)), uiMainWindow, SLOT(setTrackDecoding(QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(uiSetTrackTags(QVariant)), uiMainWindow, SLOT(setTrackTags(QVariant)));
+    QObject::connect(waver, SIGNAL(uiSetTrackAmpacheURL(QVariant)), uiMainWindow, SLOT(setTrackAmpacheURL(QVariant)));
 
     QObject::connect(waver, SIGNAL(playlistAddItem(QVariant,QVariant,QVariant,QVariant,QVariant)), uiMainWindow, SLOT(playlistAddItem(QVariant,QVariant,QVariant,QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(playlistClearItems()), uiMainWindow, SLOT(playlistClearItems()));

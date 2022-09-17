@@ -4,6 +4,7 @@ import QtQuick.Controls 2.3
 import QtQuick.Controls.Material 2.3
 import QtQuick.Controls.Universal 2.3
 import QtQuick.Layouts 1.3
+import QtQml.Models 2.15
 
 ApplicationWindow {
     id: applicationWindow
@@ -226,6 +227,11 @@ ApplicationWindow {
         art.swapTempImage(image);
     }
 
+    function setTrackAmpacheURL(url)
+    {
+        internal.searchAmpacheURL = url;
+    }
+
     function setTrackBusy(busy)
     {
         networkBusy.visible = busy;
@@ -279,6 +285,7 @@ ApplicationWindow {
         property double shuffleCountdown: 0.5
         property bool kbPositioning: false
         property int kbLastFocused: 0
+        property string searchAmpacheURL: ""
 
         function calculateTitleSize()
         {
@@ -538,6 +545,12 @@ ApplicationWindow {
         MenuItem {
             text: qsTr("Artist")
             onTriggered: Qt.openUrlExternally("https://google.com/search?q=\"" + performer.text + "\" band");
+        }
+        MenuSeparator { }
+        MenuItem {
+            text: qsTr("Ampache")
+            onTriggered: Qt.openUrlExternally(internal.searchAmpacheURL);
+            enabled: internal.searchAmpacheURL.length > 0
         }
     }
 
