@@ -66,6 +66,8 @@ SoundOutput::~SoundOutput()
 
 void SoundOutput::audioOutputStateChanged(QAudio::State state)
 {
+    qWarning() << state;
+
     if ((state == QAudio::StoppedState) && (audioSink->error() != QAudio::NoError)) {
         QString errorString;
         switch (audioSink->error()) {
@@ -233,6 +235,7 @@ void SoundOutput::resume()
 void SoundOutput::run()
 {
     audioSink = new QAudioSink(format);
+    audioSink->setBufferSize(audioSink->format().bytesForDuration(FEED_LENGTH_MICROSECONDS));
 
     bytesToPlay      = new QByteArray();
     bytesToPlayMutex = new QMutex();

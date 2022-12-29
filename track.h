@@ -74,15 +74,15 @@ class Track : public QObject, RadioTitleCallback
         void    setStatus(Status status);
         void    setPosition(double percent);
 
-        TrackInfo       getTrackInfo();
-        void            attributeAdd(QString key, QVariant value);
-        void            attributeRemove(QString key);
-        qint64          getDecodedMilliseconds();
-        qint64          getLengthMilliseconds();
-        qint64          getPlayedMillseconds();
-        int             getFadeDurationSeconds();
+        TrackInfo     getTrackInfo();
+        void          attributeAdd(QString key, QVariant value);
+        void          attributeRemove(QString key);
+        qint64        getDecodedMilliseconds();
+        qint64        getLengthMilliseconds();
+        qint64        getPlayedMillseconds();
+        int           getFadeDurationSeconds();
         QList<double> getEqualizerBandCenterFrequencies();
-        bool            getNetworkStartingLastState();
+        bool          getNetworkStartingLastState();
 
         void optionsUpdated();
         void requestDecodingCallback();

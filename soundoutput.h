@@ -44,6 +44,7 @@ class SoundOutput : public QObject
     private:
 
         static const int INITIAL_CACHE_BUFFER_COUNT = 3;
+        static const int FEED_LENGTH_MICROSECONDS   = 100 * 1000;
 
         QAudioFormat                    format;
         PeakCallback::PeakCallbackInfo  peakCallbackInfo;

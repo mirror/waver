@@ -76,11 +76,11 @@ class DecoderGenericNetworkSource : public QIODevice
         QNetworkReply         *networkReply;
 
         QList<QByteArray *> buffer;
-        qint64                totalDownloadedBytes;
-        qint64                totalExpectedBytes;
-        qint64                fakePosition;
-        qint64                firstBufferPosition;
-        qint64                maxRealBytesAvailable;
+        qint64              totalDownloadedBytes;
+        qint64              totalExpectedBytes;
+        qint64              fakePosition;
+        qint64              firstBufferPosition;
+        qint64              maxRealBytesAvailable;
         QList<qint64>       seekHistory;
 
         QMutex mutex;
