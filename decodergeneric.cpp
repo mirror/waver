@@ -55,7 +55,7 @@ void DecoderGeneric::decoderBufferReady()
 
     decodedMicroseconds += bufferReady.format().durationForBytes(bufferReady.byteCount());
 
-    QAudioBuffer *copy = new QAudioBuffer(QByteArray(static_cast<const char *>(bufferReady.constData()), bufferReady.byteCount()), bufferReady.format(), bufferReady.startTime());
+    QAudioBuffer *copy = new QAudioBuffer(QByteArray(static_cast<const char *>(bufferReady.constData<char>()), bufferReady.byteCount()), bufferReady.format(), bufferReady.startTime());
 
     emit bufferAvailable(copy);
 
@@ -95,8 +95,8 @@ void DecoderGeneric::decoderError(QAudioDecoder::Error error)
             case QAudioDecoder::AccessDeniedError:
                 errorStr = tr("There are not the appropriate permissions to play a media resource.");
                 break;
-            case QAudioDecoder::ServiceMissingError:
-                errorStr = tr("A valid service was not found, decoding cannot proceed.");
+            case QAudioDecoder::NotSupportedError:
+                errorStr = tr("QAudioDecoder is not supported on this platform, decoding cannot proceed.");
                 break;
             default:
                 errorStr = tr("Unspecified media decoder error.");
@@ -185,7 +185,7 @@ void DecoderGeneric::networkReady()
 {
     emit networkStarting(false);
 
-    if (audioDecoder->state() == QAudioDecoder::StoppedState) {
+    if (!audioDecoder->isDecoding()) {
         networkSource->open(QIODevice::ReadOnly);
         audioDecoder->setSourceDevice(networkSource);
         audioDecoder->start();

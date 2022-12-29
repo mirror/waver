@@ -9,7 +9,7 @@
 #define OUTPUTFEEDER_H
 
 #include <QAudioFormat>
-#include <QAudioOutput>
+#include <QAudioSink>
 #include <QByteArray>
 #include <QIODevice>
 #include <QMutex>
@@ -31,7 +31,7 @@ class OutputFeeder : public QObject
 
     public:
 
-        explicit OutputFeeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, QAudioFormat audioFormat, QAudioOutput *audioOutput, PeakCallback::PeakCallbackInfo peakCallbackInfo, QObject *parent = nullptr);
+        explicit OutputFeeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, QAudioFormat audioFormat, QAudioSink *audioSink, PeakCallback::PeakCallbackInfo peakCallbackInfo, QObject *parent = nullptr);
 
         void setOutputDevice(QIODevice *outputDevice);
 
@@ -40,10 +40,10 @@ class OutputFeeder : public QObject
 
         static const qint64 MICROSECONDS_PER_SECOND = 1000 * 1000;
 
-        QAudioOutput *audioOutput;
-        QByteArray   *outputBuffer;
-        QMutex       *outputBufferMutex;
-        QIODevice    *outputDevice;
+        QAudioSink *audioSink;
+        QByteArray *outputBuffer;
+        QMutex     *outputBufferMutex;
+        QIODevice  *outputDevice;
 
         QAudioFormat                   audioFormat;
         PeakCallback::PeakCallbackInfo peakCallbackInfo;

@@ -16,12 +16,13 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QRegularExpression>
 #include <QString>
 #include <QStringList>
 #include <QThread>
 #include <QTimer>
 #include <QUrl>
-#include <QVector>
+#include <QList>
 #include <QWaitCondition>
 
 #include "radiotitlecallback.h"
@@ -74,13 +75,13 @@ class DecoderGenericNetworkSource : public QIODevice
         QNetworkAccessManager *networkAccessManager;
         QNetworkReply         *networkReply;
 
-        QVector<QByteArray *> buffer;
+        QList<QByteArray *> buffer;
         qint64                totalDownloadedBytes;
         qint64                totalExpectedBytes;
         qint64                fakePosition;
         qint64                firstBufferPosition;
         qint64                maxRealBytesAvailable;
-        QVector<qint64>       seekHistory;
+        QList<qint64>       seekHistory;
 
         QMutex mutex;
 
@@ -101,7 +102,7 @@ class DecoderGenericNetworkSource : public QIODevice
         qint64     totalMetaBytes;
 
         RadioTitleCallback::RadioTitleCallbackInfo radioTitleCallbackInfo;
-        QVector<RadioTitlePosition>                radioTitlePositions;
+        QList<RadioTitlePosition>                  radioTitlePositions;
 
         bool bufferIndexPositionFromPosition(qint64 position, int *bufferIndex, int *bufferPosition);
 

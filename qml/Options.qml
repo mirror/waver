@@ -1,7 +1,12 @@
-import QtQml 2.3
-import QtQuick 2.12
-import QtQuick.Controls 2.3
-import QtQuick.Layouts 1.3
+//import QtQml 2.3
+//import QtQuick 2.12
+//import QtQuick.Controls 2.3
+//import QtQuick.Layouts 1.3
+
+import QtQml
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
 
 Dialog {
     title: qsTr("Options")

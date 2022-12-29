@@ -131,7 +131,7 @@ QNetworkRequest DecoderGenericNetworkSource::buildNetworkRequest()
     QNetworkRequest networkRequest = QNetworkRequest(url);
     networkRequest.setRawHeader("User-Agent", QGuiApplication::instance()->applicationName().toUtf8());
     networkRequest.setRawHeader("Icy-MetaData", "1");
-    networkRequest.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
+    networkRequest.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
     networkRequest.setMaximumRedirectsAllowed(12);
 
     return networkRequest;
@@ -250,6 +250,7 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
 
     // extract metadata
     if (rawChunkSize > 0) {
+        const QRegularExpression metadataFinder("StreamTitle='(.+?)';");
         int pointer = 0;
         while (pointer < data.count()) {
             // is pointer inside metadata now?
@@ -283,11 +284,10 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
                     // many times metadata is empty, most stations send only on connection and track change
                     if (metaBuffer.count() > 0) {
                         // search for title
-                        QRegExp finder("StreamTitle='(.+)';");
-                        finder.setMinimal(true);
-                        if (finder.indexIn(QString(metaBuffer)) >= 0) {
+                        QRegularExpressionMatch match = metadataFinder.match(metaBuffer);
+                        if (match.hasMatch()) {
                             // got it
-                            radioTitlePositions.append({ totalDownloadedBytes + pointer, finder.cap(1) });
+                            radioTitlePositions.append({ totalDownloadedBytes + pointer, match.captured(1) });
                         }
                     }
 

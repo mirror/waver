@@ -1,7 +1,13 @@
-import QtQml 2.3
-import QtQuick 2.12
-import QtQuick.Controls 2.3
-import QtQuick.Layouts 1.3
+//import QtQml 2.3
+//import QtQuick 2.12
+//import QtQuick.Controls 2.3
+//import QtQuick.Layouts 1.3
+
+import QtQml
+import QtQuick
+import QtQuick.Controls
+import QtQuick.Layouts
+
 
 Dialog {
     title: qsTr("Servers")
@@ -80,8 +86,8 @@ Dialog {
             implicitWidth: parent.width / 2
 
             focus: true
-            validator: RegExpValidator {
-                regExp: /http[s]?:\/\/.*/;
+            validator: RegularExpressionValidator {
+                regularExpression: /http[s]?:\/\/.*/;
             }
         }
 

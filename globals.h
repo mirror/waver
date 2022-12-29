@@ -10,7 +10,7 @@
 
 #include <QAudioBuffer>
 #include <QByteArray>
-#include <QVector>
+#include <QList>
 
 static const QString DEFAULT_SHUFFLE_OPERATOR           = "or";
 static const int     DEFAULT_SHUFFLE_COUNT              = 5;
@@ -49,9 +49,9 @@ struct TimedChunk {
     qint64      startMicroseconds;
 };
 
-typedef QVector<QAudioBuffer *> BufferQueue;
-typedef QVector<QByteArray *>   ChunkQueue;
-typedef QVector<TimedChunk>     TimedChunkQueue;
+typedef QList<QAudioBuffer *> BufferQueue;
+typedef QList<QByteArray *>   ChunkQueue;
+typedef QList<TimedChunk>     TimedChunkQueue;
 
 
 enum NotificationDataToSend {

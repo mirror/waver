@@ -36,7 +36,7 @@ void Analyzer::bufferAvailable()
         QAudioBuffer *buffer = bufferQueue->at(0);
 
         if (replayGainFilter != nullptr) {
-            replayGainFilter->processPCMData(buffer->data(), buffer->byteCount(), sampleType, buffer->format().channelCount());
+            replayGainFilter->processPCMData(buffer->data<char>(), buffer->byteCount(), sampleType, buffer->format().channelCount());
 
             if ((!decoderFinished && (buffer->startTime() >= resultLastCalculated + REPLAY_GAIN_UPDATE_INTERVAL_MICROSECONDS)) || (decoderFinished && (bufferQueue->count() == 1))) {
                 resultLastCalculated = buffer->startTime();
@@ -71,7 +71,7 @@ void Analyzer::run()
 {
     sampleType = IIRFilter::getSampleTypeFromAudioFormat(format);
 
-    if ((sampleType != IIRFilter::Unknown) && QVector<int>({ 96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000 }).contains(format.sampleRate())) {
+    if ((sampleType != IIRFilter::Unknown) && QList<int>({ 96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000 }).contains(format.sampleRate())) {
         replayGainFilter     = new IIRFilterChain();
         replayGainCalculator = new ReplayGainCalculator(sampleType, format.sampleRate());
 

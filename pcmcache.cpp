@@ -68,8 +68,8 @@ long PCMCache::availableMemory()
 
 #elif defined (Q_OS_LINUX)
 
-    QFile   memInfo("/proc/meminfo");
-    QRegExp availableRegExp("^MemAvailable:\\s+(\\d+)");
+    QFile              memInfo("/proc/meminfo");
+    QRegularExpression availableRegExp("^MemAvailable:\\s+(\\d+)");
 
     if (memInfo.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QByteArray memInfoContents = memInfo.readAll();
@@ -78,8 +78,9 @@ long PCMCache::availableMemory()
         QString availableMemoryString;
 
         foreach (QString line, QString(memInfoContents).split("\n")) {
-            if (availableRegExp.indexIn(line) >= 0) {
-                availableMemoryString = availableRegExp.cap(1);
+            QRegularExpressionMatch match = availableRegExp.match(line);
+            if (match.hasMatch()) {
+                availableMemoryString = match.captured(1);
                 break;
             }
         }
@@ -257,7 +258,7 @@ void PCMCache::storeBuffer(QAudioBuffer *buffer)
         if (!file->atEnd()) {
             file->seek(file->size());
         }
-        file->write(static_cast<const char*>(buffer->constData()), buffer->byteCount());
+        file->write(static_cast<const char*>(buffer->constData<char>()), buffer->byteCount());
         mutex.unlock();
 
         if (unfullfilledRequest) {
@@ -270,10 +271,10 @@ void PCMCache::storeBuffer(QAudioBuffer *buffer)
     if (memory != nullptr) {
         mutex.lock();
         if (radioStation || (lengthMilliseconds <= 0)) {
-            memory->append(static_cast<const char*>(buffer->constData()), buffer->byteCount());
+            memory->append(static_cast<const char*>(buffer->constData<char>()), buffer->byteCount());
         }
         else {
-            memory->replace(memoryRealSize, buffer->byteCount(), static_cast<const char*>(buffer->constData()), buffer->byteCount());
+            memory->replace(memoryRealSize, buffer->byteCount(), static_cast<const char*>(buffer->constData<char>()), buffer->byteCount());
         }
         memoryRealSize += buffer->byteCount();
         mutex.unlock();

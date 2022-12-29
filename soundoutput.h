@@ -8,7 +8,7 @@
 #define SOUNDOUTPUT_H
 
 #include <QAudioFormat>
-#include <QAudioOutput>
+#include <QAudioSink>
 #include <QByteArray>
 #include <QCoreApplication>
 #include <QDateTime>
@@ -43,8 +43,7 @@ class SoundOutput : public QObject
 
     private:
 
-        static const int    INITIAL_CACHE_BUFFER_COUNT         = 3;
-        static const qint64 NOTIFICATION_INTERVAL_MILLISECONDS = 500;
+        static const int INITIAL_CACHE_BUFFER_COUNT = 3;
 
         QAudioFormat                    format;
         PeakCallback::PeakCallbackInfo  peakCallbackInfo;
@@ -52,8 +51,8 @@ class SoundOutput : public QObject
         TimedChunkQueue *chunkQueue;
         QMutex          *chunkQueueMutex;
 
-        QAudioOutput *audioOutput;
-        QIODevice    *audioIODevice;
+        QAudioSink *audioSink;
+        QIODevice  *audioIODevice;
 
         QByteArray *bytesToPlay;
         QMutex     *bytesToPlayMutex;
@@ -61,12 +60,14 @@ class SoundOutput : public QObject
         QThread       feederThread;
         OutputFeeder *feeder;
         QTimer       *feedTimer;
+        bool          feedTimerWaits;
+
+        QTimer *positionTimer;
+        qint64  lastMilliseconds;
 
         bool   wasError;
         bool   initialCachingDone;
-        bool   timerWaits;
-        qint64 notificationCounter;
-        qint64 beginningMicroseconds;
+        qint64 beginningMilliseconds;
 
         double volume;
 
@@ -86,9 +87,9 @@ class SoundOutput : public QObject
 
     private slots:
 
-        void timerTimeout();
+        void feedTimerTimeout();
+        void positionTimerTimeout();
 
-        void audioOutputNotification();
         void audioOutputStateChanged(QAudio::State state);
 
 

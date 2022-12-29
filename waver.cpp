@@ -171,7 +171,7 @@ void Waver::addServer(QString host, QString user, QString psw)
 
 QChar Waver::alphabetFromName(QString name)
 {
-    name.replace(QRegExp("^(The|An|A|Die|Das|Ein|Eine|Les|Le|La)\\s+"), "").at(0);
+    name.replace(QRegularExpression("^(The|An|A|Die|Das|Ein|Eine|Les|Le|La)\\s+"), "").at(0);
 
     QChar returnValue = name.at(0).toUpper();
 
@@ -1277,7 +1277,7 @@ void Waver::playlistUpdateUISignals()
         emit playlistTotalTime("");
     }
     else {
-        emit playlistTotalTime(QDateTime::fromMSecsSinceEpoch(totalMilliSeconds).toUTC().toString("hh:mm:ss").replace(QRegExp("^00:"), "").prepend(totalIsEstimate ? "~" : ""));
+        emit playlistTotalTime(QDateTime::fromMSecsSinceEpoch(totalMilliSeconds).toUTC().toString("hh:mm:ss").replace(QRegularExpression("^00:"), "").prepend(totalIsEstimate ? "~" : ""));
     }
 }
 
@@ -1346,7 +1346,7 @@ void Waver::requestOptions()
         optionsObj.insert("eq_disable", 0);
         optionsObj.insert("eq_on", settings.value("eq/on", DEFAULT_EQON).toBool());
 
-        QVector<double> eqCenterFrequencies = currentTrack->getEqualizerBandCenterFrequencies();
+        QList<double> eqCenterFrequencies = currentTrack->getEqualizerBandCenterFrequencies();
 
         optionsObj.insert("pre_amp", settings.value("eq/pre_amp", DEFAULT_PREAMP));
         optionsObj.insert("eq1Label", formatFrequencyValue(eqCenterFrequencies.at(0)));
@@ -2401,7 +2401,7 @@ Track::TrackInfo Waver::trackInfoFromFilePath(QString filePath)
         }
         if (trackRelative.count() > 0) {
             if (trackInfo.title.isEmpty()) {
-                trackInfo.title = trackRelative.last().replace(QRegExp("\\..+$"), "");
+                trackInfo.title = trackRelative.last().replace(QRegularExpression("\\..+$"), "");
             }
             trackRelative.removeLast();
         }

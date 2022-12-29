@@ -1,5 +1,8 @@
-import QtQml 2.3
-import QtQuick 2.12
+//import QtQml 2.3
+//import QtQuick 2.12
+
+import QtQml
+import QtQuick
 
 Item {
     property bool  borderVisible: true

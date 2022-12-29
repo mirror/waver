@@ -14,7 +14,7 @@
 #include <QMap>
 #include <QMutex>
 #include <QObject>
-#include <QRegExp>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QtGlobal>
@@ -63,7 +63,7 @@ class Track : public QObject, RadioTitleCallback
             QStringList  tags;
             QVariantHash attributes;
         };
-        typedef QVector<TrackInfo> TracksInfo;
+        typedef QList<TrackInfo> TracksInfo;
 
 
         explicit Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInfo, DecodingCallback::DecodingCallbackInfo decodingCallbackInfo, QObject *parent = 0);
@@ -81,7 +81,7 @@ class Track : public QObject, RadioTitleCallback
         qint64          getLengthMilliseconds();
         qint64          getPlayedMillseconds();
         int             getFadeDurationSeconds();
-        QVector<double> getEqualizerBandCenterFrequencies();
+        QList<double> getEqualizerBandCenterFrequencies();
         bool            getNetworkStartingLastState();
 
         void optionsUpdated();
@@ -152,7 +152,7 @@ class Track : public QObject, RadioTitleCallback
         qint64 decodedMillisecondsAtUnderrun;
         qint64 posMilliseconds;
 
-        QVector<RadioTitlePosition> radioTitlePositions;
+        QList<RadioTitlePosition> radioTitlePositions;
 
         void setupDecoder();
         void setupCache();
