@@ -7,12 +7,12 @@
 
 #include "outputfeeder.h"
 
-OutputFeeder::OutputFeeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, QAudioFormat audioFormat, QAudioSink *audioSink, PeakCallback::PeakCallbackInfo peakCallbackInfo, QObject *parent) : QObject(parent)
+OutputFeeder::OutputFeeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, QAudioFormat audioFormat, QAudioOutput *audioOutput, PeakCallback::PeakCallbackInfo peakCallbackInfo, QObject *parent) : QObject(parent)
 {
     this->outputBuffer      = outputBuffer;
     this->outputBufferMutex = outputBufferMutex;
     this->audioFormat       = audioFormat;
-    this->audioSink         = audioSink;
+    this->audioOutput       = audioOutput;
 
     outputDevice = nullptr;
 
@@ -33,24 +33,42 @@ OutputFeeder::OutputFeeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, 
     channelIndex = 0;
 
     double sampleMax = 0;
-    switch (audioFormat.sampleFormat()) {
-        case QAudioFormat::UInt8:
-            sampleMin = std::numeric_limits<quint8>::min();
-            sampleMax = std::numeric_limits<quint8>::max();
-            dataType  = 4;
-            break;
-        case QAudioFormat::Int32:
-            sampleMin = std::numeric_limits<qint32>::min();
-            sampleMax = std::numeric_limits<qint32>::max();
-            dataType  = 3;
-            break;
-        default:
-            // TODO float is currently not supported
-            sampleMin = int16Min;
-            sampleMax = int16Max;
-            dataType  = 2;
+    if (audioFormat.sampleType() == QAudioFormat::SignedInt) {
+        switch (audioFormat.sampleSize()) {
+            case 8:
+                sampleMin = std::numeric_limits<qint8>::min();
+                sampleMax = std::numeric_limits<qint8>::max();
+                dataType  = 1;
+                break;
+            case 16:
+                sampleMin = int16Min;
+                sampleMax = int16Max;
+                dataType  = 2;
+                break;
+            case 32:
+                sampleMin = std::numeric_limits<qint32>::min();
+                sampleMax = std::numeric_limits<qint32>::max();
+                dataType  = 3;
+        }
     }
-
+    else if (audioFormat.sampleType() == QAudioFormat::UnSignedInt) {
+        switch (audioFormat.sampleSize()) {
+            case 8:
+                sampleMin = std::numeric_limits<quint8>::min();
+                sampleMax = std::numeric_limits<quint8>::max();
+                dataType  = 4;
+                break;
+            case 16:
+                sampleMin = std::numeric_limits<quint16>::min();
+                sampleMax = std::numeric_limits<quint16>::max();
+                dataType  = 5;
+                break;
+            case 32:
+                sampleMin = std::numeric_limits<quint32>::min();
+                sampleMax = std::numeric_limits<quint32>::max();
+                dataType  = 6;
+        }
+    }
     if (sampleMax != 0) {
         sampleRange = sampleMax - sampleMin;
     }
@@ -86,7 +104,7 @@ void OutputFeeder::run()
 
         outputBufferMutex->lock();
 
-        bytesToWrite = qMin(audioSink->bytesFree(), audioSink->bufferSize());
+        bytesToWrite = qMin(audioOutput->bytesFree(), audioOutput->periodSize());
         if (bytesToWrite > outputBuffer->count()) {
             bytesToWrite = 0;
         }
@@ -174,7 +192,7 @@ void OutputFeeder::run()
                     peakDelayTemp += MICROSECONDS_PER_SECOND / *peakCallbackInfo.peakFPS;
                     peakCallbackInfo.peakFPSMutex->unlock();
 
-                    peakDelay = peakDelayTemp - audioSink->processedUSecs();
+                    peakDelay = peakDelayTemp - audioOutput->processedUSecs();
 
                     (peakCallbackInfo.callbackObject->*peakCallbackInfo.callbackMethod)(lPeak / (int16Range / 2), rPeak / (int16Range / 2), peakDelay < 0 ? 0 : peakDelay, peakCallbackInfo.trackPointer);
 

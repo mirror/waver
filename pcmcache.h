@@ -14,12 +14,12 @@
 #include <QFile>
 #include <QMutex>
 #include <QObject>
-#include <QRegularExpression>
+#include <QRegExp>
 #include <QStandardPaths>
 #include <QtGlobal>
 #include <QTimer>
 #include <QUuid>
-#include <QList>
+#include <QVector>
 
 #include "globals.h"
 

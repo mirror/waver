@@ -14,7 +14,7 @@
 #include <QMap>
 #include <QMutex>
 #include <QObject>
-#include <QRegularExpression>
+#include <QRegExp>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QtGlobal>
@@ -63,7 +63,7 @@ class Track : public QObject, RadioTitleCallback
             QStringList  tags;
             QVariantHash attributes;
         };
-        typedef QList<TrackInfo> TracksInfo;
+        typedef QVector<TrackInfo> TracksInfo;
 
 
         explicit Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInfo, DecodingCallback::DecodingCallbackInfo decodingCallbackInfo, QObject *parent = 0);
@@ -74,15 +74,15 @@ class Track : public QObject, RadioTitleCallback
         void    setStatus(Status status);
         void    setPosition(double percent);
 
-        TrackInfo     getTrackInfo();
-        void          attributeAdd(QString key, QVariant value);
-        void          attributeRemove(QString key);
-        qint64        getDecodedMilliseconds();
-        qint64        getLengthMilliseconds();
-        qint64        getPlayedMillseconds();
-        int           getFadeDurationSeconds();
-        QList<double> getEqualizerBandCenterFrequencies();
-        bool          getNetworkStartingLastState();
+        TrackInfo       getTrackInfo();
+        void            attributeAdd(QString key, QVariant value);
+        void            attributeRemove(QString key);
+        qint64          getDecodedMilliseconds();
+        qint64          getLengthMilliseconds();
+        qint64          getPlayedMillseconds();
+        int             getFadeDurationSeconds();
+        QVector<double> getEqualizerBandCenterFrequencies();
+        bool            getNetworkStartingLastState();
 
         void optionsUpdated();
         void requestDecodingCallback();
@@ -152,7 +152,7 @@ class Track : public QObject, RadioTitleCallback
         qint64 decodedMillisecondsAtUnderrun;
         qint64 posMilliseconds;
 
-        QList<RadioTitlePosition> radioTitlePositions;
+        QVector<RadioTitlePosition> radioTitlePositions;
 
         void setupDecoder();
         void setupCache();

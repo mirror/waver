@@ -13,7 +13,7 @@
 #include <QMutex>
 #include <QObject>
 #include <QtGlobal>
-#include <QList>
+#include <QVector>
 #include <waveriir/iirfilter.h>
 #include <waveriir/iirfilterchain.h>
 #include <waveriir/iirfiltercallback.h>
@@ -30,11 +30,11 @@ class Equalizer : public QObject, IIRFilterCallback {
         ~Equalizer();
 
         void setChunkQueue(TimedChunkQueue *chunkQueue, QMutex *chunkQueueMutex);
-        void setGains(bool on, QList<double> gains, double preAmp);
+        void setGains(bool on, QVector<double> gains, double preAmp);
 
         void filterCallback(double *sample, int channelIndex) override;
 
-        QList<double> getBandCenterFrequencies();
+        QVector<double> getBandCenterFrequencies();
 
 
     private:
@@ -47,8 +47,8 @@ class Equalizer : public QObject, IIRFilterCallback {
         QAudioFormat format;
 
         bool            on;
-        QList<Band>   bands;
-        QList<double> gains;
+        QVector<Band>   bands;
+        QVector<double> gains;
         double          preAmp;
 
         QMutex filtersMutex;

@@ -20,7 +20,7 @@
 #include <QtMath>
 #include <QThread>
 #include <QUrl>
-#include <QList>
+#include <QVector>
 #include <QWaitCondition>
 
 #include "decodergenericnetworksource.h"

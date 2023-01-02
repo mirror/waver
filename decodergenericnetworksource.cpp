@@ -54,8 +54,8 @@ DecoderGenericNetworkSource::~DecoderGenericNetworkSource()
     }
 
     if (networkReply != nullptr) {
-        disconnect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),           this, SLOT(networkDownloadProgress(qint64,qint64)));
-        disconnect(networkReply, SIGNAL(errorOccuerd(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
+        disconnect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
+        disconnect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
         networkReply->abort();
         networkReply->deleteLater();
         networkReply = nullptr;
@@ -131,7 +131,7 @@ QNetworkRequest DecoderGenericNetworkSource::buildNetworkRequest()
     QNetworkRequest networkRequest = QNetworkRequest(url);
     networkRequest.setRawHeader("User-Agent", QGuiApplication::instance()->applicationName().toUtf8());
     networkRequest.setRawHeader("Icy-MetaData", "1");
-    networkRequest.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
+    networkRequest.setAttribute(QNetworkRequest::FollowRedirectsAttribute, true);
     networkRequest.setMaximumRedirectsAllowed(12);
 
     return networkRequest;
@@ -250,7 +250,6 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
 
     // extract metadata
     if (rawChunkSize > 0) {
-        const QRegularExpression metadataFinder("StreamTitle='(.+?)';");
         int pointer = 0;
         while (pointer < data.count()) {
             // is pointer inside metadata now?
@@ -284,10 +283,11 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
                     // many times metadata is empty, most stations send only on connection and track change
                     if (metaBuffer.count() > 0) {
                         // search for title
-                        QRegularExpressionMatch match = metadataFinder.match(metaBuffer);
-                        if (match.hasMatch()) {
+                        QRegExp finder("StreamTitle='(.+)';");
+                        finder.setMinimal(true);
+                        if (finder.indexIn(QString(metaBuffer)) >= 0) {
                             // got it
-                            radioTitlePositions.append({ totalDownloadedBytes + pointer, match.captured(1) });
+                            radioTitlePositions.append({ totalDownloadedBytes + pointer, finder.cap(1) });
                         }
                     }
 
@@ -612,8 +612,8 @@ void DecoderGenericNetworkSource::run()
 
     networkReply = networkAccessManager->get(networkRequest);
 
-    connect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),           this, SLOT(networkDownloadProgress(qint64,qint64)));
-    connect(networkReply, SIGNAL(errorOccured(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
+    connect(networkReply, SIGNAL(downloadProgress(qint64,qint64)),    this, SLOT(networkDownloadProgress(qint64,qint64)));
+    connect(networkReply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(networkError(QNetworkReply::NetworkError)));
 
     connectionTimer->start(CONNECTION_TIMEOUT);
     preCacheTimer->start(PRE_CACHE_TIMEOUT);

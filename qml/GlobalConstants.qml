@@ -1,5 +1,4 @@
-//import QtQuick 2.0
-import QtQuick
+import QtQuick 2.0
 
 Item {
     readonly property int action_collapse       : 1

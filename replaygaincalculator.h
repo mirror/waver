@@ -8,7 +8,7 @@
 #ifndef REPLAYGAINCALCULATOR_H
 #define REPLAYGAINCALCULATOR_H
 
-#include <QList>
+#include <QVector>
 
 #include <waveriir/iirfilter.h>
 #include <waveriir/iirfiltercallback.h>

@@ -67,7 +67,7 @@ unix:!android {
         mediaplayer2dbusadaptor.cpp \
         mediaplayer2playerdbusadaptor.cpp
 
-    LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -lqt6keychain -ltag -lwaveriir
+    LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -lqt5keychain -ltag -lwaveriir
 
     target.path = /opt/waver/bin
     INSTALLS += target

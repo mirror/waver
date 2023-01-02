@@ -12,13 +12,12 @@ SoundOutput::SoundOutput(QAudioFormat format, PeakCallback::PeakCallbackInfo pea
 
     wasError              = false;
     initialCachingDone    = false;
-    feedTimerWaits        = false;
-    beginningMilliseconds = -1;
-    audioSink             = nullptr;
+    timerWaits            = false;
+    notificationCounter   = 0;
+    beginningMicroseconds = -1;
+    audioOutput           = nullptr;
     feeder                = nullptr;
     feedTimer             = nullptr;
-    positionTimer         = nullptr;
-    lastMilliseconds      = -1;
     volume                = 1.0;
 
     bytesToPlay      = nullptr;
@@ -35,11 +34,6 @@ SoundOutput::~SoundOutput()
         delete feedTimer;
     }
 
-    if (positionTimer != nullptr) {
-        positionTimer->stop();
-        delete positionTimer;
-    }
-
     if (feeder != nullptr) {
         feeder->setOutputDevice(nullptr);
         feederThread.requestInterruption();
@@ -48,8 +42,8 @@ SoundOutput::~SoundOutput()
         delete feeder;
     }
 
-    if (audioSink != nullptr) {
-        audioSink->deleteLater();
+    if (audioOutput != nullptr) {
+        audioOutput->deleteLater();
     }
 
     clearBuffers();
@@ -64,13 +58,18 @@ SoundOutput::~SoundOutput()
 }
 
 
+void SoundOutput::audioOutputNotification()
+{
+    notificationCounter++;
+    emit positionChanged((notificationCounter * audioOutput->notifyInterval()) + (beginningMicroseconds / 1000));
+}
+
+
 void SoundOutput::audioOutputStateChanged(QAudio::State state)
 {
-    qWarning() << state;
-
-    if ((state == QAudio::StoppedState) && (audioSink->error() != QAudio::NoError)) {
+    if ((state == QAudio::StoppedState) && (audioOutput->error() != QAudio::NoError)) {
         QString errorString;
-        switch (audioSink->error()) {
+        switch (audioOutput->error()) {
             case QAudio::OpenError:
                 errorString = tr("An error occurred opening the audio device");
                 break;
@@ -106,7 +105,7 @@ void SoundOutput::chunkAvailable()
             return;
         }
 
-        audioIODevice = audioSink->start();
+        audioIODevice = audioOutput->start();
 
         feederThread.start();
         feeder->setOutputDevice(audioIODevice);
@@ -114,11 +113,12 @@ void SoundOutput::chunkAvailable()
         initialCachingDone = true;
     }
 
-    if ((chunkQueue->count() > 0) && (beginningMilliseconds < 0)) {
-        beginningMilliseconds = chunkQueue->at(0).startMicroseconds / 1000;
+    if ((chunkQueue->count() > 0) && (beginningMicroseconds < 0)) {
+        notificationCounter   = 0;
+        beginningMicroseconds = chunkQueue->at(0).startMicroseconds;
     }
 
-    if (!feedTimerWaits && (audioSink->state() != QAudio::StoppedState)) {
+    if (!timerWaits && (audioOutput->state() != QAudio::StoppedState)) {
         fillBytesToPlay();
     }
 }
@@ -135,24 +135,24 @@ void SoundOutput::clearBuffers()
 void SoundOutput::fillBytesToPlay()
 {
     if (chunkQueue->count() < 1) {
-        feedTimerWaits = false;
+        timerWaits = false;
         emit bufferUnderrun();
         return;
     }
 
-    if (audioSink->state() == QAudio::StoppedState) {
-        feedTimerWaits = false;
+    if (audioOutput->state() == QAudio::StoppedState) {
+        timerWaits = false;
         return;
     }
 
     if ((bytesToPlay == nullptr) || (bytesToPlayMutex == nullptr)) {
-        feedTimerWaits = false;
+        timerWaits = false;
         return;
     }
 
     int timerDelay = 0;
 
-    while ((chunkQueue->count() > 0) && (bytesToPlay->count() < (audioSink->bufferSize() * 3))) {
+    while ((chunkQueue->count() > 0) && (bytesToPlay->count() < (audioOutput->periodSize() * 3))) {
         QByteArray *chunk = chunkQueue->at(0).chunkPointer;
 
         bytesToPlayMutex->lock();
@@ -169,8 +169,8 @@ void SoundOutput::fillBytesToPlay()
         emit needChunk();
     }
 
-    feedTimerWaits = true;
-    feedTimer->singleShot(timerDelay > 0 ? timerDelay / 4 * 3 : 50, this, SLOT(feedTimerTimeout()));
+    timerWaits = true;
+    feedTimer->singleShot(timerDelay > 0 ? timerDelay / 4 * 3 : 50, this, SLOT(timerTimeout()));
 }
 
 
@@ -180,8 +180,8 @@ void SoundOutput::pause()
         feeder->setOutputDevice(nullptr);
     }
 
-    if (audioSink != nullptr) {
-        audioSink->stop();
+    if (audioOutput != nullptr) {
+        audioOutput->stop();
     }
 
     if ((bytesToPlay != nullptr) && (bytesToPlayMutex != nullptr)) {
@@ -217,15 +217,16 @@ qint64 SoundOutput::remainingMilliseconds()
 void SoundOutput::resume()
 {
     clearBuffers();
-    beginningMilliseconds = -1;
+    notificationCounter   = 0;
+    beginningMicroseconds = -1;
     initialCachingDone    = false;
 
-    if (audioSink != nullptr) {
-        audioIODevice = audioSink->start();
+    if (audioOutput != nullptr) {
+        audioIODevice = audioOutput->start();
         if (feeder != nullptr) {
             feeder->setOutputDevice(audioIODevice);
         }
-        if (!feedTimerWaits) {
+        if (!timerWaits) {
             fillBytesToPlay();
         }
     }
@@ -234,26 +235,23 @@ void SoundOutput::resume()
 
 void SoundOutput::run()
 {
-    audioSink = new QAudioSink(format);
-    audioSink->setBufferSize(audioSink->format().bytesForDuration(FEED_LENGTH_MICROSECONDS));
+    audioOutput = new QAudioOutput(format);
+    audioOutput->setNotifyInterval(NOTIFICATION_INTERVAL_MILLISECONDS);
 
     bytesToPlay      = new QByteArray();
     bytesToPlayMutex = new QMutex();
 
-    feedTimer     = new QTimer();
-    positionTimer = new QTimer();
+    feedTimer = new QTimer();
 
-    connect(audioSink,     SIGNAL(stateChanged(QAudio::State)), this, SLOT(audioOutputStateChanged(QAudio::State)));
-    connect(positionTimer, SIGNAL(timeout()),                   this, SLOT(positionTimerTimeout()));
+    connect(audioOutput, SIGNAL(notify()),                    this, SLOT(audioOutputNotification()));
+    connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), this, SLOT(audioOutputStateChanged(QAudio::State)));
 
-    feeder = new OutputFeeder(bytesToPlay, bytesToPlayMutex, format, audioSink, peakCallbackInfo);
+    feeder = new OutputFeeder(bytesToPlay, bytesToPlayMutex, format, audioOutput, peakCallbackInfo);
     feeder->moveToThread(&feederThread);
 
     connect(&feederThread, SIGNAL(started()), feeder, SLOT(run()));
 
     emit needChunk();
-
-    positionTimer->start(250);
 }
 
 
@@ -264,21 +262,8 @@ void SoundOutput::setBufferQueue(TimedChunkQueue *chunkQueue, QMutex *chunkQueue
 }
 
 
-void SoundOutput::feedTimerTimeout()
+void SoundOutput::timerTimeout()
 {
     fillBytesToPlay();
 }
 
-
-void SoundOutput::positionTimerTimeout()
-{
-    if (audioSink == nullptr) {
-        return;
-    }
-
-    qint64 milliseconds = audioSink->processedUSecs() / 1000 + beginningMilliseconds;
-    if (milliseconds != lastMilliseconds) {
-        lastMilliseconds = milliseconds;
-        emit positionChanged(milliseconds);
-    }
-}

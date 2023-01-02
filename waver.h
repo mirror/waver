@@ -17,7 +17,7 @@
 #include <QObject>
 #include <QQuickView>
 #include <QRandomGenerator>
-#include <QRegularExpression>
+#include <QRegExp>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QString>

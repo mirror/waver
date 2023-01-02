@@ -139,9 +139,9 @@ void Equalizer::filterCallback(double *sample, int channelIndex)
 }
 
 
-QList<double> Equalizer::getBandCenterFrequencies()
+QVector<double> Equalizer::getBandCenterFrequencies()
 {
-    QList<double> returnValue;
+    QVector<double> returnValue;
     foreach (Band band, bands) {
         returnValue.append(band.centerFrequency);
     }
@@ -177,7 +177,7 @@ void Equalizer::setChunkQueue(TimedChunkQueue *chunkQueue, QMutex *chunkQueueMut
 }
 
 
-void Equalizer::setGains(bool on, QList<double> gains, double preAmp)
+void Equalizer::setGains(bool on, QVector<double> gains, double preAmp)
 {
     this->gains.clear();
     this->gains.append(gains);
@@ -186,7 +186,7 @@ void Equalizer::setGains(bool on, QList<double> gains, double preAmp)
     this->preAmp = preAmp;
 
     // minimum 3 maximum 10 bands
-    QList<double> centerFrequencies;
+    QVector<double> centerFrequencies;
     if (gains.size() <= 3) {
         centerFrequencies = { 62, 750, 5000 };
     }

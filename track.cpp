@@ -44,9 +44,12 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
     QSettings settings;
     fadeTags.append(settings.value("options/fade_tags", DEFAULT_FADE_TAGS).toString().split(","));
 
+    desiredPCMFormat.setByteOrder(QSysInfo::ByteOrder == QSysInfo::BigEndian ? QAudioFormat::BigEndian : QAudioFormat::LittleEndian);
     desiredPCMFormat.setChannelCount(2);
+    desiredPCMFormat.setCodec("audio/pcm");
     desiredPCMFormat.setSampleRate(44100);
-    desiredPCMFormat.setSampleFormat(QAudioFormat::Int16);
+    desiredPCMFormat.setSampleSize(16);
+    desiredPCMFormat.setSampleType(QAudioFormat::SignedInt);
 
     setupDecoder();
     setupCache();
@@ -148,16 +151,27 @@ void Track::applyFade(QByteArray *chunk)
     double framesPerSample  = 1.0 / desiredPCMFormat.channelCount();
 
     int dataType = 0;
-    switch (desiredPCMFormat.sampleFormat()) {
-        case QAudioFormat::UInt8:
-            dataType = 4;
-            break;
-        case QAudioFormat::Int32:
-            dataType = 3;
-            break;
-        default:
-            // TODO float is currently not supported
+    if (desiredPCMFormat.sampleType() == QAudioFormat::SignedInt) {
+        if (desiredPCMFormat.sampleSize() == 8) {
+            dataType = 1;
+        }
+        else if (desiredPCMFormat.sampleSize() == 16) {
             dataType = 2;
+        }
+        else if (desiredPCMFormat.sampleSize() == 32) {
+            dataType = 3;
+        }
+    }
+    else if (desiredPCMFormat.sampleType() == QAudioFormat::UnSignedInt) {
+        if (desiredPCMFormat.sampleSize() == 8) {
+            dataType = 4;
+        }
+        else if (desiredPCMFormat.sampleSize() == 16) {
+            dataType = 5;
+        }
+        else if (desiredPCMFormat.sampleSize() == 32) {
+            dataType = 6;
+        }
     }
 
     qint8   *int8;
@@ -211,17 +225,7 @@ void Track::applyFade(QByteArray *chunk)
             }
         }
         else {
-            switch (desiredPCMFormat.sampleFormat()) {
-                case QAudioFormat::UInt8:
-                    byteCount++;
-                    break;
-                case QAudioFormat::Int32:
-                    byteCount += 4;
-                    break;
-                default:
-                    // TODO float is currently not supported
-                    byteCount += 2;
-            }
+            byteCount += desiredPCMFormat.sampleSize() / 8;
         }
 
         fadeFrameCount += framesPerSample;
@@ -398,10 +402,10 @@ qint64 Track::getDecodedMilliseconds()
 }
 
 
-QList<double> Track::getEqualizerBandCenterFrequencies()
+QVector<double> Track::getEqualizerBandCenterFrequencies()
 {
     if (equalizer == nullptr) {
-        return QList<double>();
+        return QVector<double>();
     }
     return equalizer->getBandCenterFrequencies();
 }
@@ -490,7 +494,7 @@ void Track::optionsUpdated()
     fadeTags.append(settings.value("options/fade_tags", DEFAULT_FADE_TAGS).toString().split(","));
 
     if (equalizer != nullptr) {
-        QList<double> gains;
+        QVector<double> gains;
 
         gains.append(settings.value("eq/eq1",  DEFAULT_EQ1).toDouble());
         gains.append(settings.value("eq/eq2",  DEFAULT_EQ2).toDouble());
@@ -847,7 +851,7 @@ void Track::setupEqualizer()
 {
     QSettings settings;
 
-    QList<double> gains;
+    QVector<double> gains;
     gains.append(settings.value("eq/eq1",  DEFAULT_EQ1).toDouble());
     gains.append(settings.value("eq/eq2",  DEFAULT_EQ2).toDouble());
     gains.append(settings.value("eq/eq3",  DEFAULT_EQ3).toDouble());

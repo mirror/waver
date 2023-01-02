@@ -1,9 +1,5 @@
-//import QtQml 2.3
-//import QtQuick 2.12
-
-import QtQml
-import QtQuick
-
+import QtQml 2.3
+import QtQuick 2.12
 
 Item {
     property url   defaultImage: ""
