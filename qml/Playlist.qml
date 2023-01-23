@@ -281,8 +281,8 @@ Item {
 
             property bool held: false
 
-            anchors.left: parent.left
-            anchors.right: parent.right
+            anchors.left: parent ? parent.left : playlistElement.left;
+            anchors.right: parent ? parent.right : playlistElement.right;
             height: playlistElementItem.height
 
             acceptedButtons: Qt.LeftButton | Qt.RightButton

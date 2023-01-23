@@ -135,6 +135,7 @@ class AmpacheServer : public QObject
         long            apiVersionFromString(QString apiVersionString);
         QStringList     shuffleTagsToStringList();
         QString         tagIdToString(int tagId);
+        QObject        *copyExtra(QObject *extra);
 
 
     private slots:

@@ -19,6 +19,9 @@ Item {
 
     function addItem(id, parent, title, image, extra, expandable, playable, selectable, selected)
     {
+        if ((typeof parent === 'undefined') || (parent === null)) {
+            parent = "-";
+        }
         if ((typeof expandable === 'undefined') || (expandable === null)) {
             expandable = false;
         }
@@ -49,7 +52,7 @@ Item {
             busy: false
         }
 
-        if (parent) {
+        if (parent && (parent !== '-')) {
             var parentIndex = internal.findItem(parent);
             if (parentIndex >= 0) {
                 newDict.level = explorerItems.get(parentIndex).level + 1;
@@ -93,6 +96,25 @@ Item {
         }
 
         return servers;
+    }
+
+
+    function getSearchResultId(parentId, index)
+    {
+        var currentIndex = 0;
+
+        for (var i = 0; i < explorerItems.count; i++) {
+            if (explorerItems.get(i).id === parentId) {
+                continue;
+            }
+            if (explorerItems.get(i).parent === parentId) {
+                if (index === currentIndex) {
+                    return explorerItems.get(i).id;
+                }
+                currentIndex++;
+            }
+        }
+        return;
     }
 
 
@@ -200,6 +222,62 @@ Item {
         }
 
         explorerItems.setProperty(index, "selected", selected);
+    }
+
+
+    function setTitle(id, title)
+    {
+        var index = internal.findItem(id);
+        if (index < 0) {
+            return;
+        }
+
+        explorerItems.setProperty(index, "title", title);
+    }
+
+
+    function sortChildren(id)
+    {
+        var childrenToBeSorted = [];
+        var i = 0;
+        while (i < explorerItems.count) {
+            if (explorerItems.get(i).parent === id) {
+                var newDict = {
+                    id: explorerItems.get(i).id,
+                    parent: explorerItems.get(i).parent,
+                    level: explorerItems.get(i).level,
+                    title: explorerItems.get(i).title,
+                    image: explorerItems.get(i).image,
+                    extra: explorerItems.get(i).extra,
+                    expandable: explorerItems.get(i).expandable,
+                    playable: explorerItems.get(i).playable,
+                    queueable: explorerItems.get(i).true,
+                    selectable: explorerItems.get(i).selectable,
+                    selected: explorerItems.get(i).selected,
+                    isError: explorerItems.get(i).false,
+                    errorMessage: explorerItems.get(i).errorMessage,
+                    busy: explorerItems.get(i).busy,
+                    queueable: explorerItems.get(i).queueable,
+                    isError: explorerItems.get(i).isError
+                }
+                childrenToBeSorted.push(newDict);
+
+                removeChildren(explorerItems.get(i).id);
+                explorerItems.remove(i);
+            }
+            else {
+                i++;
+            }
+        }
+
+        childrenToBeSorted.sort(function(a, b) { return a.title.localeCompare(b.title); })
+
+        var parentIndex = internal.findItem(id);
+        for (var i = 0; i < childrenToBeSorted.length; i++) {
+            if (parentIndex >= 0) {
+                explorerItems.insert(internal.afterLastChild(parentIndex), childrenToBeSorted[i]);
+            }
+        }
     }
 
 
@@ -450,8 +528,8 @@ Item {
 
             property bool held: false
 
-            anchors.left: parent.left
-            anchors.right: parent.right
+            anchors.left: parent ? parent.left : explorerElement.left;
+            anchors.right: parent ? parent.right : explorerElement.right;
             height: explorerElementItem.height
 
             acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -482,8 +560,13 @@ Item {
                             itemClicked(id, globalConstants.action_expand, extra);
                         }
                     }
-                    else if (id.startsWith("F") || id.startsWith("f") || id.startsWith("[") || id.startsWith("]") || id.startsWith("M")) {
-                        itemClicked(id, globalConstants.action_noop, extra);
+                    else if (id.startsWith("E") || id.startsWith("e") || id.startsWith("F") || id.startsWith("f") || id.startsWith("[") || id.startsWith("]") || id.startsWith("M")) {
+                        if (id.startsWith("e") && !busy && internal.hasChildren(id)) {
+                            removeChildren(id);
+                        }
+                        else {
+                            itemClicked(id, globalConstants.action_noop, extra);
+                        }
                     }
                 }
                 else if (mouse.button == Qt.RightButton) {

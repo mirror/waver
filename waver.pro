@@ -18,6 +18,7 @@ HEADERS += \
     decodingcallback.h \
     equalizer.h \
     filescanner.h \
+    filesearcher.h \
     globals.h \
     notificationshandler.h \
     outputfeeder.h \
@@ -38,6 +39,7 @@ SOURCES += \
     decodingcallback.cpp \
     equalizer.cpp \
     filescanner.cpp \
+    filesearcher.cpp \
     main.cpp \
     notificationshandler.cpp \
     outputfeeder.cpp \

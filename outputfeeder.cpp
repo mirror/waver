@@ -106,7 +106,7 @@ void OutputFeeder::run()
 
         bytesToWrite = qMin(audioOutput->bytesFree(), audioOutput->periodSize());
         if (bytesToWrite > outputBuffer->count()) {
-            bytesToWrite = 0;
+            bytesToWrite = outputBuffer->count();
         }
 
         if (bytesToWrite <= 0) {

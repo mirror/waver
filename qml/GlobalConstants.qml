@@ -16,4 +16,15 @@ Item {
     readonly property int action_select_group   : 13
     readonly property int action_select_all     : 14
     readonly property int action_deselect_all   : 15
+
+    readonly property int search_action_none     : 0
+    readonly property int search_action_play     : 1
+    readonly property int search_action_playnext : 2
+    readonly property int search_action_enqueue  : 3
+    readonly property int search_action_randomize: 4
+
+    readonly property int search_action_filter_none      : 0
+    readonly property int search_action_filter_startswith: 1
+    readonly property int search_action_filter_exactmatch: 2
+    readonly property int search_action_filter_reductive : 3
 }

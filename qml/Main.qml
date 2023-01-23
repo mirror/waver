@@ -36,6 +36,8 @@ ApplicationWindow {
     signal updatedOptions(string optionsJSON);
     signal requestLog();
     signal peakUILag();
+    signal searchCriteriaEntered(string criteria);
+    signal searchResult(string parent, string id, string extra);
 
     onClosing: {
         saveGeometry(x, y, width, height);
@@ -62,6 +64,18 @@ ApplicationWindow {
     function explorerAddItem(id, parent, title, image, extra, expandable, playable, selectable, selected)
     {
         explorer.addItem(id, parent, title, image, extra, expandable, playable, selectable, selected);
+    }
+
+    function explorerGetSearchResult(parentId, index)
+    {
+        var id = explorer.getSearchResultId(parentId, index);
+        if (!id) {
+            searchResult(parentId, "", {});
+            return;
+        }
+
+        var extra = explorer.getExtra(id);
+        searchResult(parentId, id, JSON.stringify(extra));
     }
 
     function explorerDisableQueueable(id)
@@ -102,6 +116,16 @@ ApplicationWindow {
     function explorerSetSelected(id, selected)
     {
         explorer.setSelected(id, selected);
+    }
+
+    function explorerSetTitle(id, title)
+    {
+        explorer.setTitle(id, title);
+    }
+
+    function explorerSortChildren(id)
+    {
+        explorer.sortChildren(id);
     }
 
     function explorerToggleSelected(id)
@@ -273,6 +297,13 @@ ApplicationWindow {
     function setTrackTags(tagsText)
     {
         tags.text = tagsText;
+    }
+
+
+    function showSearchCriteria()
+    {
+        searchCriteria.clear();
+        searchCriteria.open();
     }
 
 
@@ -636,9 +667,6 @@ ApplicationWindow {
     Dialog {
         id: searchCriteria
 
-        property string searchId: ""
-        property int    searchAction: 0
-
         anchors.centerIn: parent
         focus: true
         height: parent.height * 0.75
@@ -649,11 +677,13 @@ ApplicationWindow {
 
         title: qsTr("Search Criteria")
 
-        onAccepted: {
-            var extraObj = {};
-            extraObj["criteria"] = searchText.text;
+        function clear()
+        {
+            searchText.text = "";
+        }
 
-            explorerItemClicked(searchId, searchAction, JSON.stringify(extraObj));
+        onAccepted: {
+            searchCriteriaEntered(searchText.text);
         }
 
         TextField {
@@ -680,12 +710,6 @@ ApplicationWindow {
         imageSize: parent.width <= 640 ? 16 : parent.width <= 1280 ? 24 : 32
 
         onItemClicked: {
-            if (id.startsWith("E")) {
-                searchCriteria.searchId = id;
-                searchCriteria.searchAction = action;
-                searchCriteria.open();
-                return;
-            }
             explorerItemClicked(id, action, JSON.stringify(extra));
         }
     }

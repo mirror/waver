@@ -79,6 +79,21 @@ QNetworkRequest AmpacheServer::buildRequest(QUrlQuery query, QObject *extra)
 }
 
 
+QObject *AmpacheServer::copyExtra(QObject *extra)
+{
+    QObject *newExtra = new QObject();
+
+    foreach (QByteArray name, extra->dynamicPropertyNames()) {
+        QVariant value = extra->property(name);
+        if (value.isValid()) {
+            newExtra->setProperty(name, value);
+        }
+    }
+
+    return newExtra;
+}
+
+
 QString AmpacheServer::formattedName()
 {
     return QString("%1@%2").arg(user, host.host(QUrl::FullyDecoded));
@@ -675,7 +690,7 @@ void AmpacheServer::startOperations()
         query.addQueryItem("auth", authKey);
 
         if (operation.opCode == Search) {
-            opQueue.append({ SearchAlbums, operation.opData, operation.extra });
+            opQueue.append({ SearchAlbums, operation.opData, copyExtra(operation.extra) });
 
             query.addQueryItem("action", "advanced_search");
             query.addQueryItem("rule_1", "title");
@@ -882,7 +897,7 @@ void AmpacheServer::startOperations()
                             opExtra->setProperty("original_action", originalAction);
                         }
 
-                        opQueue.append({ Shuffle, {{ "favorite", "favorite" }, { "limit", QString("%1").arg(limitFavorite) }}, opExtra });
+                        opQueue.append({ Shuffle, {{ "favorite", "favorite" }, { "limit", QString("%1").arg(limitFavorite) }}, copyExtra(opExtra) });
                     }
                     else {
                         shuffleFavoritesCompleted = true;

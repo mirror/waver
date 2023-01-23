@@ -50,6 +50,7 @@
 #include "ampacheserver.h"
 #include "decodingcallback.h"
 #include "filescanner.h"
+#include "filesearcher.h"
 #include "peakcallback.h"
 #include "track.h"
 
@@ -80,16 +81,24 @@ class Waver : public QObject, PeakCallback, DecodingCallback
             QString   info;
             QString   error;
         };
+        struct SearchActionData {
+            QString query;
+            int     nextExplorerResultIndex;
+            int     doneCounter;
+            int     filter;
+            int     target;
+        };
 
+        static const QString UI_ID_PREFIX_SEARCH;
+        static const QString UI_ID_PREFIX_SEARCHQUERY;
+        static const QString UI_ID_PREFIX_SEARCHRESULT;
+        static const QString UI_ID_PREFIX_SEARCHRESULT_ALBUM;
+        static const QString UI_ID_PREFIX_SEARCHRESULT_ARTIST;
+        static const QString UI_ID_PREFIX_SEARCHRESULT_PLAYLIST;
         static const QString UI_ID_PREFIX_LOCALDIR;
         static const QString UI_ID_PREFIX_LOCALDIR_SUBDIR;
         static const QString UI_ID_PREFIX_LOCALDIR_FILE;
         static const QString UI_ID_PREFIX_SERVER;
-        static const QString UI_ID_PREFIX_SERVER_SEARCH;
-        static const QString UI_ID_PREFIX_SERVER_SEARCHRESULT;
-        static const QString UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM;
-        static const QString UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST;
-        static const QString UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST;
         static const QString UI_ID_PREFIX_SERVER_BROWSE;
         static const QString UI_ID_PREFIX_SERVER_BROWSEALPHABET;
         static const QString UI_ID_PREFIX_SERVER_BROWSEARTIST;
@@ -108,6 +117,10 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED;
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED;
 
+        static const int SEARCH_MAX_QUERIES  = 9;
+        static const int SEARCH_TARGET_SONGS = 0;
+        static const int SEARCH_TARGET_REST  = 1;
+
         enum ShuffleMode {
             None,
             Favorite,
@@ -118,7 +131,8 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         QStringList           localDirs;
         QList<AmpacheServer*> servers;
 
-        QList<FileScanner*> fileScanners;
+        QList<FileScanner*>  fileScanners;
+        QList<FileSearcher*> fileSearchers;
 
         QQuickView *globalConstantsView;
         QObject    *globalConstants;
@@ -157,9 +171,17 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         QMutex shutdownMutex;
         bool   shutdownCompleted;
 
+        int                              searchQueriesCounter;
+        QHash<QString, QString>          searchQueries;                  // query string => explorer id
+        int                              searchOperationsCounter;
+        int                              searchResultsCounter;
+        QHash<QString, SearchActionData> searchActionItemsCounter;       // explorer id => action done items counter
+
         int      serverIndex(QString id);
         QVariant globalConstant(QString constName);
 
+        void itemActionSearch(QString id, int action, QVariantMap extra);
+        void itemActionSearchResult(QString id, int action, QVariantMap extra);
         void itemActionLocal(QString id, int action, QVariantMap extra);
         void itemActionServer(QString id, int action, QVariantMap extra);
         void itemActionServerItem(QString id, int action, QVariantMap extra);
@@ -182,7 +204,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
 
         void startShuffleCountdown();
         void stopShuffleCountdown();
-        void startShuffleBatch(int srvIndex = -1, QString group = "", int artistId = 0, ShuffleMode mode = None, QString originalAction = "action_play", int shuffleTag = 0, int insertDestinationindex = 0);
+        void startShuffleBatch(int srvIndex = -1, QString group = "", int artistId = 0, ShuffleMode mode = None, QString originalAction = "action_play", int shuffleTag = 0, int insertDestinationindex = 0, QString searchActionParentId = "");
 
         void explorerNetworkingUISignals(QString id, bool networking);
 
@@ -192,7 +214,13 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         bool    playlistAttributeSave(AmpacheServer *server, QString playlistId, QString attribute, QString value);
         QString playlistAttributeLoad(AmpacheServer *server, QString playlistId, QString attribute);
 
-        void searchCaches(int srvIndex, QString criteria);
+        bool playlistContains(QString id);
+
+        void searchCaches(QString parent, QString criteria);
+        void searchServers(QString parent, QString criteria);
+        void searchLocalDirs(QString parent, QString criteria);
+
+        void searchAction();
 
 
     public slots:
@@ -228,6 +256,8 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void favoriteButton(bool fav);
         void raiseButton();
 
+        void searchCriteriaEntered(QString criteria);
+        void searchResult(QString parentId, QString id, QString extraJSON);
         void requestOptions();
         void updatedOptions(QString optionsJSON);
 
@@ -239,6 +269,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
     private slots:
 
         void fileScanFinished();
+        void fileSearchFinished();
         void serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer::OpData opData, AmpacheServer::OpResults opResults);
         void serverPasswordNeeded(QString id);
         void errorMessage(QString id, QString info, QString error);
@@ -263,7 +294,10 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void explorerSetFlagExtra(QVariant id, QVariant flag);
         void explorerSetError(QVariant id, QVariant isError, QVariant errorMessage);
         void explorerSetSelected(QVariant id, QVariant selected);
+        void explorerSetTitle(QVariant id, QVariant title);
+        void explorerSortChildren(QVariant id);
         void explorerToggleSelected(QVariant id);
+        void explorerGetSearchResult(QVariant parent, QVariant index);
 
         void uiPromptServerPsw(QVariant id, QVariant formattedName);
 
@@ -281,6 +315,8 @@ class Waver : public QObject, PeakCallback, DecodingCallback
 
         void uiSetImage(QVariant image);
         void uiSetTempImage(QVariant image);
+
+        void uiShowSearchCriteria();
 
         void playlistAddItem(QVariant title, QVariant artist, QVariant group, QVariant image, QVariant selected);
         void playlistClearItems();

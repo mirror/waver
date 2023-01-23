@@ -72,9 +72,14 @@ Dialog {
         shuffle_operator.currentIndex = optionsObj.shuffle_operator === "or" ? 1 : 0;
         random_lists_count.value = optionsObj.random_lists_count;
 
+        search_count_max.value = optionsObj.search_count_max;
+        search_action.currentIndex = optionsObj.search_action;
+        search_action_filter.currentIndex = optionsObj.search_action_filter;
+        search_action_count_max.value = optionsObj.search_action_count_max;
+
         hide_dot_playlists.checked = optionsObj.hide_dot_playlists;
-        starting_index_apply.checked = optionsObj.starting_index_apply
-        starting_index_days.value = optionsObj.starting_index_days
+        starting_index_apply.checked = optionsObj.starting_index_apply;
+        starting_index_days.value = optionsObj.starting_index_days;
         fade_tags.text = optionsObj.fade_tags;
         crossfade_tags.text = optionsObj.crossfade_tags;
 
@@ -115,6 +120,10 @@ Dialog {
                 random_lists_count: random_lists_count.value,
                 shuffle_favorite_frequency: shuffle_favorite_frequency.currentIndex == 0 ? shuffle_favorite_rare : shuffle_favorite_frequency.currentIndex == 1 ? shuffle_favorite_normal : shuffle_favorite_frequent,
                 shuffle_operator: shuffle_operator.currentIndex == 0 ? 'and' : 'or',
+                search_count_max: search_count_max.value,
+                search_action: search_action.currentIndex,
+                search_action_filter: search_action_filter.currentIndex,
+                search_action_count_max: search_action_count_max.value,
                 hide_dot_playlists: hide_dot_playlists.checked,
                 starting_index_apply: starting_index_apply.checked,
                 starting_index_days: starting_index_days.value,
@@ -160,6 +169,9 @@ Dialog {
         }
         TabButton {
             text: qsTr("Shuffle")
+        }
+        TabButton {
+            text: qsTr("Search")
         }
         TabButton {
             text: qsTr("General")
@@ -475,6 +487,114 @@ Dialog {
                         id: random_lists_count
                         from: 3
                         to: 33
+                    }
+                }
+            }
+        }
+
+        Flickable {
+            x: 10
+            y: 10
+            width: parent.width - 20
+            height: parent.height - 20
+            clip: true
+            contentHeight: searchColumn.height
+
+            ScrollBar.vertical: ScrollBar { }
+
+            Column {
+                id: searchColumn
+                width: parent.width - 20
+
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
+                        anchors.verticalCenter: search_count_max.verticalCenter
+                        text: qsTr("Maximum Count")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    SpinBox {
+                        id: search_count_max
+                        from: 0
+                        to: 99
+                    }
+                    Label {
+                        anchors.rightMargin: 17
+                        anchors.verticalCenter: search_count_max.verticalCenter
+                        text: qsTr("<i>(0 means unlmimited)</i>")
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
+                        anchors.verticalCenter: search_action.verticalCenter
+                        text: qsTr("Action")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    ComboBox {
+                        id: search_action
+                        width: parent.parent.width / 3 * 2
+                        model: ListModel {
+                            ListElement {
+                                text: qsTr("None")
+                            }
+                            ListElement {
+                                text: qsTr("Play")
+                            }
+                            ListElement {
+                                text: qsTr("Play Next")
+                            }
+                            ListElement {
+                                text: qsTr("Enqueue")
+                            }
+                            ListElement {
+                                text: qsTr("Randomize")
+                            }
+                        }
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
+                        anchors.verticalCenter: search_action_filter.verticalCenter
+                        text: qsTr("Filter for action")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    ComboBox {
+                        id: search_action_filter
+                        width: parent.parent.width / 3 * 2
+                        model: ListModel {
+                            ListElement {
+                                text: qsTr("None")
+                            }
+                            ListElement {
+                                text: qsTr("Starts With")
+                            }
+                            ListElement {
+                                text: qsTr("Exact Match")
+                            }
+                            ListElement {
+                                text: qsTr("Exact Match OR Starts With OR None")
+                            }
+                        }
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
+                        anchors.verticalCenter: search_action_count_max.verticalCenter
+                        text: qsTr("Maximum Count For Action")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    SpinBox {
+                        id: search_action_count_max
+                        from: 0
+                        to: 99
+                    }
+                    Label {
+                        anchors.rightMargin: 17
+                        anchors.verticalCenter: search_action_count_max.verticalCenter
+                        text: qsTr("<i>(0 means unlmimited)</i>")
                     }
                 }
             }

@@ -73,6 +73,8 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(waver, SIGNAL(explorerSetFlagExtra(QVariant,QVariant)), uiMainWindow, SLOT(explorerSetFlagExtra(QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(explorerSetError(QVariant,QVariant,QVariant)), uiMainWindow, SLOT(explorerSetError(QVariant,QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(explorerSetSelected(QVariant,QVariant)), uiMainWindow, SLOT(explorerSetSelected(QVariant,QVariant)));
+    QObject::connect(waver, SIGNAL(explorerSetTitle(QVariant,QVariant)), uiMainWindow, SLOT(explorerSetTitle(QVariant,QVariant)));
+    QObject::connect(waver, SIGNAL(explorerSortChildren(QVariant)), uiMainWindow, SLOT(explorerSortChildren(QVariant)));
     QObject::connect(waver, SIGNAL(explorerToggleSelected(QVariant)), uiMainWindow, SLOT(explorerToggleSelected(QVariant)));
 
     QObject::connect(waver, SIGNAL(uiSetImage(QVariant)), uiMainWindow, SLOT(setImage(QVariant)));
@@ -83,6 +85,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(waver, SIGNAL(uiSetPeakMeterReplayGain(QVariant)), uiMainWindow, SLOT(setPeakMeterReplayGain(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetShuffleCountdown(QVariant)), uiMainWindow, SLOT(setShuffleCountdown(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetFavorite(QVariant)), uiMainWindow, SLOT(setFavorite(QVariant)));
+    QObject::connect(waver, SIGNAL(uiShowSearchCriteria()), uiMainWindow, SLOT(showSearchCriteria()));
 
     QObject::connect(waver, SIGNAL(uiSetTrackBusy(QVariant)), uiMainWindow, SLOT(setTrackBusy(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetTrackData(QVariant,QVariant,QVariant,QVariant,QVariant)), uiMainWindow, SLOT(setTrackData(QVariant,QVariant,QVariant,QVariant,QVariant)));
@@ -118,6 +121,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(uiMainWindow, SIGNAL(ppButton()), waver, SLOT(ppButton()));
     QObject::connect(uiMainWindow, SIGNAL(stopButton()), waver, SLOT(stopButton()));
     QObject::connect(uiMainWindow, SIGNAL(favoriteButton(bool)), waver, SLOT(favoriteButton(bool)));
+    QObject::connect(uiMainWindow, SIGNAL(searchCriteriaEntered(QString)), waver, SLOT(searchCriteriaEntered(QString)));
 
     QObject::connect(waver,        SIGNAL(optionsAsRequested(QVariant)), uiMainWindow, SLOT(optionsAsRequested(QVariant)));
     QObject::connect(uiMainWindow, SIGNAL(requestOptions()),             waver,        SLOT(requestOptions()));
@@ -129,7 +133,11 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(waver,        SIGNAL(uiSetIsSnap(QVariant)),         uiMainWindow, SLOT(quickStartGuideSetIsSnap(QVariant)));
     QObject::connect(uiMainWindow, SIGNAL(peakUILag()),                   waver,        SLOT(peakUILag()));
     QObject::connect(uiMainWindow, SIGNAL(saveGeometry(int,int,int,int)), this,         SLOT(uiSaveGeometry(int,int,int,int)));
-    QObject::connect(this,         SIGNAL(shutdownWaver()),               waver,        SLOT(shutdown()));
+
+    QObject::connect(waver,        SIGNAL(explorerGetSearchResult(QVariant,QVariant)), uiMainWindow, SLOT(explorerGetSearchResult(QVariant,QVariant)));
+    QObject::connect(uiMainWindow, SIGNAL(searchResult(QString,QString,QString)),      waver,        SLOT(searchResult(QString,QString,QString)));
+
+    QObject::connect(this, SIGNAL(shutdownWaver()), waver, SLOT(shutdown()));
 
     QSettings settings;
     uiMainWindow->setGeometry(settings.value("MainWindow/x", 150).toInt(), settings.value("MainWindow/y", 150).toInt(), settings.value("MainWindow/width", uiMainWindow->width()).toInt(), settings.value("MainWindow/height", uiMainWindow->height()).toInt());

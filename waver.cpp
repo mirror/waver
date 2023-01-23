@@ -6,15 +6,16 @@
 
 #include "waver.h"
 
+const QString Waver::UI_ID_PREFIX_SEARCH                       = "E";
+const QString Waver::UI_ID_PREFIX_SEARCHQUERY                  = "e";
+const QString Waver::UI_ID_PREFIX_SEARCHRESULT                 = "F";
+const QString Waver::UI_ID_PREFIX_SEARCHRESULT_ALBUM           = "f";
+const QString Waver::UI_ID_PREFIX_SEARCHRESULT_ARTIST          = "[";
+const QString Waver::UI_ID_PREFIX_SEARCHRESULT_PLAYLIST        = "]";
 const QString Waver::UI_ID_PREFIX_LOCALDIR                     = "A";
 const QString Waver::UI_ID_PREFIX_LOCALDIR_SUBDIR              = "B";
 const QString Waver::UI_ID_PREFIX_LOCALDIR_FILE                = "C";
 const QString Waver::UI_ID_PREFIX_SERVER                       = "D";
-const QString Waver::UI_ID_PREFIX_SERVER_SEARCH                = "E";
-const QString Waver::UI_ID_PREFIX_SERVER_SEARCHRESULT          = "F";
-const QString Waver::UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM    = "f";
-const QString Waver::UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST   = "[";
-const QString Waver::UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST = "]";
 const QString Waver::UI_ID_PREFIX_SERVER_BROWSE                = "G";
 const QString Waver::UI_ID_PREFIX_SERVER_BROWSEALPHABET        = "H";
 const QString Waver::UI_ID_PREFIX_SERVER_BROWSEARTIST          = "I";
@@ -41,6 +42,8 @@ Waver::Waver() : QObject()
 
     globalConstantsView = new QQuickView(QUrl("qrc:/qml/GlobalConstants.qml"));
     globalConstants = (QObject*)globalConstantsView->rootObject();
+
+    shuffleCountdownTimer = nullptr;
 
     currentTrack  = nullptr;
     previousTrack = nullptr;
@@ -69,6 +72,10 @@ Waver::Waver() : QObject()
     peakLagIgnoreEnd     = 0;
     peakFPSIncreaseStart = 0;
 
+    searchQueriesCounter    = 0;
+    searchOperationsCounter = 0;
+    searchResultsCounter    = 0;
+
     peakFPSMutex.lock();
     peakFPS = peakFPSMax;
     peakFPSMutex.unlock();
@@ -95,6 +102,12 @@ Waver::~Waver()
         fileScanner->requestInterruption();
         fileScanner->wait();
         delete fileScanner;
+    }
+    foreach (FileSearcher *fileSearcher, fileSearchers) {
+        disconnect(fileSearcher, &FileSearcher::finished, this, &Waver::fileSearchFinished);
+        fileSearcher->requestInterruption();
+        fileSearcher->wait();
+        delete fileSearcher;
     }
 
     foreach(AmpacheServer *server, servers) {
@@ -149,7 +162,7 @@ void Waver::addServer(QString host, QString user, QString psw)
     server->setSettingsId(QUuid::createUuid());
 
     servers.append(server);
-    emit explorerAddItem(id, QVariant::fromValue(nullptr), server->formattedName(), "qrc:/icons/remote.ico", QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+    emit explorerAddItem(id, QVariantMap({}), server->formattedName(), "qrc:/icons/remote.ico", QVariantMap({}), true, false, false, false);
 
     connect(server, &AmpacheServer::operationFinished, this, &Waver::serverOperationFinished);
     connect(server, &AmpacheServer::passwordNeeded,    this, &Waver::serverPasswordNeeded);
@@ -270,6 +283,16 @@ void Waver::errorMessage(QString id, QString info, QString error)
         qDebug() << id << info << error;
     #endif
 
+    if (error.compare("4704 No Results") == 0) {
+        searchOperationsCounter--;
+        if (searchOperationsCounter <= 0) {
+            foreach(QString key, searchQueries.keys()) {
+                explorerNetworkingUISignals(searchQueries.value(key), false);
+            }
+            searchAction();
+        }
+    }
+
     emit uiSetStatusTempText(QString("%1 <i>%2</i>").arg(info, error));
 }
 
@@ -282,6 +305,14 @@ void Waver::explorerItemClicked(QString id, int action, QString extraJSON)
         emit uiSetTempImage(extra.value("art"));
     }
 
+    if (id.startsWith(UI_ID_PREFIX_SEARCH) || id.startsWith(UI_ID_PREFIX_SEARCHQUERY)) {
+        itemActionSearch(id, action, extra);
+        return;
+    }
+    if (id.startsWith(UI_ID_PREFIX_SEARCHRESULT) || id.startsWith(UI_ID_PREFIX_SEARCHRESULT_ALBUM) || id.startsWith(UI_ID_PREFIX_SEARCHRESULT_ARTIST) || id.startsWith(UI_ID_PREFIX_SEARCHRESULT_PLAYLIST)) {
+        itemActionSearchResult(id, action, extra);
+        return;
+    }
     if (id.startsWith(UI_ID_PREFIX_LOCALDIR) || id.startsWith(UI_ID_PREFIX_LOCALDIR_SUBDIR) || id.startsWith(UI_ID_PREFIX_LOCALDIR_FILE)) {
         itemActionLocal(id, action, extra);
         return;
@@ -346,11 +377,11 @@ void Waver::fileScanFinished()
     int counter = 0;
     foreach (QFileInfo dir, fileScanner->getDirs()) {
         counter++;
-        emit explorerAddItem(QString("%1%2").arg(UI_ID_PREFIX_LOCALDIR_SUBDIR).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())), fileScanner->getUiData(), dir.baseName(), "qrc:/icons/browse.ico", QVariantMap({{ "path", dir.absoluteFilePath() }}), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1%2").arg(UI_ID_PREFIX_LOCALDIR_SUBDIR).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())), fileScanner->getUiData(), dir.baseName(), "qrc:/icons/browse.ico", QVariantMap({{ "path", dir.absoluteFilePath() }}), true, false, false, false);
     }
     foreach (QFileInfo file, fileScanner->getFiles()) {
         counter++;
-        emit explorerAddItem(QString("%1%2").arg(UI_ID_PREFIX_LOCALDIR_FILE).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())), fileScanner->getUiData(), file.fileName(), "qrc:/icons/audio_file.ico", QVariantMap({{ "path", file.absoluteFilePath() }}), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1%2").arg(UI_ID_PREFIX_LOCALDIR_FILE).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())), fileScanner->getUiData(), file.fileName(), "qrc:/icons/audio_file.ico", QVariantMap({{ "path", file.absoluteFilePath() }}), false, true, false, false);
     }
 
     emit explorerSetBusy(fileScanner->getUiData(), false);
@@ -361,6 +392,31 @@ void Waver::fileScanFinished()
 
     delete fileScanner;
     fileScanners.removeAll(fileScanner);
+}
+
+
+void Waver::fileSearchFinished()
+{
+    FileSearcher *fileSearcher = (FileSearcher*) QObject::sender();
+
+    disconnect(fileSearcher, &FileSearcher::finished, this, &Waver::fileSearchFinished);
+
+    QRandomGenerator *randomGenerator = QRandomGenerator::global();
+
+    QSettings settings;
+    int searchMaxCount = settings.value("options/search_count_max", DEFAULT_SEARCH_COUNT_MAX).toInt();
+
+    foreach (QFileInfo file, fileSearcher->getResults()) {
+        if ((searchResultsCounter < searchMaxCount) || (searchMaxCount == 0)) {
+            emit explorerAddItem(QString("%1%2").arg(UI_ID_PREFIX_LOCALDIR_FILE).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())), fileSearcher->getUiData(), file.fileName(), "qrc:/icons/audio_file.ico", QVariantMap({{ "path", file.absoluteFilePath() }}), false, true, false, false);
+            searchResultsCounter++;
+            continue;
+        }
+        break;
+    }
+
+    delete fileSearcher;
+    fileSearchers.removeAll(fileSearcher);
 }
 
 
@@ -459,15 +515,53 @@ void Waver::itemActionLocal(QString id, int action, QVariantMap extra)
     }
     else if (action == globalConstant("action_play")) {
         stopShuffleCountdown();
+        Track::TrackInfo trackInfo = trackInfoFromFilePath(extra.value("path").toString());
+
+        if (extra.contains("search_action_parent_id")) {
+            QString explorerId = extra.value("search_action_parent_id").toString();
+            if (!searchActionItemsCounter.contains(explorerId)) {
+                return;
+            }
+
+            if ((searchActionItemsCounter.value(explorerId).filter == globalConstant("search_action_filter_exactmatch")) && trackInfo.title.compare(searchActionItemsCounter.value(explorerId).query, Qt::CaseInsensitive)) {
+                searchAction();
+                return;
+            }
+            if ((searchActionItemsCounter.value(explorerId).filter == globalConstant("search_action_filter_startswith")) && !trackInfo.title.startsWith(searchActionItemsCounter.value(explorerId).query, Qt::CaseInsensitive)) {
+                searchAction();
+                return;
+            }
+
+            searchActionItemsCounter[explorerId].doneCounter++;
+            searchAction();
+        }
 
         playlist.clear();
-        Track::TrackInfo trackInfo = trackInfoFromFilePath(extra.value("path").toString());
         actionPlay(trackInfo);
     }
     else if ((action == globalConstant("action_playnext")) || (action == globalConstant("action_enqueue"))) {
         stopShuffleCountdown();
 
         Track::TrackInfo trackInfo = trackInfoFromFilePath(extra.value("path").toString());
+
+        if (extra.contains("search_action_parent_id")) {
+            QString explorerId = extra.value("search_action_parent_id").toString();
+            if (!searchActionItemsCounter.contains(explorerId)) {
+                return;
+            }
+
+            if ((searchActionItemsCounter.value(explorerId).filter == globalConstant("search_action_filter_exactmatch")) && trackInfo.title.compare(searchActionItemsCounter.value(explorerId).query, Qt::CaseInsensitive)) {
+                searchAction();
+                return;
+            }
+            if ((searchActionItemsCounter.value(explorerId).filter == globalConstant("search_action_filter_startswith")) && !trackInfo.title.startsWith(searchActionItemsCounter.value(explorerId).query, Qt::CaseInsensitive)) {
+                searchAction();
+                return;
+            }
+
+            searchActionItemsCounter[explorerId].doneCounter++;
+            searchAction();
+        }
 
         Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
         connectTrackSignals(track);
@@ -486,6 +580,322 @@ void Waver::itemActionLocal(QString id, int action, QVariantMap extra)
 }
 
 
+void Waver::itemActionSearch(QString id, int action, QVariantMap extra)
+{
+    if (searchOperationsCounter > 0) {
+        return;
+    }
+
+    if (id.startsWith(UI_ID_PREFIX_SEARCH)) {
+        emit uiShowSearchCriteria();
+        return;
+    }
+
+    QString parentId;
+    QString criteria;
+    foreach (QString key, searchQueries.keys()) {
+        emit explorerRemoveChildren(searchQueries.value(key));
+        if (searchQueries.value(key).compare(id) == 0) {
+            parentId = id;
+            criteria = key;
+        }
+    }
+    if (parentId.isEmpty()) {
+        if (!extra.contains("criteria")) {
+            return;
+        }
+        criteria = extra.value("criteria").toString();
+        if (!searchQueries.contains(criteria)) {
+            return;
+        }
+        parentId = searchQueries.value(criteria);
+    }
+
+
+    searchResultsCounter = 0;
+    if(searchActionItemsCounter.contains(parentId)) {
+        searchActionItemsCounter[parentId].doneCounter = 0;
+    }
+
+    searchServers(parentId, criteria);
+    searchLocalDirs(parentId, criteria);
+    searchCaches(parentId, criteria);
+}
+
+
+void Waver::itemActionSearchResult(QString id, int action, QVariantMap extra)
+{
+    QStringList idParts = id.split("|");
+
+    QString serverId = idParts.last();
+    int     srvIndex = serverIndex(serverId);
+    if ((srvIndex >= servers.size()) || (srvIndex < 0)) {
+        errorMessage(serverId, tr("Server ID can not be found"), serverId);
+        return;
+    }
+
+    bool OK = false;
+    int destinationIndex = extra.value("destination_index", 0).toInt(&OK);
+    if (!OK || (destinationIndex < 0) || (destinationIndex > playlist.count())) {
+        destinationIndex = 0;
+    }
+
+    QRandomGenerator *randomGenerator = QRandomGenerator::global();
+
+    if (action == globalConstant("action_play")) {
+        if (id.startsWith(UI_ID_PREFIX_SEARCHRESULT_ARTIST)) {
+            bool OK = false;
+            int  artistId = QString(idParts.first()).remove(0, 1).toInt(&OK);
+
+            if (OK) {
+                if (extra.contains("search_action_parent_id")) {
+                    QString parentId = extra.value("search_action_parent_id").toString();
+                    if (extra.contains("group")) {
+                        if ((searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_exactmatch")) && extra.value("group").toString().compare(searchActionItemsCounter.value(parentId).query, Qt::CaseInsensitive)) {
+                            searchAction();
+                            return;
+                        }
+                        if ((searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_startswith")) && !extra.value("group").toString().startsWith(searchActionItemsCounter.value(parentId).query, Qt::CaseInsensitive)) {
+                            searchAction();
+                            return;
+                        }
+                    }
+                    startShuffleBatch(srvIndex, extra.value("group").toString(), artistId, None, "action_play", 0, 0, parentId);
+                }
+                else {
+                    startShuffleBatch(srvIndex, extra.value("group").toString(), artistId);
+                }
+            }
+            return;
+        }
+        else if (id.startsWith(UI_ID_PREFIX_SEARCHRESULT_ALBUM)) {
+            QObject *opExtra = new QObject();
+            opExtra->setProperty("original_action", "action_play");
+            opExtra->setProperty("group", extra.value("group").toString());
+            if (extra.contains("from_search")) {
+                opExtra->setProperty("from_search", extra.value("from_search").toString());
+            }
+            if (extra.contains("search_action_parent_id")) {
+                QString parentId = extra.value("search_action_parent_id").toString();
+                if (extra.contains("group")) {
+                    if ((searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_exactmatch")) && extra.value("group").toString().compare(searchActionItemsCounter.value(parentId).query, Qt::CaseInsensitive)) {
+                        searchAction();
+                        return;
+                    }
+                    if ((searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_startswith")) && !extra.value("group").toString().startsWith(searchActionItemsCounter.value(parentId).query, Qt::CaseInsensitive)) {
+                        searchAction();
+                        return;
+                    }
+                }
+                opExtra->setProperty("search_action_parent_id", parentId);
+            }
+
+            explorerNetworkingUISignals(id, true);
+            emit playlistBigBusy(true);
+            servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }}, opExtra);
+        }
+        else if (id.startsWith(UI_ID_PREFIX_SEARCHRESULT)) {
+            Track::TrackInfo trackInfo = trackInfoFromIdExtra(id, extra);
+
+            if (extra.contains("search_action_parent_id")) {
+                QString explorerId = extra.value("search_action_parent_id").toString();
+                if (!searchActionItemsCounter.contains(explorerId)) {
+                    return;
+                }
+
+                if ((searchActionItemsCounter.value(explorerId).filter == globalConstant("search_action_filter_exactmatch")) && trackInfo.title.compare(searchActionItemsCounter.value(explorerId).query, Qt::CaseInsensitive)) {
+                    searchAction();
+                    return;
+                }
+                if ((searchActionItemsCounter.value(explorerId).filter == globalConstant("search_action_filter_startswith")) && !trackInfo.title.startsWith(searchActionItemsCounter.value(explorerId).query, Qt::CaseInsensitive)) {
+                    searchAction();
+                    return;
+                }
+
+                searchActionItemsCounter[explorerId].doneCounter++;
+                searchAction();
+            }
+
+            actionPlay(trackInfo);
+            playlist.clear();
+        }
+        else if (id.startsWith(UI_ID_PREFIX_SEARCHRESULT_PLAYLIST)) {
+            QObject *opExtra = new QObject();
+            opExtra->setProperty("original_action", "action_play");
+            opExtra->setProperty("group", extra.value("group").toString());
+            if (extra.contains("from_search")) {
+                opExtra->setProperty("from_search", extra.value("from_search").toString());
+            }
+            if (extra.contains("search_action_parent_id")) {
+                QString parentId = extra.value("search_action_parent_id").toString();
+                if (extra.contains("group")) {
+                    if ((searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_exactmatch")) && extra.value("group").toString().compare(searchActionItemsCounter.value(parentId).query, Qt::CaseInsensitive)) {
+                        searchAction();
+                        return;
+                    }
+                    if ((searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_startswith")) && !extra.value("group").toString().startsWith(searchActionItemsCounter.value(parentId).query, Qt::CaseInsensitive)) {
+                        searchAction();
+                        return;
+                    }
+                }
+                opExtra->setProperty("search_action_parent_id", parentId);
+            }
+
+            explorerNetworkingUISignals(id, true);
+            emit playlistBigBusy(true);
+            servers.at(srvIndex)->startOperation(AmpacheServer::PlaylistSongs, {{ "playlist", QString(idParts.first()).remove(0, 1) }}, opExtra);
+        }
+    }
+
+    if ((action == globalConstant("action_playnext")) || (action == globalConstant("action_enqueue")) || (action == globalConstant("action_insert")) || (action == globalConstant("action_enqueueshuffled"))) {
+        QString actionStr =
+            action == globalConstant("action_playnext")        ? "action_playnext" :
+            action == globalConstant("action_enqueue")         ? "action_enqueue"  :
+            action == globalConstant("action_insert")          ? "action_insert"   :
+                                                                 "action_enqueueshuffled";
+
+        if (actionStr.isEmpty()) {
+            return;
+        }
+
+        if (id.startsWith(UI_ID_PREFIX_SEARCHRESULT_ARTIST)) {
+            bool OK = false;
+            int artistId = QString(idParts.first()).remove(0, 1).toInt(&OK);
+            if (OK) {
+                if (extra.contains("search_action_parent_id")) {
+                    QString parentId = extra.value("search_action_parent_id").toString();
+                    if (extra.contains("group")) {
+                        if ((searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_exactmatch")) && extra.value("group").toString().compare(searchActionItemsCounter.value(parentId).query, Qt::CaseInsensitive)) {
+                            searchAction();
+                            return;
+                        }
+                        if ((searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_startswith")) && !extra.value("group").toString().startsWith(searchActionItemsCounter.value(parentId).query, Qt::CaseInsensitive)) {
+                            searchAction();
+                            return;
+                        }
+                    }
+                    startShuffleBatch(srvIndex, extra.value("group").toString(), artistId, None, actionStr, 0, destinationIndex, parentId);
+                }
+                else {
+                    startShuffleBatch(srvIndex, extra.value("group").toString(), artistId, None, actionStr, 0, destinationIndex);
+                }
+            }
+        }
+        else if (id.startsWith(UI_ID_PREFIX_SEARCHRESULT_ALBUM)) {
+            QObject *opExtra = new QObject();
+            opExtra->setProperty("original_action", actionStr);
+            opExtra->setProperty("group", extra.value("group").toString());
+            if (extra.contains("from_search")) {
+                opExtra->setProperty("from_search", extra.value("from_search").toString());
+            }
+            if (extra.contains("search_action_parent_id")) {
+                QString parentId = extra.value("search_action_parent_id").toString();
+                if (extra.contains("group")) {
+                    if ((searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_exactmatch")) && extra.value("group").toString().compare(searchActionItemsCounter.value(parentId).query, Qt::CaseInsensitive)) {
+                        searchAction();
+                        return;
+                    }
+                    if ((searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_startswith")) && !extra.value("group").toString().startsWith(searchActionItemsCounter.value(parentId).query, Qt::CaseInsensitive)) {
+                        searchAction();
+                        return;
+                    }
+                }
+                opExtra->setProperty("search_action_parent_id", parentId);
+            }
+            if (destinationIndex > 0) {
+                opExtra->setProperty("destination_index", QString("%1").arg(destinationIndex));
+            }
+
+            explorerNetworkingUISignals(id, true);
+            emit playlistBigBusy(true);
+            servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }}, opExtra);
+        }
+        else if (id.startsWith(UI_ID_PREFIX_SEARCHRESULT)) {
+            if (playlistContains(id)) {
+                if (extra.contains("search_action_parent_id")) {
+                    searchAction();
+                }
+                return;
+            }
+
+            Track::TrackInfo trackInfo = trackInfoFromIdExtra(id, extra);
+
+            if (extra.contains("search_action_parent_id")) {
+                QString explorerId = extra.value("search_action_parent_id").toString();
+                if (!searchActionItemsCounter.contains(explorerId)) {
+                    return;
+                }
+
+                if ((searchActionItemsCounter.value(explorerId).filter == globalConstant("search_action_filter_exactmatch")) && trackInfo.title.compare(searchActionItemsCounter.value(explorerId).query, Qt::CaseInsensitive)) {
+                    searchAction();
+                    return;
+                }
+                if ((searchActionItemsCounter.value(explorerId).filter == globalConstant("search_action_filter_startswith")) && !trackInfo.title.startsWith(searchActionItemsCounter.value(explorerId).query, Qt::CaseInsensitive)) {
+                    searchAction();
+                    return;
+                }
+
+                searchActionItemsCounter[explorerId].doneCounter++;
+                searchAction();
+            }
+
+            Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
+            connectTrackSignals(track);
+
+            if (action == globalConstant("action_enqueue")) {
+                playlist.append(track);
+            }
+            else if (action == globalConstant("action_playnext")) {
+                playlist.prepend(track);
+            }
+            else if (action == globalConstant("action_insert")) {
+                playlist.insert(destinationIndex, track);
+            }
+            else if (action == globalConstant("action_enqueueshuffled")) {
+                if (playlist.size() < 1) {
+                    playlist.append(track);
+                }
+                else {
+                    playlist.insert(randomGenerator->bounded(playlist.size()), track);
+                }
+            }
+
+            playlistUpdateUISignals();
+            playlistFirstGroupSave();
+        }
+        else if (id.startsWith(UI_ID_PREFIX_SEARCHRESULT_PLAYLIST)) {
+            QObject *opExtra = new QObject();
+            opExtra->setProperty("original_action", actionStr);
+            opExtra->setProperty("group", extra.value("group").toString());
+            if (extra.contains("from_search")) {
+                opExtra->setProperty("from_search", extra.value("from_search").toString());
+            }
+            if (extra.contains("search_action_parent_id")) {
+                QString parentId = extra.value("search_action_parent_id").toString();
+                if (extra.contains("group")) {
+                    if ((searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_exactmatch")) && extra.value("group").toString().compare(searchActionItemsCounter.value(parentId).query, Qt::CaseInsensitive)) {
+                        searchAction();
+                        return;
+                    }
+                    if ((searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_startswith")) && !extra.value("group").toString().startsWith(searchActionItemsCounter.value(parentId).query, Qt::CaseInsensitive)) {
+                        searchAction();
+                        return;
+                    }
+                }
+                opExtra->setProperty("search_action_parent_id", parentId);
+            }
+            if (destinationIndex > 0) {
+                opExtra->setProperty("destination_index", QString("%1").arg(destinationIndex));
+            }
+
+            explorerNetworkingUISignals(id, true);
+            emit playlistBigBusy(true);
+            servers.at(srvIndex)->startOperation(AmpacheServer::PlaylistSongs, {{ "playlist", QString(idParts.first()).remove(0, 1) }}, opExtra);
+        }
+    }
+}
+
+
 void Waver::itemActionServer(QString id, int action, QVariantMap extra)
 {
     Q_UNUSED(extra);
@@ -495,15 +905,14 @@ void Waver::itemActionServer(QString id, int action, QVariantMap extra)
 
         emit explorerRemoveChildren(id);
 
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SEARCH), id),                id, tr("Search"),          "qrc:/icons/search.ico",        QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_BROWSE), id),                id, tr("Browse"),          "qrc:/icons/browse.ico",        QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_PLAYLISTS), id),             id, tr("Playlists"),       "qrc:/icons/playlist.ico",      QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SMARTPLAYLISTS), id),        id, tr("Smart Playlists"), "qrc:/icons/playlist.ico",      QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_RADIOSTATIONS), id),         id, tr("Radio Stations"),  "qrc:/icons/radio_station.ico", QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), id),               id, tr("Shuffle"),         "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), true, true,  QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES), id),     id, tr("Favorites"),       "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED), id),   id, tr("Never Played"),    "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED), id), id, tr("Recently Added"),  "qrc:/icons/shuffle.ico",       QVariant::fromValue(nullptr), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_BROWSE), id),                id, tr("Browse"),          "qrc:/icons/browse.ico",        QVariantMap({}), true, false, false, false);
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_PLAYLISTS), id),             id, tr("Playlists"),       "qrc:/icons/playlist.ico",      QVariantMap({}), true, false, false, false);
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SMARTPLAYLISTS), id),        id, tr("Smart Playlists"), "qrc:/icons/playlist.ico",      QVariantMap({}), true, false, false, false);
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_RADIOSTATIONS), id),         id, tr("Radio Stations"),  "qrc:/icons/radio_station.ico", QVariantMap({}), true, false, false, false);
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), id),               id, tr("Shuffle"),         "qrc:/icons/shuffle.ico",       QVariantMap({}), true, true,  false, false);
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES), id),     id, tr("Favorites"),       "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED), id),   id, tr("Never Played"),    "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED), id), id, tr("Recently Added"),  "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
     }
     else if (action == globalConstant("action_collapse")) {
         emit explorerRemoveChildren(id);
@@ -546,11 +955,11 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
                         currentChar = alphabet;
                         added.append(alphabet);
                         QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEALPHABET).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())).arg(serverId);
-                        emit explorerAddItem(newId, id, currentChar, "qrc:/icons/browse.ico", QVariantMap({{ "alphabet", currentChar }}), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+                        emit explorerAddItem(newId, id, currentChar, "qrc:/icons/browse.ico", QVariantMap({{ "alphabet", currentChar }}), true, false, false, false);
                     }
                     if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALPHABET) && extra.value("alphabet").toString().startsWith(alphabet)) {
                         QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEARTIST, settings.value("id").toString(), serverId);
-                        emit explorerAddItem(newId, id, name, settings.value("art"), QVariantMap({{ "group", name }, { "art", settings.value("art") }}), true, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+                        emit explorerAddItem(newId, id, name, settings.value("art"), QVariantMap({{ "group", name }, { "art", settings.value("art") }}), true, true, false, false);
                     }
                 }
                 settings.endArray();
@@ -576,11 +985,11 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
                         }
 
                         QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_PLAYLIST, playlistId, serverId);
-                        emit explorerAddItem(newId, id, playlistName, art, QVariantMap({{ "group", playlistName }, { "art", art }}), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+                        emit explorerAddItem(newId, id, playlistName, art, QVariantMap({{ "group", playlistName }, { "art", art }}), false, true, false, false);
                     }
                     if (id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLISTS) && playlistId.startsWith("smart", Qt::CaseInsensitive) && (!playlistName.startsWith(".") || !hideDotPlaylists)) {
                         QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SMARTPLAYLIST, playlistId, serverId);
-                        emit explorerAddItem(newId, id, playlistName, "qrc:/icons/playlist.ico", QVariantMap({{ "group", playlistName }}), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+                        emit explorerAddItem(newId, id, playlistName, "qrc:/icons/playlist.ico", QVariantMap({{ "group", playlistName }}), false, true, false, false);
                     }
                 }
                 settings.endArray();
@@ -598,7 +1007,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
                     QString newId         = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_RADIOSTATION, settings.value("id").toString(), serverId);
                     QString unescapedName = QTextDocumentFragment::fromHtml(settings.value("name").toString()).toPlainText();
 
-                    emit explorerAddItem(newId, id, unescapedName, "qrc:/icons/radio_station.ico", QVariantMap({ { "name", unescapedName }, { "url", settings.value("url") } }), false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+                    emit explorerAddItem(newId, id, unescapedName, "qrc:/icons/radio_station.ico", QVariantMap({ { "name", unescapedName }, { "url", settings.value("url") } }), false, true, false, false);
                     emit explorerDisableQueueable(newId);
                 }
                 settings.endArray();
@@ -626,12 +1035,8 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
     }
 
     if (action == globalConstant("action_collapse")) {
-        if (!id.startsWith(UI_ID_PREFIX_SERVER_SEARCH)) {
-            emit explorerRemoveChildren(id);
-            return;
-        }
-
-        action = globalConstant("action_refresh").toInt();
+        emit explorerRemoveChildren(id);
+        return;
     }
 
     if (action == globalConstant("action_refresh")) {
@@ -642,11 +1047,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         explorerNetworkingUISignals(id, true);
         emit explorerRemoveChildren(id);
 
-        if (id.startsWith(UI_ID_PREFIX_SERVER_SEARCH)) {
-            servers.at(srvIndex)->startOperation(AmpacheServer::Search, {{ "criteria", extra.value("criteria").toString() }});
-            searchCaches(srvIndex, extra.value("criteria").toString());
-        }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSE)) {
+        if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSE)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseRoot, AmpacheServer::OpData());
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST)) {
@@ -676,7 +1077,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
     }
 
     if (action == globalConstant("action_play")) {
-        if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST)) {
+        if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST)) {
             bool OK = false;
             int  artistId = QString(idParts.first()).remove(0, 1).toInt(&OK);
 
@@ -685,7 +1086,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             }
             return;
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM)) {
             explorerNetworkingUISignals(id, true);
             emit playlistBigBusy(true);
 
@@ -698,12 +1099,12 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
 
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }}, opExtra);
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG)) {
             playlist.clear();
             Track::TrackInfo trackInfo = trackInfoFromIdExtra(id, extra);
             actionPlay(trackInfo);
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST)) {
             explorerNetworkingUISignals(id, true);
             emit playlistBigBusy(true);
 
@@ -761,14 +1162,14 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             destinationIndex = 0;
         }
 
-        if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST)) {
+        if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEARTIST)) {
             bool OK = false;
             int  artistId = QString(idParts.first()).remove(0, 1).toInt(&OK);
             if (OK) {
                 startShuffleBatch(srvIndex, extra.value("group").toString(), artistId, None, actionStr, 0, destinationIndex);
             }
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALBUM)) {
             explorerNetworkingUISignals(id, true);
             emit playlistBigBusy(true);
 
@@ -784,7 +1185,11 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
 
             servers.at(srvIndex)->startOperation(AmpacheServer::BrowseAlbum, {{ "album", QString(idParts.first()).remove(0, 1) }}, opExtra);
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSESONG)) {
+            if (playlistContains(id)) {
+                return;
+            }
+
             Track *track = new Track(trackInfoFromIdExtra(id, extra), peakCallbackInfo, decodingCallbackInfo);
             connectTrackSignals(track);
 
@@ -809,7 +1214,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             playlistUpdateUISignals();
             playlistFirstGroupSave();
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST)) {
             explorerNetworkingUISignals(id, true);
             emit playlistBigBusy(true);
 
@@ -1024,6 +1429,20 @@ bool Waver::playlistAttributeSave(AmpacheServer *server, QString playlistId, QSt
     }
 
     return returnValue;
+}
+
+
+bool Waver::playlistContains(QString id)
+{
+    if ((currentTrack != nullptr) && !currentTrack->getTrackInfo().id.compare(id)) {
+        return true;
+    }
+    foreach (Track *track, playlist) {
+        if (!track->getTrackInfo().id.compare(id)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 
@@ -1378,6 +1797,11 @@ void Waver::requestOptions()
     optionsObj.insert("shuffle_favorite_frequency", settings.value("options/shuffle_favorite_frequency", DEFAULT_SHUFFLE_FAVORITE_FREQUENCY));
     optionsObj.insert("shuffle_operator", settings.value("options/shuffle_operator", DEFAULT_SHUFFLE_OPERATOR));
 
+    optionsObj.insert("search_count_max", settings.value("options/search_count_max", DEFAULT_SEARCH_COUNT_MAX));
+    optionsObj.insert("search_action", settings.value("options/search_action", DEFAULT_SEARCH_ACTION));
+    optionsObj.insert("search_action_filter", settings.value("options/search_action_filter", DEFAULT_SEARCH_ACTION_FILTER));
+    optionsObj.insert("search_action_count_max", settings.value("options/search_action_count_max", DEFAULT_SEARCH_ACTION_COUNT_MAX));
+
     optionsObj.insert("hide_dot_playlists", settings.value("options/hide_dot_playlists", DEFAULT_HIDE_DOT_PLAYLIST).toBool());
     optionsObj.insert("starting_index_apply", settings.value("options/starting_index_apply", DEFAULT_STARTING_INDEX_APPLY).toBool());
     optionsObj.insert("starting_index_days", settings.value("options/starting_index_days", DEFAULT_STARTING_INDEX_DAYS));
@@ -1403,6 +1827,8 @@ void Waver::run()
     shuffleCountdownTimer->setInterval(1000);
     connect(shuffleCountdownTimer, &QTimer::timeout, this, &Waver::shuffleCountdown);
 
+    emit explorerAddItem(QString("%1A").arg(UI_ID_PREFIX_SEARCH), QVariant::fromValue(nullptr), tr("Search"), "qrc:/icons/search.ico", QVariantMap({}), false, false, false, false);
+
 
     // local dirs
 
@@ -1422,7 +1848,7 @@ void Waver::run()
     for(int i = 0; i < localDirs.size(); i++) {
         QString id   = QString("%1%2").arg(UI_ID_PREFIX_LOCALDIR).arg(i);
         QString path = QFileInfo(localDirs.at(i)).absoluteFilePath();
-        emit explorerAddItem(id, QVariant::fromValue(nullptr), QFileInfo(localDirs.at(i)).baseName(), "qrc:/icons/local.ico", QVariantMap({{ "path", path }}), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(id, QVariant::fromValue(nullptr), QFileInfo(localDirs.at(i)).baseName(), "qrc:/icons/local.ico", QVariantMap({{ "path", path }}), true, false, false, false);
     }
 
 
@@ -1450,7 +1876,7 @@ void Waver::run()
         connect(servers.at(i), &AmpacheServer::passwordNeeded,    this, &Waver::serverPasswordNeeded);
         connect(servers.at(i), &AmpacheServer::errorMessage,      this, &Waver::errorMessage);
 
-        emit explorerAddItem(id, QVariant::fromValue(nullptr), servers.at(i)->formattedName(), "qrc:/icons/remote.ico", QVariant::fromValue(nullptr), true, false, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+        emit explorerAddItem(id, QVariant::fromValue(nullptr), servers.at(i)->formattedName(), "qrc:/icons/remote.ico", QVariantMap({}), true, false, false, false);
     }
 
     if (servers.count()) {
@@ -1459,53 +1885,218 @@ void Waver::run()
 }
 
 
-void Waver::searchCaches(int srvIndex, QString criteria)
+void Waver::searchAction()
 {
     QSettings settings;
 
-    QString parentId          = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCH, servers.at(srvIndex)->getId().remove(0, 1), servers.at(srvIndex)->getId());
-    QString browseCacheKey    = QString("%1/browse").arg(servers.at(srvIndex)->getSettingsId().toString());
-    QString playlistsCacheKey = QString("%1/playlists").arg(servers.at(srvIndex)->getSettingsId().toString());
-    bool    hideDotPlaylists  = settings.value("options/hide_dot_playlists", DEFAULT_HIDE_DOT_PLAYLIST).toBool();
-
-    if (settings.contains(QString("%1/1/id").arg(browseCacheKey))) {
-        int browseSize = settings.beginReadArray(browseCacheKey);
-        for (int i = 0; i < browseSize; i++) {
-            settings.setArrayIndex(i);
-
-            QString name = settings.value("name").toString();
-
-            if (name.contains(criteria, Qt::CaseInsensitive)) {
-                QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST, settings.value("id").toString(), servers.at(srvIndex)->getId());
-                emit explorerAddItem(newId, parentId, QString("<i>%1</i>").arg(name), settings.value("art").toString(), QVariantMap({{ "art", settings.value("art").toString() }, { "group", name }, { "from_search", "from_search" }}), false, true, false, false);
-            }
-        }
-        settings.endArray();
+    if (settings.value("options/search_action", DEFAULT_SEARCH_ACTION).toInt() == globalConstant("search_action_none").toInt()) {
+        return;
     }
+    int searchActionCountMax = settings.value("options/search_action_count_max", DEFAULT_SEARCH_ACTION_COUNT_MAX).toInt();
+    int searchActionFilter   = settings.value("options/search_action_filter", DEFAULT_SEARCH_ACTION_FILTER).toInt();
 
-    if (settings.contains(QString("%1/1/id").arg(playlistsCacheKey))) {
-        int playlistsSize = settings.beginReadArray(playlistsCacheKey);
-        for (int i = 0; i < playlistsSize; i++) {
-            settings.setArrayIndex(i);
+    foreach (QString query, searchQueries.keys()) {
+        QString explorerId = searchQueries.value(query);
+        if (!searchActionItemsCounter.contains(explorerId)) {
+            searchActionItemsCounter.insert(explorerId, { query, 0, 0, searchActionFilter == globalConstant("search_action_filter_reductive").toInt() ? globalConstant("search_action_filter_exactmatch").toInt() : searchActionFilter, SEARCH_TARGET_SONGS });
+        }
+        if ((searchActionItemsCounter.value(explorerId).doneCounter >= 0) && ((searchActionItemsCounter.value(explorerId).doneCounter < searchActionCountMax) || (searchActionCountMax == 0))) {
+            int index = searchActionItemsCounter.value(explorerId).nextExplorerResultIndex;
+            searchActionItemsCounter[explorerId].nextExplorerResultIndex++;
+            emit explorerGetSearchResult(explorerId, index);
+        }
+    }
+}
 
-            QString playlistName = settings.value("name").toString();
 
-            if (playlistName.startsWith(".") && hideDotPlaylists) {
-                continue;
+void Waver::searchCaches(QString parent, QString criteria)
+{
+    QSettings settings;
+
+    foreach (AmpacheServer *server, servers) {
+        QString browseCacheKey    = QString("%1/browse").arg(server->getSettingsId().toString());
+        QString playlistsCacheKey = QString("%1/playlists").arg(server->getSettingsId().toString());
+        bool    hideDotPlaylists  = settings.value("options/hide_dot_playlists", DEFAULT_HIDE_DOT_PLAYLIST).toBool();
+
+        if (settings.contains(QString("%1/1/id").arg(browseCacheKey))) {
+            int browseSize = settings.beginReadArray(browseCacheKey);
+            for (int i = 0; i < browseSize; i++) {
+                settings.setArrayIndex(i);
+
+                QString name = settings.value("name").toString();
+
+                if (name.contains(criteria, Qt::CaseInsensitive)) {
+                    QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SEARCHRESULT_ARTIST, settings.value("id").toString(), server->getId());
+                    emit explorerAddItem(newId, parent, QString("<i>%1</i>").arg(name), settings.value("art").toString(), QVariantMap({{ "art", settings.value("art").toString() }, { "group", name }, { "from_search", "from_search" }}), false, true, false, false);
+                }
             }
+            settings.endArray();
+        }
 
-            if (playlistName.contains(criteria, Qt::CaseInsensitive)) {
+        if (settings.contains(QString("%1/1/id").arg(playlistsCacheKey))) {
+            int playlistsSize = settings.beginReadArray(playlistsCacheKey);
+            for (int i = 0; i < playlistsSize; i++) {
+                settings.setArrayIndex(i);
 
-                QString art = settings.value("art", "").toString();
-                if (art.isEmpty() || settings.value("id").toString().startsWith("smart")) {
-                    art ="qrc:/icons/playlist.ico";
+                QString playlistName = settings.value("name").toString();
+
+                if (playlistName.startsWith(".") && hideDotPlaylists) {
+                    continue;
                 }
 
-                QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST, settings.value("id").toString(), servers.at(srvIndex)->getId());
-                emit explorerAddItem(newId, parentId, QString("<i>%1</i>").arg(playlistName), art, QVariantMap({{ "group", playlistName }, { "from_search", "from_search" }, { "art", art }}), false, true, false, false);
+                if (playlistName.contains(criteria, Qt::CaseInsensitive)) {
+
+                    QString art = settings.value("art", "").toString();
+                    if (art.isEmpty() || settings.value("id").toString().startsWith("smart")) {
+                        art ="qrc:/icons/playlist.ico";
+                    }
+
+                    QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SEARCHRESULT_PLAYLIST, settings.value("id").toString(), server->getId());
+                    emit explorerAddItem(newId, parent, QString("<i>%1</i>").arg(playlistName), art, QVariantMap({{ "group", playlistName }, { "from_search", "from_search" }, { "art", art }}), false, true, false, false);
+                }
+            }
+            settings.endArray();
+        }
+    }
+}
+
+
+void Waver::searchCriteriaEntered(QString criteria)
+{
+    foreach (QString key, searchQueries.keys()) {
+        emit explorerRemoveChildren(searchQueries.value(key));
+    }
+
+    QString parentId;
+    if (searchQueries.contains(criteria)) {
+        parentId = searchQueries.value(criteria);
+    }
+    else {
+        searchQueriesCounter++;
+        parentId = QString("%1%2").arg(UI_ID_PREFIX_SEARCHQUERY).arg(searchQueriesCounter);
+
+        QList<QString> keys = searchQueries.keys();
+        keys.sort();
+        while ((searchQueries.size() >= SEARCH_MAX_QUERIES) && keys.size()) {
+            emit explorerRemoveItem(searchQueries.value(keys.first()));
+            searchQueries.remove(keys.first());
+            keys.removeFirst();
+        }
+        searchQueries.insert(criteria, parentId);
+
+        emit explorerAddItem(parentId, QString("%1A").arg(UI_ID_PREFIX_SEARCH), criteria, "qrc:/icons/search.ico", QVariantMap({{ "criteria", criteria }}), false, false, false, false);
+        emit explorerSortChildren(QString("%1A").arg(UI_ID_PREFIX_SEARCH));
+    }
+
+    searchResultsCounter = 0;
+
+    searchServers(parentId, criteria);
+    searchLocalDirs(parentId, criteria);
+    searchCaches(parentId, criteria);
+}
+
+
+void Waver::searchLocalDirs(QString parent, QString criteria)
+{
+    QSettings settings;
+
+    foreach(QDir localDir, localDirs) {
+        FileSearcher *fileSearcher = new FileSearcher(localDir.absolutePath(), criteria, parent);
+        connect(fileSearcher, &FileSearcher::finished, this, &Waver::fileSearchFinished);
+        fileSearchers.append(fileSearcher);
+
+        fileSearcher->start();
+    }
+}
+
+
+void Waver::searchResult(QString parentId, QString id, QString extraJSON)
+{
+    QSettings settings;
+
+    if (id.isEmpty()) {
+        int searchActionFilter = settings.value("options/search_action_filter", DEFAULT_SEARCH_ACTION_FILTER).toInt();
+        if (searchActionFilter == globalConstant("search_action_filter_reductive")) {
+            if (searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_exactmatch")) {
+                searchActionItemsCounter[parentId].filter = globalConstant("search_action_filter_startswith").toInt();
+                searchActionItemsCounter[parentId].nextExplorerResultIndex = 0;
+                searchAction();
+                return;
+            }
+            if (searchActionItemsCounter.value(parentId).filter == globalConstant("search_action_filter_startswith")) {
+                searchActionItemsCounter[parentId].filter = globalConstant("search_action_filter_none").toInt();
+                searchActionItemsCounter[parentId].nextExplorerResultIndex = 0;
+                searchAction();
+                return;
             }
         }
-        settings.endArray();
+
+        if (searchActionItemsCounter.value(parentId).target == SEARCH_TARGET_SONGS) {
+            searchActionItemsCounter[parentId].target                  = SEARCH_TARGET_REST;
+            searchActionItemsCounter[parentId].nextExplorerResultIndex = 0;
+            searchAction();
+            return;
+        }
+
+        searchActionItemsCounter[parentId].doneCounter = -1;
+        return;
+    }
+
+    if ((searchActionItemsCounter.value(parentId).target == SEARCH_TARGET_SONGS) && !id.startsWith(UI_ID_PREFIX_LOCALDIR_FILE) && !id.startsWith(UI_ID_PREFIX_SEARCHRESULT)) {
+        searchAction();
+        return;
+    }
+    if ((searchActionItemsCounter.value(parentId).target == SEARCH_TARGET_REST) && (id.startsWith(UI_ID_PREFIX_LOCALDIR_FILE) || id.startsWith(UI_ID_PREFIX_SEARCHRESULT))) {
+        searchAction();
+        return;
+    }
+
+    int searchActionAction = settings.value("options/search_action", DEFAULT_SEARCH_ACTION).toInt();
+    if (searchActionAction == globalConstant("search_action_none").toInt()) {
+        return;
+    }
+
+    int action = 0;
+    if (searchActionAction == globalConstant("search_action_play").toInt()) {
+        action = globalConstant("action_play").toInt();
+    }
+    else if (searchActionAction == globalConstant("search_action_playnext").toInt()) {
+        action = globalConstant("action_playnext").toInt();
+    }
+    else if (searchActionAction == globalConstant("search_action_enqueue").toInt()) {
+        action = globalConstant("action_enqueue").toInt();
+    }
+    else if (searchActionAction == globalConstant("search_action_randomize").toInt()) {
+        action = globalConstant("action_enqueueshuffled").toInt();
+    }
+    assert(action);
+
+    if (searchActionItemsCounter.contains(parentId)) {
+        if (!searchActionItemsCounter.value(parentId).doneCounter && (currentTrack == nullptr) && (action != globalConstant("action_play").toInt())) {
+            action = globalConstant("action_play").toInt();
+        }
+        if (searchActionItemsCounter.value(parentId).doneCounter && (action == globalConstant("action_play").toInt())) {
+            action = globalConstant("search_action_playnext").toInt();
+        }
+    }
+
+    QVariantMap extra = QJsonDocument::fromJson(extraJSON.toUtf8()).toVariant().toMap();
+    extra.insert("search_action_parent_id", parentId);
+
+    explorerItemClicked(id, action, QJsonDocument::fromVariant(extra).toJson());
+}
+
+
+void Waver::searchServers(QString parent, QString criteria)
+{
+    explorerNetworkingUISignals(parent, true);
+    searchOperationsCounter = 0;
+    foreach (AmpacheServer *server, servers) {
+        searchOperationsCounter += 2;
+
+        QObject *opExtra = new QObject();
+        opExtra->setProperty("parent", QString(parent));
+        server->startOperation(AmpacheServer::Search, {{ "criteria", criteria }}, opExtra);
     }
 }
 
@@ -1536,6 +2127,9 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     QString   parentId;
     int       startingIndex = 0;
 
+    int searchMaxCount       = settings.value("options/search_count_max", DEFAULT_SEARCH_COUNT_MAX).toInt();
+    int searchActionCountMax = settings.value("options/search_action_count_max", DEFAULT_SEARCH_ACTION_COUNT_MAX).toInt();
+
     QString originalAction = opData.contains("original_action") ? opData.value("original_action") : "";
     QString group          = opData.contains("group")           ? opData.value("group")           : "";
     QUuid   groupId        = QUuid::createUuid();
@@ -1544,6 +2138,19 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     int destinationIndex = opData.value("destination_index", 0).toInt(&OK);
     if (!OK || (destinationIndex < 0) || (destinationIndex > playlist.count())) {
         destinationIndex = 0;
+    }
+
+    int i = 0;
+    while (i < opResults.size() - 1) {
+        int j = i + 1;
+        while (j < opResults.size()) {
+            if (opResults.value(i).value("id", "-").compare(opResults.value(j).value("id", "+")) == 0) {
+                opResults.removeAt(j);
+                continue;
+            }
+            j++;
+        }
+        i++;
     }
 
     bool allTheSameArtist = true;
@@ -1569,12 +2176,12 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
             }
         }
         else {
-            errorMessage(servers.at(srvIndex)->getId(), tr("The Ampache server returned an empty result set"), tr("No error occured, but the results are empty"));
+            errorMessage(servers.at(srvIndex)->getId(), tr("The Ampache server [%1] returned an empty result set").arg(servers.at(srvIndex)->formattedName()), tr("No error occured, but the results are empty"));
         }
     }
 
     if ((opCode == AmpacheServer::Search) || (opCode == AmpacheServer::SearchAlbums)) {
-        parentId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCH, QString(opData.value("serverId")).remove(0, 1), opData.value("serverId"));
+        parentId = opData.value("parent");
 
         std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
             return a.value("name").compare(b.value("name"), Qt::CaseInsensitive) < 0;
@@ -1587,14 +2194,14 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         settings.beginWriteArray(cacheKey);
     }
     else if (opCode == AmpacheServer::BrowseArtist) {
-        parentId = QString("%1%2|%3").arg(opData.contains("from_search") ? UI_ID_PREFIX_SERVER_SEARCHRESULT_ARTIST : UI_ID_PREFIX_SERVER_BROWSEARTIST, opData.value("artist"), opData.value("serverId"));
+        parentId = QString("%1%2|%3").arg(opData.contains("from_search") ? UI_ID_PREFIX_SEARCHRESULT_ARTIST : UI_ID_PREFIX_SERVER_BROWSEARTIST, opData.value("artist"), opData.value("serverId"));
 
         std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
             return (a.value("year").toInt() < b.value("year").toInt()) || ((a.value("year").toInt() == b.value("year").toInt()) && (a.value("name").compare(b.value("name"), Qt::CaseInsensitive) < 0));
         });
     }
     else if (opCode == AmpacheServer::BrowseAlbum) {
-        parentId = QString("%1%2|%3").arg(opData.contains("from_search") ? UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM : UI_ID_PREFIX_SERVER_BROWSEALBUM, opData.value("album"), opData.value("serverId"));
+        parentId = QString("%1%2|%3").arg(opData.contains("from_search") ? UI_ID_PREFIX_SEARCHRESULT_ALBUM : UI_ID_PREFIX_SERVER_BROWSEALBUM, opData.value("album"), opData.value("serverId"));
 
         std::sort(opResults.begin(), opResults.end(), [](AmpacheServer::OpData a, AmpacheServer::OpData b) {
             return (a.value("track").toInt() < b.value("track").toInt()) || ((a.value("track").toInt() == b.value("track").toInt()) && (a.value("title").compare(b.value("title"), Qt::CaseInsensitive) < 0));
@@ -1607,7 +2214,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         settings.beginWriteArray(cacheKey);
     }
     else if (opCode == AmpacheServer::PlaylistSongs) {
-        parentId      = QString("%1%2|%3").arg(opData.contains("from_search") ? UI_ID_PREFIX_SERVER_SEARCHRESULT_PLAYLIST : opData.value("playlist").startsWith("smart", Qt::CaseInsensitive) ? UI_ID_PREFIX_SERVER_SMARTPLAYLIST : UI_ID_PREFIX_SERVER_PLAYLIST, opData.value("playlist"), opData.value("serverId"));
+        parentId      = QString("%1%2|%3").arg(opData.contains("from_search") ? UI_ID_PREFIX_SEARCHRESULT_PLAYLIST : opData.value("playlist").startsWith("smart", Qt::CaseInsensitive) ? UI_ID_PREFIX_SERVER_SMARTPLAYLIST : UI_ID_PREFIX_SERVER_PLAYLIST, opData.value("playlist"), opData.value("serverId"));
 
         if (settings.value("options/starting_index_apply", DEFAULT_STARTING_INDEX_APPLY).toBool()) {
             bool OK;
@@ -1647,21 +2254,35 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     for(int i = 0; i < opResults.size(); i++) {
         AmpacheServer::OpData result = opResults.at(i);
 
-        if (opCode == AmpacheServer::Search) {
-            QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCHRESULT, result.value("id"), opData.value("serverId"));
-
-            QVariantMap trackInfoMap;
-            QStringList keys = result.keys();
-            foreach(QString key, keys) {
-                trackInfoMap.insert(key, result.value(key));
+        if (opData.contains("search_action_parent_id") && searchActionItemsCounter.contains(opData.value("search_action_parent_id"))) {
+            searchActionItemsCounter[opData.value("search_action_parent_id")].doneCounter++;
+            if ((searchActionCountMax > 0) && (searchActionItemsCounter.value(opData.value("search_action_parent_id")).doneCounter > searchActionCountMax)) {
+                break;
             }
+        }
 
-            emit explorerAddItem(newId, parentId, QString("<b>%1</b>").arg(result.value("name")), result.value("art"), trackInfoMap, false, true, false, false);
+        if (opCode == AmpacheServer::Search) {
+            if ((searchResultsCounter < searchMaxCount) || (searchMaxCount == 0)) {
+                QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SEARCHRESULT, result.value("id"), opData.value("serverId"));
+
+                QVariantMap trackInfoMap;
+                QStringList keys = result.keys();
+                foreach(QString key, keys) {
+                    trackInfoMap.insert(key, result.value(key));
+                }
+                trackInfoMap.insert("from_search", "from_search");
+
+                emit explorerAddItem(newId, parentId, QString("<b>%1</b>").arg(result.value("name")), result.value("art"), trackInfoMap, false, true, false, false);
+                searchResultsCounter++;
+            }
         }
         else if (opCode == AmpacheServer::SearchAlbums) {
-            QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SEARCHRESULT_ALBUM, result.value("id"), opData.value("serverId"));
+            if ((searchResultsCounter < searchMaxCount) || (searchMaxCount == 0)) {
+                QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SEARCHRESULT_ALBUM, result.value("id"), opData.value("serverId"));
 
-            emit explorerAddItem(newId, parentId, result.value("name"), result.value("art"), QVariantMap({{ "art", result.value("art") }, { "group", result.value("name") }, { "from_search", "from_search" }}), false, true, false, false);
+                emit explorerAddItem(newId, parentId, result.value("name"), result.value("art"), QVariantMap({{ "art", result.value("art") }, { "group", result.value("name") }, { "from_search", "from_search" }}), false, true, false, false);
+                searchResultsCounter++;
+            }
         }
         else if (opCode == AmpacheServer::BrowseRoot) {
            settings.setArrayIndex(i);
@@ -1677,7 +2298,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                 displayName = displayName.prepend("%1. ").arg(result.value("year"));
             }
 
-            emit explorerAddItem(newId, parentId, displayName, result.value("art"), QVariantMap({{ "art", result.value("art") }, { "group", result.value("name") }}), true, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+            emit explorerAddItem(newId, parentId, displayName, result.value("art"), QVariantMap({{ "art", result.value("art") }, { "group", result.value("name") }}), true, true, false, false);
         }
         else if (opCode == AmpacheServer::BrowseAlbum) {
             QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSESONG, result.value("id"), opData.value("serverId"));
@@ -1704,25 +2325,27 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                     actionPlay(trackInfo);
                 }
                 else {
-                    Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
-                    connectTrackSignals(track);
+                    if (!playlistContains(newId)) {
+                        Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
+                        connectTrackSignals(track);
 
-                    if (originalAction.compare("action_enqueue") == 0) {
-                        playlist.append(track);
-                    }
-                    else if (originalAction.compare("action_insert") == 0) {
-                        playlist.insert(destinationIndex + i, track);
-                    }
-                    else if (originalAction.compare("action_enqueueshuffled") == 0) {
-                        if (playlist.size() < 1) {
+                        if (originalAction.compare("action_enqueue") == 0) {
                             playlist.append(track);
                         }
-                        else {
-                            playlist.insert(randomGenerator->bounded(playlist.size()), track);
+                        else if (originalAction.compare("action_insert") == 0) {
+                            playlist.insert(destinationIndex + i, track);
                         }
-                    }
-                    else {
-                        playlist.insert(originalAction.compare("action_play") == 0 ? i - 1 : i, track);
+                        else if (originalAction.compare("action_enqueueshuffled") == 0) {
+                            if (playlist.size() < 1) {
+                                playlist.append(track);
+                            }
+                            else {
+                                playlist.insert(randomGenerator->bounded(playlist.size()), track);
+                            }
+                        }
+                        else {
+                            playlist.insert(originalAction.compare("action_play") == 0 ? i - 1 : i, track);
+                        }
                     }
                 }
             }
@@ -1735,7 +2358,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                     displayTitle = displayTitle.append(" %1").arg(result.value("artist"));
                 }
 
-                emit explorerAddItem(newId, parentId, displayTitle, "qrc:/icons/audio_file.ico", trackInfoMap, false, true, QVariant::fromValue(nullptr), QVariant::fromValue(nullptr));
+                emit explorerAddItem(newId, parentId, displayTitle, "qrc:/icons/audio_file.ico", trackInfoMap, false, true, false, false);
             }
         }
         else if ((opCode == AmpacheServer::PlaylistRoot) || (opCode == AmpacheServer::Tags)) {
@@ -1777,25 +2400,27 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                         actionPlay(trackInfo);
                     }
                     else {
-                        Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
-                        connectTrackSignals(track);
+                        if (!playlistContains(newId)) {
+                            Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
+                            connectTrackSignals(track);
 
-                        if (originalAction.compare("action_enqueue") == 0) {
-                            playlist.append(track);
-                        }
-                        else if (originalAction.compare("action_insert") == 0) {
-                            playlist.insert(destinationIndex + i, track);
-                        }
-                        else if (originalAction.compare("action_enqueueshuffled") == 0) {
-                            if (playlist.size() < 1) {
+                            if (originalAction.compare("action_enqueue") == 0) {
                                 playlist.append(track);
                             }
-                            else {
-                                playlist.insert(randomGenerator->bounded(playlist.size()), track);
+                            else if (originalAction.compare("action_insert") == 0) {
+                                playlist.insert(destinationIndex + i, track);
                             }
-                        }
-                        else {
-                            playlist.insert(originalAction.compare("action_play") == 0 ? i - 1 : i, track);
+                            else if (originalAction.compare("action_enqueueshuffled") == 0) {
+                                if (playlist.size() < 1) {
+                                    playlist.append(track);
+                                }
+                                else {
+                                    playlist.insert(randomGenerator->bounded(playlist.size()), track);
+                                }
+                            }
+                            else {
+                                playlist.insert(originalAction.compare("action_play") == 0 ? i - 1 : i, track);
+                            }
                         }
                     }
                 }
@@ -1878,8 +2503,12 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         }
     }
 
-    if (opCode == AmpacheServer::Search) {
-        explorerNetworkingUISignals(parentId, false);
+    if ((opCode == AmpacheServer::Search) || (opCode == AmpacheServer::SearchAlbums)) {
+        searchOperationsCounter--;
+        if (searchOperationsCounter <= 0) {
+            explorerNetworkingUISignals(parentId, false);
+            searchAction();
+        }
     }
     else if (opCode == AmpacheServer::BrowseRoot) {
         settings.endArray();
@@ -1981,6 +2610,10 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                 playlistFirstGroupSave();
             }
         }
+    }
+
+    if (opData.contains("search_action_parent_id")) {
+        searchAction();
     }
 }
 
@@ -2090,7 +2723,9 @@ void Waver::startNextTrackUISignals()
     emit uiSetImage(trackInfo.arts.size() ? trackInfo.arts.at(0).toString() : "qrc:/images/waver.png");
     emit uiSetFavorite(trackInfo.attributes.contains("flag"));
     emit uiSetTrackBusy(currentTrack->getNetworkStartingLastState());
-    emit uiSetTrackAmpacheURL(trackURL(trackInfo.id).toString(QUrl::FullyEncoded));
+    if (!trackInfo.url.isLocalFile()) {
+        emit uiSetTrackAmpacheURL(trackURL(trackInfo.id).toString(QUrl::FullyEncoded));
+    }
 
     emit requestTrackBufferReplayGainInfo();
 
@@ -2101,7 +2736,7 @@ void Waver::startNextTrackUISignals()
 }
 
 
-void Waver::startShuffleBatch(int srvIndex, QString group, int artistId, ShuffleMode mode, QString originalAction, int shuffleTag, int insertDestinationindex)
+void Waver::startShuffleBatch(int srvIndex, QString group, int artistId, ShuffleMode mode, QString originalAction, int shuffleTag, int insertDestinationindex, QString searchActionParentId)
 {
     if (srvIndex < 0) {
         srvIndex = shuffleServerIndex;
@@ -2134,7 +2769,6 @@ void Waver::startShuffleBatch(int srvIndex, QString group, int artistId, Shuffle
     else if (mode == RecentlyAdded) {
         opData.insert("recently_added", "recently_added");
     }
-
     if (shuffleTag != 0) {
         opData.insert("shuffle_tag", QString("%1").arg(shuffleTag));
     }
@@ -2150,6 +2784,9 @@ void Waver::startShuffleBatch(int srvIndex, QString group, int artistId, Shuffle
     }
     if (insertDestinationindex > 0) {
         opExtra->setProperty("destination_index", QString("%1").arg(insertDestinationindex));
+    }
+    if (!searchActionParentId.isEmpty()) {
+        opExtra->setProperty("search_action_parent_id", searchActionParentId);
     }
 
     servers.at(srvIndex)->startOperation(AmpacheServer::Shuffle, opData, opExtra);
@@ -2469,7 +3106,9 @@ void Waver::trackInfoUpdated(QString id)
         emit uiSetTrackTags(trackInfo.tags.join(", "));
         emit uiSetImage(trackInfo.arts.size() ? trackInfo.arts.at(0).toString() : "qrc:/images/waver.png");
         emit uiSetFavorite(trackInfo.attributes.contains("flag"));
-        emit uiSetTrackAmpacheURL(trackURL(trackInfo.id).toString(QUrl::FullyEncoded));
+        if (!trackInfo.url.isLocalFile()) {
+            emit uiSetTrackAmpacheURL(trackURL(trackInfo.id).toString(QUrl::FullyEncoded));
+        }
     }
 }
 
@@ -2594,6 +3233,11 @@ void Waver::updatedOptions(QString optionsJSON)
     settings.setValue("options/random_lists_count", options.value("random_lists_count").toInt());
     settings.setValue("options/shuffle_delay_seconds", options.value("shuffle_delay_seconds").toInt());
     settings.setValue("options/shuffle_favorite_frequency", options.value("shuffle_favorite_frequency").toInt());
+
+    settings.setValue("options/search_count_max", options.value("search_count_max").toInt());
+    settings.setValue("options/search_action", options.value("search_action").toInt());
+    settings.setValue("options/search_action_filter", options.value("search_action_filter").toInt());
+    settings.setValue("options/search_action_count_max", options.value("search_action_count_max").toInt());
 
     settings.setValue("options/max_peak_fps", peakFPSMax);
     settings.setValue("options/peak_delay_on", peakDelayOn);
