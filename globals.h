@@ -18,6 +18,7 @@ static const int     DEFAULT_RANDOM_LISTS_COUNT         = 11;
 static const int     DEFAULT_SHUFFLE_DELAY_SECONDS      = 10;
 static const int     DEFAULT_SHUFFLE_FAVORITE_FREQUENCY = 4;
 static const bool    DEFAULT_SHUFFLE_AUTOSTART          = true;
+static const int     DEFAULT_ALPHABET_LIMIT             = 49;
 
 static const int DEFAULT_SEARCH_COUNT_MAX        = 0;
 static const int DEFAULT_SEARCH_ACTION           = 2;

@@ -9,6 +9,8 @@ Dialog {
     focus: true
     standardButtons: Dialog.Ok | Dialog.Apply | Dialog.Cancel
 
+    property int imageSize: 36
+
     signal optionsSending(string optionsJSON)
 
     function setOptions(optionsObj)
@@ -86,6 +88,15 @@ Dialog {
         max_peak_fps.value = optionsObj.max_peak_fps;
         peak_delay_on.checked = optionsObj.peak_delay_on;
         peak_delay_ms.value = optionsObj.peak_delay_ms;
+
+        shuffleItems.clear();
+        for (var i = 0; i < optionsObj.genres.length; i++) {
+            var newGenre = {
+                selected: optionsObj.genres[i].selected,
+                title: optionsObj.genres[i].title
+            }
+            shuffleItems.append(newGenre);
+        }
     }
 
     onAccepted: internal.sendOptions()
@@ -100,6 +111,13 @@ Dialog {
 
         function sendOptions()
         {
+            var genres = [];
+            for(var i = 0; i < shuffleItems.count; i++) {
+                if (shuffleItems.get(i).selected) {
+                    genres.push(shuffleItems.get(i).title);
+                }
+            }
+
             var optionsObj = {
                 eq_disable: !eqOn.enabled && !eqOn.checked,
                 eq_on: eqOn.checked,
@@ -131,7 +149,8 @@ Dialog {
                 crossfade_tags: crossfade_tags.text,
                 max_peak_fps: max_peak_fps.value,
                 peak_delay_on: peak_delay_on.checked,
-                peak_delay_ms: peak_delay_ms.value
+                peak_delay_ms: peak_delay_ms.value,
+                genres: genres
             };
             optionsSending(JSON.stringify(optionsObj));
         }
@@ -447,8 +466,33 @@ Dialog {
                 Row {
                     Label {
                         width: parent.parent.width / 3
+                        anchors.verticalCenter: shuffle_genres.verticalCenter
+                        text: qsTr("Genres")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    ListView {
+                        id: shuffle_genres
+                        width: parent.parent.width / 3 * 2
+                        height: (imageSize + (imageSize / 12)) * shuffleItems.count
+
+                        clip: true
+                        highlight: Rectangle {
+                            color: "LightSteelBlue";
+                        }
+                        highlightMoveDuration: 500
+                        highlightMoveVelocity: 500
+                        delegate: shuffleElement
+                        model: shuffleItems
+
+                        ScrollBar.vertical: ScrollBar {
+                        }
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
                         anchors.verticalCenter: shuffle_operator.verticalCenter
-                        text: qsTr("Labels Operator")
+                        text: qsTr("Genres Operator")
                         wrapMode: Label.WrapAtWordBoundaryOrAnywhere
                     }
                     ComboBox {
@@ -735,5 +779,61 @@ Dialog {
                 }
             }
         }
+    }
+
+    Component {
+        id: shuffleElement
+
+        MouseArea {
+            id: shuffleElementMouseArea
+
+            anchors.left: parent ? parent.left : shuffleElement.left;
+            anchors.right: parent ? parent.right : shuffleElement.right;
+            height: shuffleElementItem.height
+
+            acceptedButtons: Qt.LeftButton
+
+            onClicked: {
+                if (mouse.button == Qt.LeftButton) {
+                    shuffleItems.get(index).selected = !shuffleItems.get(index).selected;
+                }
+            }
+
+            Item {
+                id: shuffleElementItem
+
+                height: imageSize + (imageSize / 12)
+                width: parent.width
+
+                Image {
+                    id: selectedImage
+
+                    anchors.left: parent.left
+                    anchors.leftMargin: 5
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    height: imageSize - 4 < 18 ? imageSize - 4 : 18
+                    width: imageSize - 4 < 18 ? imageSize - 4 : 18
+
+                    source: selected ? "qrc:///icons/check_checked.ico" : "qrc:///icons/check_unchecked.ico"
+                }
+                Label {
+                    id: genreLabel
+
+                    anchors.left: selectedImage.right
+                    anchors.leftMargin: 5
+                    anchors.right: parent.right
+                    anchors.rightMargin: 5
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    elide: "ElideMiddle"
+                    text: title
+                }
+            }
+        }
+    }
+
+    ListModel {
+        id: shuffleItems
     }
 }

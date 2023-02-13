@@ -105,21 +105,26 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         static const QString UI_ID_PREFIX_SERVER_BROWSEALBUM;
         static const QString UI_ID_PREFIX_SERVER_BROWSESONG;
         static const QString UI_ID_PREFIX_SERVER_PLAYLISTS;
+        static const QString UI_ID_PREFIX_SERVER_PLAYLISTSALPHABET;
         static const QString UI_ID_PREFIX_SERVER_PLAYLIST;
         static const QString UI_ID_PREFIX_SERVER_SMARTPLAYLISTS;
+        static const QString UI_ID_PREFIX_SERVER_SMARTPLAYLISTSALPHABET;
         static const QString UI_ID_PREFIX_SERVER_SMARTPLAYLIST;
         static const QString UI_ID_PREFIX_SERVER_PLAYLIST_ITEM;
         static const QString UI_ID_PREFIX_SERVER_RADIOSTATIONS;
+        static const QString UI_ID_PREFIX_SERVER_RADIOSTATIONSALPHABET;
         static const QString UI_ID_PREFIX_SERVER_RADIOSTATION;
+        static const QString UI_ID_PREFIX_SERVER_GENRES;
+        static const QString UI_ID_PREFIX_SERVER_GENRESALPHABET;
+        static const QString UI_ID_PREFIX_SERVER_GENRE;
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE;
-        static const QString UI_ID_PREFIX_SERVER_SHUFFLETAG;
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES;
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED;
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED;
 
-        static const int SEARCH_MAX_QUERIES  = 9;
-        static const int SEARCH_TARGET_SONGS = 0;
-        static const int SEARCH_TARGET_REST  = 1;
+        static const int SEARCH_MAX_QUERIES     = 9;
+        static const int SEARCH_TARGET_SONGS    = 0;
+        static const int SEARCH_TARGET_REST     = 1;
 
         enum ShuffleMode {
             None,

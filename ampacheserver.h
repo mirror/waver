@@ -83,7 +83,8 @@ class AmpacheServer : public QObject
         QString getId();
         QUuid   getSettingsId();
 
-        void setShuffleTag(int tagId, bool selected);
+        void setShuffleTags(QStringList selectedTags);
+        bool isShuffleTagsSelected();
         bool isShuffleTagSelected(int tagId);
 
         void setPassword(QString psw);
@@ -100,7 +101,7 @@ class AmpacheServer : public QObject
             QObject *extra;
         };
 
-        static const long SERVER_API_VERSION_MIN = 400001;
+        static const long SERVER_API_VERSION_MIN = 5000000;
 
 
         QUrl    host;

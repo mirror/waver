@@ -6,33 +6,38 @@
 
 #include "waver.h"
 
-const QString Waver::UI_ID_PREFIX_SEARCH                       = "E";
-const QString Waver::UI_ID_PREFIX_SEARCHQUERY                  = "e";
-const QString Waver::UI_ID_PREFIX_SEARCHRESULT                 = "F";
-const QString Waver::UI_ID_PREFIX_SEARCHRESULT_ALBUM           = "f";
-const QString Waver::UI_ID_PREFIX_SEARCHRESULT_ARTIST          = "[";
-const QString Waver::UI_ID_PREFIX_SEARCHRESULT_PLAYLIST        = "]";
-const QString Waver::UI_ID_PREFIX_LOCALDIR                     = "A";
-const QString Waver::UI_ID_PREFIX_LOCALDIR_SUBDIR              = "B";
-const QString Waver::UI_ID_PREFIX_LOCALDIR_FILE                = "C";
-const QString Waver::UI_ID_PREFIX_SERVER                       = "D";
-const QString Waver::UI_ID_PREFIX_SERVER_BROWSE                = "G";
-const QString Waver::UI_ID_PREFIX_SERVER_BROWSEALPHABET        = "H";
-const QString Waver::UI_ID_PREFIX_SERVER_BROWSEARTIST          = "I";
-const QString Waver::UI_ID_PREFIX_SERVER_BROWSEALBUM           = "J";
-const QString Waver::UI_ID_PREFIX_SERVER_BROWSESONG            = "K";
-const QString Waver::UI_ID_PREFIX_SERVER_PLAYLISTS             = "L";
-const QString Waver::UI_ID_PREFIX_SERVER_PLAYLIST              = "M";
-const QString Waver::UI_ID_PREFIX_SERVER_SMARTPLAYLISTS        = "N";
-const QString Waver::UI_ID_PREFIX_SERVER_SMARTPLAYLIST         = "O";
-const QString Waver::UI_ID_PREFIX_SERVER_PLAYLIST_ITEM         = "P";
-const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATIONS         = "Q";
-const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATION          = "R";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE               = "S";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLETAG            = "T";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES     = "U";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED   = "V";
-const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED = "X";
+const QString Waver::UI_ID_PREFIX_SEARCH                        = "E";
+const QString Waver::UI_ID_PREFIX_SEARCHQUERY                   = "e";
+const QString Waver::UI_ID_PREFIX_SEARCHRESULT                  = "F";
+const QString Waver::UI_ID_PREFIX_SEARCHRESULT_ALBUM            = "f";
+const QString Waver::UI_ID_PREFIX_SEARCHRESULT_ARTIST           = "[";
+const QString Waver::UI_ID_PREFIX_SEARCHRESULT_PLAYLIST         = "]";
+const QString Waver::UI_ID_PREFIX_LOCALDIR                      = "A";
+const QString Waver::UI_ID_PREFIX_LOCALDIR_SUBDIR               = "B";
+const QString Waver::UI_ID_PREFIX_LOCALDIR_FILE                 = "C";
+const QString Waver::UI_ID_PREFIX_SERVER                        = "D";
+const QString Waver::UI_ID_PREFIX_SERVER_BROWSE                 = "G";
+const QString Waver::UI_ID_PREFIX_SERVER_BROWSEALPHABET         = "H";
+const QString Waver::UI_ID_PREFIX_SERVER_BROWSEARTIST           = "I";
+const QString Waver::UI_ID_PREFIX_SERVER_BROWSEALBUM            = "J";
+const QString Waver::UI_ID_PREFIX_SERVER_BROWSESONG             = "K";
+const QString Waver::UI_ID_PREFIX_SERVER_PLAYLISTS              = "L";
+const QString Waver::UI_ID_PREFIX_SERVER_PLAYLISTSALPHABET      = "l";
+const QString Waver::UI_ID_PREFIX_SERVER_PLAYLIST               = "M";
+const QString Waver::UI_ID_PREFIX_SERVER_SMARTPLAYLISTS         = "N";
+const QString Waver::UI_ID_PREFIX_SERVER_SMARTPLAYLISTSALPHABET = "n";
+const QString Waver::UI_ID_PREFIX_SERVER_SMARTPLAYLIST          = "O";
+const QString Waver::UI_ID_PREFIX_SERVER_PLAYLIST_ITEM          = "P";
+const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATIONS          = "Q";
+const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATIONSALPHABET  = "q";
+const QString Waver::UI_ID_PREFIX_SERVER_RADIOSTATION           = "R";
+const QString Waver::UI_ID_PREFIX_SERVER_GENRES                 = "Y";
+const QString Waver::UI_ID_PREFIX_SERVER_GENRESALPHABET         = "y";
+const QString Waver::UI_ID_PREFIX_SERVER_GENRE                  = ">";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE                = "S";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES      = "U";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED    = "V";
+const QString Waver::UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED  = "X";
 
 
 Waver::Waver() : QObject()
@@ -909,7 +914,8 @@ void Waver::itemActionServer(QString id, int action, QVariantMap extra)
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_PLAYLISTS), id),             id, tr("Playlists"),       "qrc:/icons/playlist.ico",      QVariantMap({}), true, false, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SMARTPLAYLISTS), id),        id, tr("Smart Playlists"), "qrc:/icons/playlist.ico",      QVariantMap({}), true, false, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_RADIOSTATIONS), id),         id, tr("Radio Stations"),  "qrc:/icons/radio_station.ico", QVariantMap({}), true, false, false, false);
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), id),               id, tr("Shuffle"),         "qrc:/icons/shuffle.ico",       QVariantMap({}), true, true,  false, false);
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_GENRES), id),                id, tr("Genres"),          "qrc:/icons/tag.ico",           QVariantMap({}), true, false, false, false);
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), id),               id, tr("Shuffle"),         "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES), id),     id, tr("Favorites"),       "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED), id),   id, tr("Never Played"),    "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED), id), id, tr("Recently Added"),  "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
@@ -936,6 +942,8 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
     QSettings         settings;
     QRandomGenerator *randomGenerator = QRandomGenerator::global();
 
+    int alphabetLimit = settings.value("options/alphabet_limit", DEFAULT_ALPHABET_LIMIT).toInt();
+
     if (action == globalConstant("action_expand")) {
         if ((id.startsWith(UI_ID_PREFIX_SERVER_BROWSE) || id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALPHABET))) {
             QString browseCacheKey = QString("%1/browse").arg(servers.at(srvIndex)->getSettingsId().toString());
@@ -951,13 +959,13 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
                     QString name     = settings.value("name").toString();
                     QChar   alphabet = alphabetFromName(name);
 
-                    if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSE) && (currentChar != alphabet) && !added.contains(alphabet)) {
+                    if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSE) && (browseSize > alphabetLimit) && (currentChar != alphabet) && !added.contains(alphabet)) {
                         currentChar = alphabet;
                         added.append(alphabet);
                         QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEALPHABET).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())).arg(serverId);
                         emit explorerAddItem(newId, id, currentChar, "qrc:/icons/browse.ico", QVariantMap({{ "alphabet", currentChar }}), true, false, false, false);
                     }
-                    if (id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALPHABET) && extra.value("alphabet").toString().startsWith(alphabet)) {
+                    if ((id.startsWith(UI_ID_PREFIX_SERVER_BROWSEALPHABET) && extra.value("alphabet", "").toString().startsWith(alphabet)) || (id.startsWith(UI_ID_PREFIX_SERVER_BROWSE) && (browseSize <= alphabetLimit))) {
                         QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_BROWSEARTIST, settings.value("id").toString(), serverId);
                         emit explorerAddItem(newId, id, name, settings.value("art"), QVariantMap({{ "group", name }, { "art", settings.value("art") }}), true, true, false, false);
                     }
@@ -966,65 +974,126 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
                 return;
             }
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLISTS) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLISTS)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLISTS) || id.startsWith(UI_ID_PREFIX_SERVER_PLAYLISTSALPHABET) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLISTS) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLISTSALPHABET)) {
             QString playlistsCacheKey = QString("%1/playlists").arg(servers.at(srvIndex)->getSettingsId().toString());
             bool    hideDotPlaylists  = settings.value("options/hide_dot_playlists", DEFAULT_HIDE_DOT_PLAYLIST).toBool();
 
             if (settings.contains(QString("%1/1/id").arg(playlistsCacheKey))) {
+                int playlistsCount  = 0;
+                int smartlistsCount = 0;
+
                 int playlistsSize = settings.beginReadArray(playlistsCacheKey);
+                for (int i = 0; i < playlistsSize; i++) {
+                    settings.setArrayIndex(i);
+                    if (!settings.value("name").toString().startsWith(".") || !hideDotPlaylists) {
+                        if (settings.value("id").toString().startsWith("smart", Qt::CaseInsensitive)) {
+                            smartlistsCount++;
+                            continue;
+                        }
+                        playlistsCount++;
+                    }
+                }
+                settings.endArray();
+
+                QChar   currentChar;
+                QString added;
+
+                playlistsSize = settings.beginReadArray(playlistsCacheKey);
                 for (int i = 0; i < playlistsSize; i++) {
                     settings.setArrayIndex(i);
 
                     QString playlistId   = settings.value("id").toString();
                     QString playlistName = settings.value("name").toString();
+                    QChar   alphabet     = alphabetFromName(playlistName);
 
-                    if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLISTS) && !playlistId.startsWith("smart", Qt::CaseInsensitive) && (!playlistName.startsWith(".") || !hideDotPlaylists)) {
-                        QString art = settings.value("art", "").toString();
-                        if (art.isEmpty()) {
-                            art ="qrc:/icons/playlist.ico";
+                    if (!playlistId.startsWith("smart", Qt::CaseInsensitive) && (!playlistName.startsWith(".") || !hideDotPlaylists)) {
+                        if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLISTS) && (playlistsCount > alphabetLimit) && (currentChar != alphabet) && !added.contains(alphabet)) {
+                            currentChar = alphabet;
+                            added.append(alphabet);
+                            QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_PLAYLISTSALPHABET).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())).arg(serverId);
+                            emit explorerAddItem(newId, id, currentChar, "qrc:/icons/playlist.ico", QVariantMap({{ "alphabet", currentChar }}), true, false, false, false);
                         }
+                        if ((id.startsWith(UI_ID_PREFIX_SERVER_PLAYLISTSALPHABET) && extra.value("alphabet", "").toString().startsWith(alphabet)) || (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLISTS) && (playlistsCount <= alphabetLimit))) {
+                            QString art = settings.value("art", "").toString();
+                            if (art.isEmpty()) {
+                                art ="qrc:/icons/playlist.ico";
+                            }
 
-                        QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_PLAYLIST, playlistId, serverId);
-                        emit explorerAddItem(newId, id, playlistName, art, QVariantMap({{ "group", playlistName }, { "art", art }}), false, true, false, false);
+                            QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_PLAYLIST, playlistId, serverId);
+                            emit explorerAddItem(newId, id, playlistName, art, QVariantMap({{ "group", playlistName }, { "art", art }}), false, true, false, false);
+                        }
                     }
-                    if (id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLISTS) && playlistId.startsWith("smart", Qt::CaseInsensitive) && (!playlistName.startsWith(".") || !hideDotPlaylists)) {
-                        QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SMARTPLAYLIST, playlistId, serverId);
-                        emit explorerAddItem(newId, id, playlistName, "qrc:/icons/playlist.ico", QVariantMap({{ "group", playlistName }}), false, true, false, false);
+                    if (playlistId.startsWith("smart", Qt::CaseInsensitive) && (!playlistName.startsWith(".") || !hideDotPlaylists)) {
+                        if (id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLISTS) && (smartlistsCount > alphabetLimit) && (currentChar != alphabet) && !added.contains(alphabet)) {
+                            currentChar = alphabet;
+                            added.append(alphabet);
+                            QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SMARTPLAYLISTSALPHABET).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())).arg(serverId);
+                            emit explorerAddItem(newId, id, currentChar, "qrc:/icons/playlist.ico", QVariantMap({{ "alphabet", currentChar }}), true, false, false, false);
+                        }
+                        if ((id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLISTSALPHABET) && extra.value("alphabet", "").toString().startsWith(alphabet)) || (id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLISTS) && (smartlistsCount <= alphabetLimit))) {
+                            QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SMARTPLAYLIST, playlistId, serverId);
+                            emit explorerAddItem(newId, id, playlistName, "qrc:/icons/playlist.ico", QVariantMap({{ "group", playlistName }}), false, true, false, false);
+                        }
                     }
                 }
                 settings.endArray();
                 return;
             }
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_RADIOSTATIONS)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_RADIOSTATIONS) || id.startsWith(UI_ID_PREFIX_SERVER_RADIOSTATIONSALPHABET)) {
             QString radioStationsCacheKey = QString("%1/radiostations").arg(servers.at(srvIndex)->getSettingsId().toString());
 
             if (settings.contains(QString("%1/1/id").arg(radioStationsCacheKey))) {
+                QChar   currentChar;
+                QString added;
+
                 int radiosSize = settings.beginReadArray(radioStationsCacheKey);
                 for (int i = 0; i < radiosSize; i++) {
                     settings.setArrayIndex(i);
 
-                    QString newId         = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_RADIOSTATION, settings.value("id").toString(), serverId);
                     QString unescapedName = QTextDocumentFragment::fromHtml(settings.value("name").toString()).toPlainText();
+                    QChar   alphabet      = alphabetFromName(unescapedName);
 
-                    emit explorerAddItem(newId, id, unescapedName, "qrc:/icons/radio_station.ico", QVariantMap({ { "name", unescapedName }, { "url", settings.value("url") } }), false, true, false, false);
-                    emit explorerDisableQueueable(newId);
+                    if (id.startsWith(UI_ID_PREFIX_SERVER_RADIOSTATIONS) && (radiosSize > alphabetLimit) && (currentChar != alphabet) && !added.contains(alphabet)) {
+                        currentChar = alphabet;
+                        added.append(alphabet);
+                        QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_RADIOSTATIONSALPHABET).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())).arg(serverId);
+                        emit explorerAddItem(newId, id, currentChar, "qrc:/icons/radio_station.ico", QVariantMap({{ "alphabet", currentChar }}), true, false, false, false);
+                    }
+                    if ((id.startsWith(UI_ID_PREFIX_SERVER_RADIOSTATIONSALPHABET) && extra.value("alphabet", "").toString().startsWith(alphabet)) || (id.startsWith(UI_ID_PREFIX_SERVER_RADIOSTATIONS) && (radiosSize <= alphabetLimit))) {
+                        QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_RADIOSTATION, settings.value("id").toString(), serverId);
+                        emit explorerAddItem(newId, id, unescapedName, "qrc:/icons/radio_station.ico", QVariantMap({ { "name", unescapedName }, { "url", settings.value("url") } }), false, true, false, false);
+                        emit explorerDisableQueueable(newId);
+                    }
                 }
                 settings.endArray();
                 return;
             }
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_GENRES) || id.startsWith(UI_ID_PREFIX_SERVER_GENRESALPHABET)) {
             QString tagsCacheKey = QString("%1/tags").arg(servers.at(srvIndex)->getSettingsId().toString());
 
             if (settings.contains(QString("%1/1/id").arg(tagsCacheKey))) {
+                QChar   currentChar;
+                QString added;
+
                 int tagsSize = settings.beginReadArray(tagsCacheKey);
                 for (int i = 0; i < tagsSize; i++) {
                     settings.setArrayIndex(i);
 
-                    QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_SHUFFLETAG, settings.value("id").toString(), serverId);
+                    QString name     = QTextDocumentFragment::fromHtml(settings.value("name").toString()).toPlainText();
+                    QChar   alphabet = alphabetFromName(name);
 
-                    emit explorerAddItem(newId, id, settings.value("name"), "qrc:/icons/tag.ico", QVariantMap({{ "group", settings.value("name")}}), false, true, true, servers.at(srvIndex)->isShuffleTagSelected(settings.value("id").toInt()));
+                    if (id.startsWith(UI_ID_PREFIX_SERVER_GENRES) && (tagsSize > alphabetLimit) && (currentChar != alphabet) && !added.contains(alphabet)) {
+                        currentChar = alphabet;
+                        added.append(alphabet);
+                        QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_GENRESALPHABET).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())).arg(serverId);
+                        emit explorerAddItem(newId, id, currentChar, "qrc:/icons/tag.ico", QVariantMap({{ "alphabet", currentChar }}), true, false, false, false);
+                    }
+                    if ((id.startsWith(UI_ID_PREFIX_SERVER_GENRESALPHABET) && extra.value("alphabet", "").toString().startsWith(alphabet)) || (id.startsWith(UI_ID_PREFIX_SERVER_GENRES) && (tagsSize <= alphabetLimit))) {
+                        QString newId    = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_GENRE, settings.value("id").toString(), serverId);
+                        emit explorerAddItem(newId, id, settings.value("name"), "qrc:/icons/tag.ico", QVariantMap({{ "group", settings.value("name")}}), false, true, false, false);
+                    }
                 }
                 settings.endArray();
                 return;
@@ -1140,7 +1209,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED)) {
             startShuffleBatch(srvIndex, tr("Recently Added"), 0, RecentlyAdded);
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLETAG)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_GENRE)) {
             bool OK = false;
             int  tagId = QString(idParts.first()).remove(0, 1).toInt(&OK);
             if (OK) {
@@ -1242,7 +1311,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED)) {
             startShuffleBatch(srvIndex, tr("Recently Added"), 0, RecentlyAdded, actionStr, 0, destinationIndex);
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLETAG)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_GENRE)) {
             bool OK = false;
             int  tagId = QString(idParts.first()).remove(0, 1).toInt(&OK);
             if (OK) {
@@ -1253,13 +1322,6 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
     }
 
     if (action == globalConstant("action_select")) {
-        if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLETAG)) {
-            int tagId            = QString(idParts.first()).remove(0, 1).toInt();
-            bool currentSelected = servers.at(srvIndex)->isShuffleTagSelected(tagId);
-
-            servers.at(srvIndex)->setShuffleTag(tagId, !currentSelected);
-            emit explorerSetSelected(id, !currentSelected);
-        }
         return;
     }
 }
@@ -1755,8 +1817,8 @@ void Waver::raiseButton()
 
 void Waver::requestOptions()
 {
-    QVariantMap     optionsObj;
-    QSettings       settings;
+    QVariantMap optionsObj;
+    QSettings   settings;
 
     if (currentTrack == nullptr) {
         optionsObj.insert("eq_disable", 1);
@@ -1812,6 +1874,35 @@ void Waver::requestOptions()
     optionsObj.insert("max_peak_fps", settings.value("options/max_peak_fps", DEFAULT_MAX_PEAK_FPS));
     optionsObj.insert("peak_delay_on", settings.value("options/peak_delay_on", DEFAULT_PEAK_DELAY_ON).toBool());
     optionsObj.insert("peak_delay_ms", settings.value("options/peak_delay_ms", DEFAULT_PEAK_DELAY_MS));
+
+    QVariantList genres;
+    QStringList  added;
+    for (int srvIndex = 0; srvIndex < servers.size(); srvIndex++) {
+        QString tagsCacheKey = QString("%1/tags").arg(servers.at(srvIndex)->getSettingsId().toString());
+
+        if (settings.contains(QString("%1/1/id").arg(tagsCacheKey))) {
+            int tagsSize = settings.beginReadArray(tagsCacheKey);
+            for (int i = 0; i < tagsSize; i++) {
+                settings.setArrayIndex(i);
+
+                int     id   = settings.value("id").toInt();
+                QString name = QTextDocumentFragment::fromHtml(settings.value("name").toString()).toPlainText();
+
+                if (added.contains(name)) {
+                    continue;
+                }
+
+                added.append(name);
+                genres.append(QVariantMap({{ "title", name }, { "selected", servers.at(srvIndex)->isShuffleTagSelected(id) }}));
+            }
+            settings.endArray();
+        }
+    }
+    std::sort(genres.begin(), genres.end(), [](QVariant a, QVariant b) {
+        return a.toMap().value("title", "").toString().compare(b.toMap().value("title", "").toString(), Qt::CaseInsensitive) < 0;
+    });
+
+    optionsObj.insert("genres", genres);
 
     emit optionsAsRequested(optionsObj);
 }
@@ -2515,8 +2606,10 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         settings.sync();
 
         QString browseId = QString("%1|%2").arg(QString(opData.value("serverId")).replace(0, 1, UI_ID_PREFIX_SERVER_BROWSE), opData.value("serverId"));
-        itemActionServerItem(browseId, globalConstant("action_expand").toInt(), QVariantMap());
         explorerNetworkingUISignals(browseId, false);
+        if (opResults.count() > 0) {
+            itemActionServerItem(browseId, globalConstant("action_expand").toInt(), QVariantMap());
+        }
     }
     else if (opCode == AmpacheServer::BrowseArtist) {
         explorerNetworkingUISignals(parentId, false);
@@ -2540,12 +2633,16 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         settings.sync();
 
         QString playlistId = QString("%1|%2").arg(QString(opData.value("serverId")).replace(0, 1, UI_ID_PREFIX_SERVER_PLAYLISTS), opData.value("serverId"));
-        itemActionServerItem(playlistId, globalConstant("action_expand").toInt(), QVariantMap());
         explorerNetworkingUISignals(playlistId, false);
+        if (opResults.count() > 0) {
+            itemActionServerItem(playlistId, globalConstant("action_expand").toInt(), QVariantMap());
+        }
 
         playlistId = QString("%1|%2").arg(QString(opData.value("serverId")).replace(0, 1, UI_ID_PREFIX_SERVER_SMARTPLAYLISTS), opData.value("serverId"));
-        itemActionServerItem(playlistId, globalConstant("action_expand").toInt(), QVariantMap());
         explorerNetworkingUISignals(playlistId, false);
+        if (opResults.count() > 0) {
+            itemActionServerItem(playlistId, globalConstant("action_expand").toInt(), QVariantMap());
+        }
     }
     else if ((opCode == AmpacheServer::PlaylistSongs) || (opCode == AmpacheServer::Shuffle)) {
         explorerNetworkingUISignals(parentId, false);
@@ -2566,16 +2663,20 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         settings.sync();
 
         QString radiosId = QString("%1|%2").arg(QString(opData.value("serverId")).replace(0, 1, UI_ID_PREFIX_SERVER_RADIOSTATIONS), opData.value("serverId"));
-        itemActionServerItem(radiosId, globalConstant("action_expand").toInt(), QVariantMap());
         explorerNetworkingUISignals(radiosId, false);
+        if (opResults.count() > 0) {
+            itemActionServerItem(radiosId, globalConstant("action_expand").toInt(), QVariantMap());
+        }
     }
     else if (opCode == AmpacheServer::Tags) {
         settings.endArray();
         settings.sync();
 
         QString shuffleId = QString("%1|%2").arg(QString(opData.value("serverId")).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), opData.value("serverId"));
-        itemActionServerItem(shuffleId, globalConstant("action_expand").toInt(), QVariantMap());
         explorerNetworkingUISignals(shuffleId, false);
+        if (opResults.count() > 0) {
+            itemActionServerItem(shuffleId, globalConstant("action_expand").toInt(), QVariantMap());
+        }
     }
     else if (opCode == AmpacheServer::Song) {
         if (!opData.contains("session_expired")) {
@@ -2739,8 +2840,20 @@ void Waver::startNextTrackUISignals()
 void Waver::startShuffleBatch(int srvIndex, QString group, int artistId, ShuffleMode mode, QString originalAction, int shuffleTag, int insertDestinationindex, QString searchActionParentId)
 {
     if (srvIndex < 0) {
-        srvIndex = shuffleServerIndex;
+        bool shuffleTagsExist = false;
+        int i = 0;
+        while (!shuffleTagsExist && (i < servers.count())) {
+            shuffleTagsExist = servers.at(i)->isShuffleTagsSelected();
+            i++;
+        }
+        while (shuffleTagsExist && !servers.at(shuffleServerIndex)->isShuffleTagsSelected()) {
+            shuffleServerIndex++;
+            if (shuffleServerIndex >= servers.count()) {
+                shuffleServerIndex = 0;
+            }
+        }
 
+        srvIndex = shuffleServerIndex;
         shuffleServerIndex++;
         if (shuffleServerIndex >= servers.count()) {
             shuffleServerIndex = 0;
@@ -3222,6 +3335,12 @@ void Waver::updatedOptions(QString optionsJSON)
 {
     QVariantMap options = QJsonDocument::fromJson(optionsJSON.toUtf8()).toVariant().toMap();
     QSettings   settings;
+
+    QStringList genres = options.value("genres").toStringList();
+
+    foreach (AmpacheServer *server, servers) {
+        server->setShuffleTags(genres);
+    }
 
     peakFPSMax            = options.value("max_peak_fps").toInt();
     peakDelayOn           = options.value("peak_delay_on").toBool();
