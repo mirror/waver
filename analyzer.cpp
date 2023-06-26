@@ -126,6 +126,7 @@ void Analyzer::run()
                 break;
         }
         replayGainFilter->getFilter(1)->setCallbackFiltered((IIRFilterCallback *)replayGainCalculator, (IIRFilterCallback::FilterCallbackPointer)&ReplayGainCalculator::filterCallback);
+        replayGainFilter->getFilter(1)->disableUpdateData();
     }
 }
 

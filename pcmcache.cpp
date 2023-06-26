@@ -205,7 +205,7 @@ void PCMCache::requestTimestampPCMChunk(long milliseconds)
 
 void PCMCache::run()
 {
-    qint64 bytesNeeded    = format.bytesForDuration(lengthMilliseconds * 1000);
+    qint64 bytesNeeded    = format.bytesForDuration((lengthMilliseconds + 1000) * 1000);
     long   bytesAvailable = availableMemory();
 
     if (((lengthMilliseconds <= 0) && !radioStation) || (bytesNeeded > MAX_PCM_MEMORY) || (bytesNeeded > bytesAvailable)) {
@@ -223,7 +223,7 @@ void PCMCache::run()
             memory = new QByteArray();
         }
         else {
-            memory = new QByteArray(format.bytesForDuration((lengthMilliseconds + 1000) * 1000), 0);
+            memory = new QByteArray(bytesNeeded, 0);
         }
     }
 }
@@ -285,5 +285,5 @@ void PCMCache::storeBuffer(QAudioBuffer *buffer)
         return;
     }
 
-    emit error(tr("Can not cache PCM audio data"), tr("Both file and memeory is nullptr"));
+    emit error(tr("Can not cache PCM audio data"), tr("Both file and memory is nullptr"));
 }

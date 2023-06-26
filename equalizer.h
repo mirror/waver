@@ -21,12 +21,32 @@
 #include "globals.h"
 
 
+#define BANDS_3  { 62, 750, 5000 }
+#define BANDS_4  { 62, 500, 2500, 7500 }
+#define BANDS_5  { 62, 250, 750, 2500, 7500 }
+#define BANDS_6  { 31, 62, 125, 250, 2500, 7500 }
+#define BANDS_7  { 31, 62, 125, 250, 2500, 5000, 12500 }
+#define BANDS_8  { 31, 62, 125, 250, 750, 2500, 5000, 12500 }
+#define BANDS_9  { 31, 62, 125, 250, 500, 1000, 2500, 5000, 12500 }
+#define BANDS_10 { 31, 62, 125, 250, 500, 1000, 2500, 5000, 10000, 16000 }
+
+
 class Equalizer : public QObject, IIRFilterCallback {
         Q_OBJECT
 
     public:
 
-        Equalizer(QAudioFormat format);
+        struct Band {
+            double centerFrequency;
+            double bandwidth;
+        };
+        typedef QVector<Band> Bands;
+
+        static Bands calculateBands(QVector<double> centerFrequencies);
+        static Bands calculateBands(std::initializer_list<double> centerFrequencies);
+
+        Equalizer(QAudioFormat format, bool usePreAmpAndReplayGain = true);
+        Equalizer(QAudioFormat format, IIRFilterCallback *customCallbackObject, FilterCallbackPointer customCallbackMember);
         ~Equalizer();
 
         void setChunkQueue(TimedChunkQueue *chunkQueue, QMutex *chunkQueueMutex);
@@ -39,17 +59,15 @@ class Equalizer : public QObject, IIRFilterCallback {
 
     private:
 
-        struct Band {
-            double centerFrequency;
-            double bandwidth;
-        };
-
         QAudioFormat format;
 
-        bool            on;
-        QVector<Band>   bands;
-        QVector<double> gains;
-        double          preAmp;
+        bool                  on;
+        bool                  usePreAmpAndReplayGain;
+        IIRFilterCallback    *customCallbackObject;
+        FilterCallbackPointer customCallbackMember;
+        Bands                 bands;
+        QVector<double>       gains;
+        double                preAmp;
 
         QMutex filtersMutex;
 

@@ -43,7 +43,7 @@ Dialog {
 
         delegate: Item {
             height: serverPsw.height + 5
-            width: parent.width
+            width: serverPswModel.width
 
             Label {
                 id: serverName

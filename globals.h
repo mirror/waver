@@ -49,7 +49,6 @@ static const double DEFAULT_EQ8    = 6.0;
 static const double DEFAULT_EQ9    = 9.0;
 static const double DEFAULT_EQ10   = 12.0;
 
-
 struct TimedChunk {
     QByteArray *chunkPointer;
     qint64      startMicroseconds;
@@ -58,7 +57,6 @@ struct TimedChunk {
 typedef QVector<QAudioBuffer *> BufferQueue;
 typedef QVector<QByteArray *>   ChunkQueue;
 typedef QVector<TimedChunk>     TimedChunkQueue;
-
 
 enum NotificationDataToSend {
     All,

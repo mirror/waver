@@ -914,7 +914,7 @@ void Waver::itemActionServer(QString id, int action, QVariantMap extra)
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_PLAYLISTS), id),             id, tr("Playlists"),       "qrc:/icons/playlist.ico",      QVariantMap({}), true, false, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SMARTPLAYLISTS), id),        id, tr("Smart Playlists"), "qrc:/icons/playlist.ico",      QVariantMap({}), true, false, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_RADIOSTATIONS), id),         id, tr("Radio Stations"),  "qrc:/icons/radio_station.ico", QVariantMap({}), true, false, false, false);
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_GENRES), id),                id, tr("Genres"),          "qrc:/icons/tag.ico",           QVariantMap({}), true, false, false, false);
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_GENRES), id),                id, tr("Genres"),          "qrc:/icons/genre.ico",           QVariantMap({}), true, false, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), id),               id, tr("Shuffle"),         "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES), id),     id, tr("Favorites"),       "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED), id),   id, tr("Never Played"),    "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
@@ -1088,11 +1088,11 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
                         currentChar = alphabet;
                         added.append(alphabet);
                         QString newId = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_GENRESALPHABET).arg(randomGenerator->bounded(std::numeric_limits<quint32>::max())).arg(serverId);
-                        emit explorerAddItem(newId, id, currentChar, "qrc:/icons/tag.ico", QVariantMap({{ "alphabet", currentChar }}), true, false, false, false);
+                        emit explorerAddItem(newId, id, currentChar, "qrc:/icons/genre.ico", QVariantMap({{ "alphabet", currentChar }}), true, false, false, false);
                     }
                     if ((id.startsWith(UI_ID_PREFIX_SERVER_GENRESALPHABET) && extra.value("alphabet", "").toString().startsWith(alphabet)) || (id.startsWith(UI_ID_PREFIX_SERVER_GENRES) && (tagsSize <= alphabetLimit))) {
                         QString newId    = QString("%1%2|%3").arg(UI_ID_PREFIX_SERVER_GENRE, settings.value("id").toString(), serverId);
-                        emit explorerAddItem(newId, id, settings.value("name"), "qrc:/icons/tag.ico", QVariantMap({{ "group", settings.value("name")}}), false, true, false, false);
+                        emit explorerAddItem(newId, id, settings.value("name"), "qrc:/icons/genre.ico", QVariantMap({{ "group", settings.value("name")}}), false, true, false, false);
                     }
                 }
                 settings.endArray();
@@ -1172,6 +1172,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             playlist.clear();
             Track::TrackInfo trackInfo = trackInfoFromIdExtra(id, extra);
             actionPlay(trackInfo);
+            playlistUpdateUISignals();
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST)) {
             explorerNetworkingUISignals(id, true);
@@ -1196,6 +1197,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             trackInfo.attributes.insert("radio_station", "radio_station");
 
             actionPlay(trackInfo);
+            playlistUpdateUISignals();
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE)) {
             startShuffleBatch(srvIndex);
@@ -1867,6 +1869,7 @@ void Waver::requestOptions()
     optionsObj.insert("hide_dot_playlists", settings.value("options/hide_dot_playlists", DEFAULT_HIDE_DOT_PLAYLIST).toBool());
     optionsObj.insert("starting_index_apply", settings.value("options/starting_index_apply", DEFAULT_STARTING_INDEX_APPLY).toBool());
     optionsObj.insert("starting_index_days", settings.value("options/starting_index_days", DEFAULT_STARTING_INDEX_DAYS));
+    optionsObj.insert("alphabet_limit", settings.value("options/alphabet_limit", DEFAULT_ALPHABET_LIMIT));
 
     optionsObj.insert("fade_tags", settings.value("options/fade_tags", DEFAULT_FADE_TAGS));
     optionsObj.insert("crossfade_tags", settings.value("options/crossfade_tags", DEFAULT_CROSSFADE_TAGS));
@@ -3367,6 +3370,7 @@ void Waver::updatedOptions(QString optionsJSON)
     settings.setValue("options/starting_index_apply", options.value("starting_index_apply").toBool());
     settings.setValue("options/starting_index_days", options.value("starting_index_days").toLongLong());
     settings.setValue("options/hide_dot_playlists", options.value("hide_dot_playlists").toBool());
+    settings.setValue("options/alphabet_limit", options.value("alphabet_limit").toInt());
 
     if (!options.value("eq_disable").toBool()) {
         settings.setValue("eq/on",  options.value("eq_on").toBool());

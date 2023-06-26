@@ -88,6 +88,7 @@ Dialog {
         max_peak_fps.value = optionsObj.max_peak_fps;
         peak_delay_on.checked = optionsObj.peak_delay_on;
         peak_delay_ms.value = optionsObj.peak_delay_ms;
+        alphabet_limit.value = optionsObj.alphabet_limit;
 
         shuffleItems.clear();
         for (var i = 0; i < optionsObj.genres.length; i++) {
@@ -150,6 +151,7 @@ Dialog {
                 max_peak_fps: max_peak_fps.value,
                 peak_delay_on: peak_delay_on.checked,
                 peak_delay_ms: peak_delay_ms.value,
+                alphabet_limit: alphabet_limit.value,
                 genres: genres
             };
             optionsSending(JSON.stringify(optionsObj));
@@ -680,6 +682,20 @@ Dialog {
                         anchors.rightMargin: 17
                         anchors.verticalCenter: starting_index_days.verticalCenter
                         text: qsTr("days")
+                    }
+                }
+                Row {
+                    leftPadding: 9
+                    Label {
+                        anchors.rightMargin: 17
+                        anchors.verticalCenter: alphabet_limit.verticalCenter
+                        text: qsTr("Group items alphabetically")
+                    }
+                    SpinBox {
+                        id: alphabet_limit
+                        editable: true
+                        from: 9
+                        to: 99
                     }
                 }
                 Row {

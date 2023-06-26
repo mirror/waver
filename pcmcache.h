@@ -21,7 +21,7 @@
 #include <QUuid>
 #include <QVector>
 
-#include "globals.h"
+#include <QThread>
 
 #ifdef Q_OS_WIN
     #include "windows.h"

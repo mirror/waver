@@ -14,7 +14,7 @@ OutputFeeder::OutputFeeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, 
     this->audioFormat       = audioFormat;
     this->audioOutput       = audioOutput;
 
-    outputDevice = nullptr;
+    outputDevice  = nullptr;
 
     int16Min    = std::numeric_limits<qint16>::min();
     int16Max    = std::numeric_limits<qint16>::max();
@@ -39,16 +39,19 @@ OutputFeeder::OutputFeeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, 
                 sampleMin = std::numeric_limits<qint8>::min();
                 sampleMax = std::numeric_limits<qint8>::max();
                 dataType  = 1;
+                dataBytes = 1;
                 break;
             case 16:
                 sampleMin = int16Min;
                 sampleMax = int16Max;
                 dataType  = 2;
+                dataBytes = 2;
                 break;
             case 32:
                 sampleMin = std::numeric_limits<qint32>::min();
                 sampleMax = std::numeric_limits<qint32>::max();
                 dataType  = 3;
+                dataBytes = 4;
         }
     }
     else if (audioFormat.sampleType() == QAudioFormat::UnSignedInt) {
@@ -57,16 +60,19 @@ OutputFeeder::OutputFeeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, 
                 sampleMin = std::numeric_limits<quint8>::min();
                 sampleMax = std::numeric_limits<quint8>::max();
                 dataType  = 4;
+                dataBytes = 1;
                 break;
             case 16:
                 sampleMin = std::numeric_limits<quint16>::min();
                 sampleMax = std::numeric_limits<quint16>::max();
                 dataType  = 5;
+                dataBytes = 2;
                 break;
             case 32:
                 sampleMin = std::numeric_limits<quint32>::min();
                 sampleMax = std::numeric_limits<quint32>::max();
                 dataType  = 6;
+                dataBytes = 4;
         }
     }
     if (sampleMax != 0) {
@@ -130,39 +136,29 @@ void OutputFeeder::run()
                     case 1:
                         int8  = (qint8 *)data;
                         sampleValue = *int8;
-                        data      += 1;
-                        byteCount += 1;
                         break;
                     case 2:
                         int16  = (qint16 *)data;
                         sampleValue = *int16;
-                        data      += 2;
-                        byteCount += 2;
                         break;
                     case 3:
                         int32  = (qint32 *)data;
                         sampleValue = *int32;
-                        data      += 4;
-                        byteCount += 4;
                         break;
                     case 4:
                         uint8  = (quint8 *)data;
                         sampleValue = *uint8;
-                        data      += 1;
-                        byteCount += 1;
                         break;
                     case 5:
                         uint16  = (quint16 *)data;
                         sampleValue = *uint16;
-                        data      += 2;
-                        byteCount += 2;
                         break;
                     case 6:
                         uint32  = (quint32 *)data;
                         sampleValue = *uint32;
-                        data      += 4;
-                        byteCount += 4;
                 }
+                data      += dataBytes;
+                byteCount += dataBytes;
 
                 if (dataType != 2) {
                     sampleValue = (((sampleValue - sampleMin) / sampleRange) * int16Range) + int16Min;

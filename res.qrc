@@ -37,5 +37,6 @@
         <file>qml/ServerPassword.qml</file>
         <file>qml/QuickStart.qml</file>
         <file>icons/enqueue_shuffled.ico</file>
+        <file>icons/genre.ico</file>
     </qresource>
 </RCC>

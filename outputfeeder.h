@@ -38,7 +38,7 @@ class OutputFeeder : public QObject
 
     private:
 
-        static const qint64 MICROSECONDS_PER_SECOND = 1000 * 1000;
+        static const     qint64 MICROSECONDS_PER_SECOND      = 1000 * 1000;
 
         QAudioOutput *audioOutput;
         QByteArray   *outputBuffer;
@@ -55,6 +55,7 @@ class OutputFeeder : public QObject
         int channelIndex;
         int frameCount;
         int dataType;
+        int dataBytes;
 
         double int16Min;
         double int16Max;

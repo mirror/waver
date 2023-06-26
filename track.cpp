@@ -10,6 +10,8 @@
 Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInfo, DecodingCallback::DecodingCallbackInfo decodingCallbackInfo, QObject *parent) : QObject(parent)
 {
     decoderThread.setObjectName("decoder");
+    preProcessorThread.setObjectName("preprocessor");
+    cacheThread.setObjectName("cache");
     analyzerThread.setObjectName("analyzer");
     equalizerThread.setObjectName("equalizer");
     outputThread.setObjectName("output");
@@ -24,6 +26,7 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
 
     currentStatus            = Idle;
     stopping                 = false;
+    doPreProcess             = true;    // TODO make this optional, also always false with radio stations
     decodingDone             = false;
     finishedSent             = false;
     fadeoutStartedSent       = false;
@@ -52,6 +55,7 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
     desiredPCMFormat.setSampleType(QAudioFormat::SignedInt);
 
     setupDecoder();
+    setupPreProcessor();
     setupCache();
     setupAnalyzer();
     setupEqualizer();
@@ -121,6 +125,19 @@ Track::~Track()
         disconnect(this, &Track::cacheRequestTimestampPCMChunk, cache, &PCMCache::requestTimestampPCMChunk);
 
         delete cache;
+    }
+
+    preProcessorThread.requestInterruption();
+    preProcessorThread.quit();
+    preProcessorThread.wait();
+    if (preProcessor != nullptr) {
+        disconnect(preProcessor, &PreProcessor::bufferPreProcessed, this, &Track::bufferPreProcessed);
+        disconnect(preProcessor, &PreProcessor::setDecoderDelay,    this, &Track::preprocessorDecoderDelay);
+
+        disconnect(this, &Track::bufferAvailableToPreProcessor, preProcessor, &PreProcessor::bufferAvailable);
+        disconnect(this, &Track::decoderDone,                   preProcessor, &PreProcessor::decoderDone);
+
+        delete preProcessor;
     }
 
     decoderThread.requestInterruption();
@@ -268,12 +285,32 @@ void Track::attributeRemove(QString key)
 
 void Track::bufferAvailableFromDecoder(QAudioBuffer *buffer)
 {
-    cache->storeBuffer(buffer);
-
     if (QDateTime::currentMSecsSinceEpoch() >= (decodingInfoLastSent + DECODING_CB_DELAY_MILLISECONDS)) {
         (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(decoder->downloadPercent(), decodedPercent(), this);
         decodingInfoLastSent = QDateTime::currentMSecsSinceEpoch();
     }
+
+    preProcessorQueueMutex.lock();
+    preProcessorQueue.append(buffer);
+    preProcessorQueueMutex.unlock();
+
+    emit bufferAvailableToPreProcessor();
+
+    /*
+    cache->storeBuffer(buffer);
+
+    analyzerQueueMutex.lock();
+    analyzerQueue.append(buffer);
+    analyzerQueueMutex.unlock();
+
+    emit bufferAvailableToAnalyzer();
+    */
+}
+
+
+void Track::bufferPreProcessed(QAudioBuffer *buffer)
+{
+    cache->storeBuffer(buffer);
 
     analyzerQueueMutex.lock();
     analyzerQueue.append(buffer);
@@ -328,17 +365,6 @@ void Track::decoderError(QString info, QString errorMessage)
     }
 
     sendFinished();
-}
-
-
-void Track::requestDecodingCallback()
-{
-    double dlp = decoder->downloadPercent();
-    double dcp = decodedPercent();
-
-    if ((dlp > 0) || (dcp > 0)) {
-        (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(dlp, dcp, this);
-    }
 }
 
 
@@ -535,8 +561,10 @@ void Track::outputBufferUnderrun()
         return;
     }
 
+    emit info(trackInfo.id, tr("Buffer underrun, waiting..."));
     decodedMillisecondsAtUnderrun = decoder->getDecodedMicroseconds() / 1000;
-    QTimer::singleShot(5000, this, SLOT(underrunTimeout()));
+    posMillisecondsAtUnderrun = posMilliseconds;
+    QTimer::singleShot(UNDERRUN_DELAY_MILLISECONDS, this, SLOT(underrunTimeout()));
 }
 
 
@@ -549,11 +577,12 @@ void Track::outputError(QString errorMessage)
 
 void Track::outputPositionChanged(qint64 posMilliseconds)
 {
-    this->posMilliseconds = posMilliseconds;
+    this->posMilliseconds     = posMilliseconds;
+    posMillisecondsAtUnderrun = 0;
 
     emit playPosition(trackInfo.id, decodingDone, getLengthMilliseconds(), posMilliseconds);
 
-    if (!decodingDone) {
+    if (!doPreProcess && !decodingDone) {
         unsigned long delay = static_cast<unsigned long>(pow(4, log10(qMax(decoder->getDecodedMicroseconds() / 1000 - posMilliseconds, 1ll))));
         #ifdef Q_OS_WINDOWS
             delay *= 3;
@@ -571,7 +600,7 @@ void Track::outputPositionChanged(qint64 posMilliseconds)
         emit resetReplayGain();
     }
 
-    if (decodingDone && (posMilliseconds >= decoder->getDecodedMicroseconds() / 1000)) {
+    if (decodingDone && (posMilliseconds >= decoder->getDecodedMicroseconds() / 1000 - 50)) {
         sendFinished();
         return;
     }
@@ -616,6 +645,12 @@ void Track::pcmChunkFromEqualizer(TimedChunk chunk)
 }
 
 
+void Track::preprocessorDecoderDelay(unsigned long microseconds)
+{
+    decoder->setDecodeDelay(microseconds);
+}
+
+
 void Track::radioTitleCallback(QString title)
 {
     int decodingCompensation = 2500;
@@ -631,6 +666,17 @@ void Track::requestForBufferReplayGainInfo()
 {
     (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(decoder->downloadPercent(), decodedPercent(), this);
     emit requestReplayGainInfo();
+}
+
+
+void Track::requestDecodingCallback()
+{
+    double dlp = decoder->downloadPercent();
+    double dcp = decodedPercent();
+
+    if ((dlp > 0) || (dcp > 0)) {
+        (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(dlp, dcp, this);
+    }
 }
 
 
@@ -692,6 +738,7 @@ void Track::setStatus(Status status)
     }
 
     if ((status == Decoding) && (currentStatus == Idle)) {
+        preProcessorThread.start();
         analyzerThread.start();
         cacheThread.start();
         decoderThread.start();
@@ -703,6 +750,7 @@ void Track::setStatus(Status status)
     }
 
     if ((status == Playing) && (currentStatus == Idle)) {
+        preProcessorThread.start();
         analyzerThread.start();
         equalizerThread.start();
         cacheThread.start();
@@ -710,7 +758,7 @@ void Track::setStatus(Status status)
         outputThread.start(QThread::HighestPriority);
 
         emit startDecode();
-        emit playBegins();
+        emit playBegins();   // TODO this might not be true for the equalizer (play actually begins when preprocessor starts sending PCM data)
 
         if (isDoFade()) {
             fadeDirection       = FadeDirectionIn;
@@ -736,7 +784,7 @@ void Track::setStatus(Status status)
         equalizerThread.start();
         outputThread.start(QThread::HighestPriority);
 
-        emit playBegins();
+        emit playBegins();   // TODO this might not be true for the equalizer (play actually begins when preprocessor starts sending PCM data)
 
         if (isDoFade()) {
             fadeDirection       = FadeDirectionIn;
@@ -763,7 +811,7 @@ void Track::setStatus(Status status)
     }
 
     if ((status == Playing) && (currentStatus == Paused)) {
-        if (decodingDone && (posMilliseconds >= decoder->getDecodedMicroseconds() / 1000 - 15000)) {
+        if (decodingDone && (posMilliseconds >= decoder->getDecodedMicroseconds() / 1000 - 1000)) {
             sendFinished();
             return;
         }
@@ -810,7 +858,7 @@ void Track::setupCache()
 
     cache->moveToThread(&cacheThread);
 
-    connect(&cacheThread, &QThread::started,  cache, &PCMCache::run);
+    connect(&cacheThread, &QThread::started, cache, &PCMCache::run);
 
     connect(cache, &PCMCache::pcmChunk, this, &Track::pcmChunkFromCache);
     connect(cache, &PCMCache::error,    this, &Track::cacheError);
@@ -830,10 +878,9 @@ void Track::setupDecoder()
     #endif
 
     decoder->setParameters(trackInfo.url, desiredPCMFormat, waitUnderBytes, trackInfo.attributes.contains("radio_station"));
-    decoder->setDecodeDelay(1500);
     decoder->moveToThread(&decoderThread);
 
-    connect(&decoderThread, &QThread::started,  decoder, &DecoderGeneric::run);
+    connect(&decoderThread, &QThread::started, decoder, &DecoderGeneric::run);
 
     connect(decoder, &DecoderGeneric::bufferAvailable,      this, &Track::bufferAvailableFromDecoder);
     connect(decoder, &DecoderGeneric::networkBufferChanged, this, &Track::decoderNetworkBufferChanged);
@@ -872,7 +919,7 @@ void Track::setupEqualizer()
     equalizer->setGains(on, gains, preAmp);
     equalizer->moveToThread(&equalizerThread);
 
-    connect(&equalizerThread, &QThread::started,  equalizer, &Equalizer::run);
+    connect(&equalizerThread, &QThread::started, equalizer, &Equalizer::run);
 
     connect(equalizer, &Equalizer::chunkEqualized,    this, &Track::pcmChunkFromEqualizer);
     connect(equalizer, &Equalizer::replayGainChanged, this, &Track::equalizerReplayGainChanged);
@@ -891,7 +938,7 @@ void Track::setupOutput()
     soundOutput->setBufferQueue(&outputQueue, &outputQueueMutex);
     soundOutput->moveToThread(&outputThread);
 
-    connect(&outputThread, &QThread::started,  soundOutput, &SoundOutput::run);
+    connect(&outputThread, &QThread::started, soundOutput, &SoundOutput::run);
 
     connect(soundOutput, &SoundOutput::needChunk,       this, &Track::outputNeedChunk);
     connect(soundOutput, &SoundOutput::positionChanged, this, &Track::outputPositionChanged);
@@ -904,9 +951,27 @@ void Track::setupOutput()
 }
 
 
+void Track::setupPreProcessor()
+{
+    preProcessor = new PreProcessor(desiredPCMFormat, getLengthMilliseconds());
+
+    preProcessor->setBufferQueue(&preProcessorQueue, &preProcessorQueueMutex);
+    preProcessor->moveToThread(&preProcessorThread);
+
+    connect(&preProcessorThread, &QThread::started,  preProcessor, &PreProcessor::run);
+
+    connect(preProcessor, &PreProcessor::bufferPreProcessed,     this,         &Track::bufferPreProcessed);
+    connect(preProcessor, &PreProcessor::setDecoderDelay,        this,         &Track::preprocessorDecoderDelay);
+    connect(this,         &Track::bufferAvailableToPreProcessor, preProcessor, &PreProcessor::bufferAvailable);
+    connect(this,         &Track::playBegins,                    preProcessor, &PreProcessor::playStartRequest);
+    connect(this,         &Track::decoderDone,                   preProcessor, &PreProcessor::decoderDone);
+}
+
+
 void Track::underrunTimeout()
 {
-    if (!decodingDone && (decoder != nullptr) && (decodedMillisecondsAtUnderrun >= decoder->getDecodedMicroseconds())) {
+    if ((!decodingDone && (decoder != nullptr) && (decodedMillisecondsAtUnderrun >= decoder->getDecodedMicroseconds() / 1000)) || (decodingDone && (posMilliseconds == posMillisecondsAtUnderrun))) {
         emit error(trackInfo.id, tr("Buffer underrun."), tr("Possible download interruption due to a network error."));
+        sendFinished();
     }
 }

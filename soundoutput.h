@@ -63,6 +63,7 @@ class SoundOutput : public QObject
         QTimer       *feedTimer;
 
         bool   wasError;
+        bool   wasUnderrun;
         bool   initialCachingDone;
         bool   timerWaits;
         qint64 notificationCounter;

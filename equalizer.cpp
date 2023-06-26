@@ -8,9 +8,32 @@
 #include "equalizer.h"
 
 
-Equalizer::Equalizer(QAudioFormat format)
+Equalizer::Equalizer(QAudioFormat format, bool usePreAmpAndReplayGain)
 {
-    this->format = format;
+    this->format                 = format;
+    this->usePreAmpAndReplayGain = usePreAmpAndReplayGain;
+    this->customCallbackObject   = nullptr;
+    this->customCallbackMember   = nullptr;
+
+    on                = true;
+    equalizerFilters  = nullptr;
+    replayGain        = 0.0;
+    currentReplayGain = replayGain;
+    sampleRate        = 0;
+    sampleType        = IIRFilter::Unknown;
+
+    eqOffMinValue       = std::numeric_limits<qint16>::min();
+    eqOffMaxValue       = std::numeric_limits<qint16>::max();
+    eqOffCurrentChannel = 0;
+}
+
+
+Equalizer::Equalizer(QAudioFormat format, IIRFilterCallback *customCallbackObject, FilterCallbackPointer customCallbackMember)
+{
+    this->format                 = format;
+    this->usePreAmpAndReplayGain = false;
+    this->customCallbackObject   = customCallbackObject;
+    this->customCallbackMember   = customCallbackMember;
 
     on                = true;
     equalizerFilters  = nullptr;
@@ -33,6 +56,32 @@ Equalizer::~Equalizer()
 }
 
 
+Equalizer::Bands Equalizer::calculateBands(QVector<double> centerFrequencies)
+{
+    Bands bands;
+
+    if (centerFrequencies.size() < 1) {
+        return bands;
+    }
+
+    bands.append({ centerFrequencies.at(0), centerFrequencies.at(0) / 2 });
+    double previousHigh = centerFrequencies.at(0) * 1.25;
+    for (int i = 1; i < centerFrequencies.size(); i++) {
+        double bandwidth = (centerFrequencies.at(i) - previousHigh) * 2;
+        bands.append({ centerFrequencies.at(i), bandwidth });
+        previousHigh = centerFrequencies.at(i) + (bandwidth / 2);
+    }
+
+    return bands;
+}
+
+
+Equalizer::Bands Equalizer::calculateBands(std::initializer_list<double> centerFrequencies)
+{
+    return calculateBands(QVector<double>(centerFrequencies));
+}
+
+
 void Equalizer::chunkAvailable(int maxToProcess)
 {
     int i = 0;
@@ -50,28 +99,29 @@ void Equalizer::chunkAvailable(int maxToProcess)
         }
         else {
             // eq is off, but replay gain still must be applied
+            if (usePreAmpAndReplayGain) {
+                double  sample;
+                qint16 *temp;
+                int     processedCount = 0;
+                while (processedCount < chunk.chunkPointer->size()) {
+                    temp   = (qint16*)((char *)chunk.chunkPointer->data() + processedCount);
+                    sample = *temp;
 
-            double  sample;
-            qint16 *temp;
-            int     processedCount = 0;
-            while (processedCount < chunk.chunkPointer->size()) {
-                temp   = (qint16*)((char *)chunk.chunkPointer->data() + processedCount);
-                sample = *temp;
+                    filterCallback(&sample, eqOffCurrentChannel);
+                    if (sample < eqOffMinValue) {
+                        sample = eqOffMinValue;
+                    }
+                    if (sample > eqOffMaxValue) {
+                        sample = eqOffMaxValue;
+                    }
 
-                filterCallback(&sample, eqOffCurrentChannel);
-                if (sample < eqOffMinValue) {
-                    sample = eqOffMinValue;
-                }
-                if (sample > eqOffMaxValue) {
-                    sample = eqOffMaxValue;
-                }
+                    *temp = static_cast<qint16>(sample);
 
-                *temp = static_cast<qint16>(sample);
-
-                processedCount += sizeof(qint16);
-                eqOffCurrentChannel++;
-                if (eqOffCurrentChannel >= 2) {
-                    eqOffCurrentChannel = 0;
+                    processedCount += sizeof(qint16);
+                    eqOffCurrentChannel++;
+                    if (eqOffCurrentChannel >= 2) {
+                        eqOffCurrentChannel = 0;
+                    }
                 }
             }
         }
@@ -113,7 +163,12 @@ void Equalizer::createFilters()
     }
 
     equalizerFilters = new IIRFilterChain(coefficientLists);
-    equalizerFilters->getFilter(0)->setCallbackRaw((IIRFilterCallback *)this, (IIRFilterCallback::FilterCallbackPointer)&Equalizer::filterCallback);
+    if (usePreAmpAndReplayGain) {
+        equalizerFilters->getFilter(0)->setCallbackRaw((IIRFilterCallback *)this, (IIRFilterCallback::FilterCallbackPointer)&Equalizer::filterCallback);
+    }
+    else if ((customCallbackObject != nullptr) && (customCallbackMember != nullptr)) {
+        equalizerFilters->getFilter(0)->setCallbackRaw(customCallbackObject, customCallbackMember);
+    }
 
     filtersMutex.unlock();
 }
@@ -186,39 +241,30 @@ void Equalizer::setGains(bool on, QVector<double> gains, double preAmp)
     this->preAmp = preAmp;
 
     // minimum 3 maximum 10 bands
-    QVector<double> centerFrequencies;
+    bands.clear();
     if (gains.size() <= 3) {
-        centerFrequencies = { 62, 750, 5000 };
+        bands.append(calculateBands(BANDS_3));
     }
     else if (gains.size() == 4) {
-        centerFrequencies = { 62, 500, 2500, 7500 };
+        bands.append(calculateBands(BANDS_4));
     }
     else if (gains.size() == 5) {
-        centerFrequencies = { 62, 250, 750, 2500, 7500 };
+        bands.append(calculateBands(BANDS_5));
     }
     else if (gains.size() == 6) {
-        centerFrequencies = { 31, 62, 125, 250, 2500, 7500 };
+        bands.append(calculateBands(BANDS_6));
     }
     else if (gains.size() == 7) {
-        centerFrequencies = { 31, 62, 125, 250, 2500, 5000, 12500 };
+        bands.append(calculateBands(BANDS_7));
     }
     else if (gains.size() == 8) {
-        centerFrequencies = { 31, 62, 125, 250, 750, 2500, 5000, 12500 };
+        bands.append(calculateBands(BANDS_8));
     }
     else if (gains.size() == 9) {
-        centerFrequencies = { 31, 62, 125, 250, 500, 1000, 2500, 5000, 12500 };
+        bands.append(calculateBands(BANDS_9));
     }
     else {
-        centerFrequencies = { 31, 62, 125, 250, 500, 1000, 2500, 5000, 10000, 16000 };
-    }
-
-    bands.clear();
-    bands.append({ centerFrequencies.at(0), centerFrequencies.at(0) / 2 });
-    double previousHigh = centerFrequencies.at(0) * 1.25;
-    for (int i = 1; i < centerFrequencies.size(); i++) {
-        double bandwidth = (centerFrequencies.at(i) - previousHigh) * 2;
-        bands.append({ centerFrequencies.at(i), bandwidth });
-        previousHigh = centerFrequencies.at(i) + (bandwidth / 2);
+        bands.append(calculateBands(BANDS_10));
     }
 
     if (sampleRate) {

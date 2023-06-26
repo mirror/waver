@@ -30,6 +30,7 @@
 #include "globals.h"
 #include "peakcallback.h"
 #include "pcmcache.h"
+#include "preprocessor.h"
 #include "radiotitlecallback.h"
 #include "soundoutput.h"
 
@@ -101,6 +102,7 @@ class Track : public QObject, RadioTitleCallback
         static const int  FADE_DURATION_DEFAULT_SECONDS  = 4;
         static const long USEC_PER_SEC                   = 1000 * 1000;
         static const int  DECODING_CB_DELAY_MILLISECONDS = 40;
+        static const int  UNDERRUN_DELAY_MILLISECONDS    = 5000;
 
         struct RadioTitlePosition {
             qint64  microsecondsTimestamp;
@@ -115,21 +117,25 @@ class Track : public QObject, RadioTitleCallback
 
         QAudioFormat desiredPCMFormat;
 
+        BufferQueue     preProcessorQueue;
         BufferQueue     analyzerQueue;
         TimedChunkQueue equalizerQueue;
         TimedChunkQueue outputQueue;
 
+        QMutex preProcessorQueueMutex;
         QMutex analyzerQueueMutex;
         QMutex equalizerQueueMutex;
         QMutex outputQueueMutex;
 
         QThread decoderThread;
+        QThread preProcessorThread;
         QThread cacheThread;
         QThread analyzerThread;
         QThread equalizerThread;
         QThread outputThread;
 
         DecoderGeneric *decoder;
+        PreProcessor   *preProcessor;
         PCMCache       *cache;
         Analyzer       *analyzer;
         Equalizer      *equalizer;
@@ -137,6 +143,7 @@ class Track : public QObject, RadioTitleCallback
 
         Status currentStatus;
         bool   stopping;
+        bool   doPreProcess;
         bool   decodingDone;
         bool   finishedSent;
         bool   fadeoutStartedSent;
@@ -150,11 +157,13 @@ class Track : public QObject, RadioTitleCallback
         double fadeFrameCount;
 
         qint64 decodedMillisecondsAtUnderrun;
+        qint64 posMillisecondsAtUnderrun;
         qint64 posMilliseconds;
 
         QVector<RadioTitlePosition> radioTitlePositions;
 
         void setupDecoder();
+        void setupPreProcessor();
         void setupCache();
         void setupAnalyzer();
         void setupEqualizer();
@@ -176,8 +185,11 @@ class Track : public QObject, RadioTitleCallback
     private slots:
 
         void bufferAvailableFromDecoder(QAudioBuffer *buffer);
+        void bufferPreProcessed(QAudioBuffer *buffer);
         void pcmChunkFromCache(QByteArray PCM, qint64 startMicroseconds);
         void pcmChunkFromEqualizer(TimedChunk chunk);
+
+        void preprocessorDecoderDelay(unsigned long microseconds);
 
         void sendFinished();
         void sendFadeoutStarted();
@@ -223,6 +235,7 @@ class Track : public QObject, RadioTitleCallback
         void cacheRequestNextPCMChunk();
         void cacheRequestTimestampPCMChunk(long milliseconds);
 
+        void bufferAvailableToPreProcessor();
         void bufferAvailableToAnalyzer();
         void chunkAvailableToEqualizer(int maxToProcess);
         void chunkAvailableToOutput();

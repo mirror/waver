@@ -11,6 +11,7 @@ SoundOutput::SoundOutput(QAudioFormat format, PeakCallback::PeakCallbackInfo pea
     this->format = format;
 
     wasError              = false;
+    wasUnderrun           = false;
     initialCachingDone    = false;
     timerWaits            = false;
     notificationCounter   = 0;
@@ -61,7 +62,9 @@ SoundOutput::~SoundOutput()
 void SoundOutput::audioOutputNotification()
 {
     notificationCounter++;
-    emit positionChanged((notificationCounter * audioOutput->notifyInterval()) + (beginningMicroseconds / 1000));
+    if (!wasUnderrun) {
+        emit positionChanged((notificationCounter * audioOutput->notifyInterval()) + (beginningMicroseconds / 1000));
+    }
 }
 
 
@@ -136,9 +139,11 @@ void SoundOutput::fillBytesToPlay()
 {
     if (chunkQueue->count() < 1) {
         timerWaits = false;
+        wasUnderrun = true;
         emit bufferUnderrun();
         return;
     }
+    wasUnderrun = false;
 
     if (audioOutput->state() == QAudio::StoppedState) {
         timerWaits = false;

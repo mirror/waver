@@ -7,6 +7,7 @@
 #ifndef WAVER_H
 #define WAVER_H
 
+#include <QtGlobal>
 #include <QByteArray>
 #include <QDateTime>
 #include <QFileInfo>

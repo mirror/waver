@@ -8,9 +8,12 @@
 #include "replaygaincalculator.h"
 
 // constructor
-ReplayGainCalculator::ReplayGainCalculator(IIRFilter::SampleTypes sampleType, int sampleRate)
+ReplayGainCalculator::ReplayGainCalculator(IIRFilter::SampleTypes sampleType, int sampleRate, bool calculateScaledPeak)
 {
-    this->sampleType = sampleType;
+    this->sampleType          = sampleType;
+    this->calculateScaledPeak = calculateScaledPeak;
+
+    scaledPeak = 0.0;
 
     samplesPerRmsBlock = ((int)ceil(sampleRate * RMS_BLOCK_SECONDS)) * 2;
 
@@ -67,9 +70,19 @@ void ReplayGainCalculator::filterCallback(double *sample, int channelIndex)
     // so we can modify it if needed
     double sampleValue = *sample;
 
+    // just in case
+    if (std::isnan(sampleValue)) {
+        sampleValue = 0;
+    }
+
     // have to scale value if not the expected type
     if (sampleType != IIRFilter::int16Sample) {
         sampleValue = (((sampleValue - sampleMin) / sampleRange) * int16Range) + int16Min;
+    }
+
+    // this is a little helper for some use cases
+    if (calculateScaledPeak && (abs(sampleValue) > scaledPeak)) {
+        scaledPeak = abs(sampleValue);
     }
 
     // replay gain: sum of squares for RMS
@@ -125,11 +138,19 @@ double ReplayGainCalculator::calculateResult()
 }
 
 
+// current scaled peak
+double ReplayGainCalculator::getScaledPeak()
+{
+    return scaledPeak;
+}
+
+
 // reset
 void ReplayGainCalculator::reset()
 {
     stereoRmsSum = 0.0;
     countRmsSum  = 0;
+    scaledPeak   = 0.0;
 
     memset(&statsTable, 0, STATS_MAX_DB * STATS_STEPS_PER_DB * sizeof(int));
 }
