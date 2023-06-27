@@ -13,8 +13,6 @@ ReplayGainCalculator::ReplayGainCalculator(IIRFilter::SampleTypes sampleType, in
     this->sampleType          = sampleType;
     this->calculateScaledPeak = calculateScaledPeak;
 
-    scaledPeak = 0.0;
-
     samplesPerRmsBlock = ((int)ceil(sampleRate * RMS_BLOCK_SECONDS)) * 2;
 
     int16Min   = std::numeric_limits<qint16>::min();
@@ -80,11 +78,6 @@ void ReplayGainCalculator::filterCallback(double *sample, int channelIndex)
         sampleValue = (((sampleValue - sampleMin) / sampleRange) * int16Range) + int16Min;
     }
 
-    // this is a little helper for some use cases
-    if (calculateScaledPeak && (abs(sampleValue) > scaledPeak)) {
-        scaledPeak = abs(sampleValue);
-    }
-
     // replay gain: sum of squares for RMS
     // TODO support mono too (it's simple, just have to do this stereoRmsSum addition twice, becuase the same sound will be in both speakers)
     stereoRmsSum += (sampleValue * sampleValue);
@@ -138,19 +131,11 @@ double ReplayGainCalculator::calculateResult()
 }
 
 
-// current scaled peak
-double ReplayGainCalculator::getScaledPeak()
-{
-    return scaledPeak;
-}
-
-
 // reset
 void ReplayGainCalculator::reset()
 {
     stereoRmsSum = 0.0;
     countRmsSum  = 0;
-    scaledPeak   = 0.0;
 
     memset(&statsTable, 0, STATS_MAX_DB * STATS_STEPS_PER_DB * sizeof(int));
 }

@@ -37,10 +37,9 @@
 #define PRE_EQ_REF_10 { 23, 16, 15, 11.5, 9, 6, -2.5, 1.5, -5, 3 }   // N = 8
 
 
-class PreAnalyzer : public QObject
+class PreAnalyzer : public QObject, IIRFilterCallback
 {
     Q_OBJECT
-
 
     public:
 
@@ -49,6 +48,8 @@ class PreAnalyzer : public QObject
 
         void setBufferQueue(BufferQueue *bufferQueue, QMutex *bufferQueueMutex);
         int  getbandCount();
+
+        void filterCallback(double *sample, int channelIndex) override;
 
 
     private:
@@ -63,11 +64,17 @@ class PreAnalyzer : public QObject
         QAudioFormat     format;
         PCMCache        *cache;
         QVector<double>  referenceLevels;
-        double           absolutePeak;
 
         IIRFilter::SampleTypes sampleType;
-        qint64                 resultLastCalculated;
-        bool                   decoderFinished;
+        double                 int16Min;
+        double                 int16Max;
+        double                 int16Range;
+        double                 sampleMin;
+        double                 sampleRange;
+
+        qint64 resultLastCalculated;
+        double scaledPeak;
+        bool   decoderFinished;
 
         BufferQueue *bufferQueue;
         QMutex      *bufferQueueMutex;
@@ -86,7 +93,7 @@ class PreAnalyzer : public QObject
     signals:
 
         void running();
-        void measuredGains(QVector<double> gains, double absolutePeak);
+        void measuredGains(QVector<double> gains, double scaledPeak);
 };
 
 #endif // PREANALYZER_H

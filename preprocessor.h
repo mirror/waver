@@ -43,12 +43,9 @@ class PreProcessor : public QObject, IIRFilterCallback
         static const int WIDE_STEREO_REGULAR_MILLISEC = 25;
         static const int WIDE_STEREO_HEAVY_MILLISEC   = 33;
 
-        static constexpr double COMPRESS_LIGHT_MAX           = 29000;   // -0.5dB
-        static constexpr double COMPRESS_LIGHT_MIN           = 103;     // -25dB
-        static constexpr double COMPRESS_REGULAR_MAX         = 22000;   // -1.75dB
-        static constexpr double COMPRESS_REGULAR_MIN         = 325;     // -20dB
-        static constexpr double COMPRESS_HEAVY_MAX           = 16500;   // -3dB
-        static constexpr double COMPRESS_HEAVY_MIN           = 1036;    // -15dB
+        static constexpr double COMPRESS_LIGHT   = 29000;
+        static constexpr double COMPRESS_REGULAR = 22000;
+        static constexpr double COMPRESS_HEAVY   = 16500;
 
 
         bool   firstPCMChunkRequest;
@@ -59,15 +56,9 @@ class PreProcessor : public QObject, IIRFilterCallback
         QAudioFormat format;
         qint64       lengthMilliseconds;
 
-        //IIRFilter::SampleTypes sampleType;
-
-        int    dataBytesIndex;
         int    wideStereoDelayMillisec;
-        double scaledPeak;
-        double compressPosMax;
-        double compressPosMin;
-        double compressNegMax;
-        double compressNegMin;
+        double compressTopLimit;
+        double compressBottomLimit;
 
         BufferQueue *bufferQueue;
         QMutex      *bufferQueueMutex;
@@ -87,6 +78,8 @@ class PreProcessor : public QObject, IIRFilterCallback
         QVector<double> *wideStereoBuffer2;
         bool             wideStereoBufferOne;
         int              wideStereoBufferIndex;
+
+        void calculateCompressLimit(double scaledPeak);
 
 
     public slots:

@@ -15,32 +15,14 @@ PreProcessor::PreProcessor(QAudioFormat format, qint64 length) : QObject{nullptr
     preAnalyzer           = nullptr;
     equalizer             = nullptr;
     cache                 = nullptr;
-    dataBytesIndex        = 0;
     wideStereoBuffer1     = nullptr;
     wideStereoBuffer2     = nullptr;
     wideStereoBufferOne   = true;
     wideStereoBufferIndex = 0;
 
-    if (1) {   // TODO make this an option: heavy, regular, or light compressor
-        compressPosMax = COMPRESS_HEAVY_MAX;
-        compressPosMin = COMPRESS_HEAVY_MIN;
-        compressNegMax = COMPRESS_HEAVY_MIN * -1;
-        compressNegMin = COMPRESS_HEAVY_MAX * -1;
-    }
-    else if (1) {
-        compressPosMax = COMPRESS_REGULAR_MAX;
-        compressPosMin = COMPRESS_REGULAR_MIN;
-        compressNegMax = COMPRESS_REGULAR_MIN * -1;
-        compressNegMin = COMPRESS_REGULAR_MAX * -1;
-    }
-    else {
-        compressPosMax = COMPRESS_LIGHT_MAX;
-        compressPosMin = COMPRESS_LIGHT_MIN;
-        compressNegMax = COMPRESS_LIGHT_MIN * -1;
-        compressNegMin = COMPRESS_LIGHT_MAX * -1;
-    }
+    calculateCompressLimit((double)std::numeric_limits<qint16>::max());
 
-    if (0) {   // TODO make this an option: heavy, regular, or light wide stereo
+    if (1) {   // TODO make this an option: heavy, regular, or light wide stereo
         wideStereoDelayMillisec = WIDE_STEREO_HEAVY_MILLISEC;
     }
     else if (1) {
@@ -102,6 +84,62 @@ void PreProcessor::bufferAvailable()
 }
 
 
+void PreProcessor::calculateCompressLimit(double scaledPeak)
+{
+    double int16Max = (double)std::numeric_limits<qint16>::max();
+
+    if (scaledPeak > int16Max) {
+        scaledPeak = int16Max;
+    }
+    if (scaledPeak < 1) {
+        scaledPeak = 1;
+    }
+
+    double formatMax = std::numeric_limits<double>::max();
+    if (format.sampleType() == QAudioFormat::SignedInt) {
+        switch (format.sampleSize()) {
+        case 8:
+            formatMax = std::numeric_limits<qint8>::max();
+            break;
+        case 16:
+            formatMax = std::numeric_limits<qint16>::max();
+            break;
+        case 32:
+            formatMax = std::numeric_limits<qint32>::max();
+        }
+    }
+    else if (format.sampleType() == QAudioFormat::UnSignedInt) {
+        switch (format.sampleSize()) {
+        case 8:
+            formatMax = std::numeric_limits<quint8>::max();
+            break;
+        case 16:
+            formatMax = std::numeric_limits<quint16>::max();
+            break;
+        case 32:
+            formatMax = std::numeric_limits<quint32>::max();
+        }
+    }
+
+    double peakPercent   = scaledPeak / int16Max;
+    double formatPercent = formatMax  / int16Max;
+
+    // scale compress limits to peak value, so all tracks gets compressed the same relative amount
+    if (1) {   // TODO make this an option: heavy, regular, or light compressor
+        compressTopLimit    = COMPRESS_HEAVY * peakPercent * formatPercent;
+        compressBottomLimit = compressTopLimit * -1;
+    }
+    else if (1) {
+        compressTopLimit    = COMPRESS_REGULAR * peakPercent * formatPercent;
+        compressBottomLimit = compressTopLimit * -1;
+    }
+    else {
+        compressTopLimit    = COMPRESS_LIGHT * peakPercent * formatPercent;
+        compressBottomLimit = compressTopLimit * -1;
+    }
+}
+
+
 void PreProcessor::cacheError(QString info, QString errorMessage)
 {
     qWarning() << info << errorMessage;
@@ -137,40 +175,11 @@ void PreProcessor::filterCallback(double *sample, int channelIndex)
         }
     }
 
-    // TODO scale these to scaledPeak
-    if (*sample < -25) {
-        if (*sample < compressNegMin) {
-            *sample = compressNegMin;
-        }
-        else if (*sample > compressNegMax) {
-            *sample = compressNegMax;
-        }
+    if (*sample < compressBottomLimit) {
+        *sample = compressBottomLimit;
     }
-    else if (*sample > 25) {
-        if (*sample > compressPosMax) {
-            *sample = compressPosMax;
-        }
-        else if (*sample < compressPosMin) {
-            *sample = compressPosMin;
-        }
-    }
-}
-
-
-void PreProcessor::playStartRequest()
-{
-    playStartRequested = QDateTime::currentMSecsSinceEpoch();
-}
-
-
-void PreProcessor::preAnalyzerMeasuredGains(QVector<double> gains, double scaledPeak)
-{
-    this->scaledPeak = scaledPeak;
-    equalizer->setGains(true, gains, 0);
-
-    if (firstPCMChunkRequest && (QDateTime::currentMSecsSinceEpoch() >= playStartRequested + WAIT_MS) && (QDateTime::currentMSecsSinceEpoch() >= firstBufferReceived + WAIT_MS)) {
-        firstPCMChunkRequest = false;
-        emit cacheRequestNextPCMChunk();
+    else if (*sample > compressTopLimit) {
+        *sample = compressTopLimit;
     }
 }
 
@@ -180,10 +189,10 @@ void PreProcessor::pcmChunkFromCache(QByteArray PCM, qint64 startMicroseconds)
     if ((lengthMilliseconds > 0) && playStartRequested && !decoderFinished) {
         unsigned long delay = static_cast<unsigned long>(pow(4, log10(qMax(lengthMilliseconds - startMicroseconds / 1000, 1ll))));
         #ifdef Q_OS_WINDOWS
-        delay *= 3;
-        if (trackInfo.attributes.contains("radio_station")) {
-            delay = qMax(delay, 10000ul);
-        }
+            delay *= 3;
+            if (trackInfo.attributes.contains("radio_station")) {
+                delay = qMax(delay, 10000ul);
+            }
         #endif
         emit setDecoderDelay(delay);
     }
@@ -208,6 +217,18 @@ void PreProcessor::pcmChunkFromEqualizer(TimedChunk chunk)
 }
 
 
+void PreProcessor::preAnalyzerMeasuredGains(QVector<double> gains, double scaledPeak)
+{
+    equalizer->setGains(true, gains, 0);
+    calculateCompressLimit(scaledPeak);
+
+    if (firstPCMChunkRequest && (QDateTime::currentMSecsSinceEpoch() >= playStartRequested + WAIT_MS) && (QDateTime::currentMSecsSinceEpoch() >= firstBufferReceived + WAIT_MS)) {
+        firstPCMChunkRequest = false;
+        emit cacheRequestNextPCMChunk();
+    }
+}
+
+
 void PreProcessor::preAnalyzerReady()
 {
     QVector<double> gains;
@@ -227,6 +248,12 @@ void PreProcessor::preAnalyzerReady()
     connect(equalizer, &Equalizer::chunkEqualized,               this,      &PreProcessor::pcmChunkFromEqualizer);
 
     equalizerThread.start();
+}
+
+
+void PreProcessor::playStartRequest()
+{
+    playStartRequested = QDateTime::currentMSecsSinceEpoch();
 }
 
 

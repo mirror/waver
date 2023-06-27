@@ -22,7 +22,6 @@ class ReplayGainCalculator : IIRFilterCallback {
 
         void   filterCallback(double *sample, int channelIndex) override;
         double calculateResult();
-        double getScaledPeak();
         void   reset();
 
 
@@ -38,7 +37,6 @@ class ReplayGainCalculator : IIRFilterCallback {
         IIRFilter::SampleTypes sampleType;
 
         bool   calculateScaledPeak;
-        double scaledPeak;
 
         int  samplesPerRmsBlock;
 

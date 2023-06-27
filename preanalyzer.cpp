@@ -18,7 +18,7 @@ PreAnalyzer::PreAnalyzer(QAudioFormat format, PCMCache *cache, int bandCount, in
     this->bandCount = bandCount;
     this->N         = N;
 
-    absolutePeak         = 0.0;
+    scaledPeak           = 0.0;
     measurementFilters   = nullptr;
     resultLastCalculated = 0;
 }
@@ -66,7 +66,7 @@ void PreAnalyzer::bufferAvailable()
                 }
                 gains.append(correction);
             }
-            emit measuredGains(gains, replayGainCalculators.at(0)->getScaledPeak());
+            emit measuredGains(gains, scaledPeak);
         }
 
         cache->storeBuffer(buffer);
@@ -80,6 +80,19 @@ void PreAnalyzer::bufferAvailable()
         if (!currentThread->isInterruptionRequested()) {
             currentThread->usleep(25);
         }
+    }
+}
+
+
+void PreAnalyzer::filterCallback(double *sample, int channelIndex)
+{
+    Q_UNUSED(channelIndex);
+
+    if (sampleType != IIRFilter::int16Sample) {
+        *sample = (((*sample - sampleMin) / sampleRange) * int16Range) + int16Min;
+    }
+    if (abs(*sample) > scaledPeak) {
+        scaledPeak = abs(*sample);
     }
 }
 
@@ -144,8 +157,42 @@ void PreAnalyzer::run()
         return;
     }
 
-    measurementFilters = new IIRFilterChain();
+    int16Min   = std::numeric_limits<qint16>::min();
+    int16Max   = std::numeric_limits<qint16>::max();
+    int16Range = int16Max - int16Min;
 
+    sampleMin = int16Min;
+
+    double sampleMax = int16Max;
+    switch (sampleType) {
+        case IIRFilter::int8Sample:
+            sampleMin = std::numeric_limits<qint8>::min();
+            sampleMax = std::numeric_limits<qint8>::max();
+            break;
+        case IIRFilter::uint8Sample:
+            sampleMin = std::numeric_limits<quint8>::min();
+            sampleMax = std::numeric_limits<quint8>::max();
+            break;
+        case IIRFilter::uint16Sample:
+            sampleMin = std::numeric_limits<quint16>::min();
+            sampleMax = std::numeric_limits<quint16>::max();
+            break;
+        case IIRFilter::int32Sample:
+            sampleMin = std::numeric_limits<qint32>::min();
+            sampleMax = std::numeric_limits<qint32>::max();
+            break;
+        case IIRFilter::uint32Sample:
+            sampleMin = std::numeric_limits<quint32>::min();
+            sampleMax = std::numeric_limits<quint32>::max();
+            break;
+        case IIRFilter::floatSample:
+            sampleMin = std::numeric_limits<float>::min();
+            sampleMax = std::numeric_limits<float>::max();
+            break;
+    }
+    sampleRange = sampleMax - sampleMin;
+
+    measurementFilters = new IIRFilterChain();
     for (int i = 0; i < bands.size(); i++) {
         // cascading biquads for steeper cutoff
         CoefficientList coefficients;
@@ -174,6 +221,7 @@ void PreAnalyzer::run()
         measurementFilters->getFilter(i)->disableUpdateData();
         measurementFilters->getFilter(i)->setCallbackFiltered((IIRFilterCallback *)replayGainCalculators.at(i), (IIRFilterCallback::FilterCallbackPointer)&ReplayGainCalculator::filterCallback);
     }
+    measurementFilters->getFilter(0)->setCallbackRaw((IIRFilterCallback *)this, (IIRFilterCallback::FilterCallbackPointer)&PreAnalyzer::filterCallback);
 
     emit running();
 }
