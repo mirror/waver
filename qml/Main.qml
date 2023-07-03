@@ -34,6 +34,7 @@ ApplicationWindow {
     signal favoriteButton(bool fav);
     signal requestOptions();
     signal updatedOptions(string optionsJSON);
+    signal requestEQ(int eq_chooser)
     signal requestLog();
     signal peakUILag();
     signal searchCriteriaEntered(string criteria);
@@ -150,6 +151,11 @@ ApplicationWindow {
     {
         options.setOptions(optionsObj)
         options.open();
+    }
+
+    function eqAsRequested(eqObj)
+    {
+        options.setEQ(eqObj);
     }
 
     function playlistAddItem(title, artist, group, image, selected)
@@ -624,6 +630,9 @@ ApplicationWindow {
 
         onOptionsSending: {
             updatedOptions(optionsJSON);
+        }
+        onReqEQ: {
+            requestEQ(eq_chooser)
         }
     }
 

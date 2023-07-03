@@ -12,6 +12,7 @@ Dialog {
     property int imageSize: 36
 
     signal optionsSending(string optionsJSON)
+    signal reqEQ(int eq_chooser)
 
     function setOptions(optionsObj)
     {
@@ -28,6 +29,9 @@ Dialog {
             eq8.enabled = false;
             eq9.enabled = false;
             eq10.enabled = false;
+            eqCommon.enabled = false;
+            eqAlbum.enabled = false;
+            eqSong.enabled = false;
         }
         else {
             preAmp.enabled = eqOn.checked;
@@ -66,6 +70,12 @@ Dialog {
             eq10Label.text = optionsObj.eq10Label;
             eq10.enabled = eqOn.checked;
             eq10.value = optionsObj.eq10;
+            eqCommon.enabled = eqOn.checked;
+            eqCommon.checked = optionsObj.eq_chooser === 0;
+            eqAlbum.enabled = eqOn.checked;
+            eqAlbum.checked = optionsObj.eq_chooser === 1;
+            eqSong.enabled = eqOn.checked;
+            eqSong.checked = optionsObj.eq_chooser === 2;
         }
         shuffle_autostart.checked = optionsObj.shuffle_autostart;
         shuffle_delay_seconds.value = optionsObj.shuffle_delay_seconds;
@@ -82,6 +92,7 @@ Dialog {
         hide_dot_playlists.checked = optionsObj.hide_dot_playlists;
         starting_index_apply.checked = optionsObj.starting_index_apply;
         starting_index_days.value = optionsObj.starting_index_days;
+        wideStereo.value = optionsObj.wide_stereo;
         fade_tags.text = optionsObj.fade_tags;
         crossfade_tags.text = optionsObj.crossfade_tags;
 
@@ -99,6 +110,23 @@ Dialog {
             shuffleItems.append(newGenre);
         }
     }
+
+    function setEQ(eqObj)
+    {
+        preAmp.value = eqObj.pre_amp;
+
+        eq1.value = eqObj.eq1;
+        eq2.value = eqObj.eq2;
+        eq3.value = eqObj.eq3;
+        eq4.value = eqObj.eq4;
+        eq5.value = eqObj.eq5;
+        eq6.value = eqObj.eq6;
+        eq7.value = eqObj.eq7;
+        eq8.value = eqObj.eq8;
+        eq9.value = eqObj.eq9;
+        eq10.value = eqObj.eq10;
+    }
+
 
     onAccepted: internal.sendOptions()
     onApplied: internal.sendOptions()
@@ -133,6 +161,8 @@ Dialog {
                 eq8: eq8.value,
                 eq9: eq9.value,
                 eq10: eq10.value,
+                eq_chooser: eqCommon.checked ? 0 : eqAlbum.checked ? 1 : 2,
+                wide_stereo: wideStereo.value,
                 shuffle_autostart: shuffle_autostart.checked,
                 shuffle_delay_seconds: shuffle_delay_seconds.value,
                 shuffle_count: shuffle_count.value,
@@ -207,191 +237,232 @@ Dialog {
 
         currentIndex: optionsTabs.currentIndex
 
-        Row {
+        Item {
             x: 10
             y: 10
             width: parent.width - 20
             height: parent.height - 20
 
-            Column {
-                height: parent.height
-                width: parent.width / 12
-                Slider {
-                    id: preAmp
-                    height: parent.height - preAmpLabel.height
-                    anchors.horizontalCenter: preAmpLabel.horizontalCenter
-                    orientation: Qt.Vertical
-                    from: -12
-                    to: 6
-                }
-                Label {
-                    id: preAmpLabel
-                    text: qsTr("preAmp")
-                }
-            }
-            Column {
-                height: parent.height
-                width: parent.width / 12
-            }
-            Column {
-                height: parent.height
-                width: parent.width / 12
-                Slider {
-                    id: eq1
-                    height: parent.height - preAmpLabel.height
-                    anchors.horizontalCenter: eq1Label.horizontalCenter
-                    orientation: Qt.Vertical
-                    from: -12
-                    to: 12
-                }
-                Label {
-                    id: eq1Label
-                    text: qsTr("EQ1")
-                }
-            }
-            Column {
-                height: parent.height
-                width: parent.width / 12
-                Slider {
-                    id: eq2
-                    height: parent.height - preAmpLabel.height
-                    anchors.horizontalCenter: eq2Label.horizontalCenter
-                    orientation: Qt.Vertical
-                    from: -12
-                    to: 12
-                }
-                Label {
-                    id: eq2Label
-                    text: qsTr("EQ2")
-                }
-            }
-            Column {
-                height: parent.height
-                width: parent.width / 12
-                Slider {
-                    id: eq3
-                    height: parent.height - preAmpLabel.height
-                    anchors.horizontalCenter: eq3Label.horizontalCenter
-                    orientation: Qt.Vertical
-                    from: -12
-                    to: 12
-                }
-                Label {
-                    id: eq3Label
-                    text: qsTr("EQ3")
-                }
-            }
-            Column {
-                height: parent.height
-                width: parent.width / 12
-                Slider {
-                    id: eq4
-                    height: parent.height - preAmpLabel.height
-                    anchors.horizontalCenter: eq4Label.horizontalCenter
-                    orientation: Qt.Vertical
-                    from: -12
-                    to: 12
-                }
+            Row {
+                id: eqChooser
+                anchors.top: parent.top
+                height: eqCommon.height
 
-                Label {
-                    id: eq4Label
-                    text: qsTr("EQ4")
+                RadioButton {
+                    id: eqCommon
+                    text: qsTr("Common")
+                    onCheckedChanged: {
+                        if (checked) {
+                            reqEQ(0);
+                        }
+                    }
+                }
+                RadioButton {
+                    id: eqAlbum
+                    text: qsTr("Album")
+                    onCheckedChanged: {
+                        if (checked) {
+                            reqEQ(1);
+                        }
+                    }
+                }
+                RadioButton {
+                    id: eqSong
+                    text: qsTr("Song")
+                    onCheckedChanged: {
+                        if (checked) {
+                            reqEQ(2);
+                        }
+                    }
                 }
             }
-            Column {
-                height: parent.height
-                width: parent.width / 12
-                Slider {
-                    id: eq5
-                    height: parent.height - preAmpLabel.height
-                    anchors.horizontalCenter: eq5Label.horizontalCenter
-                    orientation: Qt.Vertical
-                    from: -12
-                    to: 12
+            Row {
+                id: eqControls
+                anchors.top: eqChooser.bottom
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+
+                Column {
+                    height: parent.height
+                    width: parent.width / 12
+                    Slider {
+                        id: preAmp
+                        height: parent.height - preAmpLabel.height
+                        anchors.horizontalCenter: preAmpLabel.horizontalCenter
+                        orientation: Qt.Vertical
+                        from: -12
+                        to: 6
+                    }
+                    Label {
+                        id: preAmpLabel
+                        text: qsTr("preAmp")
+                    }
                 }
-                Label {
-                    id: eq5Label
-                    text: qsTr("EQ5")
+                Column {
+                    height: parent.height
+                    width: parent.width / 12
                 }
-            }
-            Column {
-                height: parent.height
-                width: parent.width / 12
-                Slider {
-                    id: eq6
-                    height: parent.height - preAmpLabel.height
-                    anchors.horizontalCenter: eq6Label.horizontalCenter
-                    orientation: Qt.Vertical
-                    from: -12
-                    to: 12
+                Column {
+                    height: parent.height
+                    width: parent.width / 12
+                    Slider {
+                        id: eq1
+                        height: parent.height - preAmpLabel.height
+                        anchors.horizontalCenter: eq1Label.horizontalCenter
+                        orientation: Qt.Vertical
+                        from: -12
+                        to: 12
+                    }
+                    Label {
+                        id: eq1Label
+                        text: qsTr("EQ1")
+                    }
                 }
-                Label {
-                    id: eq6Label
-                    text: qsTr("EQ6")
+                Column {
+                    height: parent.height
+                    width: parent.width / 12
+                    Slider {
+                        id: eq2
+                        height: parent.height - preAmpLabel.height
+                        anchors.horizontalCenter: eq2Label.horizontalCenter
+                        orientation: Qt.Vertical
+                        from: -12
+                        to: 12
+                    }
+                    Label {
+                        id: eq2Label
+                        text: qsTr("EQ2")
+                    }
                 }
-            }
-            Column {
-                height: parent.height
-                width: parent.width / 12
-                Slider {
-                    id: eq7
-                    height: parent.height - preAmpLabel.height
-                    anchors.horizontalCenter: eq7Label.horizontalCenter
-                    orientation: Qt.Vertical
-                    from: -12
-                    to: 12
+                Column {
+                    height: parent.height
+                    width: parent.width / 12
+                    Slider {
+                        id: eq3
+                        height: parent.height - preAmpLabel.height
+                        anchors.horizontalCenter: eq3Label.horizontalCenter
+                        orientation: Qt.Vertical
+                        from: -12
+                        to: 12
+                    }
+                    Label {
+                        id: eq3Label
+                        text: qsTr("EQ3")
+                    }
                 }
-                Label {
-                    id: eq7Label
-                    text: qsTr("EQ7")
+                Column {
+                    height: parent.height
+                    width: parent.width / 12
+                    Slider {
+                        id: eq4
+                        height: parent.height - preAmpLabel.height
+                        anchors.horizontalCenter: eq4Label.horizontalCenter
+                        orientation: Qt.Vertical
+                        from: -12
+                        to: 12
+                    }
+
+                    Label {
+                        id: eq4Label
+                        text: qsTr("EQ4")
+                    }
                 }
-            }
-            Column {
-                height: parent.height
-                width: parent.width / 12
-                Slider {
-                    id: eq8
-                    height: parent.height - preAmpLabel.height
-                    anchors.horizontalCenter: eq8Label.horizontalCenter
-                    orientation: Qt.Vertical
-                    from: -12
-                    to: 12
+                Column {
+                    height: parent.height
+                    width: parent.width / 12
+                    Slider {
+                        id: eq5
+                        height: parent.height - preAmpLabel.height
+                        anchors.horizontalCenter: eq5Label.horizontalCenter
+                        orientation: Qt.Vertical
+                        from: -12
+                        to: 12
+                    }
+                    Label {
+                        id: eq5Label
+                        text: qsTr("EQ5")
+                    }
                 }
-                Label {
-                    id: eq8Label
-                    text: qsTr("EQ8")
+                Column {
+                    height: parent.height
+                    width: parent.width / 12
+                    Slider {
+                        id: eq6
+                        height: parent.height - preAmpLabel.height
+                        anchors.horizontalCenter: eq6Label.horizontalCenter
+                        orientation: Qt.Vertical
+                        from: -12
+                        to: 12
+                    }
+                    Label {
+                        id: eq6Label
+                        text: qsTr("EQ6")
+                    }
                 }
-            }
-            Column {
-                height: parent.height
-                width: parent.width / 12
-                Slider {
-                    id: eq9
-                    height: parent.height - preAmpLabel.height
-                    anchors.horizontalCenter: eq9Label.horizontalCenter
-                    orientation: Qt.Vertical
-                    from: -12
-                    to: 12
+                Column {
+                    height: parent.height
+                    width: parent.width / 12
+                    Slider {
+                        id: eq7
+                        height: parent.height - preAmpLabel.height
+                        anchors.horizontalCenter: eq7Label.horizontalCenter
+                        orientation: Qt.Vertical
+                        from: -12
+                        to: 12
+                    }
+                    Label {
+                        id: eq7Label
+                        text: qsTr("EQ7")
+                    }
                 }
-                Label {
-                    id: eq9Label
-                    text: qsTr("EQ9")
+                Column {
+                    height: parent.height
+                    width: parent.width / 12
+                    Slider {
+                        id: eq8
+                        height: parent.height - preAmpLabel.height
+                        anchors.horizontalCenter: eq8Label.horizontalCenter
+                        orientation: Qt.Vertical
+                        from: -12
+                        to: 12
+                    }
+                    Label {
+                        id: eq8Label
+                        text: qsTr("EQ8")
+                    }
                 }
-            }
-            Column {
-                height: parent.height
-                width: parent.width / 12
-                Slider {
-                    id: eq10
-                    height: parent.height - preAmpLabel.height
-                    anchors.horizontalCenter: eq10Label.horizontalCenter
-                    orientation: Qt.Vertical
-                    from: -12
-                    to: 12
+                Column {
+                    height: parent.height
+                    width: parent.width / 12
+                    Slider {
+                        id: eq9
+                        height: parent.height - preAmpLabel.height
+                        anchors.horizontalCenter: eq9Label.horizontalCenter
+                        orientation: Qt.Vertical
+                        from: -12
+                        to: 12
+                    }
+                    Label {
+                        id: eq9Label
+                        text: qsTr("EQ9")
+                    }
                 }
-                Label {
-                    id: eq10Label
-                    text: qsTr("EQ10")
+                Column {
+                    height: parent.height
+                    width: parent.width / 12
+                    Slider {
+                        id: eq10
+                        height: parent.height - preAmpLabel.height
+                        anchors.horizontalCenter: eq10Label.horizontalCenter
+                        orientation: Qt.Vertical
+                        from: -12
+                        to: 12
+                    }
+                    Label {
+                        id: eq10Label
+                        text: qsTr("EQ10")
+                    }
                 }
             }
         }
@@ -685,9 +756,8 @@ Dialog {
                     }
                 }
                 Row {
-                    leftPadding: 9
                     Label {
-                        anchors.rightMargin: 17
+                        width: starting_index_apply.width
                         anchors.verticalCenter: alphabet_limit.verticalCenter
                         text: qsTr("Group items alphabetically")
                     }
@@ -696,6 +766,39 @@ Dialog {
                         editable: true
                         from: 9
                         to: 99
+                    }
+                }
+                Row {
+                    topPadding: 17
+                    bottomPadding: 17
+
+                    Rectangle {
+                        x: 0
+                        y: 0
+                        width: parent.parent.width
+                        height: 1
+                        color: "#AAAAAA"
+                    }
+                }
+                Row {
+                    bottomPadding: 17
+                    Label {
+                        text: qsTr("<b>Sound</b>")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 4
+                        anchors.rightMargin: 17
+                        anchors.verticalCenter: wideStereo.verticalCenter
+                        text: qsTr("Wide stereo (milliseconds)")
+                    }
+                    SpinBox {
+                        id: wideStereo
+                        editable: true
+                        from: 0
+                        to: 40
                     }
                 }
                 Row {

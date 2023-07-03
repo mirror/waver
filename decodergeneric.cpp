@@ -16,7 +16,7 @@ DecoderGeneric::DecoderGeneric(RadioTitleCallback::RadioTitleCallbackInfo radioT
     networkSource       = nullptr;
     networkDeviceSet    = false;
     decodedMicroseconds = 0;
-    decodeDelay         = 1500;
+    decodeDelay         = 2500;
     waitUnderBytes      = 4096;
 
     networkThread.setObjectName("decodernetwork");

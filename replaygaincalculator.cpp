@@ -8,10 +8,9 @@
 #include "replaygaincalculator.h"
 
 // constructor
-ReplayGainCalculator::ReplayGainCalculator(IIRFilter::SampleTypes sampleType, int sampleRate, bool calculateScaledPeak)
+ReplayGainCalculator::ReplayGainCalculator(IIRFilter::SampleTypes sampleType, int sampleRate)
 {
-    this->sampleType          = sampleType;
-    this->calculateScaledPeak = calculateScaledPeak;
+    this->sampleType = sampleType;
 
     samplesPerRmsBlock = ((int)ceil(sampleRate * RMS_BLOCK_SECONDS)) * 2;
 

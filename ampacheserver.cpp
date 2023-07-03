@@ -336,6 +336,9 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
                     }
                 }
             }
+            else if (wantedElements.contains(currentElement) && !multiElements.contains(currentElement) && attributes.hasAttribute("id")) {
+                opResult.insert(QString("%1_id").arg(currentElement), attributes.value("id").toString());
+            }
         }
 
         if (tokenType == QXmlStreamReader::EndElement) {

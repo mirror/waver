@@ -10,7 +10,6 @@
 Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInfo, DecodingCallback::DecodingCallbackInfo decodingCallbackInfo, QObject *parent) : QObject(parent)
 {
     decoderThread.setObjectName("decoder");
-    preProcessorThread.setObjectName("preprocessor");
     cacheThread.setObjectName("cache");
     analyzerThread.setObjectName("analyzer");
     equalizerThread.setObjectName("equalizer");
@@ -26,7 +25,6 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
 
     currentStatus            = Idle;
     stopping                 = false;
-    doPreProcess             = true;    // TODO make this optional, also always false with radio stations
     decodingDone             = false;
     finishedSent             = false;
     fadeoutStartedSent       = false;
@@ -55,7 +53,6 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
     desiredPCMFormat.setSampleType(QAudioFormat::SignedInt);
 
     setupDecoder();
-    setupPreProcessor();
     setupCache();
     setupAnalyzer();
     setupEqualizer();
@@ -125,19 +122,6 @@ Track::~Track()
         disconnect(this, &Track::cacheRequestTimestampPCMChunk, cache, &PCMCache::requestTimestampPCMChunk);
 
         delete cache;
-    }
-
-    preProcessorThread.requestInterruption();
-    preProcessorThread.quit();
-    preProcessorThread.wait();
-    if (preProcessor != nullptr) {
-        disconnect(preProcessor, &PreProcessor::bufferPreProcessed, this, &Track::bufferPreProcessed);
-        disconnect(preProcessor, &PreProcessor::setDecoderDelay,    this, &Track::preprocessorDecoderDelay);
-
-        disconnect(this, &Track::bufferAvailableToPreProcessor, preProcessor, &PreProcessor::bufferAvailable);
-        disconnect(this, &Track::decoderDone,                   preProcessor, &PreProcessor::decoderDone);
-
-        delete preProcessor;
     }
 
     decoderThread.requestInterruption();
@@ -290,26 +274,6 @@ void Track::bufferAvailableFromDecoder(QAudioBuffer *buffer)
         decodingInfoLastSent = QDateTime::currentMSecsSinceEpoch();
     }
 
-    preProcessorQueueMutex.lock();
-    preProcessorQueue.append(buffer);
-    preProcessorQueueMutex.unlock();
-
-    emit bufferAvailableToPreProcessor();
-
-    /*
-    cache->storeBuffer(buffer);
-
-    analyzerQueueMutex.lock();
-    analyzerQueue.append(buffer);
-    analyzerQueueMutex.unlock();
-
-    emit bufferAvailableToAnalyzer();
-    */
-}
-
-
-void Track::bufferPreProcessed(QAudioBuffer *buffer)
-{
     cache->storeBuffer(buffer);
 
     analyzerQueueMutex.lock();
@@ -413,6 +377,26 @@ void Track::decoderNetworkBufferChanged()
         (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(decoder->downloadPercent(), decodedPercent(), this);
         decodingInfoLastSent = QDateTime::currentMSecsSinceEpoch();
     }
+}
+
+
+QString Track::equalizerSettingsPrefix()
+{
+    QString prefix = "eq";
+    if (trackInfo.attributes.contains("serverSettingsId")) {
+        QSettings settings;
+
+        QString settingsId = trackInfo.attributes.value("serverSettingsId").toString();
+        QString trackId    = trackInfo.id.split("|").at(0).mid(1);
+
+        if (settings.contains(QString("%1/track/%2/eq/pre_amp").arg(settingsId, trackId))) {
+            prefix = QString("%1/track/%2/eq").arg(settingsId, trackId);
+        }
+        else if (settings.contains(QString("%1/album/%2/eq/pre_amp").arg(settingsId, trackInfo.albumId))) {
+            prefix = QString("%1/album/%2/eq").arg(settingsId, trackInfo.albumId);
+        }
+    }
+    return prefix;
 }
 
 
@@ -522,21 +506,27 @@ void Track::optionsUpdated()
     if (equalizer != nullptr) {
         QVector<double> gains;
 
-        gains.append(settings.value("eq/eq1",  DEFAULT_EQ1).toDouble());
-        gains.append(settings.value("eq/eq2",  DEFAULT_EQ2).toDouble());
-        gains.append(settings.value("eq/eq3",  DEFAULT_EQ3).toDouble());
-        gains.append(settings.value("eq/eq4",  DEFAULT_EQ4).toDouble());
-        gains.append(settings.value("eq/eq5",  DEFAULT_EQ5).toDouble());
-        gains.append(settings.value("eq/eq6",  DEFAULT_EQ6).toDouble());
-        gains.append(settings.value("eq/eq7",  DEFAULT_EQ7).toDouble());
-        gains.append(settings.value("eq/eq8",  DEFAULT_EQ8).toDouble());
-        gains.append(settings.value("eq/eq9",  DEFAULT_EQ9).toDouble());
-        gains.append(settings.value("eq/eq10", DEFAULT_EQ10).toDouble());
+        QString prefix = equalizerSettingsPrefix();
+
+        gains.append(settings.value(prefix + "/eq1",  DEFAULT_EQ1).toDouble());
+        gains.append(settings.value(prefix + "/eq2",  DEFAULT_EQ2).toDouble());
+        gains.append(settings.value(prefix + "/eq3",  DEFAULT_EQ3).toDouble());
+        gains.append(settings.value(prefix + "/eq4",  DEFAULT_EQ4).toDouble());
+        gains.append(settings.value(prefix + "/eq5",  DEFAULT_EQ5).toDouble());
+        gains.append(settings.value(prefix + "/eq6",  DEFAULT_EQ6).toDouble());
+        gains.append(settings.value(prefix + "/eq7",  DEFAULT_EQ7).toDouble());
+        gains.append(settings.value(prefix + "/eq8",  DEFAULT_EQ8).toDouble());
+        gains.append(settings.value(prefix + "/eq9",  DEFAULT_EQ9).toDouble());
+        gains.append(settings.value(prefix + "/eq10", DEFAULT_EQ10).toDouble());
 
         bool   on     = settings.value("eq/on", DEFAULT_EQON).toBool();
-        double preAmp = settings.value("eq/pre_amp", DEFAULT_PREAMP).toDouble();
+        double preAmp = settings.value(prefix + "pre_amp", DEFAULT_PREAMP).toDouble();
 
         equalizer->setGains(on, gains, preAmp);
+    }
+
+    if (soundOutput != nullptr) {
+        soundOutput->wideStereoDelayChanged(settings.value("options/wide_stereo_delay_millisec").toInt());
     }
 }
 
@@ -582,7 +572,7 @@ void Track::outputPositionChanged(qint64 posMilliseconds)
 
     emit playPosition(trackInfo.id, decodingDone, getLengthMilliseconds(), posMilliseconds);
 
-    if (!doPreProcess && !decodingDone) {
+    if (!decodingDone) {
         unsigned long delay = static_cast<unsigned long>(pow(4, log10(qMax(decoder->getDecodedMicroseconds() / 1000 - posMilliseconds, 1ll))));
         #ifdef Q_OS_WINDOWS
             delay *= 3;
@@ -642,12 +632,6 @@ void Track::pcmChunkFromEqualizer(TimedChunk chunk)
     if (outputThread.isRunning()) {
         emit chunkAvailableToOutput();
     }
-}
-
-
-void Track::preprocessorDecoderDelay(unsigned long microseconds)
-{
-    decoder->setDecodeDelay(microseconds);
 }
 
 
@@ -738,7 +722,6 @@ void Track::setStatus(Status status)
     }
 
     if ((status == Decoding) && (currentStatus == Idle)) {
-        preProcessorThread.start();
         analyzerThread.start();
         cacheThread.start();
         decoderThread.start();
@@ -750,7 +733,6 @@ void Track::setStatus(Status status)
     }
 
     if ((status == Playing) && (currentStatus == Idle)) {
-        preProcessorThread.start();
         analyzerThread.start();
         equalizerThread.start();
         cacheThread.start();
@@ -896,22 +878,24 @@ void Track::setupDecoder()
 
 void Track::setupEqualizer()
 {
-    QSettings settings;
-
+    QSettings       settings;
     QVector<double> gains;
-    gains.append(settings.value("eq/eq1",  DEFAULT_EQ1).toDouble());
-    gains.append(settings.value("eq/eq2",  DEFAULT_EQ2).toDouble());
-    gains.append(settings.value("eq/eq3",  DEFAULT_EQ3).toDouble());
-    gains.append(settings.value("eq/eq4",  DEFAULT_EQ4).toDouble());
-    gains.append(settings.value("eq/eq5",  DEFAULT_EQ5).toDouble());
-    gains.append(settings.value("eq/eq6",  DEFAULT_EQ6).toDouble());
-    gains.append(settings.value("eq/eq7",  DEFAULT_EQ7).toDouble());
-    gains.append(settings.value("eq/eq8",  DEFAULT_EQ8).toDouble());
-    gains.append(settings.value("eq/eq9",  DEFAULT_EQ9).toDouble());
-    gains.append(settings.value("eq/eq10", DEFAULT_EQ10).toDouble());
+
+    QString prefix = equalizerSettingsPrefix();
+
+    gains.append(settings.value(prefix + "/eq1",  DEFAULT_EQ1).toDouble());
+    gains.append(settings.value(prefix + "/eq2",  DEFAULT_EQ2).toDouble());
+    gains.append(settings.value(prefix + "/eq3",  DEFAULT_EQ3).toDouble());
+    gains.append(settings.value(prefix + "/eq4",  DEFAULT_EQ4).toDouble());
+    gains.append(settings.value(prefix + "/eq5",  DEFAULT_EQ5).toDouble());
+    gains.append(settings.value(prefix + "/eq6",  DEFAULT_EQ6).toDouble());
+    gains.append(settings.value(prefix + "/eq7",  DEFAULT_EQ7).toDouble());
+    gains.append(settings.value(prefix + "/eq8",  DEFAULT_EQ8).toDouble());
+    gains.append(settings.value(prefix + "/eq9",  DEFAULT_EQ9).toDouble());
+    gains.append(settings.value(prefix + "/eq10", DEFAULT_EQ10).toDouble());
 
     bool   on     = settings.value("eq/on", DEFAULT_EQON).toBool();
-    double preAmp = settings.value("eq/pre_amp", DEFAULT_PREAMP).toDouble();
+    double preAmp = settings.value(prefix + "/pre_amp", DEFAULT_PREAMP).toDouble();
 
     equalizer = new Equalizer(desiredPCMFormat);
 
@@ -948,23 +932,6 @@ void Track::setupOutput()
     connect(this, &Track::chunkAvailableToOutput, soundOutput, &SoundOutput::chunkAvailable);
     connect(this, &Track::pause,                  soundOutput, &SoundOutput::pause);
     connect(this, &Track::resume,                 soundOutput, &SoundOutput::resume);
-}
-
-
-void Track::setupPreProcessor()
-{
-    preProcessor = new PreProcessor(desiredPCMFormat, getLengthMilliseconds());
-
-    preProcessor->setBufferQueue(&preProcessorQueue, &preProcessorQueueMutex);
-    preProcessor->moveToThread(&preProcessorThread);
-
-    connect(&preProcessorThread, &QThread::started,  preProcessor, &PreProcessor::run);
-
-    connect(preProcessor, &PreProcessor::bufferPreProcessed,     this,         &Track::bufferPreProcessed);
-    connect(preProcessor, &PreProcessor::setDecoderDelay,        this,         &Track::preprocessorDecoderDelay);
-    connect(this,         &Track::bufferAvailableToPreProcessor, preProcessor, &PreProcessor::bufferAvailable);
-    connect(this,         &Track::playBegins,                    preProcessor, &PreProcessor::playStartRequest);
-    connect(this,         &Track::decoderDone,                   preProcessor, &PreProcessor::decoderDone);
 }
 
 

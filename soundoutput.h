@@ -37,6 +37,7 @@ class SoundOutput : public QObject
         ~SoundOutput();
 
         void setBufferQueue(TimedChunkQueue *chunkQueue, QMutex *chunkQueueMutex);
+        void wideStereoDelayChanged(int wideStereoDelayMillisec);
 
         qint64 remainingMilliseconds();
 

@@ -18,7 +18,7 @@ class ReplayGainCalculator : IIRFilterCallback {
 
     public:
 
-        ReplayGainCalculator(IIRFilter::SampleTypes sampleType, int sampleRate, bool calculateScaledPeak = false);
+        ReplayGainCalculator(IIRFilter::SampleTypes sampleType, int sampleRate);
 
         void   filterCallback(double *sample, int channelIndex) override;
         double calculateResult();
@@ -35,8 +35,6 @@ class ReplayGainCalculator : IIRFilterCallback {
         static constexpr double PINK_NOISE_REFERENCE = 64.82;
 
         IIRFilter::SampleTypes sampleType;
-
-        bool   calculateScaledPeak;
 
         int  samplesPerRmsBlock;
 

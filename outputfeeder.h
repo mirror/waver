@@ -34,11 +34,13 @@ class OutputFeeder : public QObject
         explicit OutputFeeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, QAudioFormat audioFormat, QAudioOutput *audioOutput, PeakCallback::PeakCallbackInfo peakCallbackInfo, QObject *parent = nullptr);
 
         void setOutputDevice(QIODevice *outputDevice);
+        void setWideStereoDelayMillisec(int wideStereoDelayMillisec);
 
 
     private:
 
-        static const     qint64 MICROSECONDS_PER_SECOND      = 1000 * 1000;
+        static const qint64 MICROSECONDS_PER_SECOND        = 1000 * 1000;
+        static const int    WIDE_STEREO_DELAY_MILLISEC_MAX = 50;
 
         QAudioOutput *audioOutput;
         QByteArray   *outputBuffer;
@@ -66,6 +68,10 @@ class OutputFeeder : public QObject
         double  lPeak;
         double  rPeak;
         qint64  peakDelaySum;
+
+        int    wideStereoDelayMillisec;
+        int    newWideStereoDelayMillisec;
+        QMutex wideStereoDelayMutex;
 
 
     public slots:

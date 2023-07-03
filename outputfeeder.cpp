@@ -9,12 +9,14 @@
 
 OutputFeeder::OutputFeeder(QByteArray *outputBuffer, QMutex *outputBufferMutex, QAudioFormat audioFormat, QAudioOutput *audioOutput, PeakCallback::PeakCallbackInfo peakCallbackInfo, QObject *parent) : QObject(parent)
 {
-    this->outputBuffer      = outputBuffer;
-    this->outputBufferMutex = outputBufferMutex;
-    this->audioFormat       = audioFormat;
-    this->audioOutput       = audioOutput;
+    this->outputBuffer            = outputBuffer;
+    this->outputBufferMutex       = outputBufferMutex;
+    this->audioFormat             = audioFormat;
+    this->audioOutput             = audioOutput;
 
-    outputDevice  = nullptr;
+    outputDevice               = nullptr;
+    wideStereoDelayMillisec    = 0;
+    newWideStereoDelayMillisec = 0;
 
     int16Min    = std::numeric_limits<qint16>::min();
     int16Max    = std::numeric_limits<qint16>::max();
@@ -97,6 +99,11 @@ void OutputFeeder::run()
     qint64 peakDelayTemp;
     qint64 peakDelay;
 
+    QByteArray wideStereoBuffer1;
+    QByteArray wideStereoBuffer2;
+    bool       wideStereoBufferOne;
+    int        wideStereoBufferIndex;
+
     peakCallbackInfo.peakFPSMutex->lock();
     int audioFramesPerPeakPeriod = audioFormat.framesForDuration(MICROSECONDS_PER_SECOND / *peakCallbackInfo.peakFPS);
     peakCallbackInfo.peakFPSMutex->unlock();
@@ -107,6 +114,28 @@ void OutputFeeder::run()
             QThread::currentThread()->msleep(100);
             continue;
         }
+
+        wideStereoDelayMutex.lock();
+        if (wideStereoDelayMillisec != newWideStereoDelayMillisec) {
+            if (newWideStereoDelayMillisec == 0) {
+                wideStereoBuffer1.resize(0);
+                wideStereoBuffer2.resize(0);
+            }
+            else {
+                wideStereoBuffer1.resize(audioFormat.bytesForDuration(newWideStereoDelayMillisec * 1000) / audioFormat.channelCount());
+                wideStereoBuffer1.fill(0);
+                while (wideStereoBuffer1.size() % dataBytes) {
+                    wideStereoBuffer1.append((char)0);
+                }
+                wideStereoBuffer2.resize(wideStereoBuffer1.size());
+                wideStereoBuffer2.fill(0);
+            }
+
+            wideStereoDelayMillisec = newWideStereoDelayMillisec;
+            wideStereoBufferIndex   = 0;
+            wideStereoBufferOne     = true;
+        }
+        wideStereoDelayMutex.unlock();
 
         outputBufferMutex->lock();
 
@@ -130,8 +159,25 @@ void OutputFeeder::run()
 
             data = outputBuffer->data();
             while (byteCount < bytesToWrite) {
-                sampleValue = 0;
+                if ((channelIndex == 1) && (wideStereoDelayMillisec > 0)) {
+                    for (int i = 0; i < dataBytes; i++) {
+                        if (wideStereoBufferOne) {
+                            wideStereoBuffer2[wideStereoBufferIndex] = *(data + i);
+                            *(data + i)                              = wideStereoBuffer1[wideStereoBufferIndex];
+                        }
+                        else {
+                            wideStereoBuffer1[wideStereoBufferIndex] = *(data + i);
+                            *(data + i)                              = wideStereoBuffer2[wideStereoBufferIndex];
+                        }
+                        wideStereoBufferIndex++;
+                    }
+                    if (wideStereoBufferIndex >= wideStereoBuffer1.size() - 1) {
+                        wideStereoBufferOne   = !wideStereoBufferOne;
+                        wideStereoBufferIndex = 0;
+                    }
+                }
 
+                sampleValue = 0;
                 switch (dataType) {
                     case 1:
                         int8  = (qint8 *)data;
@@ -230,4 +276,19 @@ void OutputFeeder::setOutputDevice(QIODevice *outputDevice)
     peakDelaySumMutex.lock();
     peakDelaySum = 0;
     peakDelaySumMutex.unlock();
+}
+
+
+void OutputFeeder::setWideStereoDelayMillisec(int wideStereoDelayMillisec)
+{
+    if (wideStereoDelayMillisec < 0) {
+        wideStereoDelayMillisec = 0;
+    }
+    else if (wideStereoDelayMillisec > WIDE_STEREO_DELAY_MILLISEC_MAX) {
+        wideStereoDelayMillisec = WIDE_STEREO_DELAY_MILLISEC_MAX;
+    }
+
+    wideStereoDelayMutex.lock();
+    newWideStereoDelayMillisec = wideStereoDelayMillisec;
+    wideStereoDelayMutex.unlock();
 }

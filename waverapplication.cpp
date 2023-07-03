@@ -124,7 +124,9 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(uiMainWindow, SIGNAL(searchCriteriaEntered(QString)), waver, SLOT(searchCriteriaEntered(QString)));
 
     QObject::connect(waver,        SIGNAL(optionsAsRequested(QVariant)), uiMainWindow, SLOT(optionsAsRequested(QVariant)));
+    QObject::connect(waver,        SIGNAL(eqAsRequested(QVariant)),      uiMainWindow, SLOT(eqAsRequested(QVariant)));
     QObject::connect(uiMainWindow, SIGNAL(requestOptions()),             waver,        SLOT(requestOptions()));
+    QObject::connect(uiMainWindow, SIGNAL(requestEQ(int)),               waver,        SLOT(requestEQ(int)));
     QObject::connect(uiMainWindow, SIGNAL(updatedOptions(QString)),      waver,        SLOT(updatedOptions(QString)));
 
     QObject::connect(waver,        SIGNAL(uiHistoryAdd(QVariant)),        uiMainWindow, SLOT(historyAdd(QVariant)));

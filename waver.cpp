@@ -250,6 +250,21 @@ void Waver::connectTrackSignals(Track *track, bool newConnect)
 }
 
 
+void Waver::decodingCallback(double downloadPercent, double PCMPercent, void *trackPointer)
+{
+    if (currentTrack == trackPointer) {
+        emit uiSetTrackDecoding(downloadPercent, PCMPercent);
+        return;
+    }
+
+    for (int i = 0; i < playlist.size(); i++) {
+        if (playlist.at(i) == trackPointer) {
+            emit playlistDecoding(i, downloadPercent, PCMPercent);
+        }
+    }
+}
+
+
 void Waver::deleteServer(QString id)
 {
     int index = serverIndex(id);
@@ -630,10 +645,9 @@ void Waver::itemActionSearch(QString id, int action, QVariantMap extra)
 
 void Waver::itemActionSearchResult(QString id, int action, QVariantMap extra)
 {
-    QStringList idParts = id.split("|");
-
-    QString serverId = idParts.last();
-    int     srvIndex = serverIndex(serverId);
+    QStringList idParts  = id.split("|");
+    QString     serverId = idParts.last();
+    int         srvIndex = serverIndex(serverId);
     if ((srvIndex >= servers.size()) || (srvIndex < 0)) {
         errorMessage(serverId, tr("Server ID can not be found"), serverId);
         return;
@@ -930,10 +944,9 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
 {
     stopShuffleCountdown();
 
-    QStringList idParts = id.split("|");
-
-    QString serverId = idParts.last();
-    int     srvIndex = serverIndex(serverId);
+    QStringList idParts  = id.split("|");
+    QString     serverId = idParts.last();
+    int         srvIndex = serverIndex(serverId);
     if ((srvIndex >= servers.size()) || (srvIndex < 0)) {
         errorMessage(serverId, tr("Server ID can not be found"), serverId);
         return;
@@ -1570,11 +1583,14 @@ void Waver::playlistFirstGroupSave()
     if (currentTrack == nullptr) {
         return;
     }
-    if (!getCurrentTrackInfo().attributes.contains("group")) {
+
+    Track::TrackInfo currentTrackInfo = getCurrentTrackInfo();
+
+    if (!currentTrackInfo.attributes.contains("group")) {
         return;
     }
 
-    QStringList idParts  = getCurrentTrackInfo().id.split("|");
+    QStringList idParts  = currentTrackInfo.id.split("|");
     QString     serverId = idParts.last();
     int         srvIndex = serverIndex(serverId);
     if ((srvIndex >= servers.size()) || (srvIndex < 0)) {
@@ -1582,13 +1598,11 @@ void Waver::playlistFirstGroupSave()
         return;
     }
 
-    QString groupId = getCurrentTrackInfo().attributes.value("group_id").toString();
+    QString groupId = currentTrackInfo.attributes.value("group_id").toString();
 
     settings.setValue("playlist_first_group/server_settings_id", servers.at(srvIndex)->getSettingsId().toString());
 
     settings.beginWriteArray("playlist_first_group/tracks");
-
-    Track::TrackInfo currentTrackInfo = getCurrentTrackInfo();
 
     settings.setArrayIndex(0);
     settings.setValue("track_id", idParts.at(0).mid(1));
@@ -1817,6 +1831,52 @@ void Waver::raiseButton()
 }
 
 
+void Waver::requestEQ(int eqChooser)
+{
+    QSettings settings;
+
+    QString eqChooserPrefix = "eq";
+    if (eqChooser != Track::EQ_CHOOSER_COMMON) {
+        eqChooserPrefix = "";
+        if (currentTrack != nullptr) {
+            Track::TrackInfo currentTrackInfo = getCurrentTrackInfo();
+
+            QStringList idParts  = currentTrackInfo.id.split("|");
+            QString     serverId = idParts.last();
+            int         srvIndex = serverIndex(serverId);
+
+            QString settingsId = servers.at(srvIndex)->getSettingsId().toString();
+            QString trackId    = idParts.at(0).mid(1);
+
+            if ((eqChooser == Track::EQ_CHOOSER_TRACK) && settings.contains(QString("%1/track/%2/eq/pre_amp").arg(settingsId, trackId))) {
+                eqChooserPrefix = QString("%1/track/%2/eq").arg(settingsId, trackId);
+            }
+            else if ((eqChooser == Track::EQ_CHOOSER_ALBUM) && settings.contains(QString("%1/album/%2/eq/pre_amp").arg(settingsId, currentTrackInfo.albumId))) {
+                eqChooserPrefix = QString("%1/album/%2/eq").arg(settingsId, currentTrackInfo.albumId);
+            }
+        }
+    }
+    if (eqChooserPrefix.length() == 0) {
+        return;
+    }
+
+    QVariantMap eqObj;
+    eqObj.insert("pre_amp", settings.value(eqChooserPrefix + "/pre_amp", DEFAULT_PREAMP));
+    eqObj.insert("eq1", settings.value(eqChooserPrefix + "/eq1", DEFAULT_EQ1));
+    eqObj.insert("eq2", settings.value(eqChooserPrefix + "/eq2", DEFAULT_EQ2));
+    eqObj.insert("eq3", settings.value(eqChooserPrefix + "/eq3", DEFAULT_EQ3));
+    eqObj.insert("eq4", settings.value(eqChooserPrefix + "/eq4", DEFAULT_EQ4));
+    eqObj.insert("eq5", settings.value(eqChooserPrefix + "/eq5", DEFAULT_EQ5));
+    eqObj.insert("eq6", settings.value(eqChooserPrefix + "/eq6", DEFAULT_EQ6));
+    eqObj.insert("eq7", settings.value(eqChooserPrefix + "/eq7", DEFAULT_EQ7));
+    eqObj.insert("eq8", settings.value(eqChooserPrefix + "/eq8", DEFAULT_EQ8));
+    eqObj.insert("eq9", settings.value(eqChooserPrefix + "/eq9", DEFAULT_EQ9));
+    eqObj.insert("eq10", settings.value(eqChooserPrefix + "/eq10", DEFAULT_EQ10));
+
+    emit eqAsRequested(eqObj);
+}
+
+
 void Waver::requestOptions()
 {
     QVariantMap optionsObj;
@@ -1827,31 +1887,54 @@ void Waver::requestOptions()
     }
     else {
         optionsObj.insert("eq_disable", 0);
-        optionsObj.insert("eq_on", settings.value("eq/on", DEFAULT_EQON).toBool());
 
         QVector<double> eqCenterFrequencies = currentTrack->getEqualizerBandCenterFrequencies();
 
-        optionsObj.insert("pre_amp", settings.value("eq/pre_amp", DEFAULT_PREAMP));
+        int     eqChooser       = Track::EQ_CHOOSER_COMMON;
+        QString eqChooserPrefix = "eq";
+        if (currentTrack != nullptr) {
+            Track::TrackInfo currentTrackInfo = getCurrentTrackInfo();
+
+            QStringList idParts  = currentTrackInfo.id.split("|");
+            QString     serverId = idParts.last();
+            int         srvIndex = serverIndex(serverId);
+
+            QString settingsId = servers.at(srvIndex)->getSettingsId().toString();
+            QString trackId    = idParts.at(0).mid(1);
+
+            if (settings.contains(QString("%1/track/%2/eq/pre_amp").arg(settingsId, trackId))) {
+                eqChooser       = Track::EQ_CHOOSER_TRACK;
+                eqChooserPrefix = QString("%1/track/%2/eq").arg(settingsId, trackId);
+            }
+            else if (settings.contains(QString("%1/album/%2/eq/pre_amp").arg(settingsId, currentTrackInfo.albumId))) {
+                eqChooser       = Track::EQ_CHOOSER_ALBUM;
+                eqChooserPrefix = QString("%1/album/%2/eq").arg(settingsId, currentTrackInfo.albumId);
+            }
+        }
+        optionsObj.insert("eq_chooser", eqChooser);
+        optionsObj.insert("eq_on", settings.value("eq/on", DEFAULT_EQON).toBool());
+
+        optionsObj.insert("pre_amp", settings.value(eqChooserPrefix + "/pre_amp", DEFAULT_PREAMP));
         optionsObj.insert("eq1Label", formatFrequencyValue(eqCenterFrequencies.at(0)));
-        optionsObj.insert("eq1", settings.value("eq/eq1", DEFAULT_EQ1));
+        optionsObj.insert("eq1", settings.value(eqChooserPrefix + "/eq1", DEFAULT_EQ1));
         optionsObj.insert("eq2Label", formatFrequencyValue(eqCenterFrequencies.at(1)));
-        optionsObj.insert("eq2", settings.value("eq/eq2", DEFAULT_EQ2));
+        optionsObj.insert("eq2", settings.value(eqChooserPrefix + "/eq2", DEFAULT_EQ2));
         optionsObj.insert("eq3Label", formatFrequencyValue(eqCenterFrequencies.at(2)));
-        optionsObj.insert("eq3", settings.value("eq/eq3", DEFAULT_EQ3));
+        optionsObj.insert("eq3", settings.value(eqChooserPrefix + "/eq3", DEFAULT_EQ3));
         optionsObj.insert("eq4Label", formatFrequencyValue(eqCenterFrequencies.at(3)));
-        optionsObj.insert("eq4", settings.value("eq/eq4", DEFAULT_EQ4));
+        optionsObj.insert("eq4", settings.value(eqChooserPrefix + "/eq4", DEFAULT_EQ4));
         optionsObj.insert("eq5Label", formatFrequencyValue(eqCenterFrequencies.at(4)));
-        optionsObj.insert("eq5", settings.value("eq/eq5", DEFAULT_EQ5));
+        optionsObj.insert("eq5", settings.value(eqChooserPrefix + "/eq5", DEFAULT_EQ5));
         optionsObj.insert("eq6Label", formatFrequencyValue(eqCenterFrequencies.at(5)));
-        optionsObj.insert("eq6", settings.value("eq/eq6", DEFAULT_EQ6));
+        optionsObj.insert("eq6", settings.value(eqChooserPrefix + "/eq6", DEFAULT_EQ6));
         optionsObj.insert("eq7Label", formatFrequencyValue(eqCenterFrequencies.at(6)));
-        optionsObj.insert("eq7", settings.value("eq/eq7", DEFAULT_EQ7));
+        optionsObj.insert("eq7", settings.value(eqChooserPrefix + "/eq7", DEFAULT_EQ7));
         optionsObj.insert("eq8Label", formatFrequencyValue(eqCenterFrequencies.at(7)));
-        optionsObj.insert("eq8", settings.value("eq/eq8", DEFAULT_EQ8));
+        optionsObj.insert("eq8", settings.value(eqChooserPrefix + "/eq8", DEFAULT_EQ8));
         optionsObj.insert("eq9Label", formatFrequencyValue(eqCenterFrequencies.at(8)));
-        optionsObj.insert("eq9", settings.value("eq/eq9", DEFAULT_EQ9));
+        optionsObj.insert("eq9", settings.value(eqChooserPrefix + "/eq9", DEFAULT_EQ9));
         optionsObj.insert("eq10Label", formatFrequencyValue(eqCenterFrequencies.at(9)));
-        optionsObj.insert("eq10", settings.value("eq/eq10", DEFAULT_EQ10));
+        optionsObj.insert("eq10", settings.value(eqChooserPrefix + "/eq10", DEFAULT_EQ10));
     }
 
     optionsObj.insert("shuffle_autostart", settings.value("options/shuffle_autostart", DEFAULT_SHUFFLE_AUTOSTART).toBool());
@@ -1870,6 +1953,7 @@ void Waver::requestOptions()
     optionsObj.insert("starting_index_apply", settings.value("options/starting_index_apply", DEFAULT_STARTING_INDEX_APPLY).toBool());
     optionsObj.insert("starting_index_days", settings.value("options/starting_index_days", DEFAULT_STARTING_INDEX_DAYS));
     optionsObj.insert("alphabet_limit", settings.value("options/alphabet_limit", DEFAULT_ALPHABET_LIMIT));
+    optionsObj.insert("wide_stereo", settings.value("options/wide_stereo_delay_millisec", DEFAULT_WIDE_STEREO_DELAY_MILLISEC).toInt());
 
     optionsObj.insert("fade_tags", settings.value("options/fade_tags", DEFAULT_FADE_TAGS));
     optionsObj.insert("crossfade_tags", settings.value("options/crossfade_tags", DEFAULT_CROSSFADE_TAGS));
@@ -2823,6 +2907,7 @@ void Waver::startNextTrackUISignals()
 
     emit uiSetTrackData(trackInfo.title, trackInfo.artist, trackInfo.album, trackInfo.track, trackInfo.year);
     emit uiSetTrackLength(QDateTime::fromMSecsSinceEpoch(currentTrack->getLengthMilliseconds()).toUTC().toString("hh:mm:ss"));
+    emit uiSetTrackPosition("00:00", 0);
     emit uiSetTrackTags(trackInfo.tags.join(", "));
     emit uiSetImage(trackInfo.arts.size() ? trackInfo.arts.at(0).toString() : "qrc:/images/waver.png");
     emit uiSetFavorite(trackInfo.attributes.contains("flag"));
@@ -2962,21 +3047,6 @@ void Waver::stopShuffleCountdown()
 {
     shuffleCountdownTimer->stop();
     emit uiSetShuffleCountdown(0);
-}
-
-
-void Waver::decodingCallback(double downloadPercent, double PCMPercent, void *trackPointer)
-{
-     if (currentTrack == trackPointer) {
-        emit uiSetTrackDecoding(downloadPercent, PCMPercent);
-        return;
-    }
-
-    for (int i = 0; i < playlist.size(); i++) {
-        if (playlist.at(i) == trackPointer) {
-            emit playlistDecoding(i, downloadPercent, PCMPercent);
-        }
-    }
 }
 
 
@@ -3121,10 +3191,12 @@ Track::TrackInfo Waver::trackInfoFromFilePath(QString filePath)
 {
     Track::TrackInfo trackInfo;
 
-    trackInfo.id    = QString("%1%2").arg(QDateTime::currentMSecsSinceEpoch()).arg(QFileInfo(filePath).baseName());
-    trackInfo.url   = QUrl::fromLocalFile(filePath);
-    trackInfo.track = 0;
-    trackInfo.year  = 0;
+    trackInfo.id       = QString("%1%2").arg(QDateTime::currentMSecsSinceEpoch()).arg(QFileInfo(filePath).baseName());
+    trackInfo.artistId = "0000";
+    trackInfo.albumId  = "0000";
+    trackInfo.url      = QUrl::fromLocalFile(filePath);
+    trackInfo.track    = 0;
+    trackInfo.year     = 0;
 
 #ifndef Q_OS_WINRT
 
@@ -3186,13 +3258,15 @@ Track::TrackInfo Waver::trackInfoFromIdExtra(QString id, QVariantMap extra)
 {
     Track::TrackInfo trackInfo;
 
-    trackInfo.id     = id;
-    trackInfo.album  = extra.value("album", tr("Unknown album")).toString();
-    trackInfo.artist = extra.value("artist", tr("Unknown artist")).toString();
-    trackInfo.title  = extra.value("title", tr("Unknown title")).toString();
-    trackInfo.track  = extra.value("track", 0).toInt();
-    trackInfo.url    = QUrl(extra.value("url", "").toString());
-    trackInfo.year   = extra.value("year", 0).toInt();
+    trackInfo.id       = id;
+    trackInfo.albumId  = extra.value("album_id", "0000").toString();
+    trackInfo.album    = extra.value("album", tr("Unknown album")).toString();
+    trackInfo.artistId = extra.value("artist_id", "0000").toString();
+    trackInfo.artist   = extra.value("artist", tr("Unknown artist")).toString();
+    trackInfo.title    = extra.value("title", tr("Unknown title")).toString();
+    trackInfo.track    = extra.value("track", 0).toInt();
+    trackInfo.url      = QUrl(extra.value("url", "").toString());
+    trackInfo.year     = extra.value("year", 0).toInt();
 
     trackInfo.tags.append(extra.value("tags", "").toString().split('|'));
 
@@ -3204,6 +3278,11 @@ Track::TrackInfo Waver::trackInfoFromIdExtra(QString id, QVariantMap extra)
 
     if (extra.contains("flag") && extra.value("flag").toString().compare("0")) {
         trackInfo.attributes.insert("flag", "true");
+    }
+
+    int srvIndex = serverIndex(id.split("|").last());
+    if (srvIndex >= 0) {
+        trackInfo.attributes.insert("serverSettingsId", servers.at(srvIndex)->getSettingsId().toString());
     }
 
     trackInfo.arts.append(QUrl(extra.value("art").toString()));
@@ -3371,20 +3450,73 @@ void Waver::updatedOptions(QString optionsJSON)
     settings.setValue("options/starting_index_days", options.value("starting_index_days").toLongLong());
     settings.setValue("options/hide_dot_playlists", options.value("hide_dot_playlists").toBool());
     settings.setValue("options/alphabet_limit", options.value("alphabet_limit").toInt());
+    settings.setValue("options/wide_stereo_delay_millisec", options.value("wide_stereo").toInt());
 
     if (!options.value("eq_disable").toBool()) {
         settings.setValue("eq/on",  options.value("eq_on").toBool());
-        settings.setValue("eq/eq1", options.value("eq1").toDouble());
-        settings.setValue("eq/eq2", options.value("eq2").toDouble());
-        settings.setValue("eq/eq3", options.value("eq3").toDouble());
-        settings.setValue("eq/eq4", options.value("eq4").toDouble());
-        settings.setValue("eq/eq5", options.value("eq5").toDouble());
-        settings.setValue("eq/eq6", options.value("eq6").toDouble());
-        settings.setValue("eq/eq7", options.value("eq7").toDouble());
-        settings.setValue("eq/eq8", options.value("eq8").toDouble());
-        settings.setValue("eq/eq9", options.value("eq9").toDouble());
-        settings.setValue("eq/eq10", options.value("eq10").toDouble());
-        settings.setValue("eq/pre_amp", options.value("pre_amp").toDouble());
+
+        Track::TrackInfo currentTrackInfo = getCurrentTrackInfo();
+
+        QString settingsId;
+        QString trackId;
+        if (currentTrack != nullptr) {
+            QStringList idParts  = currentTrackInfo.id.split("|");
+            QString     serverId = idParts.last();
+            int         srvIndex = serverIndex(serverId);
+
+            settingsId = servers.at(srvIndex)->getSettingsId().toString();
+            trackId    = idParts.at(0).mid(1);
+        }
+
+        int eqChooser = options.value("eq_chooser").toInt();
+        if (eqChooser == 1) {
+            if (settingsId.length() >= 0) {
+                settings.remove(QString("%1/track/%2/eq").arg(settingsId, trackId));
+
+                settings.setValue(QString("%1/album/%2/eq/eq1").arg(settingsId, currentTrackInfo.albumId), options.value("eq1").toDouble());
+                settings.setValue(QString("%1/album/%2/eq/eq2").arg(settingsId, currentTrackInfo.albumId), options.value("eq2").toDouble());
+                settings.setValue(QString("%1/album/%2/eq/eq3").arg(settingsId, currentTrackInfo.albumId), options.value("eq3").toDouble());
+                settings.setValue(QString("%1/album/%2/eq/eq4").arg(settingsId, currentTrackInfo.albumId), options.value("eq4").toDouble());
+                settings.setValue(QString("%1/album/%2/eq/eq5").arg(settingsId, currentTrackInfo.albumId), options.value("eq5").toDouble());
+                settings.setValue(QString("%1/album/%2/eq/eq6").arg(settingsId, currentTrackInfo.albumId), options.value("eq6").toDouble());
+                settings.setValue(QString("%1/album/%2/eq/eq7").arg(settingsId, currentTrackInfo.albumId), options.value("eq7").toDouble());
+                settings.setValue(QString("%1/album/%2/eq/eq8").arg(settingsId, currentTrackInfo.albumId), options.value("eq8").toDouble());
+                settings.setValue(QString("%1/album/%2/eq/eq9").arg(settingsId, currentTrackInfo.albumId), options.value("eq9").toDouble());
+                settings.setValue(QString("%1/album/%2/eq/eq10").arg(settingsId, currentTrackInfo.albumId), options.value("eq10").toDouble());
+                settings.setValue(QString("%1/album/%2/eq/pre_amp").arg(settingsId, currentTrackInfo.albumId), options.value("pre_amp").toDouble());
+            }
+        }
+        else if (eqChooser == 2) {
+            if (settingsId.length() >= 0) {
+                settings.setValue(QString("%1/track/%2/eq/eq1").arg(settingsId, trackId), options.value("eq1").toDouble());
+                settings.setValue(QString("%1/track/%2/eq/eq2").arg(settingsId, trackId), options.value("eq2").toDouble());
+                settings.setValue(QString("%1/track/%2/eq/eq3").arg(settingsId, trackId), options.value("eq3").toDouble());
+                settings.setValue(QString("%1/track/%2/eq/eq4").arg(settingsId, trackId), options.value("eq4").toDouble());
+                settings.setValue(QString("%1/track/%2/eq/eq5").arg(settingsId, trackId), options.value("eq5").toDouble());
+                settings.setValue(QString("%1/track/%2/eq/eq6").arg(settingsId, trackId), options.value("eq6").toDouble());
+                settings.setValue(QString("%1/track/%2/eq/eq7").arg(settingsId, trackId), options.value("eq7").toDouble());
+                settings.setValue(QString("%1/track/%2/eq/eq8").arg(settingsId, trackId), options.value("eq8").toDouble());
+                settings.setValue(QString("%1/track/%2/eq/eq9").arg(settingsId, trackId), options.value("eq9").toDouble());
+                settings.setValue(QString("%1/track/%2/eq/eq10").arg(settingsId, trackId), options.value("eq10").toDouble());
+                settings.setValue(QString("%1/track/%2/eq/pre_amp").arg(settingsId, trackId), options.value("pre_amp").toDouble());
+            }
+        }
+        else {
+            settings.remove(QString("%1/track/%2/eq").arg(settingsId, trackId));
+            settings.remove(QString("%1/album/%2/eq").arg(settingsId, currentTrackInfo.albumId));
+
+            settings.setValue("eq/eq1", options.value("eq1").toDouble());
+            settings.setValue("eq/eq2", options.value("eq2").toDouble());
+            settings.setValue("eq/eq3", options.value("eq3").toDouble());
+            settings.setValue("eq/eq4", options.value("eq4").toDouble());
+            settings.setValue("eq/eq5", options.value("eq5").toDouble());
+            settings.setValue("eq/eq6", options.value("eq6").toDouble());
+            settings.setValue("eq/eq7", options.value("eq7").toDouble());
+            settings.setValue("eq/eq8", options.value("eq8").toDouble());
+            settings.setValue("eq/eq9", options.value("eq9").toDouble());
+            settings.setValue("eq/eq10", options.value("eq10").toDouble());
+            settings.setValue("eq/pre_amp", options.value("pre_amp").toDouble());
+        }
     }
 
     if (peakFPS > peakFPSMax) {

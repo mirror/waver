@@ -266,6 +266,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void searchResult(QString parentId, QString id, QString extraJSON);
         void requestOptions();
         void updatedOptions(QString optionsJSON);
+        void requestEQ(int eqChooser);
 
         void peakUILag();
 
@@ -334,6 +335,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void playlistSelected(QVariant index, QVariant busy);
 
         void optionsAsRequested(QVariant optionsObj);
+        void eqAsRequested(QVariant eqObj);
 
         void uiSetStatusText(QVariant statusText);
         void uiSetStatusTempText(QVariant statusTempText);

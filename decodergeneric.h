@@ -41,6 +41,7 @@ class DecoderGeneric : public QObject
         ~DecoderGeneric();
 
         void   setParameters(QUrl url, QAudioFormat decodedFormat, qint64 waitUnderBytes, bool isRadio);
+        void   setDecodeDelay(unsigned long microseconds);
         qint64 getDecodedMicroseconds();
 
         double downloadPercent();
@@ -87,7 +88,6 @@ class DecoderGeneric : public QObject
 
         void run();
         void start();
-        void setDecodeDelay(unsigned long microseconds);
 
 
     signals:

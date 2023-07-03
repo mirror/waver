@@ -30,7 +30,6 @@
 #include "globals.h"
 #include "peakcallback.h"
 #include "pcmcache.h"
-#include "preprocessor.h"
 #include "radiotitlecallback.h"
 #include "soundoutput.h"
 
@@ -57,7 +56,9 @@ class Track : public QObject, RadioTitleCallback
             QUrl         url;
             QList<QUrl>  arts;
             QString      title;
+            QString      artistId;
             QString      artist;
+            QString      albumId;
             QString      album;
             int          year;
             int          track;
@@ -65,6 +66,10 @@ class Track : public QObject, RadioTitleCallback
             QVariantHash attributes;
         };
         typedef QVector<TrackInfo> TracksInfo;
+
+        static const int EQ_CHOOSER_COMMON = 0;
+        static const int EQ_CHOOSER_ALBUM  = 1;
+        static const int EQ_CHOOSER_TRACK  = 2;
 
 
         explicit Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInfo, DecodingCallback::DecodingCallbackInfo decodingCallbackInfo, QObject *parent = 0);
@@ -117,25 +122,21 @@ class Track : public QObject, RadioTitleCallback
 
         QAudioFormat desiredPCMFormat;
 
-        BufferQueue     preProcessorQueue;
         BufferQueue     analyzerQueue;
         TimedChunkQueue equalizerQueue;
         TimedChunkQueue outputQueue;
 
-        QMutex preProcessorQueueMutex;
         QMutex analyzerQueueMutex;
         QMutex equalizerQueueMutex;
         QMutex outputQueueMutex;
 
         QThread decoderThread;
-        QThread preProcessorThread;
         QThread cacheThread;
         QThread analyzerThread;
         QThread equalizerThread;
         QThread outputThread;
 
         DecoderGeneric *decoder;
-        PreProcessor   *preProcessor;
         PCMCache       *cache;
         Analyzer       *analyzer;
         Equalizer      *equalizer;
@@ -143,7 +144,6 @@ class Track : public QObject, RadioTitleCallback
 
         Status currentStatus;
         bool   stopping;
-        bool   doPreProcess;
         bool   decodingDone;
         bool   finishedSent;
         bool   fadeoutStartedSent;
@@ -163,7 +163,6 @@ class Track : public QObject, RadioTitleCallback
         QVector<RadioTitlePosition> radioTitlePositions;
 
         void setupDecoder();
-        void setupPreProcessor();
         void setupCache();
         void setupAnalyzer();
         void setupEqualizer();
@@ -174,7 +173,8 @@ class Track : public QObject, RadioTitleCallback
 
         void changeStatus(Status status);
 
-        double decodedPercent();
+        double  decodedPercent();
+        QString equalizerSettingsPrefix();
 
 
     public slots:
@@ -185,11 +185,8 @@ class Track : public QObject, RadioTitleCallback
     private slots:
 
         void bufferAvailableFromDecoder(QAudioBuffer *buffer);
-        void bufferPreProcessed(QAudioBuffer *buffer);
         void pcmChunkFromCache(QByteArray PCM, qint64 startMicroseconds);
         void pcmChunkFromEqualizer(TimedChunk chunk);
-
-        void preprocessorDecoderDelay(unsigned long microseconds);
 
         void sendFinished();
         void sendFadeoutStarted();
@@ -235,7 +232,6 @@ class Track : public QObject, RadioTitleCallback
         void cacheRequestNextPCMChunk();
         void cacheRequestTimestampPCMChunk(long milliseconds);
 
-        void bufferAvailableToPreProcessor();
         void bufferAvailableToAnalyzer();
         void chunkAvailableToEqualizer(int maxToProcess);
         void chunkAvailableToOutput();

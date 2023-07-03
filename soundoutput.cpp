@@ -243,6 +243,9 @@ void SoundOutput::run()
     audioOutput = new QAudioOutput(format);
     audioOutput->setNotifyInterval(NOTIFICATION_INTERVAL_MILLISECONDS);
 
+    QSettings settings;
+    int wideStereoDelayMillisec = settings.value("options/wide_stereo_delay_millisec", DEFAULT_WIDE_STEREO_DELAY_MILLISEC).toInt();
+
     bytesToPlay      = new QByteArray();
     bytesToPlayMutex = new QMutex();
 
@@ -253,6 +256,7 @@ void SoundOutput::run()
 
     feeder = new OutputFeeder(bytesToPlay, bytesToPlayMutex, format, audioOutput, peakCallbackInfo);
     feeder->moveToThread(&feederThread);
+    feeder->setWideStereoDelayMillisec(wideStereoDelayMillisec);
 
     connect(&feederThread, SIGNAL(started()), feeder, SLOT(run()));
 
@@ -272,3 +276,11 @@ void SoundOutput::timerTimeout()
     fillBytesToPlay();
 }
 
+
+void SoundOutput::wideStereoDelayChanged(int wideStereoDelayMillisec)
+{
+    if (feeder == nullptr) {
+        return;
+    }
+    feeder->setWideStereoDelayMillisec(wideStereoDelayMillisec);
+}
