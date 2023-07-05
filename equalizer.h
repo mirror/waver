@@ -45,8 +45,7 @@ class Equalizer : public QObject, IIRFilterCallback {
         static Bands calculateBands(QVector<double> centerFrequencies);
         static Bands calculateBands(std::initializer_list<double> centerFrequencies);
 
-        Equalizer(QAudioFormat format, bool usePreAmpAndReplayGain = true);
-        Equalizer(QAudioFormat format, IIRFilterCallback *customCallbackObject, FilterCallbackPointer customCallbackMember);
+        Equalizer(QAudioFormat format);
         ~Equalizer();
 
         void setChunkQueue(TimedChunkQueue *chunkQueue, QMutex *chunkQueueMutex);
@@ -62,9 +61,6 @@ class Equalizer : public QObject, IIRFilterCallback {
         QAudioFormat format;
 
         bool                  on;
-        bool                  usePreAmpAndReplayGain;
-        IIRFilterCallback    *customCallbackObject;
-        FilterCallbackPointer customCallbackMember;
         Bands                 bands;
         QVector<double>       gains;
         double                preAmp;

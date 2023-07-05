@@ -10,9 +10,12 @@
 // constructor
 ReplayGainCalculator::ReplayGainCalculator(IIRFilter::SampleTypes sampleType, int sampleRate)
 {
-    this->sampleType = sampleType;
+    qRegisterMetaType<ReplayGainCalculator::Silences>("ReplayGainCalculator::Silences");
 
-    samplesPerRmsBlock = ((int)ceil(sampleRate * RMS_BLOCK_SECONDS)) * 2;
+    this->sampleType = sampleType;
+    this->sampleRate = sampleRate;
+
+    samplesPerRmsBlock = ((int)ceil((double)sampleRate * RMS_BLOCK_SECONDS)) * 2;
 
     int16Min   = std::numeric_limits<qint16>::min();
     int16Max   = std::numeric_limits<qint16>::max();
@@ -47,10 +50,13 @@ ReplayGainCalculator::ReplayGainCalculator(IIRFilter::SampleTypes sampleType, in
             sampleMax = std::numeric_limits<float>::max();
             break;
     }
-    sampleRange = sampleMax - sampleMin;
+    sampleRange      = sampleMax - sampleMin;
+    silenceThreshold = pow(10, SILENCE_THRESHOLD_DB / 10) * sampleMax;
 
     stereoRmsSum = 0.0;
     countRmsSum  = 0;
+    framesCount  = 0;
+    silenceStart = 0;
 
     reset();
 }
@@ -102,6 +108,24 @@ void ReplayGainCalculator::filterCallback(double *sample, int channelIndex)
         stereoRmsSum = 0.0;
         countRmsSum  = 0;
     }
+
+    // silence detector (only record silences longer then specified except for silence at the beginning of track)
+    if (!silenceStart && (abs(sampleValue) <= silenceThreshold)) {
+        silenceStart = static_cast<qint64>(floor((double)framesCount / sampleRate * 1000000));
+    }
+    if ((silenceStart || (silences.count() == 0)) && (abs(sampleValue) > silenceThreshold)) {
+        qint64 silenceEnd = static_cast<qint64>(floor(static_cast<double>(framesCount - 1) / sampleRate * 1000000));
+        if (silences.count() == 0) {
+            silences.append({ SilenceAtBeginning, silenceStart, silenceEnd });
+        }
+        else if (silenceEnd - silenceStart >= SILENCE_MIN_MICROSEC) {
+            silences.append({ SilenceIntermediate, silenceStart, silenceEnd });
+        }
+        silenceStart = 0;
+    }
+    if (channelIndex == 1) {
+        framesCount++;
+    }
 }
 
 
@@ -130,6 +154,19 @@ double ReplayGainCalculator::calculateResult()
 }
 
 
+QVector<ReplayGainCalculator::SilenceRange> ReplayGainCalculator::getSilences(bool addFinalSilence)
+{
+    QVector<SilenceRange> aCopy(silences);
+
+    // silence at the end of track (set flag only after decoding has finished)
+    if (addFinalSilence && silenceStart) {
+        aCopy.append({ SilenceAtEnd, silenceStart, static_cast<qint64>(floor(static_cast<double>(framesCount - 1) / sampleRate * 1000000)) });
+    }
+
+    return aCopy;
+}
+
+
 // reset
 void ReplayGainCalculator::reset()
 {
@@ -137,4 +174,5 @@ void ReplayGainCalculator::reset()
     countRmsSum  = 0;
 
     memset(&statsTable, 0, STATS_MAX_DB * STATS_STEPS_PER_DB * sizeof(int));
+    silences.clear();
 }

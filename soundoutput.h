@@ -44,7 +44,7 @@ class SoundOutput : public QObject
 
     private:
 
-        static const int    INITIAL_CACHE_BUFFER_COUNT         = 3;
+        static const int    INITIAL_CACHE_BUFFER_COUNT         = 5;
         static const qint64 NOTIFICATION_INTERVAL_MILLISECONDS = 500;
 
         QAudioFormat                    format;

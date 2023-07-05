@@ -18,11 +18,24 @@ class ReplayGainCalculator : IIRFilterCallback {
 
     public:
 
+        enum SilenceType {
+            SilenceAtBeginning,
+            SilenceIntermediate,
+            SilenceAtEnd
+        };
+        struct SilenceRange {
+            SilenceType type;
+            qint64      startMicroseconds;
+            qint64      endMicroseconds;
+        };
+        typedef QVector<ReplayGainCalculator::SilenceRange> Silences;
+
         ReplayGainCalculator(IIRFilter::SampleTypes sampleType, int sampleRate);
 
-        void   filterCallback(double *sample, int channelIndex) override;
-        double calculateResult();
-        void   reset();
+        void     filterCallback(double *sample, int channelIndex) override;
+        double   calculateResult();
+        Silences getSilences(bool addFinalSilence);
+        void     reset();
 
 
     private:
@@ -33,8 +46,11 @@ class ReplayGainCalculator : IIRFilterCallback {
         static const     int    STATS_TABLE_MAX      = (STATS_MAX_DB *STATS_STEPS_PER_DB) - 1;
         static constexpr double STATS_RMS_PERCEPTION = 0.95;
         static constexpr double PINK_NOISE_REFERENCE = 64.82;
+        static constexpr double SILENCE_THRESHOLD_DB = -25;
+        static const     int    SILENCE_MIN_MICROSEC = 4250000;
 
         IIRFilter::SampleTypes sampleType;
+        int                    sampleRate;
 
         int  samplesPerRmsBlock;
 
@@ -43,12 +59,16 @@ class ReplayGainCalculator : IIRFilterCallback {
         double int16Range;
         double sampleMin;
         double sampleRange;
+        double silenceThreshold;
 
         double stereoRmsSum;
         int    countRmsSum;
+        qint64 framesCount;
+        qint64 silenceStart;
+
+        QVector<SilenceRange> silences;
 
         unsigned int statsTable[STATS_MAX_DB * STATS_STEPS_PER_DB];
-
 };
 
 

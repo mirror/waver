@@ -503,6 +503,9 @@ bool Waver::isCrossfade(Track *track1, Track *track2)
     if ((track1 == nullptr) || (track2 == nullptr)) {
         return false;
     }
+    if (crossfadeTags.contains("*")) {
+        return true;
+    }
 
     bool crossfade1 = false;
     bool crossfade2 = false;
@@ -3427,6 +3430,9 @@ void Waver::updatedOptions(QString optionsJSON)
     peakFPSMax            = options.value("max_peak_fps").toInt();
     peakDelayOn           = options.value("peak_delay_on").toBool();
     peakDelayMilliseconds = options.value("peak_delay_ms").toInt();
+
+    crossfadeTags.clear();
+    crossfadeTags.append(options.value("crossfade_tags").toString().split(","));
 
     settings.setValue("options/shuffle_autostart", options.value("shuffle_autostart").toBool());
     settings.setValue("options/shuffle_operator", options.value("shuffle_operator").toString());

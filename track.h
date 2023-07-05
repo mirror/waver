@@ -79,6 +79,7 @@ class Track : public QObject, RadioTitleCallback
         QString getStatusText();
         void    setStatus(Status status);
         void    setPosition(double percent);
+        void    setPosition(qint64 microSecond);
 
         TrackInfo       getTrackInfo();
         void            attributeAdd(QString key, QVariant value);
@@ -160,7 +161,9 @@ class Track : public QObject, RadioTitleCallback
         qint64 posMillisecondsAtUnderrun;
         qint64 posMilliseconds;
 
-        QVector<RadioTitlePosition> radioTitlePositions;
+        QVector<RadioTitlePosition>    radioTitlePositions;
+        ReplayGainCalculator::Silences silences;
+        qint64                         silenceAtBeginningDeleted;
 
         void setupDecoder();
         void setupCache();
@@ -202,6 +205,7 @@ class Track : public QObject, RadioTitleCallback
         void cacheError(QString info, QString errorMessage);
 
         void analyzerReplayGain(double replayGain);
+        void analyzerSilences(ReplayGainCalculator::Silences silences);
 
         void equalizerReplayGainChanged(double current);
 
@@ -209,6 +213,8 @@ class Track : public QObject, RadioTitleCallback
         void outputNeedChunk();
         void outputBufferUnderrun();
         void outputError(QString errorMessage);
+
+        void requestSilencesUpdate();
 
 
     signals:
@@ -233,6 +239,7 @@ class Track : public QObject, RadioTitleCallback
         void cacheRequestTimestampPCMChunk(long milliseconds);
 
         void bufferAvailableToAnalyzer();
+        void requestSilencesFromAnalyzer(bool addFinalSilence);
         void chunkAvailableToEqualizer(int maxToProcess);
         void chunkAvailableToOutput();
 

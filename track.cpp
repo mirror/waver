@@ -23,14 +23,15 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
     this->peakCallbackInfo     = peakCallbackInfo;
     this->decodingCallbackInfo = decodingCallbackInfo;
 
-    currentStatus            = Idle;
-    stopping                 = false;
-    decodingDone             = false;
-    finishedSent             = false;
-    fadeoutStartedSent       = false;
-    posMilliseconds          = 0;
-    decodingInfoLastSent     = 0;
-    networkStartingLastState = false;
+    currentStatus             = Idle;
+    stopping                  = false;
+    decodingDone              = false;
+    finishedSent              = false;
+    fadeoutStartedSent        = false;
+    posMilliseconds           = 0;
+    decodingInfoLastSent      = 0;
+    networkStartingLastState  = false;
+    silenceAtBeginningDeleted = 0;
 
     fadeDirection       = FadeDirectionNone;
     fadeDurationSeconds = (trackInfo.attributes.contains("fadeDuration") ? trackInfo.attributes.value("fadeDuration").toInt() : FADE_DURATION_DEFAULT_SECONDS);
@@ -40,7 +41,6 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
     #elif defined (Q_OS_LINUX)
         fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds() + 1) * 1000) : std::numeric_limits<qint64>::max();
     #endif
-
 
     QSettings settings;
     fadeTags.append(settings.value("options/fade_tags", DEFAULT_FADE_TAGS).toString().split(","));
@@ -103,6 +103,7 @@ Track::~Track()
     analyzerThread.wait();
     if (analyzer != nullptr) {
         disconnect(analyzer, &Analyzer::replayGain, this, &Track::analyzerReplayGain);
+        disconnect(analyzer, &Analyzer::silences,   this, &Track::analyzerSilences);
 
         disconnect(this, &Track::bufferAvailableToAnalyzer, analyzer, &Analyzer::bufferAvailable);
         disconnect(this, &Track::decoderDone,               analyzer, &Analyzer::decoderDone);
@@ -143,6 +144,17 @@ Track::~Track()
 void Track::analyzerReplayGain(double replayGain)
 {
     emit updateReplayGain(replayGain);
+}
+
+
+void Track::analyzerSilences(ReplayGainCalculator::Silences silences)
+{
+    this->silences = silences;
+
+    if ((silences.count() > 0) && (silences.last().type == ReplayGainCalculator::SilenceAtEnd)) {
+        fadeoutStartMilliseconds = (silences.last().startMicroseconds / 1000) - ((getFadeDurationSeconds() + 1) * 1000);
+        qWarning() << fadeoutStartMilliseconds;
+    }
 }
 
 
@@ -344,7 +356,9 @@ void Track::decoderFinished()
     trackInfo.attributes.insert("lengthMilliseconds", decoder->getDecodedMicroseconds() / 1000);
     emit trackInfoUpdated(trackInfo.id);
 
-    fadeoutStartMilliseconds = (decoder->getDecodedMicroseconds() / 1000) - ((getFadeDurationSeconds() + 1) * 1000);
+    if ((silences.count() == 0) || (silences.last().type != ReplayGainCalculator::SilenceAtEnd)) {
+        QTimer::singleShot(100, this, &Track::requestSilencesUpdate);
+    }
 
     if (currentStatus == Paused) {
         emit playPosition(trackInfo.id, true, decoder->getDecodedMicroseconds() / 1000, posMilliseconds);
@@ -487,6 +501,10 @@ Track::TrackInfo Track::getTrackInfo()
 
 bool Track::isDoFade()
 {
+    if (fadeTags.contains("*")) {
+        return true;
+    }
+
     foreach(QString fadeTag, fadeTags) {
         if (trackInfo.tags.contains(fadeTag, Qt::CaseInsensitive)) {
             return true;
@@ -598,12 +616,26 @@ void Track::outputPositionChanged(qint64 posMilliseconds)
         sendFadeoutStarted();
         return;
     }
+    if (!trackInfo.attributes.contains("radio_station")) {
+        foreach(ReplayGainCalculator::SilenceRange silence, silences) {
+            if ((silence.type == ReplayGainCalculator::SilenceIntermediate) && (posMilliseconds >= silence.startMicroseconds / 1000 + 2000) && (posMilliseconds <= silence.endMicroseconds / 1000)) {
+                setPosition(silence.endMicroseconds);
+                break;
+            }
+        }
+    }
 }
 
 
 void Track::pcmChunkFromCache(QByteArray chunk, qint64 startMicroseconds)
 {
     QByteArray *copy = new QByteArray(chunk.data(), chunk.size());
+
+    if ((silences.count() > 0) && (silences.at(0).type == ReplayGainCalculator::SilenceAtBeginning) && (silenceAtBeginningDeleted < silences.at(0).endMicroseconds)) {
+        qint64 toBeRemoved = qMin(silences.at(0).endMicroseconds - silenceAtBeginningDeleted, desiredPCMFormat.durationForBytes(chunk.size()));
+        copy->remove(0, toBeRemoved);
+        silenceAtBeginningDeleted += toBeRemoved;
+    }
 
     equalizerQueueMutex.lock();
     equalizerQueue.append({ copy, startMicroseconds });
@@ -664,6 +696,19 @@ void Track::requestDecodingCallback()
 }
 
 
+void Track::requestSilencesUpdate()
+{
+    if (soundOutput == nullptr) {
+        return;
+    }
+    if ((silences.count() > 0) && (silences.last().type == ReplayGainCalculator::SilenceAtEnd)) {
+        return;
+    }
+
+    emit requestSilencesFromAnalyzer(true);
+}
+
+
 void Track::sendFadeoutStarted()
 {
     if (fadeoutStartedSent) {
@@ -683,6 +728,18 @@ void Track::sendFinished()
     finishedSent = true;
 
     emit finished(trackInfo.id);
+}
+
+
+void Track::setPosition(qint64 microSecond)
+{
+    if (getStatus() != Playing) {
+        return;
+    }
+
+    emit pause();
+    emit resume();
+    emit cacheRequestTimestampPCMChunk(microSecond / 1000);
 }
 
 
@@ -740,7 +797,7 @@ void Track::setStatus(Status status)
         outputThread.start(QThread::HighestPriority);
 
         emit startDecode();
-        emit playBegins();   // TODO this might not be true for the equalizer (play actually begins when preprocessor starts sending PCM data)
+        emit playBegins();
 
         if (isDoFade()) {
             fadeDirection       = FadeDirectionIn;
@@ -766,7 +823,7 @@ void Track::setStatus(Status status)
         equalizerThread.start();
         outputThread.start(QThread::HighestPriority);
 
-        emit playBegins();   // TODO this might not be true for the equalizer (play actually begins when preprocessor starts sending PCM data)
+        emit playBegins();
 
         if (isDoFade()) {
             fadeDirection       = FadeDirectionIn;
@@ -827,10 +884,12 @@ void Track::setupAnalyzer()
     connect(&analyzerThread, &QThread::started,  analyzer, &Analyzer::run);
 
     connect(analyzer, &Analyzer::replayGain, this, &Track::analyzerReplayGain);
+    connect(analyzer, &Analyzer::silences,   this, &Track::analyzerSilences);
 
-    connect(this, &Track::bufferAvailableToAnalyzer, analyzer, &Analyzer::bufferAvailable);
-    connect(this, &Track::decoderDone,               analyzer, &Analyzer::decoderDone);
-    connect(this, &Track::resetReplayGain,           analyzer, &Analyzer::resetReplayGain);
+    connect(this, &Track::bufferAvailableToAnalyzer,   analyzer, &Analyzer::bufferAvailable);
+    connect(this, &Track::decoderDone,                 analyzer, &Analyzer::decoderDone);
+    connect(this, &Track::resetReplayGain,             analyzer, &Analyzer::resetReplayGain);
+    connect(this, &Track::requestSilencesFromAnalyzer, analyzer, &Analyzer::silencesRequested);
 }
 
 

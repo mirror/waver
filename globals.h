@@ -49,7 +49,7 @@ static const double DEFAULT_EQ8    = 6.0;
 static const double DEFAULT_EQ9    = 9.0;
 static const double DEFAULT_EQ10   = 12.0;
 
-static const int DEFAULT_WIDE_STEREO_DELAY_MILLISEC = 33;
+static const int DEFAULT_WIDE_STEREO_DELAY_MILLISEC = 25;
 
 struct TimedChunk {
     QByteArray *chunkPointer;

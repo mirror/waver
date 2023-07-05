@@ -41,6 +41,7 @@ void Analyzer::bufferAvailable()
             if ((!decoderFinished && (buffer->startTime() >= resultLastCalculated + REPLAY_GAIN_UPDATE_INTERVAL_MICROSECONDS)) || (decoderFinished && (bufferQueue->count() == 1))) {
                 resultLastCalculated = buffer->startTime();
                 emit replayGain(replayGainCalculator->calculateResult());
+                emit silences(replayGainCalculator->getSilences(decoderFinished));
             }
         }
 
@@ -56,6 +57,12 @@ void Analyzer::bufferAvailable()
 void Analyzer::decoderDone()
 {
     decoderFinished = true;
+}
+
+
+void Analyzer::silencesRequested(bool addFinalSilence)
+{
+    emit silences(replayGainCalculator->getSilences(addFinalSilence));
 }
 
 

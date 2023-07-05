@@ -67,10 +67,13 @@ class Analyzer : public QObject
         void decoderDone();
         void resetReplayGain();
 
+        void silencesRequested(bool addFinalSilence);
+
 
     signals:
 
         void replayGain(double replayGain);
+        void silences(ReplayGainCalculator::Silences silences);
 };
 
 #endif // ANALYZER_H

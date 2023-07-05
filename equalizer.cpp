@@ -8,32 +8,9 @@
 #include "equalizer.h"
 
 
-Equalizer::Equalizer(QAudioFormat format, bool usePreAmpAndReplayGain)
+Equalizer::Equalizer(QAudioFormat format)
 {
     this->format                 = format;
-    this->usePreAmpAndReplayGain = usePreAmpAndReplayGain;
-    this->customCallbackObject   = nullptr;
-    this->customCallbackMember   = nullptr;
-
-    on                = true;
-    equalizerFilters  = nullptr;
-    replayGain        = 0.0;
-    currentReplayGain = replayGain;
-    sampleRate        = 0;
-    sampleType        = IIRFilter::Unknown;
-
-    eqOffMinValue       = std::numeric_limits<qint16>::min();
-    eqOffMaxValue       = std::numeric_limits<qint16>::max();
-    eqOffCurrentChannel = 0;
-}
-
-
-Equalizer::Equalizer(QAudioFormat format, IIRFilterCallback *customCallbackObject, FilterCallbackPointer customCallbackMember)
-{
-    this->format                 = format;
-    this->usePreAmpAndReplayGain = false;
-    this->customCallbackObject   = customCallbackObject;
-    this->customCallbackMember   = customCallbackMember;
 
     on                = true;
     equalizerFilters  = nullptr;
@@ -99,29 +76,27 @@ void Equalizer::chunkAvailable(int maxToProcess)
         }
         else {
             // eq is off, but replay gain still must be applied
-            if (usePreAmpAndReplayGain) {
-                double  sample;
-                qint16 *temp;
-                int     processedCount = 0;
-                while (processedCount < chunk.chunkPointer->size()) {
-                    temp   = (qint16*)((char *)chunk.chunkPointer->data() + processedCount);
-                    sample = *temp;
+            double  sample;
+            qint16 *temp;
+            int     processedCount = 0;
+            while (processedCount < chunk.chunkPointer->size()) {
+                temp   = (qint16*)((char *)chunk.chunkPointer->data() + processedCount);
+                sample = *temp;
 
-                    filterCallback(&sample, eqOffCurrentChannel);
-                    if (sample < eqOffMinValue) {
-                        sample = eqOffMinValue;
-                    }
-                    if (sample > eqOffMaxValue) {
-                        sample = eqOffMaxValue;
-                    }
+                filterCallback(&sample, eqOffCurrentChannel);
+                if (sample < eqOffMinValue) {
+                    sample = eqOffMinValue;
+                }
+                if (sample > eqOffMaxValue) {
+                    sample = eqOffMaxValue;
+                }
 
-                    *temp = static_cast<qint16>(sample);
+                *temp = static_cast<qint16>(sample);
 
-                    processedCount += sizeof(qint16);
-                    eqOffCurrentChannel++;
-                    if (eqOffCurrentChannel >= 2) {
-                        eqOffCurrentChannel = 0;
-                    }
+                processedCount += sizeof(qint16);
+                eqOffCurrentChannel++;
+                if (eqOffCurrentChannel >= 2) {
+                    eqOffCurrentChannel = 0;
                 }
             }
         }
@@ -163,12 +138,7 @@ void Equalizer::createFilters()
     }
 
     equalizerFilters = new IIRFilterChain(coefficientLists);
-    if (usePreAmpAndReplayGain) {
-        equalizerFilters->getFilter(0)->setCallbackRaw((IIRFilterCallback *)this, (IIRFilterCallback::FilterCallbackPointer)&Equalizer::filterCallback);
-    }
-    else if ((customCallbackObject != nullptr) && (customCallbackMember != nullptr)) {
-        equalizerFilters->getFilter(0)->setCallbackRaw(customCallbackObject, customCallbackMember);
-    }
+    equalizerFilters->getFilter(0)->setCallbackRaw((IIRFilterCallback *)this, (IIRFilterCallback::FilterCallbackPointer)&Equalizer::filterCallback);
 
     filtersMutex.unlock();
 }
