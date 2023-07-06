@@ -800,7 +800,10 @@ void AmpacheServer::startOperations()
                 shuffleFavorites.clear();
                 shuffleFavoritesCompleted = true;
 
-                QDateTime dateLimit = QDateTime::currentDateTime().addDays(-14);
+                int days  = settings.value("options/recently_added_days", DEFAULT_RECENTLY_ADDED_COUNT).toInt();
+                int count = settings.value("options/recently_added_count", DEFAULT_RECENTLY_ADDED_COUNT).toInt();
+
+                QDateTime dateLimit = QDateTime::currentDateTime().addDays(days * -1);
 
                 query.addQueryItem("action", "advanced_search");
                 query.addQueryItem("type", "song");
@@ -808,7 +811,7 @@ void AmpacheServer::startOperations()
                 query.addQueryItem("operator", "or");
                 query.addQueryItem("rule_1", "recent_added");
                 query.addQueryItem("rule_1_operator", "0");
-                query.addQueryItem("rule_1_input", "100");
+                query.addQueryItem("rule_1_input", QString::number(count));
                 query.addQueryItem("rule_2", "added");
                 query.addQueryItem("rule_2_operator", "1");
                 query.addQueryItem("rule_2_input", dateLimit.toString("yyyy-MM-dd"));

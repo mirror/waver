@@ -33,8 +33,10 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
     networkStartingLastState  = false;
     silenceAtBeginningDeleted = 0;
 
+    QSettings settings;
+
     fadeDirection       = FadeDirectionNone;
-    fadeDurationSeconds = (trackInfo.attributes.contains("fadeDuration") ? trackInfo.attributes.value("fadeDuration").toInt() : FADE_DURATION_DEFAULT_SECONDS);
+    fadeDurationSeconds = settings.value("options/fade_seconds", DEFAULT_FADE_SECONDS).toInt();
 
     #ifdef Q_OS_WIN
         fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds() + 1) * 1000) : 10 * 24 * 60 * 60 * 1000;
@@ -42,8 +44,9 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
         fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds() + 1) * 1000) : std::numeric_limits<qint64>::max();
     #endif
 
-    QSettings settings;
     fadeTags.append(settings.value("options/fade_tags", DEFAULT_FADE_TAGS).toString().split(","));
+    skipLongSilence             = settings.value("options/skip_long_silence", DEFAULT_SKIP_LONG_SILENCE).toBool();
+    skipLongSilenceMicroseconds = settings.value("options/skip_long_silence_seconds", DEFAULT_SKIP_LONG_SILENCE_SECONDS).toInt() * USEC_PER_SEC;
 
     desiredPCMFormat.setByteOrder(QSysInfo::ByteOrder == QSysInfo::BigEndian ? QAudioFormat::BigEndian : QAudioFormat::LittleEndian);
     desiredPCMFormat.setChannelCount(2);
@@ -153,7 +156,6 @@ void Track::analyzerSilences(ReplayGainCalculator::Silences silences)
 
     if ((silences.count() > 0) && (silences.last().type == ReplayGainCalculator::SilenceAtEnd)) {
         fadeoutStartMilliseconds = (silences.last().startMicroseconds / 1000) - ((getFadeDurationSeconds() + 1) * 1000);
-        qWarning() << fadeoutStartMilliseconds;
     }
 }
 
@@ -521,6 +523,10 @@ void Track::optionsUpdated()
     fadeTags.clear();
     fadeTags.append(settings.value("options/fade_tags", DEFAULT_FADE_TAGS).toString().split(","));
 
+    fadeDurationSeconds         = settings.value("options/fade_seconds", DEFAULT_FADE_SECONDS).toInt();
+    skipLongSilence             = settings.value("options/skip_long_silence", DEFAULT_SKIP_LONG_SILENCE).toBool();
+    skipLongSilenceMicroseconds = settings.value("options/skip_long_silence_seconds", DEFAULT_SKIP_LONG_SILENCE_SECONDS).toInt() * USEC_PER_SEC;
+
     if (equalizer != nullptr) {
         QVector<double> gains;
 
@@ -616,9 +622,9 @@ void Track::outputPositionChanged(qint64 posMilliseconds)
         sendFadeoutStarted();
         return;
     }
-    if (!trackInfo.attributes.contains("radio_station")) {
+    if (skipLongSilence && !trackInfo.attributes.contains("radio_station")) {
         foreach(ReplayGainCalculator::SilenceRange silence, silences) {
-            if ((silence.type == ReplayGainCalculator::SilenceIntermediate) && (posMilliseconds >= silence.startMicroseconds / 1000 + 2000) && (posMilliseconds <= silence.endMicroseconds / 1000)) {
+                if ((silence.type == ReplayGainCalculator::SilenceIntermediate) && (silence.endMicroseconds - silence.startMicroseconds >= skipLongSilenceMicroseconds) && (posMilliseconds >= silence.startMicroseconds / 1000 + 2000) && (posMilliseconds <= silence.endMicroseconds / 1000)) {
                 setPosition(silence.endMicroseconds);
                 break;
             }

@@ -105,7 +105,6 @@ class Track : public QObject, RadioTitleCallback
             FadeDirectionOut
         };
 
-        static const int  FADE_DURATION_DEFAULT_SECONDS  = 4;
         static const long USEC_PER_SEC                   = 1000 * 1000;
         static const int  DECODING_CB_DELAY_MILLISECONDS = 40;
         static const int  UNDERRUN_DELAY_MILLISECONDS    = 5000;
@@ -164,6 +163,8 @@ class Track : public QObject, RadioTitleCallback
         QVector<RadioTitlePosition>    radioTitlePositions;
         ReplayGainCalculator::Silences silences;
         qint64                         silenceAtBeginningDeleted;
+        bool                           skipLongSilence;
+        qint64                         skipLongSilenceMicroseconds;
 
         void setupDecoder();
         void setupCache();

@@ -83,6 +83,8 @@ Dialog {
         shuffle_favorite_frequency.currentIndex = optionsObj.shuffle_favorite_frequency <= internal.shuffle_favorite_frequent ? 2 : optionsObj.shuffle_favorite_frequency >= internal.shuffle_favorite_rare ? 0 : 1;
         shuffle_operator.currentIndex = optionsObj.shuffle_operator === "or" ? 1 : 0;
         random_lists_count.value = optionsObj.random_lists_count;
+        recently_added_count.value = optionsObj.recently_added_count;
+        recently_added_days.value = optionsObj.recently_added_days;
 
         search_count_max.value = optionsObj.search_count_max;
         search_action.currentIndex = optionsObj.search_action;
@@ -93,8 +95,11 @@ Dialog {
         starting_index_apply.checked = optionsObj.starting_index_apply;
         starting_index_days.value = optionsObj.starting_index_days;
         wideStereo.value = optionsObj.wide_stereo;
+        skip_long_silence.checked = optionsObj.skip_long_silence
+        skip_long_silence_seconds.value = optionsObj.skip_long_silence_seconds
         fade_tags.text = optionsObj.fade_tags;
         crossfade_tags.text = optionsObj.crossfade_tags;
+        fade_seconds.value = optionsObj.fade_seconds;
 
         max_peak_fps.value = optionsObj.max_peak_fps;
         peak_delay_on.checked = optionsObj.peak_delay_on;
@@ -163,10 +168,14 @@ Dialog {
                 eq10: eq10.value,
                 eq_chooser: eqCommon.checked ? 0 : eqAlbum.checked ? 1 : 2,
                 wide_stereo: wideStereo.value,
+                skip_long_silence: skip_long_silence.checked,
+                skip_long_silence_seconds: skip_long_silence_seconds.value,
                 shuffle_autostart: shuffle_autostart.checked,
                 shuffle_delay_seconds: shuffle_delay_seconds.value,
                 shuffle_count: shuffle_count.value,
                 random_lists_count: random_lists_count.value,
+                recently_added_count: recently_added_count.value,
+                recently_added_days: recently_added_days.value,
                 shuffle_favorite_frequency: shuffle_favorite_frequency.currentIndex == 0 ? shuffle_favorite_rare : shuffle_favorite_frequency.currentIndex == 1 ? shuffle_favorite_normal : shuffle_favorite_frequent,
                 shuffle_operator: shuffle_operator.currentIndex == 0 ? 'and' : 'or',
                 search_count_max: search_count_max.value,
@@ -178,6 +187,7 @@ Dialog {
                 starting_index_days: starting_index_days.value,
                 fade_tags: fade_tags.text,
                 crossfade_tags: crossfade_tags.text,
+                fade_seconds: fade_seconds.value,
                 max_peak_fps: max_peak_fps.value,
                 peak_delay_on: peak_delay_on.checked,
                 peak_delay_ms: peak_delay_ms.value,
@@ -491,13 +501,18 @@ Dialog {
                     Label {
                         width: parent.parent.width / 3
                         anchors.verticalCenter: shuffle_delay_seconds.verticalCenter
-                        text: qsTr("Delay Before Autostart (seconds)")
+                        text: qsTr("Delay Before Autostart")
                         wrapMode: Label.WrapAtWordBoundaryOrAnywhere
                     }
                     SpinBox {
                         id: shuffle_delay_seconds
                         from: 2
                         to: 60
+                    }
+                    Label {
+                        anchors.rightMargin: 17
+                        anchors.verticalCenter: shuffle_delay_seconds.verticalCenter
+                        text: qsTr("seconds")
                     }
                 }
                 Row {
@@ -509,6 +524,19 @@ Dialog {
                     }
                     SpinBox {
                         id: shuffle_count
+                        from: 3
+                        to: 33
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
+                        anchors.verticalCenter: random_lists_count.verticalCenter
+                        text: qsTr("Song Count of Random lists")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    SpinBox {
+                        id: random_lists_count
                         from: 3
                         to: 33
                     }
@@ -594,16 +622,42 @@ Dialog {
                     }
                 }
                 Row {
+                    bottomPadding: 17
                     Label {
-                        width: parent.parent.width / 2
-                        anchors.verticalCenter: random_lists_count.verticalCenter
-                        text: qsTr("Song Count: Random lists ('Play artist', 'Never Played', etc.)")
+                        text: qsTr("<b>\"Recently Added\" Pool Size</b>")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                }
+
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
+                        anchors.verticalCenter: recently_added_count.verticalCenter
+                        text: qsTr("Count")
                         wrapMode: Label.WrapAtWordBoundaryOrAnywhere
                     }
                     SpinBox {
-                        id: random_lists_count
-                        from: 3
-                        to: 33
+                        id: recently_added_count
+                        from: 25
+                        to: 500
+                    }
+                    Label {
+                        anchors.rightMargin: 17
+                        anchors.verticalCenter: recently_added_count.verticalCenter
+                        text: qsTr("<i>or</i>")
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
+                        anchors.verticalCenter: recently_added_days.verticalCenter
+                        text: qsTr("Days")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    SpinBox {
+                        id: recently_added_days
+                        from: 10
+                        to: 90
                     }
                 }
             }
@@ -792,13 +846,37 @@ Dialog {
                         width: parent.parent.width / 4
                         anchors.rightMargin: 17
                         anchors.verticalCenter: wideStereo.verticalCenter
-                        text: qsTr("Wide stereo (milliseconds)")
+                        text: qsTr("Wide stereo")
                     }
                     SpinBox {
                         id: wideStereo
                         editable: true
                         from: 0
                         to: 40
+                    }
+                    Label {
+                        anchors.rightMargin: 17
+                        anchors.verticalCenter: wideStereo.verticalCenter
+                        text: qsTr("milliseconds")
+                    }
+                }
+                Row {
+                    CheckBox {
+                        id: skip_long_silence
+                        width: parent.parent.width / 4
+                        anchors.verticalCenter: skip_long_silence_seconds.verticalCenter
+                        text: qsTr("Skip silence longer than")
+                    }
+                    SpinBox {
+                        id: skip_long_silence_seconds
+                        editable: true
+                        from: 3
+                        to: 7
+                    }
+                    Label {
+                        anchors.rightMargin: 17
+                        anchors.verticalCenter: skip_long_silence_seconds.verticalCenter
+                        text: qsTr("seconds")
                     }
                 }
                 Row {
@@ -825,7 +903,7 @@ Dialog {
                         width: parent.parent.width / 4
                         anchors.verticalCenter: peak_delay_ms.verticalCenter
                         id: peak_delay_on
-                        text: qsTr("Delay (milliseconds)")
+                        text: qsTr("Delay")
                     }
                     SpinBox {
                         id: peak_delay_ms
@@ -836,7 +914,7 @@ Dialog {
                     Label {
                         anchors.rightMargin: 17
                         anchors.verticalCenter: peak_delay_ms.verticalCenter
-                        text: qsTr("<i>(useful for Bluetooth headphones/speakers)</i>")
+                        text: qsTr("milliseconds <i>(useful for Bluetooth headphones/speakers)</i>")
                     }
                 }
                 Row {
@@ -894,6 +972,24 @@ Dialog {
                     TextField {
                         id: crossfade_tags
                         width: parent.parent.width / 4 * 3
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 4
+                        anchors.verticalCenter: fade_seconds.verticalCenter
+                        text: qsTr("Fade length")
+                    }
+                    SpinBox {
+                        id: fade_seconds
+                        editable: true
+                        from: 1
+                        to: 20
+                    }
+                    Label {
+                        anchors.rightMargin: 17
+                        anchors.verticalCenter: fade_seconds.verticalCenter
+                        text: qsTr("seconds")
                     }
                 }
             }

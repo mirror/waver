@@ -1944,6 +1944,8 @@ void Waver::requestOptions()
     optionsObj.insert("shuffle_delay_seconds", settings.value("options/shuffle_delay_seconds", DEFAULT_SHUFFLE_DELAY_SECONDS));
     optionsObj.insert("shuffle_count", settings.value("options/shuffle_count", DEFAULT_SHUFFLE_COUNT));
     optionsObj.insert("random_lists_count", settings.value("options/random_lists_count", DEFAULT_RANDOM_LISTS_COUNT));
+    optionsObj.insert("recently_added_count", settings.value("options/recently_added_count", DEFAULT_RECENTLY_ADDED_COUNT));
+    optionsObj.insert("recently_added_days", settings.value("options/recently_added_days", DEFAULT_RECENTLY_ADDED_DAYS));
     optionsObj.insert("shuffle_favorite_frequency", settings.value("options/shuffle_favorite_frequency", DEFAULT_SHUFFLE_FAVORITE_FREQUENCY));
     optionsObj.insert("shuffle_operator", settings.value("options/shuffle_operator", DEFAULT_SHUFFLE_OPERATOR));
 
@@ -1957,9 +1959,12 @@ void Waver::requestOptions()
     optionsObj.insert("starting_index_days", settings.value("options/starting_index_days", DEFAULT_STARTING_INDEX_DAYS));
     optionsObj.insert("alphabet_limit", settings.value("options/alphabet_limit", DEFAULT_ALPHABET_LIMIT));
     optionsObj.insert("wide_stereo", settings.value("options/wide_stereo_delay_millisec", DEFAULT_WIDE_STEREO_DELAY_MILLISEC).toInt());
+    optionsObj.insert("skip_long_silence", settings.value("options/skip_long_silence", DEFAULT_SKIP_LONG_SILENCE).toBool());
+    optionsObj.insert("skip_long_silence_seconds", settings.value("options/skip_long_silence_seconds", DEFAULT_SKIP_LONG_SILENCE_SECONDS).toInt());
 
     optionsObj.insert("fade_tags", settings.value("options/fade_tags", DEFAULT_FADE_TAGS));
     optionsObj.insert("crossfade_tags", settings.value("options/crossfade_tags", DEFAULT_CROSSFADE_TAGS));
+    optionsObj.insert("fade_seconds", settings.value("options/fade_seconds", DEFAULT_FADE_SECONDS).toInt());
 
     optionsObj.insert("max_peak_fps", settings.value("options/max_peak_fps", DEFAULT_MAX_PEAK_FPS));
     optionsObj.insert("peak_delay_on", settings.value("options/peak_delay_on", DEFAULT_PEAK_DELAY_ON).toBool());
@@ -3438,6 +3443,8 @@ void Waver::updatedOptions(QString optionsJSON)
     settings.setValue("options/shuffle_operator", options.value("shuffle_operator").toString());
     settings.setValue("options/shuffle_count", options.value("shuffle_count").toInt());
     settings.setValue("options/random_lists_count", options.value("random_lists_count").toInt());
+    settings.setValue("options/recently_added_count", options.value("recently_added_count").toInt());
+    settings.setValue("options/recently_added_days", options.value("recently_added_days").toInt());
     settings.setValue("options/shuffle_delay_seconds", options.value("shuffle_delay_seconds").toInt());
     settings.setValue("options/shuffle_favorite_frequency", options.value("shuffle_favorite_frequency").toInt());
 
@@ -3452,11 +3459,14 @@ void Waver::updatedOptions(QString optionsJSON)
 
     settings.setValue("options/fade_tags", options.value("fade_tags").toString());
     settings.setValue("options/crossfade_tags", options.value("crossfade_tags").toString());
+    settings.setValue("options/fade_seconds", options.value("fade_seconds").toInt());
     settings.setValue("options/starting_index_apply", options.value("starting_index_apply").toBool());
     settings.setValue("options/starting_index_days", options.value("starting_index_days").toLongLong());
     settings.setValue("options/hide_dot_playlists", options.value("hide_dot_playlists").toBool());
     settings.setValue("options/alphabet_limit", options.value("alphabet_limit").toInt());
     settings.setValue("options/wide_stereo_delay_millisec", options.value("wide_stereo").toInt());
+    settings.setValue("options/skip_long_silence", options.value("skip_long_silence").toBool());
+    settings.setValue("options/skip_long_silence_seconds", options.value("skip_long_silence_seconds").toInt());
 
     if (!options.value("eq_disable").toBool()) {
         settings.setValue("eq/on",  options.value("eq_on").toBool());

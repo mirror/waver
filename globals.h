@@ -19,6 +19,8 @@ static const int     DEFAULT_SHUFFLE_DELAY_SECONDS      = 10;
 static const int     DEFAULT_SHUFFLE_FAVORITE_FREQUENCY = 4;
 static const bool    DEFAULT_SHUFFLE_AUTOSTART          = true;
 static const int     DEFAULT_ALPHABET_LIMIT             = 49;
+static const int     DEFAULT_RECENTLY_ADDED_COUNT       = 100;
+static const int     DEFAULT_RECENTLY_ADDED_DAYS        = 14;
 
 static const int DEFAULT_SEARCH_COUNT_MAX        = 0;
 static const int DEFAULT_SEARCH_ACTION           = 2;
@@ -31,6 +33,7 @@ static const int     DEFAULT_STARTING_INDEX_DAYS  = 30;
 
 static const QString DEFAULT_FADE_TAGS         = "live,medley,nonstop";
 static const QString DEFAULT_CROSSFADE_TAGS    = "live";
+static const int     DEFAULT_FADE_SECONDS      = 7;
 
 static const int    DEFAULT_MAX_PEAK_FPS  = 25;
 static const bool   DEFAULT_PEAK_DELAY_ON = false;
@@ -49,7 +52,9 @@ static const double DEFAULT_EQ8    = 6.0;
 static const double DEFAULT_EQ9    = 9.0;
 static const double DEFAULT_EQ10   = 12.0;
 
-static const int DEFAULT_WIDE_STEREO_DELAY_MILLISEC = 25;
+static const int  DEFAULT_WIDE_STEREO_DELAY_MILLISEC = 25;
+static const bool DEFAULT_SKIP_LONG_SILENCE          = true;
+static const int  DEFAULT_SKIP_LONG_SILENCE_SECONDS  = 4;
 
 struct TimedChunk {
     QByteArray *chunkPointer;

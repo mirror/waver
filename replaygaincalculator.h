@@ -47,7 +47,7 @@ class ReplayGainCalculator : IIRFilterCallback {
         static constexpr double STATS_RMS_PERCEPTION = 0.95;
         static constexpr double PINK_NOISE_REFERENCE = 64.82;
         static constexpr double SILENCE_THRESHOLD_DB = -25;
-        static const     int    SILENCE_MIN_MICROSEC = 4250000;
+        static const     int    SILENCE_MIN_MICROSEC = 2750000;
 
         IIRFilter::SampleTypes sampleType;
         int                    sampleRate;
