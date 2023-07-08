@@ -9,6 +9,7 @@
 #define REPLAYGAINCALCULATOR_H
 
 #include <QVector>
+#include "globals.h"
 
 #include <waveriir/iirfilter.h>
 #include <waveriir/iirfiltercallback.h>
@@ -46,7 +47,6 @@ class ReplayGainCalculator : IIRFilterCallback {
         static const     int    STATS_TABLE_MAX      = (STATS_MAX_DB *STATS_STEPS_PER_DB) - 1;
         static constexpr double STATS_RMS_PERCEPTION = 0.95;
         static constexpr double PINK_NOISE_REFERENCE = 64.82;
-        static constexpr double SILENCE_THRESHOLD_DB = -25;
         static const     int    SILENCE_MIN_MICROSEC = 2750000;
 
         IIRFilter::SampleTypes sampleType;

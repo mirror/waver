@@ -31,7 +31,6 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
     posMilliseconds           = 0;
     decodingInfoLastSent      = 0;
     networkStartingLastState  = false;
-    silenceAtBeginningDeleted = 0;
 
     QSettings settings;
 
@@ -352,7 +351,7 @@ void Track::decoderError(QString info, QString errorMessage)
 {
     emit error(trackInfo.id, info, errorMessage);
 
-    if ((currentStatus == Playing) && (((decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000 - 1000) > posMilliseconds)) {
+    if ((currentStatus == Playing) && ((decoder->getDecodedMicroseconds() / 1000 - 1000) > posMilliseconds)) {
         decoderFinished();
         return;
     }
@@ -365,12 +364,12 @@ void Track::decoderFinished()
 {
     decodingDone = true;
 
-    emit decoded(trackInfo.id, (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000);
+    emit decoded(trackInfo.id, decoder->getDecodedMicroseconds() / 1000);
 
     emit decoderDone();
     (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(decoder->downloadPercent(), decodedPercent(), this);
 
-    trackInfo.attributes.insert("lengthMilliseconds", (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000);
+    trackInfo.attributes.insert("lengthMilliseconds", decoder->getDecodedMicroseconds() / 1000);
     emit trackInfoUpdated(trackInfo.id);
 
     if ((silences.count() == 0) || (silences.last().type != ReplayGainCalculator::SilenceAtEnd)) {
@@ -378,7 +377,7 @@ void Track::decoderFinished()
     }
 
     if (currentStatus == Paused) {
-        emit playPosition(trackInfo.id, true, (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000, posMilliseconds);
+        emit playPosition(trackInfo.id, true, decoder->getDecodedMicroseconds() / 1000, posMilliseconds);
     }
 }
 
@@ -461,7 +460,7 @@ int Track::getFadeDurationSeconds()
 qint64 Track::getLengthMilliseconds()
 {
     if (decodingDone) {
-        return (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000;
+        return decoder->getDecodedMicroseconds() / 1000;
     }
 
     if (trackInfo.attributes.contains("lengthMilliseconds")) {
@@ -585,7 +584,7 @@ void Track::outputNeedChunk()
 
 void Track::outputBufferUnderrun()
 {
-    if (decodingDone && (posMilliseconds >= ((decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000 - 1000))) {
+    if (decodingDone && (posMilliseconds >= (decoder->getDecodedMicroseconds() / 1000 - 1000))) {
         sendFinished();
         return;
     }
@@ -629,7 +628,7 @@ void Track::outputPositionChanged(qint64 posMilliseconds)
         emit resetReplayGain();
     }
 
-    if (decodingDone && (posMilliseconds >= (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000 - 50)) {
+    if (decodingDone && (posMilliseconds >= decoder->getDecodedMicroseconds() / 1000 - 50)) {
         sendFinished();
         return;
     }
@@ -651,18 +650,6 @@ void Track::outputPositionChanged(qint64 posMilliseconds)
 void Track::pcmChunkFromCache(QByteArray chunk, qint64 startMicroseconds)
 {
     QByteArray *copy = new QByteArray(chunk.data(), chunk.size());
-
-    if ((silences.count() > 0) && (silences.at(0).type == ReplayGainCalculator::SilenceAtBeginning) && (silenceAtBeginningDeleted < silences.at(0).endMicroseconds)) {
-        qint64 remaining = silences.at(0).endMicroseconds - silenceAtBeginningDeleted;
-        if (remaining >= desiredPCMFormat.durationForBytes(copy->size())) {
-            silenceAtBeginningDeleted += desiredPCMFormat.durationForBytes(copy->size());
-            delete copy;
-            emit cacheRequestNextPCMChunk();
-            return;
-        }
-        copy->remove(0, desiredPCMFormat.bytesForDuration(remaining));
-        silenceAtBeginningDeleted += remaining;
-    }
 
     equalizerQueueMutex.lock();
     equalizerQueue.append({ copy, startMicroseconds });
@@ -877,7 +864,7 @@ void Track::setStatus(Status status)
     }
 
     if ((status == Playing) && (currentStatus == Paused)) {
-        if (decodingDone && (posMilliseconds >= (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000 - 1000)) {
+        if (decodingDone && (posMilliseconds >= decoder->getDecodedMicroseconds() / 1000 - 1000)) {
             sendFinished();
             return;
         }
@@ -945,7 +932,7 @@ void Track::setupDecoder()
         waitUnderBytes = 65536;
     #endif
 
-    decoder->setParameters(trackInfo.url, desiredPCMFormat, waitUnderBytes, trackInfo.attributes.contains("radio_station"));
+    decoder->setParameters(trackInfo.url, desiredPCMFormat, waitUnderBytes, trackInfo.attributes.contains("radio_station"), !trackInfo.attributes.contains("radio_station"));
     decoder->moveToThread(&decoderThread);
 
     connect(&decoderThread, &QThread::started, decoder, &DecoderGeneric::run);
@@ -1023,7 +1010,7 @@ void Track::setupOutput()
 
 void Track::underrunTimeout()
 {
-    if ((!decodingDone && (decoder != nullptr) && (decodedMillisecondsAtUnderrun >= (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000)) || (decodingDone && (posMilliseconds == posMillisecondsAtUnderrun))) {
+    if ((!decodingDone && (decoder != nullptr) && (decodedMillisecondsAtUnderrun >= decoder->getDecodedMicroseconds() / 1000)) || (decodingDone && (posMilliseconds == posMillisecondsAtUnderrun))) {
         emit error(trackInfo.id, tr("Buffer underrun."), tr("Possible download interruption due to a network error."));
         sendFinished();
     }

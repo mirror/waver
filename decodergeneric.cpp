@@ -11,13 +11,15 @@ DecoderGeneric::DecoderGeneric(RadioTitleCallback::RadioTitleCallbackInfo radioT
 {
     this->radioTitleCallbackInfo = radioTitleCallbackInfo;
 
-    audioDecoder        = nullptr;
-    file                = nullptr;
-    networkSource       = nullptr;
-    networkDeviceSet    = false;
-    decodedMicroseconds = 0;
-    decodeDelay         = 2500;
-    waitUnderBytes      = 4096;
+    audioDecoder           = nullptr;
+    file                   = nullptr;
+    networkSource          = nullptr;
+    networkDeviceSet       = false;
+    decodedMicroseconds    = 0;
+    decodeDelay            = 2500;
+    waitUnderBytes         = 4096;
+    removeBeginningSilence = false;
+    silenceThreshold       = 0.0;
 
     networkThread.setObjectName("decodernetwork");
 }
@@ -51,6 +53,70 @@ void DecoderGeneric::decoderBufferReady()
 
     if (!bufferReady.isValid()) {
         return;
+    }
+
+    char   *data = bufferReady.data<char>();
+    int    i     = 0;
+    while (removeBeginningSilence && (silenceThreshold > 0.0) && (i < bufferReady.byteCount())) {
+        if (decodedFormat.sampleType() == QAudioFormat::SignedInt) {
+            switch (decodedFormat.sampleSize()) {
+                case 8:
+                    if (abs(*(qint8 *)(data + i)) > silenceThreshold) {
+                        removeBeginningSilence = false;
+                        continue;
+                    }
+                    i++;
+                    break;
+                case 16:
+                    if (abs(*(qint16 *)(data + i)) > silenceThreshold) {
+                        removeBeginningSilence = false;
+                        continue;
+                    }
+                    i += 2;
+                    break;
+                case 32:
+                    if (abs(*(qint32 *)(data + i)) > silenceThreshold) {
+                        removeBeginningSilence = false;
+                        continue;
+                    }
+                    i += 4;
+            }
+        }
+        else if (decodedFormat.sampleType() == QAudioFormat::UnSignedInt) {
+            switch (decodedFormat.sampleSize()) {
+                case 8:
+                    if (*(quint8 *)(data + i) > silenceThreshold) {
+                        removeBeginningSilence = false;
+                        continue;
+                    }
+                    i++;
+                    break;
+                case 16:
+                    if (*(quint16 *)(data + i) > silenceThreshold) {
+                        removeBeginningSilence = false;
+                        continue;
+                    }
+                    i += 2;
+                    break;
+                case 32:
+                    if (*(quint32 *)(data + i) > silenceThreshold) {
+                        removeBeginningSilence = false;
+                        continue;
+                    }
+                    i += 4;
+            }
+        }
+    }
+    if (i > 0) {
+        while (i % decodedFormat.bytesForFrames(1)) {
+            i++;
+        }
+        if (i >= bufferReady.byteCount()) {
+            return;
+        }
+        QByteArray temp(static_cast<const char *>(bufferReady.constData()), bufferReady.byteCount());
+        temp.remove(0, i);
+        bufferReady = QAudioBuffer(temp, decodedFormat, decodedMicroseconds);
     }
 
     decodedMicroseconds += bufferReady.format().durationForBytes(bufferReady.byteCount());
@@ -207,14 +273,40 @@ void DecoderGeneric::setDecodeDelay(unsigned long microseconds)
 }
 
 
-void DecoderGeneric::setParameters(QUrl url, QAudioFormat decodedFormat, qint64 waitUnderBytes, bool isRadio)
+void DecoderGeneric::setParameters(QUrl url, QAudioFormat decodedFormat, qint64 waitUnderBytes, bool isRadio, bool removeBeginningSilence)
 {
     // can be set only once
     if (this->url.isEmpty()) {
-        this->url            = url;
-        this->decodedFormat  = decodedFormat;
-        this->waitUnderBytes = waitUnderBytes;
-        this->isRadio        = isRadio;
+        this->url                    = url;
+        this->decodedFormat          = decodedFormat;
+        this->waitUnderBytes         = waitUnderBytes;
+        this->isRadio                = isRadio;
+        this->removeBeginningSilence = removeBeginningSilence;
+
+        if (decodedFormat.sampleType() == QAudioFormat::SignedInt) {
+                switch (decodedFormat.sampleSize()) {
+                case 8:
+                    silenceThreshold = pow(10, SILENCE_THRESHOLD_DB / 10) * std::numeric_limits<qint8>::max();
+                    break;
+                case 16:
+                    silenceThreshold = pow(10, SILENCE_THRESHOLD_DB / 10) * std::numeric_limits<qint16>::max();
+                    break;
+                case 32:
+                    silenceThreshold = pow(10, SILENCE_THRESHOLD_DB / 10) * std::numeric_limits<qint32>::max();
+                }
+        }
+        else if (decodedFormat.sampleType() == QAudioFormat::UnSignedInt) {
+                switch (decodedFormat.sampleSize()) {
+                case 8:
+                    silenceThreshold = pow(10, SILENCE_THRESHOLD_DB / 10) * std::numeric_limits<quint8>::max();
+                    break;
+                case 16:
+                    silenceThreshold = pow(10, SILENCE_THRESHOLD_DB / 10) * std::numeric_limits<quint16>::max();
+                    break;
+                case 32:
+                    silenceThreshold = pow(10, SILENCE_THRESHOLD_DB / 10) * std::numeric_limits<quint32>::max();
+                }
+        }
     }
 }
 

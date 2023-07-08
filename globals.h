@@ -59,6 +59,8 @@ static const int  DEFAULT_WIDE_STEREO_DELAY_MILLISEC = 0;
 static const bool DEFAULT_SKIP_LONG_SILENCE          = true;
 static const int  DEFAULT_SKIP_LONG_SILENCE_SECONDS  = 4;
 
+static const double SILENCE_THRESHOLD_DB = -25;
+
 struct TimedChunk {
     QByteArray *chunkPointer;
     qint64      startMicroseconds;

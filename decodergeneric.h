@@ -11,6 +11,7 @@
 #include <QAudioBuffer>
 #include <QAudioDecoder>
 #include <QAudioFormat>
+#include <QByteArray>
 #include <QDateTime>
 #include <QFile>
 #include <QMutex>
@@ -24,6 +25,7 @@
 #include <QWaitCondition>
 
 #include "decodergenericnetworksource.h"
+#include "globals.h"
 #include "radiotitlecallback.h"
 
 #ifdef QT_DEBUG
@@ -40,7 +42,7 @@ class DecoderGeneric : public QObject
         explicit DecoderGeneric(RadioTitleCallback::RadioTitleCallbackInfo radioTitleCallbackInfo, QObject *parent = nullptr);
         ~DecoderGeneric();
 
-        void   setParameters(QUrl url, QAudioFormat decodedFormat, qint64 waitUnderBytes, bool isRadio);
+        void   setParameters(QUrl url, QAudioFormat decodedFormat, qint64 waitUnderBytes, bool isRadio, bool removeBeginningSilence);
         void   setDecodeDelay(unsigned long microseconds);
         qint64 getDecodedMicroseconds();
 
@@ -56,6 +58,7 @@ class DecoderGeneric : public QObject
         QAudioFormat decodedFormat;
         qint64       waitUnderBytes;
         bool         isRadio;
+        bool         removeBeginningSilence;
 
         QFile                       *file;
         QThread                      networkThread;
@@ -67,6 +70,7 @@ class DecoderGeneric : public QObject
         bool          networkDeviceSet;
         unsigned long decodeDelay;
         qint64        decodedMicroseconds;
+        double        silenceThreshold;
 
         RadioTitleCallback::RadioTitleCallbackInfo radioTitleCallbackInfo;
 

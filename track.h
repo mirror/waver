@@ -164,7 +164,6 @@ class Track : public QObject, RadioTitleCallback
 
         QVector<RadioTitlePosition>    radioTitlePositions;
         ReplayGainCalculator::Silences silences;
-        qint64                         silenceAtBeginningDeleted;
         bool                           skipLongSilence;
         qint64                         skipLongSilenceMicroseconds;
 

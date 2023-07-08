@@ -757,7 +757,7 @@ Dialog {
                     Label {
                         width: parent.parent.width / 3
                         anchors.verticalCenter: search_action_filter.verticalCenter
-                        text: qsTr("Filter for action")
+                        text: qsTr("Filter For Action")
                         wrapMode: Label.WrapAtWordBoundaryOrAnywhere
                     }
                     ComboBox {
@@ -774,7 +774,7 @@ Dialog {
                                 text: qsTr("Exact Match")
                             }
                             ListElement {
-                                text: qsTr("Exact Match OR Starts With OR None")
+                                text: qsTr("Reductive (Exact Match, then Starts With, then None)")
                             }
                         }
                     }

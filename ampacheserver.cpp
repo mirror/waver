@@ -464,9 +464,7 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
             int favoriteFrequency = settings.value("options/shuffle_favorite_frequency", DEFAULT_SHUFFLE_FAVORITE_FREQUENCY).toInt();
             int recentFrequency   = settings.value("options/shuffle_recently_added_frequency", DEFAULT_SHUFFLE_RECENT_FREQUENCY).toInt();
 
-            if (limit <= 0) {
-                limit = opData.value("shuffle_limit", "0").toInt();
-            }
+            limit = opData.value("shuffle_total_limit", "0").toInt();
             if (limit <= 0) {
                 limit = settings.value("options/shuffle_count", DEFAULT_SHUFFLE_COUNT).toInt();
             }
@@ -908,6 +906,11 @@ void AmpacheServer::startOperations()
                 else {
                     query.addQueryItem("action", "playlist_generate");
                 }
+
+                if (operation.extra == nullptr) {
+                    operation.extra = new QObject();
+                }
+                operation.extra->setProperty("shuffle_total_limit", limit);
 
                 int favoriteFrequency = settings.value("options/shuffle_favorite_frequency", DEFAULT_SHUFFLE_FAVORITE_FREQUENCY).toInt();
                 int recentFrequency   = settings.value("options/shuffle_recently_added_frequency", DEFAULT_SHUFFLE_RECENT_FREQUENCY).toInt();
