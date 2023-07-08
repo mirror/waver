@@ -81,6 +81,7 @@ Dialog {
         shuffle_delay_seconds.value = optionsObj.shuffle_delay_seconds;
         shuffle_count.value = optionsObj.shuffle_count;
         shuffle_favorite_frequency.currentIndex = optionsObj.shuffle_favorite_frequency <= internal.shuffle_favorite_frequent ? 2 : optionsObj.shuffle_favorite_frequency >= internal.shuffle_favorite_rare ? 0 : 1;
+        shuffle_recently_added_frequency.currentIndex = optionsObj.shuffle_recently_added_frequency <= internal.shuffle_favorite_frequent ? 2 : optionsObj.shuffle_recently_added_frequency >= internal.shuffle_favorite_rare ? 0 : 1;
         shuffle_operator.currentIndex = optionsObj.shuffle_operator === "or" ? 1 : 0;
         random_lists_count.value = optionsObj.random_lists_count;
         recently_added_count.value = optionsObj.recently_added_count;
@@ -92,6 +93,7 @@ Dialog {
         search_action_count_max.value = optionsObj.search_action_count_max;
 
         hide_dot_playlists.checked = optionsObj.hide_dot_playlists;
+        title_curly_special.checked = optionsObj.title_curly_special;
         starting_index_apply.checked = optionsObj.starting_index_apply;
         starting_index_days.value = optionsObj.starting_index_days;
         wideStereo.value = optionsObj.wide_stereo;
@@ -105,6 +107,7 @@ Dialog {
         peak_delay_on.checked = optionsObj.peak_delay_on;
         peak_delay_ms.value = optionsObj.peak_delay_ms;
         alphabet_limit.value = optionsObj.alphabet_limit;
+        font_size.value = optionsObj.font_size;
 
         shuffleItems.clear();
         for (var i = 0; i < optionsObj.genres.length; i++) {
@@ -177,12 +180,14 @@ Dialog {
                 recently_added_count: recently_added_count.value,
                 recently_added_days: recently_added_days.value,
                 shuffle_favorite_frequency: shuffle_favorite_frequency.currentIndex == 0 ? shuffle_favorite_rare : shuffle_favorite_frequency.currentIndex == 1 ? shuffle_favorite_normal : shuffle_favorite_frequent,
+                shuffle_recently_added_frequency: shuffle_recently_added_frequency.currentIndex == 0 ? shuffle_favorite_rare : shuffle_recently_added_frequency.currentIndex == 1 ? shuffle_favorite_normal : shuffle_favorite_frequent,
                 shuffle_operator: shuffle_operator.currentIndex == 0 ? 'and' : 'or',
                 search_count_max: search_count_max.value,
                 search_action: search_action.currentIndex,
                 search_action_filter: search_action_filter.currentIndex,
                 search_action_count_max: search_action_count_max.value,
                 hide_dot_playlists: hide_dot_playlists.checked,
+                title_curly_special: title_curly_special.checked,
                 starting_index_apply: starting_index_apply.checked,
                 starting_index_days: starting_index_days.value,
                 fade_tags: fade_tags.text,
@@ -192,6 +197,7 @@ Dialog {
                 peak_delay_on: peak_delay_on.checked,
                 peak_delay_ms: peak_delay_ms.value,
                 alphabet_limit: alphabet_limit.value,
+                font_size: font_size.value,
                 genres: genres
             };
             optionsSending(JSON.stringify(optionsObj));
@@ -567,6 +573,29 @@ Dialog {
                 Row {
                     Label {
                         width: parent.parent.width / 3
+                        anchors.verticalCenter: shuffle_recently_added_frequency.verticalCenter
+                        text: qsTr("Recently Added")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                    ComboBox {
+                        id: shuffle_recently_added_frequency
+                        width: parent.parent.width / 3 * 2
+                        model: ListModel {
+                            ListElement {
+                              text: qsTr("Rare")
+                            }
+                            ListElement {
+                              text: qsTr("Normal")
+                            }
+                            ListElement {
+                              text: qsTr("Frequent")
+                            }
+                        }
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 3
                         anchors.verticalCenter: shuffle_genres.verticalCenter
                         text: qsTr("Genres")
                         wrapMode: Label.WrapAtWordBoundaryOrAnywhere
@@ -793,6 +822,12 @@ Dialog {
                 }
                 Row {
                     CheckBox {
+                        id: title_curly_special
+                        text: qsTr("\"{\" in title indicates extra info")
+                    }
+                }
+                Row {
+                    CheckBox {
                         id: starting_index_apply
                         anchors.verticalCenter: starting_index_days.verticalCenter
                         text: qsTr("Remember playlists' last played track for")
@@ -810,10 +845,42 @@ Dialog {
                     }
                 }
                 Row {
+                    topPadding: 17
+                    bottomPadding: 17
+
+                    Rectangle {
+                        x: 0
+                        y: 0
+                        width: parent.parent.width
+                        height: 1
+                        color: "#AAAAAA"
+                    }
+                }
+                Row {
+                    bottomPadding: 17
                     Label {
-                        width: starting_index_apply.width
+                        text: qsTr("<b>Appearance</b>")
+                        wrapMode: Label.WrapAtWordBoundaryOrAnywhere
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 4
+                        anchors.verticalCenter: font_size.verticalCenter
+                        text: qsTr("Font Size")
+                    }
+                    SpinBox {
+                        id: font_size
+                        editable: true
+                        from: 8
+                        to: 16
+                    }
+                }
+                Row {
+                    Label {
+                        width: parent.parent.width / 4
                         anchors.verticalCenter: alphabet_limit.verticalCenter
-                        text: qsTr("Group items alphabetically")
+                        text: qsTr("Group Items Alphabetically")
                     }
                     SpinBox {
                         id: alphabet_limit
@@ -846,7 +913,7 @@ Dialog {
                         width: parent.parent.width / 4
                         anchors.rightMargin: 17
                         anchors.verticalCenter: wideStereo.verticalCenter
-                        text: qsTr("Wide stereo")
+                        text: qsTr("Wide Stereo")
                     }
                     SpinBox {
                         id: wideStereo
@@ -978,12 +1045,12 @@ Dialog {
                     Label {
                         width: parent.parent.width / 4
                         anchors.verticalCenter: fade_seconds.verticalCenter
-                        text: qsTr("Fade length")
+                        text: qsTr("Fade Length")
                     }
                     SpinBox {
                         id: fade_seconds
                         editable: true
-                        from: 1
+                        from: 3
                         to: 20
                     }
                     Label {

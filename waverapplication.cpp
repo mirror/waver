@@ -88,12 +88,15 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(waver, SIGNAL(uiShowSearchCriteria()), uiMainWindow, SLOT(showSearchCriteria()));
 
     QObject::connect(waver, SIGNAL(uiSetTrackBusy(QVariant)), uiMainWindow, SLOT(setTrackBusy(QVariant)));
-    QObject::connect(waver, SIGNAL(uiSetTrackData(QVariant,QVariant,QVariant,QVariant,QVariant)), uiMainWindow, SLOT(setTrackData(QVariant,QVariant,QVariant,QVariant,QVariant)));
+    QObject::connect(waver, SIGNAL(uiSetTrackData(QVariant,QVariant,QVariant,QVariant,QVariant,QVariant)), uiMainWindow, SLOT(setTrackData(QVariant,QVariant,QVariant,QVariant,QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(uiSetTrackLength(QVariant)), uiMainWindow, SLOT(setTrackLength(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetTrackPosition(QVariant,QVariant)), uiMainWindow, SLOT(setTrackPosition(QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(uiSetTrackDecoding(QVariant,QVariant)), uiMainWindow, SLOT(setTrackDecoding(QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(uiSetTrackTags(QVariant)), uiMainWindow, SLOT(setTrackTags(QVariant)));
     QObject::connect(waver, SIGNAL(uiSetTrackAmpacheURL(QVariant)), uiMainWindow, SLOT(setTrackAmpacheURL(QVariant)));
+    QObject::connect(waver, SIGNAL(uiSetTitleCurlySpecial(QVariant)), uiMainWindow, SLOT(setTitleCurlySpecial(QVariant)));
+
+    QObject::connect(waver ,SIGNAL(uiSetFontSize(QVariant)), uiMainWindow, SLOT(setFontSize(QVariant)));
 
     QObject::connect(waver, SIGNAL(playlistAddItem(QVariant,QVariant,QVariant,QVariant,QVariant)), uiMainWindow, SLOT(playlistAddItem(QVariant,QVariant,QVariant,QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(playlistClearItems()), uiMainWindow, SLOT(playlistClearItems()));

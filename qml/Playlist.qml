@@ -13,7 +13,9 @@ Item {
     property bool  isFocused: false
     property color borderColor: "#666666"
     property color focusBorderColor: ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? Universal.accent : Material.accent;
-    property int   imageSize: 36
+    property int   imageSize: 24
+    property int   fontSize: 36
+    property bool  titleCurlySpecial: true
 
     signal itemClicked(int index, int action);
     signal itemDragDropped(int index, int destinationIndex)
@@ -23,6 +25,13 @@ Item {
     {
         if ((typeof selected === 'undefined') || (selected === null)) {
             selected = false;
+        }
+
+        if (titleCurlySpecial) {
+            var curly = title.indexOf('{');
+            if (curly >= 0) {
+                title = title.substr(0, curly).trim();
+            }
         }
 
         var newDict = {
@@ -138,17 +147,21 @@ Item {
         id: globalConstants
     }
 
-    Label {
-        id: originalFontSize
-        height: 0
-        visible: false
-        width: 0
-    }
-
-
     Menu {
         id: playlistMenu
 
+        MenuItem {
+            id: shufflePlaylistMenu
+
+            icon.source: "qrc:///icons/shuffle.ico"
+            icon.height: 24
+            icon.width: 24
+            text: qsTr("Shuffle playlist")
+            font.pointSize: fontSize
+
+            onTriggered: itemClicked(playlistItemsView.currentIndex, globalConstants.action_shuffle_playlist);
+        }
+        MenuSeparator { }
         MenuItem {
             id: playPlaylistMenu
 
@@ -156,6 +169,7 @@ Item {
             icon.height: 24
             icon.width: 24
             text: qsTr("Play Now")
+            font.pointSize: fontSize
 
             onTriggered: itemClicked(playlistItemsView.currentIndex, globalConstants.action_play);
         }
@@ -168,6 +182,7 @@ Item {
             icon.height: 24
             icon.width: 24
             text: qsTr("Move To Top")
+            font.pointSize: fontSize
 
             onTriggered: itemClicked(playlistItemsView.currentIndex, globalConstants.action_move_to_top);
         }
@@ -178,6 +193,7 @@ Item {
             icon.height: 24
             icon.width: 24
             text: qsTr("Remove")
+            font.pointSize: fontSize
 
             onTriggered: itemClicked(playlistItemsView.currentIndex, globalConstants.action_remove);
         }
@@ -190,6 +206,7 @@ Item {
             icon.height: 24
             icon.width: 24
             text: qsTr("Select Group")
+            font.pointSize: fontSize
 
             onTriggered: itemClicked(playlistItemsView.currentIndex, globalConstants.action_select_group);
         }
@@ -201,6 +218,7 @@ Item {
             icon.height: 24
             icon.width: 24
             text: qsTr("Select All")
+            font.pointSize: fontSize
 
             onTriggered: itemClicked(playlistItemsView.currentIndex, globalConstants.action_select_all);
         }
@@ -212,6 +230,7 @@ Item {
             icon.height: 24
             icon.width: 24
             text: qsTr("Deselect All")
+            font.pointSize: fontSize
 
             onTriggered: itemClicked(playlistItemsView.currentIndex, globalConstants.action_deselect_all);
         }
@@ -461,7 +480,7 @@ Item {
 
                     color: internal.getLabelColor(isError)
                     elide: "ElideMiddle"
-                    font.pixelSize: imageSize <= 36 ? originalFontSize.font.pixelSize : originalFontSize.font.pixelSize * 1.25
+                    font.pointSize: fontSize
                     text: "<b>" + title + "</b> " + artist
                 }
 
@@ -472,7 +491,7 @@ Item {
                     anchors.rightMargin: 5
                     anchors.verticalCenter: parent.verticalCenter
 
-                    font.pixelSize: imageSize <= 36 ? originalFontSize.font.pixelSize * 0.75 : originalFontSize.font.pixelSize
+                    font.pointSize: fontSize
                     text: "<i>" + group + "</i>"
                 }
 
@@ -513,7 +532,7 @@ Item {
         anchors.bottomMargin: 3
 
         color: totalTime.palette.highlightedText
-        font.pixelSize: textMetrics.font.pixelSize * 0.8
+        font.pointSize: fontSize * 0.8
         horizontalAlignment: Text.AlignHCenter
         text: ""
         wrapMode: Text.NoWrap

@@ -308,7 +308,8 @@ class Waver : public QObject, PeakCallback, DecodingCallback
 
         void uiPromptServerPsw(QVariant id, QVariant formattedName);
 
-        void uiSetTrackData(QVariant titleText, QVariant performerText, QVariant albumText, QVariant trackNumberText, QVariant yearText);
+        void uiSetTrackData(QVariant titleText, QVariant performerText, QVariant albumText, QVariant trackNumberText, QVariant yearText, QVariant artistSummaryText);
+        void uiSetTitleCurlySpecial(QVariant tcs);
         void uiSetFavorite(QVariant favorite);
         void uiSetTrackBusy(QVariant busy);
         void uiSetTrackLength(QVariant lengthText);
@@ -319,6 +320,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void uiSetPeakMeter(QVariant leftPercent, QVariant rightPercent, QVariant scheduledTimeMS);
         void uiSetPeakMeterReplayGain(QVariant gainPercent);
         void uiSetShuffleCountdown(QVariant percent);
+        void uiSetFontSize(QVariant fontSize);
 
         void uiSetImage(QVariant image);
         void uiSetTempImage(QVariant image);

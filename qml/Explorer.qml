@@ -14,6 +14,8 @@ Item {
     property color borderColor: "#666666"
     property color focusBorderColor: ((Qt.platform.os === "windows") || (Qt.platform.os === "winrt")) ? Universal.accent : Material.accent;
     property int   imageSize: 24
+    property int   fontSize: 12
+    property bool  titleCurlySpecial: true
 
     signal itemClicked(string id, int action, var extra);
 
@@ -33,6 +35,13 @@ Item {
         }
         if ((typeof selected === 'undefined') || (selected === null)) {
             selected = false;
+        }
+
+        if (titleCurlySpecial) {
+            var curly = title.indexOf('{');
+            if (curly >= 0) {
+                title = title.substr(0, curly).trim();
+            }
         }
 
         var newDict = {
@@ -398,14 +407,6 @@ Item {
         id: globalConstants
     }
 
-    Label {
-        id: originalFontSize
-        height: 0
-        visible: false
-        width: 0
-    }
-
-
     Menu {
         id: explorerMenu
 
@@ -417,6 +418,7 @@ Item {
             icon.height: 24
             icon.width: 24
             text: qsTr("Expand")
+            font.pointSize: fontSize
 
             onTriggered: itemClicked(explorerItems.get(explorerItemsView.currentIndex).id, globalConstants.action_expand, explorerItems.get(explorerItemsView.currentIndex).extra);
         }
@@ -428,6 +430,7 @@ Item {
             icon.height: 24
             icon.width: 24
             text: qsTr("Refresh")
+            font.pointSize: fontSize
 
             onTriggered: itemClicked(explorerItems.get(explorerItemsView.currentIndex).id, globalConstants.action_refresh, explorerItems.get(explorerItemsView.currentIndex).extra);
         }
@@ -440,6 +443,7 @@ Item {
             icon.height: 24
             icon.width: 24
             text: qsTr("Play")
+            font.pointSize: fontSize
 
             onTriggered: itemClicked(explorerItems.get(explorerItemsView.currentIndex).id, globalConstants.action_play, explorerItems.get(explorerItemsView.currentIndex).extra);
         }
@@ -451,6 +455,7 @@ Item {
             icon.height: 24
             icon.width: 24
             text: qsTr("Play Next")
+            font.pointSize: fontSize
 
             onTriggered: itemClicked(explorerItems.get(explorerItemsView.currentIndex).id, globalConstants.action_playnext, explorerItems.get(explorerItemsView.currentIndex).extra);
         }
@@ -464,6 +469,7 @@ Item {
 
             onTriggered: itemClicked(explorerItems.get(explorerItemsView.currentIndex).id, globalConstants.action_enqueue, explorerItems.get(explorerItemsView.currentIndex).extra);
             text: qsTr("Enqueue")
+            font.pointSize: fontSize
         }
         MenuItem {
             id: enqueueShuffledExplorerMenu
@@ -475,6 +481,7 @@ Item {
 
             onTriggered: itemClicked(explorerItems.get(explorerItemsView.currentIndex).id, globalConstants.action_enqueueshuffled, explorerItems.get(explorerItemsView.currentIndex).extra);
             text: qsTr("Randomize")
+            font.pointSize: fontSize
         }
         MenuSeparator { }
         MenuItem {
@@ -484,6 +491,7 @@ Item {
             checked: explorerItemsView.currentIndex < 0 ? true : explorerItems.get(explorerItemsView.currentIndex).selected
             enabled: explorerItemsView.currentIndex < 0 ? false : !explorerItems.get(explorerItemsView.currentIndex).busy && explorerItems.get(explorerItemsView.currentIndex).selectable
             text: explorerItemsView.currentIndex < 0 ? qsTr("Select") : explorerItems.get(explorerItemsView.currentIndex).selected ? qsTr("Deselect") : qsTr("Select")
+            font.pointSize: fontSize
 
             onTriggered: itemClicked(explorerItems.get(explorerItemsView.currentIndex).id, globalConstants.action_select, explorerItems.get(explorerItemsView.currentIndex).extra);
         }
@@ -645,7 +653,7 @@ Item {
                         anchors.centerIn: parent
 
                         elide: "ElideMiddle"
-                        font.pixelSize: imageSize <= 16 ? originalFontSize.font.pixelSize * 0.8 : originalFontSize.font.pixelSize
+                        font.pointSize: fontSize
                         text: title
                     }
                 }
@@ -686,7 +694,7 @@ Item {
 
                     color: internal.getLabelColor(isError);
                     elide: "ElideMiddle"
-                    font.pixelSize: imageSize <= 16 ? originalFontSize.font.pixelSize * 0.8 : originalFontSize.font.pixelSize
+                    font.pointSize: fontSize
                     text: (selectable && selected ? "\u2713 " : "") + title
                 }
 

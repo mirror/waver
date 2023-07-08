@@ -269,6 +269,21 @@ void Track::applyFade(QByteArray *chunk)
 }
 
 
+void Track::artistInfoAdd(QString summary, QString art)
+{
+    trackInfo.artistSummary = summary;
+
+    if (!art.isEmpty()) {
+        QUrl artUrl = QUrl(art);
+        if (!trackInfo.arts.contains(artUrl)) {
+            trackInfo.arts.append(artUrl);
+        }
+    }
+
+    emit trackInfoUpdated(trackInfo.id);
+}
+
+
 void Track::attributeAdd(QString key, QVariant value)
 {
     trackInfo.attributes.insert(key, value);
@@ -337,7 +352,7 @@ void Track::decoderError(QString info, QString errorMessage)
 {
     emit error(trackInfo.id, info, errorMessage);
 
-    if ((currentStatus == Playing) && ((decoder->getDecodedMicroseconds() / 1000 - 1000) > posMilliseconds)) {
+    if ((currentStatus == Playing) && (((decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000 - 1000) > posMilliseconds)) {
         decoderFinished();
         return;
     }
@@ -350,12 +365,12 @@ void Track::decoderFinished()
 {
     decodingDone = true;
 
-    emit decoded(trackInfo.id, decoder->getDecodedMicroseconds() / 1000);
+    emit decoded(trackInfo.id, (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000);
 
     emit decoderDone();
     (decodingCallbackInfo.callbackObject->*decodingCallbackInfo.callbackMethod)(decoder->downloadPercent(), decodedPercent(), this);
 
-    trackInfo.attributes.insert("lengthMilliseconds", decoder->getDecodedMicroseconds() / 1000);
+    trackInfo.attributes.insert("lengthMilliseconds", (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000);
     emit trackInfoUpdated(trackInfo.id);
 
     if ((silences.count() == 0) || (silences.last().type != ReplayGainCalculator::SilenceAtEnd)) {
@@ -363,7 +378,7 @@ void Track::decoderFinished()
     }
 
     if (currentStatus == Paused) {
-        emit playPosition(trackInfo.id, true, decoder->getDecodedMicroseconds() / 1000, posMilliseconds);
+        emit playPosition(trackInfo.id, true, (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000, posMilliseconds);
     }
 }
 
@@ -446,7 +461,7 @@ int Track::getFadeDurationSeconds()
 qint64 Track::getLengthMilliseconds()
 {
     if (decodingDone) {
-        return decoder->getDecodedMicroseconds() / 1000;
+        return (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000;
     }
 
     if (trackInfo.attributes.contains("lengthMilliseconds")) {
@@ -570,7 +585,7 @@ void Track::outputNeedChunk()
 
 void Track::outputBufferUnderrun()
 {
-    if (decodingDone && (posMilliseconds >= (decoder->getDecodedMicroseconds() / 1000 - 1000))) {
+    if (decodingDone && (posMilliseconds >= ((decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000 - 1000))) {
         sendFinished();
         return;
     }
@@ -614,7 +629,7 @@ void Track::outputPositionChanged(qint64 posMilliseconds)
         emit resetReplayGain();
     }
 
-    if (decodingDone && (posMilliseconds >= decoder->getDecodedMicroseconds() / 1000 - 50)) {
+    if (decodingDone && (posMilliseconds >= (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000 - 50)) {
         sendFinished();
         return;
     }
@@ -638,9 +653,15 @@ void Track::pcmChunkFromCache(QByteArray chunk, qint64 startMicroseconds)
     QByteArray *copy = new QByteArray(chunk.data(), chunk.size());
 
     if ((silences.count() > 0) && (silences.at(0).type == ReplayGainCalculator::SilenceAtBeginning) && (silenceAtBeginningDeleted < silences.at(0).endMicroseconds)) {
-        qint64 toBeRemoved = qMin(silences.at(0).endMicroseconds - silenceAtBeginningDeleted, desiredPCMFormat.durationForBytes(chunk.size()));
-        copy->remove(0, toBeRemoved);
-        silenceAtBeginningDeleted += toBeRemoved;
+        qint64 remaining = silences.at(0).endMicroseconds - silenceAtBeginningDeleted;
+        if (remaining >= desiredPCMFormat.durationForBytes(copy->size())) {
+            silenceAtBeginningDeleted += desiredPCMFormat.durationForBytes(copy->size());
+            delete copy;
+            emit cacheRequestNextPCMChunk();
+            return;
+        }
+        copy->remove(0, desiredPCMFormat.bytesForDuration(remaining));
+        silenceAtBeginningDeleted += remaining;
     }
 
     equalizerQueueMutex.lock();
@@ -856,7 +877,7 @@ void Track::setStatus(Status status)
     }
 
     if ((status == Playing) && (currentStatus == Paused)) {
-        if (decodingDone && (posMilliseconds >= decoder->getDecodedMicroseconds() / 1000 - 1000)) {
+        if (decodingDone && (posMilliseconds >= (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000 - 1000)) {
             sendFinished();
             return;
         }
@@ -1002,7 +1023,7 @@ void Track::setupOutput()
 
 void Track::underrunTimeout()
 {
-    if ((!decodingDone && (decoder != nullptr) && (decodedMillisecondsAtUnderrun >= decoder->getDecodedMicroseconds() / 1000)) || (decodingDone && (posMilliseconds == posMillisecondsAtUnderrun))) {
+    if ((!decodingDone && (decoder != nullptr) && (decodedMillisecondsAtUnderrun >= (decoder->getDecodedMicroseconds() - silenceAtBeginningDeleted) / 1000)) || (decodingDone && (posMilliseconds == posMillisecondsAtUnderrun))) {
         emit error(trackInfo.id, tr("Buffer underrun."), tr("Possible download interruption due to a network error."));
         sendFinished();
     }

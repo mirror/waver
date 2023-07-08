@@ -220,6 +220,9 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
             opCode = SearchAlbums;
             opData.insert("criteria", requestQuery.queryItemValue("filter"));
         }
+        else if (action.compare("artist") == 0) {
+            opCode = Artist;
+        }
         else if (action.compare("artists") == 0) {
             opCode = BrowseRoot;
         }
@@ -276,6 +279,7 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         "name",
         "tag",
         "genre",
+        "summary",
         "time",
         "title",
         "track",
@@ -297,6 +301,7 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         { PlaylistSongs, "song" },
         { RadioStations, "live_stream" },
         { Shuffle,       "song" },
+        { Artist,        "artist" },
         { Song,          "song" },
         { Tags,          "genre" }
     };
@@ -443,27 +448,37 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
             shuffleFavorites.append(opResults);
             shuffleFavoritesCompleted = true;
         }
+        else if (opData.contains("recently_added")) {
+            shuffleRecentlyAdded.append(opResults);
+            shuffleRecentlyAddedCompleted = true;
+        }
         else {
             shuffleRegular.append(opResults);
             shuffleRegularCompleted = true;
         }
 
-        if (shuffleRegularCompleted && shuffleFavoritesCompleted) {
+        if (shuffleRegularCompleted && shuffleFavoritesCompleted && shuffleRecentlyAddedCompleted) {
             opResults.clear();
 
             QSettings settings;
             int favoriteFrequency = settings.value("options/shuffle_favorite_frequency", DEFAULT_SHUFFLE_FAVORITE_FREQUENCY).toInt();
+            int recentFrequency   = settings.value("options/shuffle_recently_added_frequency", DEFAULT_SHUFFLE_RECENT_FREQUENCY).toInt();
 
-            int limit = opData.value("shuffle_limit", "0").toInt();
+            if (limit <= 0) {
+                limit = opData.value("shuffle_limit", "0").toInt();
+            }
             if (limit <= 0) {
                 limit = settings.value("options/shuffle_count", DEFAULT_SHUFFLE_COUNT).toInt();
             }
 
             int regularIndex  = 0;
             int favoriteIndex = 0;
+            int recentIndex   = 0;
 
             while (limit > 0) {
                 shuffled++;
+
+                bool regularOK = true;
                 if ((shuffled % favoriteFrequency == 0) && shuffleFavorites.count()) {
                     opResults.append(shuffleFavorites.at(favoriteIndex));
 
@@ -471,8 +486,21 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
                     if (favoriteIndex >= shuffleFavorites.count()) {
                         favoriteIndex = 0;
                     }
+
+                    regularOK = false;
                 }
-                else if (shuffleRegular.count()) {
+                if ((shuffled % recentFrequency == 0) && shuffleRecentlyAdded.count()) {
+                    opResults.append(shuffleRecentlyAdded.at(recentIndex));
+
+                    recentIndex++;
+                    if (recentIndex >= shuffleRecentlyAdded.count()) {
+                        recentIndex = 0;
+                    }
+
+                    regularOK = false;
+                }
+
+                if (regularOK && shuffleRegular.count()) {
                     opResults.append(shuffleRegular.at(regularIndex));
 
                     regularIndex++;
@@ -743,6 +771,8 @@ void AmpacheServer::startOperations()
                 shuffleRegularCompleted = false;
                 shuffleFavorites.clear();
                 shuffleFavoritesCompleted = true;
+                shuffleRecentlyAdded.clear();
+                shuffleRecentlyAddedCompleted = true;
 
                 query.addQueryItem("action", "playlist_generate");
                 query.addQueryItem("artist", operation.opData.value("artist"));
@@ -758,6 +788,8 @@ void AmpacheServer::startOperations()
                 shuffleRegularCompleted = false;
                 shuffleFavorites.clear();
                 shuffleFavoritesCompleted = true;
+                shuffleRecentlyAdded.clear();
+                shuffleRecentlyAddedCompleted = true;
 
                 if (serverVersion >= 5200000) {
                     query.addQueryItem("action", "playlist_generate");
@@ -784,6 +816,8 @@ void AmpacheServer::startOperations()
                 shuffleRegularCompleted = false;
                 shuffleFavorites.clear();
                 shuffleFavoritesCompleted = true;
+                shuffleRecentlyAdded.clear();
+                shuffleRecentlyAddedCompleted = true;
 
                 query.addQueryItem("action", "playlist_generate");
                 query.addQueryItem("mode", "unplayed");
@@ -799,6 +833,8 @@ void AmpacheServer::startOperations()
                 shuffleRegularCompleted = false;
                 shuffleFavorites.clear();
                 shuffleFavoritesCompleted = true;
+                shuffleRecentlyAdded.clear();
+                shuffleRecentlyAddedCompleted = true;
 
                 int days  = settings.value("options/recently_added_days", DEFAULT_RECENTLY_ADDED_COUNT).toInt();
                 int count = settings.value("options/recently_added_count", DEFAULT_RECENTLY_ADDED_COUNT).toInt();
@@ -827,8 +863,12 @@ void AmpacheServer::startOperations()
                 shuffleRegularCompleted = false;
                 shuffleFavorites.clear();
                 shuffleFavoritesCompleted = false;
+                shuffleRecentlyAdded.clear();
+                shuffleRecentlyAddedCompleted = false;
 
-                bool favOK = true;
+                bool favOK    = true;
+                bool recentOK = true;
+                int  limit    = settings.value("options/shuffle_count", DEFAULT_SHUFFLE_COUNT).toInt();
 
                 if (operation.opData.contains("shuffle_tag")) {
                     bool OK = false;
@@ -844,7 +884,9 @@ void AmpacheServer::startOperations()
                             query.addQueryItem(QString("rule_1"), "tag");
                             query.addQueryItem(QString("rule_1_operator"), "4");
                             query.addQueryItem(QString("rule_1_input"), QUrl::toPercentEncoding(shuffleTagString));
-                            favOK = false;
+                            favOK    = false;
+                            recentOK = false;
+                            limit    = randomListCount;
                         }
                     }
                     else {
@@ -868,17 +910,17 @@ void AmpacheServer::startOperations()
                 }
 
                 int favoriteFrequency = settings.value("options/shuffle_favorite_frequency", DEFAULT_SHUFFLE_FAVORITE_FREQUENCY).toInt();
-                int limit             = settings.value("options/shuffle_count", DEFAULT_SHUFFLE_COUNT).toInt();
+                int recentFrequency   = settings.value("options/shuffle_recently_added_frequency", DEFAULT_SHUFFLE_RECENT_FREQUENCY).toInt();
 
                 if (flaggedCount > 0) {
-                    int limitRegular  = 0;
                     int limitFavorite = 0;
                     for (int i = shuffled; i < shuffled + limit; i++) {
                         if (favOK && ((i + 1) % favoriteFrequency == 0)) {
                             limitFavorite++;
-                            continue;
+                            if (limit > 1) {
+                                limit--;
+                            }
                         }
-                        limitRegular++;
                     }
 
                     if (limitFavorite > 0) {
@@ -895,11 +937,33 @@ void AmpacheServer::startOperations()
                     else {
                         shuffleFavoritesCompleted = true;
                     }
-
-                    limit = limitRegular;
                 }
                 else {
                     shuffleFavoritesCompleted = true;
+                }
+
+                int limitRecent = 0;
+                for (int i = shuffled; i < shuffled + limit; i++) {
+                    if (recentOK && ((i + 1) % recentFrequency == 0)) {
+                        limitRecent++;
+                        if (limit > 1) {
+                            limit--;
+                        }
+                    }
+                }
+                if (limitRecent > 0) {
+                    QVariant originalAction = operation.extra->property("original_action");
+
+                    QObject *opExtra = new QObject();
+                    opExtra->setProperty("recently_added", "recently_added");
+                    if (originalAction.isValid()) {
+                        opExtra->setProperty("original_action", originalAction);
+                    }
+
+                    opQueue.append({ Shuffle, {{ "recently_added", "recently_added" }, { "limit", QString("%1").arg(limitRecent) }}, copyExtra(opExtra) });
+                }
+                else {
+                    shuffleRecentlyAddedCompleted = true;
                 }
 
                 query.addQueryItem("limit", QString("%1").arg(limit));
@@ -936,6 +1000,11 @@ void AmpacheServer::startOperations()
                 query.addQueryItem("rule_1_input", "%");
             }
             query.removeAllQueryItems("limit");
+        }
+        else if (operation.opCode == Artist) {
+            query.removeAllQueryItems("limit");
+            query.addQueryItem("action", "artist");
+            query.addQueryItem("filter", operation.opData.value("artist_id"));
         }
         else if (operation.opCode == Song) {
             query.removeAllQueryItems("limit");

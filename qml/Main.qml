@@ -4,7 +4,7 @@ import QtQuick.Controls 2.3
 import QtQuick.Controls.Material 2.3
 import QtQuick.Controls.Universal 2.3
 import QtQuick.Layouts 1.3
-import QtQml.Models 2.3
+import QtQml.Models 2.15
 
 ApplicationWindow {
     id: applicationWindow
@@ -173,7 +173,7 @@ ApplicationWindow {
         playlist.setDecoding(index, downloadPercent, pcmPercent)
     }
 
-    function  playlistBigBusy(busy)
+    function playlistBigBusy(busy)
     {
         playlist.setPlaylistBigBusy(busy);
     }
@@ -212,6 +212,24 @@ ApplicationWindow {
         favorite.checked = fav
     }
 
+    function setFontSize(fs)
+    {
+        if (fs < 8) {
+            fs = 8;
+        }
+        if (fs > 16) {
+            fs = 16;
+        }
+
+        internal.fontSize = fs
+        textMetrics.font.pointSize = fs
+        aboutWaver.fontSize = fs
+        explorer.fontSize = fs;
+        explorer.imageSize = fs * 2.25 > 24 ? fs * 2.25 : 24;
+        playlist.fontSize = fs;
+        playlist.imageSize = fs * 3 > 36 ? fs * 3 : 36;
+    }
+
     function setImage(image)
     {
         art.swapImage(image);
@@ -243,6 +261,7 @@ ApplicationWindow {
 
         tags.visible = false;
         status.visible = false;
+        artistSummaryContainer.visible = false;
 
         statusTempTimer.restart();
     }
@@ -257,6 +276,13 @@ ApplicationWindow {
         art.swapTempImage(image);
     }
 
+    function setTitleCurlySpecial(tcs)
+    {
+        internal.titleCurlySpecial = tcs;
+        explorer.titleCurlySpecial = tcs;
+        playlist.titleCurlySpecial = tcs;
+    }
+
     function setTrackAmpacheURL(url)
     {
         internal.searchAmpacheURL = url;
@@ -267,13 +293,29 @@ ApplicationWindow {
         networkBusy.visible = busy;
     }
 
-    function setTrackData(titleText, performerText, albumText, trackNumberText, yearText)
+    function setTrackData(titleText, performerText, albumText, trackNumberText, yearText, artistSummaryText)
     {
-        title.text       = titleText.replace(" {", "\n{");
+        if (internal.titleCurlySpecial) {
+            var curly = titleText.indexOf('{');
+            if (curly >= 0) {
+                albumText = albumText + titleText.substr(curly).replace(/{/g, "\n{ ").replace(/}/g, " }");
+                titleText = titleText.substr(0, curly).trim();
+            }
+        }
+
+        title.text       = titleText;
         performer.text   = performerText;
         album.text       = albumText;
         trackNumber.text = "#" + trackNumberText;
         year.text        = yearText;
+
+        artistSummaryText = artistSummaryText.replace(/\n/g, " ");
+        artistSummary.text = artistSummaryText;
+        artistSummaryMetrics.text = artistSummaryText;
+        artistSummaryAnimation.running = artistSummaryText.length > 0
+        if (artistSummaryText.length > 0) {
+            artistSummaryPauser.restart();
+        }
     }
 
     function setTrackLength(lengthText)
@@ -316,27 +358,29 @@ ApplicationWindow {
     QtObject {
         id: internal
 
-        readonly property int outlinePixelSize: 28
+        readonly property int outlinePointSize: 28
 
         property double positionerMovedValue: -1
         property double shuffleCountdown: 0.5
         property bool kbPositioning: false
         property int kbLastFocused: 0
         property string searchAmpacheURL: ""
+        property int fontSize: 12
+        property bool titleCurlySpecial: true
 
-        function calculateTitleSize()
+        function calculateTitlePointSize()
         {
-            title.font.pixelSize = 99;
-            while ((title.font.pixelSize >= 8) && ((title.width > track.width - art.width) || (title.height > art.height / 12 * 5))) {
-                title.font.pixelSize--;
+            title.font.pointSize = 99;
+            while ((title.font.pointSize >= 8) && ((title.width > track.width - art.width) || (title.height > art.height / 12 * 5))) {
+                title.font.pointSize--;
             }
         }
 
-        function calculatePerformerSize()
+        function calculatePerformerPointSize()
         {
-            performer.font.pixelSize = 99;
-            while ((performer.font.pixelSize >= 8) && ((performer.width > track.width - art.width) || (performer.contentHeight > performer.height - 20))) {
-                performer.font.pixelSize--;
+            performer.font.pointSize = 99;
+            while ((performer.font.pointSize >= 8) && ((performer.width > track.width - art.width) || (performer.contentHeight > performer.height - 20))) {
+                performer.font.pointSize--;
             }
         }
 
@@ -384,6 +428,7 @@ ApplicationWindow {
 
             tags.visible = true;
             status.visible = true;
+            artistSummaryContainer.visible = true
         }
     }
     Timer {
@@ -391,8 +436,8 @@ ApplicationWindow {
         interval: 100
 
         onTriggered: {
-            internal.calculateTitleSize();
-            internal.calculatePerformerSize();
+            internal.calculateTitlePointSize();
+            internal.calculatePerformerPointSize();
         }
     }
     Timer {
@@ -403,6 +448,16 @@ ApplicationWindow {
             internal.rememberKBLastFocused();
             explorer.isFocused = false;
             playlist.isFocused = false;
+        }
+    }
+    Timer {
+        id: artistSummaryPauser
+        interval: 7500
+
+        onTriggered: {
+            if (!artistSummaryMouseArea.containsMouse) {
+                artistSummaryAnimation.pause();
+            }
         }
     }
 
@@ -488,17 +543,57 @@ ApplicationWindow {
                 elide: Text.ElideRight
                 maximumLineCount: 1
                 leftPadding: 10
-                width: parent.width / 10 * 9
+                rightPadding: 17
+                font.pointSize: internal.fontSize
+            }
+            Item {
+                anchors.left: tags.right
+                anchors.right: status.left
+                anchors.verticalCenter: parent.verticalCenter
+                height: parent.height
+                id: artistSummaryContainer
+                clip: true
+
+                MouseArea {
+                    id: artistSummaryMouseArea
+                    hoverEnabled: true
+                    anchors.fill: parent
+                }
+
+                TextMetrics {
+                    id: artistSummaryMetrics
+                    font.pointSize: internal.fontSize
+                    text: ""
+                }
+
+                Label {
+                    id: artistSummary
+                    text: ""
+                    anchors.verticalCenter: parent.verticalCenter
+                    font.pointSize: internal.fontSize
+                    color: statusTemp.palette.buttonText
+
+                    NumberAnimation on x {
+                        id: artistSummaryAnimation
+                        running: false
+                        paused: !artistSummaryMouseArea.containsMouse
+                        from: artistSummaryContainer.width
+                        to: artistSummaryMetrics.boundingRect.width * -1
+                        duration: artistSummary.text.length * 75
+                        loops: Animation.Infinite
+                    }
+                }
             }
             Label {
-                anchors.left: tags.right
                 anchors.verticalCenter: parent.verticalCenter
+                anchors.right: parent.right
                 id: status
                 text: qsTr("Idle")
                 font.family: "Monospace"
-                font.pixelSize: textMetrics.font.pixelSize * 0.75
+                font.pointSize: internal.fontSize
                 horizontalAlignment: Text.AlignRight
                 rightPadding: 10
+                leftPadding: 17
                 width: parent.width / 10
             }
             Label {
@@ -508,7 +603,7 @@ ApplicationWindow {
                 id: statusTemp
                 color: statusTemp.palette.buttonText
                 font.family: "Monospace"
-                font.pixelSize: textMetrics.font.pixelSize * 0.75
+                font.pointSize: internal.fontSize
                 elide: Text.ElideRight
                 leftPadding: 5
                 rightPadding: 5
@@ -524,6 +619,7 @@ ApplicationWindow {
 
         MenuItem {
             text: qsTr("Servers")
+            font.pointSize: internal.fontSize
             onTriggered: {
                 servers.serversModel = explorer.getServersForDialog();
                 servers.open();
@@ -531,20 +627,24 @@ ApplicationWindow {
         }
         MenuItem {
             text: qsTr("Options")
+            font.pointSize: internal.fontSize
             onTriggered: requestOptions()
         }
         MenuSeparator { }
         MenuItem {
             text: qsTr("Quick Start Guide")
+            font.pointSize: internal.fontSize
             onTriggered: quickStartGuide.open()
         }
         MenuItem {
             text: qsTr("About")
+            font.pointSize: internal.fontSize
             onTriggered: aboutWaver.open()
         }
         MenuSeparator { }
         MenuItem {
             text: qsTr("Quit")
+            font.pointSize: internal.fontSize
             onTriggered: close();
         }
     }
@@ -563,7 +663,7 @@ ApplicationWindow {
 
             delegate: MenuItem {
                 text: title
-                font.pixelSize: textMetrics.font.pixelSize * .9
+                font.pointSize: internal.fontSize
                 onTriggered: previousButton(index)
             }
 
@@ -577,15 +677,18 @@ ApplicationWindow {
 
         MenuItem {
             text: qsTr("Lyrics")
+            font.pointSize: internal.fontSize
             onTriggered: Qt.openUrlExternally("https://google.com/search?q=" + performer.text + " " + title.text + " lyrics");
         }
         MenuItem {
             text: qsTr("Artist")
+            font.pointSize: internal.fontSize
             onTriggered: Qt.openUrlExternally("https://google.com/search?q=\"" + performer.text + "\" band");
         }
         MenuSeparator { }
         MenuItem {
             text: qsTr("Ampache")
+            font.pointSize: internal.fontSize
             onTriggered: Qt.openUrlExternally(internal.searchAmpacheURL);
             enabled: internal.searchAmpacheURL.length > 0
         }
@@ -669,6 +772,7 @@ ApplicationWindow {
 
         Label {
             anchors.fill: parent
+            font.pointSize: internal.fontSize
             text: qsTr("Delete server?")
         }
     }
@@ -702,6 +806,7 @@ ApplicationWindow {
             anchors.right: parent.right
             focus: true
             onAccepted: searchCriteria.accept()
+            font.pointSize: internal.fontSize
         }
     }
 
@@ -829,12 +934,12 @@ ApplicationWindow {
                 font.bold: true
                 horizontalAlignment: Text.AlignHCenter
                 text: "title"
-                style: { font.pixelSize >= internal.outlinePixelSize ? Text.Outline : Text.Normal }
+                style: { font.pointSize >= internal.outlinePointSize ? Text.Outline : Text.Normal }
                 styleColor: title.palette.windowText
                 wrapMode: Text.Wrap
 
                 onTextChanged: {
-                    internal.calculateTitleSize();
+                    internal.calculateTitlePointSize();
                     titleSizeRecalcOnResizeTimer.restart();
                 }
             }
@@ -851,13 +956,13 @@ ApplicationWindow {
                 color: performer.palette.highlight
                 horizontalAlignment: Text.AlignHCenter
                 text: "performer"
-                style: { font.pixelSize >= internal.outlinePixelSize ? Text.Outline : Text.Normal }
+                style: { font.pointSize >= internal.outlinePointSize ? Text.Outline : Text.Normal }
                 styleColor: performer.palette.windowText
                 verticalAlignment: Text.AlignVCenter
                 wrapMode: Text.Wrap
 
                 onTextChanged: {
-                    internal.calculatePerformerSize();
+                    internal.calculatePerformerPointSize();
                     titleSizeRecalcOnResizeTimer.restart();
                 }
             }
@@ -886,6 +991,7 @@ ApplicationWindow {
 
                 color: title.palette.highlightedText
                 font.italic: true
+                font.pointSize: internal.fontSize * 1.25
                 text: "trackNumber"
             }
 
@@ -897,7 +1003,7 @@ ApplicationWindow {
                 anchors.verticalCenter: albumBackground.verticalCenter
 
                 color: title.palette.highlightedText
-                font.pixelSize: textMetrics.font.pixelSize * (Math.min(title.font.pixelSize, performer.font.pixelSize) >= internal.outlinePixelSize ? 1.5 : 1)
+                font.pointSize: internal.fontSize * (Math.min(title.font.pointSize, performer.font.pointSize) >= internal.outlinePointSize ? 1.25 : 1)
                 horizontalAlignment: Text.AlignHCenter
                 text: "album"
                 wrapMode: Text.Wrap
@@ -912,6 +1018,7 @@ ApplicationWindow {
 
                 color: title.palette.highlightedText
                 font.italic: true
+                font.pointSize: internal.fontSize * 1.25
                 text: "year"
             }
 
@@ -947,7 +1054,7 @@ ApplicationWindow {
                 anchors.left: parent.left
                 anchors.verticalCenter: parent.verticalCenter
 
-                font.pixelSize: textMetrics.font.pixelSize * 0.8
+                font.pointSize: internal.fontSize * .75 > 8 ? internal.fontSize * .75 : 8
                 text: "position"
             }
 
@@ -1003,7 +1110,7 @@ ApplicationWindow {
                 anchors.right: parent.right
                 anchors.verticalCenter: parent.verticalCenter
 
-                font.pixelSize: textMetrics.font.pixelSize * 0.8
+                font.pointSize: internal.fontSize * .75 > 8 ? internal.fontSize * .75 : 8
                 text: "length"
             }
         }

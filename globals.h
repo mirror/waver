@@ -17,7 +17,9 @@ static const int     DEFAULT_SHUFFLE_COUNT              = 5;
 static const int     DEFAULT_RANDOM_LISTS_COUNT         = 11;
 static const int     DEFAULT_SHUFFLE_DELAY_SECONDS      = 10;
 static const int     DEFAULT_SHUFFLE_FAVORITE_FREQUENCY = 4;
+static const int     DEFAULT_SHUFFLE_RECENT_FREQUENCY   = 4;
 static const bool    DEFAULT_SHUFFLE_AUTOSTART          = true;
+static const int     DEFAULT_FONT_SIZE                  = 12;
 static const int     DEFAULT_ALPHABET_LIMIT             = 49;
 static const int     DEFAULT_RECENTLY_ADDED_COUNT       = 100;
 static const int     DEFAULT_RECENTLY_ADDED_DAYS        = 14;
@@ -27,9 +29,10 @@ static const int DEFAULT_SEARCH_ACTION           = 2;
 static const int DEFAULT_SEARCH_ACTION_FILTER    = 3;
 static const int DEFAULT_SEARCH_ACTION_COUNT_MAX = 11;
 
-static const bool    DEFAULT_HIDE_DOT_PLAYLIST    = true;
-static const bool    DEFAULT_STARTING_INDEX_APPLY = true;
-static const int     DEFAULT_STARTING_INDEX_DAYS  = 30;
+static const bool DEFAULT_HIDE_DOT_PLAYLIST    = true;
+static const bool DEFAULT_TITLE_CURLY_SPECIAL  = true;
+static const bool DEFAULT_STARTING_INDEX_APPLY = true;
+static const int  DEFAULT_STARTING_INDEX_DAYS  = 30;
 
 static const QString DEFAULT_FADE_TAGS         = "live,medley,nonstop";
 static const QString DEFAULT_CROSSFADE_TAGS    = "live";
@@ -52,7 +55,7 @@ static const double DEFAULT_EQ8    = 6.0;
 static const double DEFAULT_EQ9    = 9.0;
 static const double DEFAULT_EQ10   = 12.0;
 
-static const int  DEFAULT_WIDE_STEREO_DELAY_MILLISEC = 25;
+static const int  DEFAULT_WIDE_STEREO_DELAY_MILLISEC = 0;
 static const bool DEFAULT_SKIP_LONG_SILENCE          = true;
 static const int  DEFAULT_SKIP_LONG_SILENCE_SECONDS  = 4;
 

@@ -58,6 +58,7 @@ class Track : public QObject, RadioTitleCallback
             QString      title;
             QString      artistId;
             QString      artist;
+            QString      artistSummary;
             QString      albumId;
             QString      album;
             int          year;
@@ -84,6 +85,7 @@ class Track : public QObject, RadioTitleCallback
         TrackInfo       getTrackInfo();
         void            attributeAdd(QString key, QVariant value);
         void            attributeRemove(QString key);
+        void            artistInfoAdd(QString summary, QString art);
         qint64          getDecodedMilliseconds();
         qint64          getLengthMilliseconds();
         qint64          getPlayedMillseconds();

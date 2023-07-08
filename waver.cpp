@@ -203,7 +203,7 @@ QChar Waver::alphabetFromName(QString name)
 
 void Waver::clearTrackUISignals()
 {
-    emit uiSetTrackData("", "", "", "", "");
+    emit uiSetTrackData("", "", "", "", "", "");
     emit uiSetTrackBusy(false);
     emit uiSetTrackLength("");
     emit uiSetTrackPosition("", 0);
@@ -503,6 +503,7 @@ bool Waver::isCrossfade(Track *track1, Track *track2)
     if ((track1 == nullptr) || (track2 == nullptr)) {
         return false;
     }
+
     if (crossfadeTags.contains("*")) {
         return true;
     }
@@ -1155,7 +1156,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
         else if (id.startsWith(UI_ID_PREFIX_SERVER_RADIOSTATIONS)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::RadioStations, AmpacheServer::OpData());
         }
-        else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE)) {
+        else if (id.startsWith(UI_ID_PREFIX_SERVER_GENRES)) {
             servers.at(srvIndex)->startOperation(AmpacheServer::Tags, AmpacheServer::OpData());
         }
         return;
@@ -1639,6 +1640,23 @@ void Waver::playlistFirstGroupSave()
 
 void Waver::playlistItemClicked(int index, int action)
 {
+    if (action == globalConstant("action_shuffle_playlist")) {
+        QRandomGenerator *randomGenerator = QRandomGenerator::global();
+
+        for (int i = 0; i < playlist.count(); i++) {
+            int    index = randomGenerator->bounded(playlist.count());
+            Track *swap  = playlist.at(index);
+            playlist[index] = playlist.at(i);
+            playlist[i]     = swap;
+        }
+
+        emit playlistClearItems();
+        foreach (Track *track, playlist) {
+            Track::TrackInfo trackInfo = track->getTrackInfo();
+            emit playlistAddItem(trackInfo.title, trackInfo.artist, trackInfo.attributes.contains("group") ? trackInfo.attributes.value("group") : "", trackInfo.arts.first().toString(), trackInfo.attributes.contains("playlist_selected"));
+        }
+    }
+
     if (action == globalConstant("action_play")) {
         Track *track = playlist.at(index);
         playlist.removeAt(index);
@@ -1947,6 +1965,7 @@ void Waver::requestOptions()
     optionsObj.insert("recently_added_count", settings.value("options/recently_added_count", DEFAULT_RECENTLY_ADDED_COUNT));
     optionsObj.insert("recently_added_days", settings.value("options/recently_added_days", DEFAULT_RECENTLY_ADDED_DAYS));
     optionsObj.insert("shuffle_favorite_frequency", settings.value("options/shuffle_favorite_frequency", DEFAULT_SHUFFLE_FAVORITE_FREQUENCY));
+    optionsObj.insert("shuffle_recently_added_frequency", settings.value("options/shuffle_recently_added_frequency", DEFAULT_SHUFFLE_RECENT_FREQUENCY));
     optionsObj.insert("shuffle_operator", settings.value("options/shuffle_operator", DEFAULT_SHUFFLE_OPERATOR));
 
     optionsObj.insert("search_count_max", settings.value("options/search_count_max", DEFAULT_SEARCH_COUNT_MAX));
@@ -1955,12 +1974,14 @@ void Waver::requestOptions()
     optionsObj.insert("search_action_count_max", settings.value("options/search_action_count_max", DEFAULT_SEARCH_ACTION_COUNT_MAX));
 
     optionsObj.insert("hide_dot_playlists", settings.value("options/hide_dot_playlists", DEFAULT_HIDE_DOT_PLAYLIST).toBool());
+    optionsObj.insert("title_curly_special", settings.value("options/title_curly_special", DEFAULT_TITLE_CURLY_SPECIAL).toBool());
     optionsObj.insert("starting_index_apply", settings.value("options/starting_index_apply", DEFAULT_STARTING_INDEX_APPLY).toBool());
     optionsObj.insert("starting_index_days", settings.value("options/starting_index_days", DEFAULT_STARTING_INDEX_DAYS));
     optionsObj.insert("alphabet_limit", settings.value("options/alphabet_limit", DEFAULT_ALPHABET_LIMIT));
-    optionsObj.insert("wide_stereo", settings.value("options/wide_stereo_delay_millisec", DEFAULT_WIDE_STEREO_DELAY_MILLISEC).toInt());
+    optionsObj.insert("font_size", settings.value("options/font_size", DEFAULT_FONT_SIZE));
+    optionsObj.insert("wide_stereo", settings.value("options/wide_stereo_delay_millisec", DEFAULT_WIDE_STEREO_DELAY_MILLISEC));
     optionsObj.insert("skip_long_silence", settings.value("options/skip_long_silence", DEFAULT_SKIP_LONG_SILENCE).toBool());
-    optionsObj.insert("skip_long_silence_seconds", settings.value("options/skip_long_silence_seconds", DEFAULT_SKIP_LONG_SILENCE_SECONDS).toInt());
+    optionsObj.insert("skip_long_silence_seconds", settings.value("options/skip_long_silence_seconds", DEFAULT_SKIP_LONG_SILENCE_SECONDS));
 
     optionsObj.insert("fade_tags", settings.value("options/fade_tags", DEFAULT_FADE_TAGS));
     optionsObj.insert("crossfade_tags", settings.value("options/crossfade_tags", DEFAULT_CROSSFADE_TAGS));
@@ -2005,9 +2026,11 @@ void Waver::requestOptions()
 
 void Waver::run()
 {
-    emit uiSetIsSnap(QGuiApplication::instance()->applicationDirPath().contains("snap", Qt::CaseInsensitive));
-
     QSettings settings;
+
+    emit uiSetIsSnap(QGuiApplication::instance()->applicationDirPath().contains("snap", Qt::CaseInsensitive));
+    emit uiSetFontSize(settings.value("options/font_size", DEFAULT_FONT_SIZE));
+    emit uiSetTitleCurlySpecial(settings.value("options/title_curly_special", DEFAULT_TITLE_CURLY_SPECIAL).toBool());
 
     shuffleCountdownTimer = new QTimer();
     shuffleCountdownTimer->setInterval(1000);
@@ -2036,7 +2059,6 @@ void Waver::run()
         QString path = QFileInfo(localDirs.at(i)).absoluteFilePath();
         emit explorerAddItem(id, QVariant::fromValue(nullptr), QFileInfo(localDirs.at(i)).baseName(), "qrc:/icons/local.ico", QVariantMap({{ "path", path }}), true, false, false, false);
     }
-
 
     // servers
 
@@ -2767,10 +2789,10 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
         settings.endArray();
         settings.sync();
 
-        QString shuffleId = QString("%1|%2").arg(QString(opData.value("serverId")).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), opData.value("serverId"));
-        explorerNetworkingUISignals(shuffleId, false);
+        QString genresId = QString("%1|%2").arg(QString(opData.value("serverId")).replace(0, 1, UI_ID_PREFIX_SERVER_GENRES), opData.value("serverId"));
+        explorerNetworkingUISignals(genresId, false);
         if (opResults.count() > 0) {
-            itemActionServerItem(shuffleId, globalConstant("action_expand").toInt(), QVariantMap());
+            itemActionServerItem(genresId, globalConstant("action_expand").toInt(), QVariantMap());
         }
     }
     else if (opCode == AmpacheServer::Song) {
@@ -2805,6 +2827,19 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                 playlistUpdateUISignals();
                 playlistFirstGroupSave();
             }
+        }
+    }
+    else if (opCode == AmpacheServer::Artist) {
+        if (opResults.count() > 0) {
+            if ((currentTrack != nullptr) && (currentTrack->getTrackInfo().artistId.compare(opResults.at(0).value("id")) == 0)) {
+                currentTrack->artistInfoAdd(opResults.at(0).value("summary"), opResults.at(0).value("art"));
+            }
+            foreach (Track *track, playlist) {
+                if (track->getTrackInfo().artistId.compare(opResults.at(0).value("id")) == 0) {
+                    track->artistInfoAdd(opResults.at(0).value("summary"), opResults.at(0).value("art"));
+                }
+            }
+
         }
     }
 
@@ -2913,7 +2948,7 @@ void Waver::startNextTrackUISignals()
 
     Track::TrackInfo trackInfo = getCurrentTrackInfo();
 
-    emit uiSetTrackData(trackInfo.title, trackInfo.artist, trackInfo.album, trackInfo.track, trackInfo.year);
+    emit uiSetTrackData(trackInfo.title, trackInfo.artist, trackInfo.album, trackInfo.track, trackInfo.year, trackInfo.artistSummary);
     emit uiSetTrackLength(QDateTime::fromMSecsSinceEpoch(currentTrack->getLengthMilliseconds()).toUTC().toString("hh:mm:ss"));
     emit uiSetTrackPosition("00:00", 0);
     emit uiSetTrackTags(trackInfo.tags.join(", "));
@@ -2922,6 +2957,13 @@ void Waver::startNextTrackUISignals()
     emit uiSetTrackBusy(currentTrack->getNetworkStartingLastState());
     if (!trackInfo.url.isLocalFile()) {
         emit uiSetTrackAmpacheURL(trackURL(trackInfo.id).toString(QUrl::FullyEncoded));
+    }
+
+    if (trackInfo.artistSummary.isEmpty()) {
+        int srvIndex = serverIndex(trackInfo.id.split("|").last());
+        if (srvIndex >= 0) {
+            servers.at(srvIndex)->startOperation(AmpacheServer::Artist, {{ "artist_id", trackInfo.artistId }}, nullptr);
+        }
     }
 
     emit requestTrackBufferReplayGainInfo();
@@ -3304,7 +3346,7 @@ void Waver::trackInfoUpdated(QString id)
     if (!crossfadeInProgress && (currentTrack != nullptr) && (getCurrentTrackInfo().id.compare(id) == 0)) {
         Track::TrackInfo trackInfo = getCurrentTrackInfo();
 
-        emit uiSetTrackData(trackInfo.title, trackInfo.artist, trackInfo.album, trackInfo.track, trackInfo.year);
+        emit uiSetTrackData(trackInfo.title, trackInfo.artist, trackInfo.album, trackInfo.track, trackInfo.year, trackInfo.artistSummary);
         emit uiSetTrackLength(QDateTime::fromMSecsSinceEpoch(currentTrack->getLengthMilliseconds()).toUTC().toString("hh:mm:ss"));
         emit uiSetTrackTags(trackInfo.tags.join(", "));
         emit uiSetImage(trackInfo.arts.size() ? trackInfo.arts.at(0).toString() : "qrc:/images/waver.png");
@@ -3341,7 +3383,7 @@ void Waver::trackPlayPosition(QString id, bool decoderFinished, long knownDurati
 
     emit uiSetTrackPosition(QDateTime::fromMSecsSinceEpoch(positionMilliseconds).toUTC().toString("hh:mm:ss"), positionPercent);
 
-    if ((track == currentTrack) && (knownDurationMilliseconds > 0) && (knownDurationMilliseconds - positionMilliseconds <= 20000) && (playlist.size() > 0) && (playlist.at(0)->getStatus() == Track::Idle)) {
+    if ((track == currentTrack) && (knownDurationMilliseconds > 0) && (playlist.size() > 0) && (playlist.at(0)->getStatus() == Track::Idle) && (knownDurationMilliseconds - positionMilliseconds <= 20000 + playlist.at(0)->getFadeDurationSeconds() * 1000)) {
         playlist.at(0)->setStatus(Track::Decoding);
     }
 }
@@ -3439,6 +3481,13 @@ void Waver::updatedOptions(QString optionsJSON)
     crossfadeTags.clear();
     crossfadeTags.append(options.value("crossfade_tags").toString().split(","));
 
+    emit uiSetFontSize(options.value("font_size").toInt());
+    emit uiSetTitleCurlySpecial(options.value("title_curly_special").toBool());
+    if (currentTrack != nullptr) {
+        Track::TrackInfo trackInfo = getCurrentTrackInfo();
+        emit uiSetTrackData(trackInfo.title, trackInfo.artist, trackInfo.album, trackInfo.track, trackInfo.year, trackInfo.artistSummary);
+    }
+
     settings.setValue("options/shuffle_autostart", options.value("shuffle_autostart").toBool());
     settings.setValue("options/shuffle_operator", options.value("shuffle_operator").toString());
     settings.setValue("options/shuffle_count", options.value("shuffle_count").toInt());
@@ -3447,6 +3496,7 @@ void Waver::updatedOptions(QString optionsJSON)
     settings.setValue("options/recently_added_days", options.value("recently_added_days").toInt());
     settings.setValue("options/shuffle_delay_seconds", options.value("shuffle_delay_seconds").toInt());
     settings.setValue("options/shuffle_favorite_frequency", options.value("shuffle_favorite_frequency").toInt());
+    settings.setValue("options/shuffle_recently_added_frequency", options.value("shuffle_recently_added_frequency").toInt());
 
     settings.setValue("options/search_count_max", options.value("search_count_max").toInt());
     settings.setValue("options/search_action", options.value("search_action").toInt());
@@ -3463,7 +3513,9 @@ void Waver::updatedOptions(QString optionsJSON)
     settings.setValue("options/starting_index_apply", options.value("starting_index_apply").toBool());
     settings.setValue("options/starting_index_days", options.value("starting_index_days").toLongLong());
     settings.setValue("options/hide_dot_playlists", options.value("hide_dot_playlists").toBool());
+    settings.setValue("options/title_curly_special", options.value("title_curly_special").toBool());
     settings.setValue("options/alphabet_limit", options.value("alphabet_limit").toInt());
+    settings.setValue("options/font_size", options.value("font_size").toInt());
     settings.setValue("options/wide_stereo_delay_millisec", options.value("wide_stereo").toInt());
     settings.setValue("options/skip_long_silence", options.value("skip_long_silence").toBool());
     settings.setValue("options/skip_long_silence_seconds", options.value("skip_long_silence_seconds").toInt());

@@ -62,6 +62,7 @@ class AmpacheServer : public QObject
             RadioStations,
             SetFlag,
             Shuffle,
+            Artist,
             Song,
             Tags,
             Unknown
@@ -120,8 +121,10 @@ class AmpacheServer : public QObject
         int       shuffled;
         OpResults shuffleRegular;
         OpResults shuffleFavorites;
+        OpResults shuffleRecentlyAdded;
         bool      shuffleRegularCompleted;
         bool      shuffleFavoritesCompleted;
+        bool      shuffleRecentlyAddedCompleted;
 
         QList<Operation> opQueue;
         QList<int>       shuffleTags;

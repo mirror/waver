@@ -9,6 +9,8 @@ Dialog {
     focus: true
     standardButtons: Dialog.Ok
 
+    property int fontSize: 12
+
     QtObject {
         id: internal
 
@@ -43,6 +45,7 @@ Dialog {
                 bottomPadding: 31
                 font.italic: true
                 text: "Open Source Ampache Client"
+                font.pointSize: fontSize
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 horizontalAlignment: Text.AlignHCenter
@@ -54,11 +57,13 @@ Dialog {
                 Label {
                     id: ver
                     text: qsTr("Version ") + Qt.application.version + " - " + (internal.isBeta() ? qsTr("Beta testing") : qsTr("Release"));
+                    font.pointSize: fontSize
                     width: parent.width / 2 - 1
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 }
                 Label {
                     text: "Copyright (C) 2017-" + internal.currentYear() + " Peter Papp"
+                    font.pointSize: fontSize
                     width: parent.width / 2
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 }
@@ -70,6 +75,7 @@ Dialog {
                 Label {
                     onLinkActivated: Qt.openUrlExternally(link);
                     text: "<a href=\"https://launchpad.net/waver\">launchpad.net/waver</a>"
+                    font.pointSize: fontSize
                     width: parent.width / 2 - 1
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
 
@@ -82,6 +88,7 @@ Dialog {
                 Label {
                     onLinkActivated: Qt.openUrlExternally(link);
                     text: "Built on the <a href=\"https://www.qt.io/\">Qt framework</a>"
+                    font.pointSize: fontSize
                     width: parent.width / 2
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
 
@@ -97,7 +104,7 @@ Dialog {
                 bottomPadding: 17
                 font.bold: true
                 font.italic: true
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 text: qsTr("Privacy")
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
@@ -105,14 +112,14 @@ Dialog {
             Label {
                 bottomPadding: 17
                 font.bold: true
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 text: qsTr("Waver does not collect or send personal information of any kind.")
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }
             Label {
                 bottomPadding: 31
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 onLinkActivated: Qt.openUrlExternally(link);
                 text:  {
                     var privacyLabel = qsTr("However, if you installed Waver from an app store, usage statistics and/or error reports might be collected. Please refer to the following web pages for more information:<br>");
@@ -138,7 +145,7 @@ Dialog {
                 bottomPadding: 17
                 font.bold: true
                 font.italic: true
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 text: qsTr("Disclaimer")
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
@@ -155,14 +162,14 @@ Dialog {
                 bottomPadding: 17
                 font.bold: true
                 font.italic: true
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 text: qsTr("Licenses")
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }
             Label {
                 bottomPadding: 17
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 onLinkActivated: Qt.openUrlExternally(link);
                 text: "<a href=\"https://launchpad.net/waver\">Waver</a> is <a href=\"https://bazaar.launchpad.net/~waver-developers/waver/trunk/files\">open source</a> software under the <a href=\"https://www.gnu.org/licenses/gpl-3.0.en.html\">GPL v3</a> license."
                 width: parent.width
@@ -176,7 +183,7 @@ Dialog {
             }
             Label {
                 bottomPadding: (Qt.platform.os === "windows") || (Qt.platform.os === "winrt") ? 17 : 31
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 onLinkActivated: Qt.openUrlExternally(link);
                 text: "The <a href=\"https://launchpad.net/waveriir\">Waver IIR</a> library is <a href=\"https://bazaar.launchpad.net/~waver-developers/waveriir/trunk/files\">open source</a> software under the <a href=\"https://www.gnu.org/licenses/gpl-3.0.en.html\">GPL v3</a> license."
                 width: parent.width
@@ -190,7 +197,7 @@ Dialog {
             }
             Label {
                 bottomPadding: 31
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 onLinkActivated: Qt.openUrlExternally(link);
                 text: "If you installed Waver from the Windows Store, then its <a href=\"https://www.microsoft.com/store/standard-application-license-terms\">Standard Application License Terms</a> also apply."
                 visible: (Qt.platform.os === "windows") || (Qt.platform.os === "winrt")
@@ -209,14 +216,14 @@ Dialog {
                 bottomPadding: 17
                 font.bold: true
                 font.italic: true
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 text: qsTr("Third Party Licenses")
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }
             Label {
                 bottomPadding: 17
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 onLinkActivated: Qt.openUrlExternally(link);
                 text: "<a href=\"https://www.qt.io/\">Qt</a> is dual-licensed under commercial and <a href=\"https://github.com/qt\">open source</a> licenses. Version 5.15.2 Copyright (C) 2015 The Qt Company Ltd. Here, the <a href=\"https://www.gnu.org/licenses/gpl-3.0.en.html\">GPL v3</a> licensed version is being used, unmodified, by ways of dynamic linking."
                 width: parent.width
@@ -230,7 +237,7 @@ Dialog {
             }
             Label {
                 bottomPadding: 17
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 onLinkActivated: Qt.openUrlExternally(link);
                 text: "<a href=\"https://taglib.org\">TagLib</a> is <a href=\"https://github.com/taglib/taglib\">open source</a> software under the <a href=\"https://www.gnu.org/licenses/lgpl-3.0.html\">LGPL v3</a> license. Version 1.12 Copyright (C) 2002-2016 Rupert Daniel, Urs Fleisch, Michael Helmling, Allan Sandfeld Jensen, Tsuda Kageyu, Serkan Kalyoncu, Lukas Krejci, Lukáš Lalinský, Martin Nilsson, Alex Novichkov, Ismael Orenstein, Mathias Panzenböck, Anton Sergunov, Aaron VonderHaar, Scott Wheeler. Waver uses it unmodified, by ways of dynamic linking."
                 width: parent.width
@@ -244,7 +251,7 @@ Dialog {
             }
             Label {
                 bottomPadding: (Qt.platform.os === "windows") || (Qt.platform.os === "winrt") ? 17 : 31
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 onLinkActivated: Qt.openUrlExternally(link);
                 text: "<a href=\"https://github.com/frankosterfeld/qtkeychain\">QtKeychain</a> is <a href=\"https://github.com/frankosterfeld/qtkeychain\">open source</a> software under the <a href=\"https://directory.fsf.org/wiki/License:BSD-3-Clause\">Modified BSD</a> license. Version 0.12.0 Copyright (C) 2011-2018 Frank Osterfeld, David Faure, Mathias Hasselmann, Stephen Kelly, Kitware Inc., Nikita Krupen'ko, Alex Merry, Alexander Neundorf, François Revol. Waver uses it unmodified, by ways of dynamic linking."
                 width: parent.width
@@ -258,7 +265,7 @@ Dialog {
             }
             Label {
                 bottomPadding: 31
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 onLinkActivated: Qt.openUrlExternally(link);
                 text: "<a href=\"https://github.com/mohabouje/WinToast\">WinToast</a> is <a href=\"https://github.com/mohabouje/WinToast\">open source</a> software under the <a href=\"https://mit-license.org/\">MIT</a> license. Version 1.2.0 Copyright (C) 2016 Mohammed Boujemaoui Boulaghmoudi. Waver uses it unmodified, by including its entire source code (as recommended by the author)."
                 width: parent.width
@@ -277,13 +284,13 @@ Dialog {
                 bottomPadding: 17
                 font.bold: true
                 font.italic: true
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 text: qsTr("Miscellaneous")
                 width: parent.width
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             }
             Label {
-                font.pixelSize: ver.font.pixelSize * .85
+                font.pointSize: fontSize * .75 > 8 ? fontSize * .75 : 8
                 onLinkActivated: Qt.openUrlExternally(link);
                 text: "Waver contains an implementation of <a href=\"https://wiki.hydrogenaud.io/index.php?title=ReplayGain_specification\">ReplayGain</a>."
                 width: parent.width
