@@ -310,11 +310,17 @@ ApplicationWindow {
         year.text        = yearText;
 
         artistSummaryText = artistSummaryText.replace(/\n/g, " ");
-        artistSummary.text = artistSummaryText;
-        artistSummaryMetrics.text = artistSummaryText;
-        artistSummaryAnimation.running = artistSummaryText.length > 0
-        if (artistSummaryText.length > 0) {
-            artistSummaryPauser.restart();
+        if (artistSummary.text !== artistSummaryText) {
+            artistSummaryAnimation.stop();
+
+            artistSummary.text = artistSummaryText;
+            artistSummaryMetrics.text = artistSummaryText;
+
+            if (artistSummaryText.length > 0) {
+                artistSummaryAnimation.start();
+                artistSummaryAnimation.resume();
+                artistSummaryPauser.restart();
+            }
         }
     }
 
@@ -452,7 +458,7 @@ ApplicationWindow {
     }
     Timer {
         id: artistSummaryPauser
-        interval: 7500
+        interval: (artistSummary.text.length * 75 / (artistSummaryContainer.width + artistSummaryMetrics.boundingRect.width) * artistSummaryContainer.width) - 100
 
         onTriggered: {
             if (!artistSummaryMouseArea.containsMouse) {
@@ -575,8 +581,8 @@ ApplicationWindow {
 
                     NumberAnimation on x {
                         id: artistSummaryAnimation
-                        running: false
-                        paused: !artistSummaryMouseArea.containsMouse
+                        running: artistSummary.text.length > 0
+                        paused: running && !artistSummaryMouseArea.containsMouse
                         from: artistSummaryContainer.width
                         to: artistSummaryMetrics.boundingRect.width * -1
                         duration: artistSummary.text.length * 75

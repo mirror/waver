@@ -111,6 +111,10 @@ void OutputFeeder::run()
     int bytesToWrite;
     while (!QThread::currentThread()->isInterruptionRequested()) {
         if (outputDevice == nullptr) {
+            wideStereoBuffer1.fill(0);
+            wideStereoBuffer2.fill(0);
+            wideStereoBufferIndex = 0;
+            wideStereoBufferOne   = true;
             QThread::currentThread()->msleep(100);
             continue;
         }

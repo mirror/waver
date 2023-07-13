@@ -92,6 +92,7 @@ Dialog {
         search_action_filter.currentIndex = optionsObj.search_action_filter;
         search_action_count_max.value = optionsObj.search_action_count_max;
 
+        auto_refresh.checked = optionsObj.auto_refresh;
         hide_dot_playlists.checked = optionsObj.hide_dot_playlists;
         title_curly_special.checked = optionsObj.title_curly_special;
         starting_index_apply.checked = optionsObj.starting_index_apply;
@@ -186,6 +187,7 @@ Dialog {
                 search_action: search_action.currentIndex,
                 search_action_filter: search_action_filter.currentIndex,
                 search_action_count_max: search_action_count_max.value,
+                auto_refresh: auto_refresh.checked,
                 hide_dot_playlists: hide_dot_playlists.checked,
                 title_curly_special: title_curly_special.checked,
                 starting_index_apply: starting_index_apply.checked,
@@ -606,9 +608,6 @@ Dialog {
                         height: (imageSize + (imageSize / 12)) * shuffleItems.count
 
                         clip: true
-                        highlight: Rectangle {
-                            color: "LightSteelBlue";
-                        }
                         highlightMoveDuration: 500
                         highlightMoveVelocity: 500
                         delegate: shuffleElement
@@ -814,6 +813,12 @@ Dialog {
                 id: generalColumn
                 width: parent.width - 20
 
+                Row {
+                    CheckBox {
+                        id: auto_refresh
+                        text: qsTr("Automatically refresh cached items")
+                    }
+                }
                 Row {
                     CheckBox {
                         id: hide_dot_playlists

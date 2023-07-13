@@ -404,7 +404,9 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
                 }
             }
 
+            opQueueMutex.lock();
             opQueue.prepend({ opCode, opData, extra });
+            opQueueMutex.unlock();
 
             if (!handshakeInProgress && !sessionExpiredHandshakeStarted) {
                 emit errorMessage(id, tr("Renewing handshake"), QString("%1 %2").arg(errorCode).arg(errorMsg));
@@ -439,7 +441,9 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         QObject *opExtra = new QObject();
         opExtra->setProperty("count_flagged", "count_flagged");
 
+        opQueueMutex.lock();
         opQueue.prepend({ CountFlagged, OpData(), opExtra });
+        opQueueMutex.unlock();
         QTimer::singleShot(50, this, &AmpacheServer::startOperations);
         return;
     }
@@ -465,6 +469,9 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
             int recentFrequency   = settings.value("options/shuffle_recently_added_frequency", DEFAULT_SHUFFLE_RECENT_FREQUENCY).toInt();
 
             limit = opData.value("shuffle_total_limit", "0").toInt();
+            if (limit <= 0) {
+                limit = opData.value("shuffle_limit", "0").toInt();
+            }
             if (limit <= 0) {
                 limit = settings.value("options/shuffle_count", DEFAULT_SHUFFLE_COUNT).toInt();
             }
@@ -692,8 +699,10 @@ void AmpacheServer::startHandshake()
 
 void AmpacheServer::startOperation(OpCode opCode, OpData opData, QObject *extra)
 {
+    opQueueMutex.lock();
     opQueue.append({ opCode, opData, extra });
-    QTimer::singleShot(50, this, &AmpacheServer::startOperations);
+    opQueueMutex.unlock();
+    QTimer::singleShot((extra != nullptr) && extra->property("auto_refresh").isValid() ? 500 : 50, this, &AmpacheServer::startOperations);
 }
 
 
@@ -707,6 +716,7 @@ void AmpacheServer::startOperations()
         return;
     }
 
+    opQueueMutex.lock();
     while (opQueue.count()) {
         Operation operation = opQueue.first();
 
@@ -1027,6 +1037,7 @@ void AmpacheServer::startOperations()
             break;
         }
     }
+    opQueueMutex.unlock();
 }
 
 

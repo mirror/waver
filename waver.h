@@ -123,9 +123,15 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED;
         static const QString UI_ID_PREFIX_SERVER_SHUFFLE_RECENTLYADDED;
 
-        static const int SEARCH_MAX_QUERIES     = 9;
-        static const int SEARCH_TARGET_SONGS    = 0;
-        static const int SEARCH_TARGET_REST     = 1;
+        static const int SEARCH_MAX_QUERIES  = 9;
+        static const int SEARCH_TARGET_SONGS = 0;
+        static const int SEARCH_TARGET_REST  = 1;
+
+        static const int AUTO_REFRESH_NO_ACTION_DELAY_MILLISEC = 15000; //60 * 1000;
+        static const int AUTO_REFRESH_BROWSE                   = 0;
+        static const int AUTO_REFRESH_PLAYLISTS                = 1;
+        static const int AUTO_REFRESH_RAIOSTATIONS             = 2;
+        static const int AUTO_REFRESH_GENRES                   = 3;
 
         enum ShuffleMode {
             None,
@@ -182,6 +188,12 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         int                              searchOperationsCounter;
         int                              searchResultsCounter;
         QHash<QString, SearchActionData> searchActionItemsCounter;       // explorer id => action done items counter
+
+        bool   autoRefresh;
+        qint64 autoRefreshLastActionTimestamp;
+        int    autoRefreshLastDay;
+        int    autoRefreshLastServerIndex;
+        int    autoRefreshLastItem;
 
         int      serverIndex(QString id);
         QVariant globalConstant(QString constName);
@@ -286,6 +298,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void clearTrackUISignals();
 
         void shuffleCountdown();
+        void autoRefreshNext();
 
 
     signals:

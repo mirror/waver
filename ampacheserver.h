@@ -16,6 +16,7 @@
 #include <QMultiHash>
 #include <QLatin1String>
 #include <QList>
+#include <QMutex>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
@@ -126,6 +127,7 @@ class AmpacheServer : public QObject
         bool      shuffleFavoritesCompleted;
         bool      shuffleRecentlyAddedCompleted;
 
+        QMutex           opQueueMutex;
         QList<Operation> opQueue;
         QList<int>       shuffleTags;
 

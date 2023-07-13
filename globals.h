@@ -19,10 +19,12 @@ static const int     DEFAULT_SHUFFLE_DELAY_SECONDS      = 10;
 static const int     DEFAULT_SHUFFLE_FAVORITE_FREQUENCY = 4;
 static const int     DEFAULT_SHUFFLE_RECENT_FREQUENCY   = 4;
 static const bool    DEFAULT_SHUFFLE_AUTOSTART          = true;
-static const int     DEFAULT_FONT_SIZE                  = 12;
-static const int     DEFAULT_ALPHABET_LIMIT             = 49;
-static const int     DEFAULT_RECENTLY_ADDED_COUNT       = 100;
-static const int     DEFAULT_RECENTLY_ADDED_DAYS        = 14;
+
+static const int     DEFAULT_FONT_SIZE            = 12;
+static const int     DEFAULT_ALPHABET_LIMIT       = 49;
+static const int     DEFAULT_RECENTLY_ADDED_COUNT = 100;
+static const int     DEFAULT_RECENTLY_ADDED_DAYS  = 14;
+static const bool    DEFAULT_AUTO_REFRESH         = false;
 
 static const int DEFAULT_SEARCH_COUNT_MAX        = 0;
 static const int DEFAULT_SEARCH_ACTION           = 2;

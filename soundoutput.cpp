@@ -227,13 +227,7 @@ void SoundOutput::resume()
     initialCachingDone    = false;
 
     if (audioOutput != nullptr) {
-        audioIODevice = audioOutput->start();
-        if (feeder != nullptr) {
-            feeder->setOutputDevice(audioIODevice);
-        }
-        if (!timerWaits) {
-            fillBytesToPlay();
-        }
+        emit needChunk();
     }
 }
 

@@ -89,6 +89,7 @@ Waver::Waver() : QObject()
     decodingCallbackInfo.callbackMethod = (DecodingCallback::DecodingCallbackPointer)&Waver::decodingCallback;
     decodingCallbackInfo.trackPointer   = nullptr;
 
+    autoRefresh       = false;
     stopByShutdown    = false;
     shutdownCompleted = false;
 }
@@ -198,6 +199,64 @@ QChar Waver::alphabetFromName(QString name)
     }
 
     return returnValue;
+}
+
+
+void Waver::autoRefreshNext()
+{
+    if (autoRefreshLastServerIndex >= servers.count()) {
+        return;
+    }
+
+    itemActionServer(QString("%1%2").arg(UI_ID_PREFIX_SERVER).arg(autoRefreshLastServerIndex), globalConstant("action_collapse").toInt(), QVariantMap());
+    itemActionServer(QString("%1%2").arg(UI_ID_PREFIX_SERVER).arg(autoRefreshLastServerIndex), globalConstant("action_expand").toInt(), QVariantMap());
+
+    QString id;
+    AmpacheServer::OpCode opCode = AmpacheServer::Unknown;
+    if (autoRefreshLastItem == AUTO_REFRESH_BROWSE) {
+        id     = QString("%1%2|%3%4").arg(UI_ID_PREFIX_SERVER_BROWSE).arg(autoRefreshLastServerIndex).arg(UI_ID_PREFIX_SERVER).arg(autoRefreshLastServerIndex);
+        opCode = AmpacheServer::BrowseRoot;
+    }
+    else if (autoRefreshLastItem == AUTO_REFRESH_PLAYLISTS) {
+        opCode = AmpacheServer::PlaylistRoot;
+
+        QString playlistsId     = QString("%1%2|%3%4").arg(UI_ID_PREFIX_SERVER_PLAYLISTS).arg(autoRefreshLastServerIndex).arg(UI_ID_PREFIX_SERVER).arg(autoRefreshLastServerIndex);
+        QString smartPlaylistId = QString("%1%2|%3%4").arg(UI_ID_PREFIX_SERVER_SMARTPLAYLISTS).arg(autoRefreshLastServerIndex).arg(UI_ID_PREFIX_SERVER).arg(autoRefreshLastServerIndex);
+
+        explorerNetworkingUISignals(playlistsId, true);
+        explorerNetworkingUISignals(smartPlaylistId, true);
+        emit explorerRemoveChildren(playlistsId);
+        emit explorerRemoveChildren(smartPlaylistId);
+    }
+    else if (autoRefreshLastItem == AUTO_REFRESH_RAIOSTATIONS) {
+        id     = QString("%1%2|%3%4").arg(UI_ID_PREFIX_SERVER_RADIOSTATIONS).arg(autoRefreshLastServerIndex).arg(UI_ID_PREFIX_SERVER).arg(autoRefreshLastServerIndex);
+        opCode = AmpacheServer::RadioStations;
+    }
+    else if (autoRefreshLastItem == AUTO_REFRESH_GENRES) {
+        id     = QString("%1%2|%3%4").arg(UI_ID_PREFIX_SERVER_GENRES).arg(autoRefreshLastServerIndex).arg(UI_ID_PREFIX_SERVER).arg(autoRefreshLastServerIndex);
+        opCode = AmpacheServer::Tags;
+    }
+
+    if (!id.isEmpty()) {
+        explorerNetworkingUISignals(id, true);
+        emit explorerRemoveChildren(id);
+    }
+    if (opCode != AmpacheServer::Unknown) {
+        QObject *opExtra = new QObject();
+        opExtra->setProperty("auto_refresh", "auto_refresh");
+
+        servers.at(autoRefreshLastServerIndex)->startOperation(opCode, AmpacheServer::OpData(), opExtra);
+
+        autoRefreshLastItem++;
+        if (autoRefreshLastItem >= 4) {
+            autoRefreshLastItem = 0;
+            autoRefreshLastServerIndex++;
+        }
+
+        QSettings settings;
+        settings.setValue("auto_refresh/last_item", autoRefreshLastItem);
+        settings.setValue("auto_refresh/last_server_index", autoRefreshLastServerIndex);
+    }
 }
 
 
@@ -923,6 +982,8 @@ void Waver::itemActionServer(QString id, int action, QVariantMap extra)
 {
     Q_UNUSED(extra);
 
+    autoRefreshLastActionTimestamp = QDateTime::currentMSecsSinceEpoch();
+
     if ((action == globalConstant("action_expand")) || (action == globalConstant("action_refresh"))) {
         stopShuffleCountdown();
 
@@ -932,7 +993,7 @@ void Waver::itemActionServer(QString id, int action, QVariantMap extra)
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_PLAYLISTS), id),             id, tr("Playlists"),       "qrc:/icons/playlist.ico",      QVariantMap({}), true, false, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SMARTPLAYLISTS), id),        id, tr("Smart Playlists"), "qrc:/icons/playlist.ico",      QVariantMap({}), true, false, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_RADIOSTATIONS), id),         id, tr("Radio Stations"),  "qrc:/icons/radio_station.ico", QVariantMap({}), true, false, false, false);
-        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_GENRES), id),                id, tr("Genres"),          "qrc:/icons/genre.ico",           QVariantMap({}), true, false, false, false);
+        emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_GENRES), id),                id, tr("Genres"),          "qrc:/icons/genre.ico",         QVariantMap({}), true, false, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE), id),               id, tr("Shuffle"),         "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_FAVORITES), id),     id, tr("Favorites"),       "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
         emit explorerAddItem(QString("%1|%2").arg(QString(id).replace(0, 1, UI_ID_PREFIX_SERVER_SHUFFLE_NEVERPLAYED), id),   id, tr("Never Played"),    "qrc:/icons/shuffle.ico",       QVariantMap({}), false, true, false, false);
@@ -946,6 +1007,8 @@ void Waver::itemActionServer(QString id, int action, QVariantMap extra)
 
 void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
 {
+    autoRefreshLastActionTimestamp = QDateTime::currentMSecsSinceEpoch();
+
     stopShuffleCountdown();
 
     QStringList idParts  = id.split("|");
@@ -1973,6 +2036,7 @@ void Waver::requestOptions()
     optionsObj.insert("search_action_filter", settings.value("options/search_action_filter", DEFAULT_SEARCH_ACTION_FILTER));
     optionsObj.insert("search_action_count_max", settings.value("options/search_action_count_max", DEFAULT_SEARCH_ACTION_COUNT_MAX));
 
+    optionsObj.insert("auto_refresh", settings.value("options/auto_refresh", DEFAULT_AUTO_REFRESH).toBool());
     optionsObj.insert("hide_dot_playlists", settings.value("options/hide_dot_playlists", DEFAULT_HIDE_DOT_PLAYLIST).toBool());
     optionsObj.insert("title_curly_special", settings.value("options/title_curly_special", DEFAULT_TITLE_CURLY_SPECIAL).toBool());
     optionsObj.insert("starting_index_apply", settings.value("options/starting_index_apply", DEFAULT_STARTING_INDEX_APPLY).toBool());
@@ -2087,7 +2151,20 @@ void Waver::run()
         emit explorerAddItem(id, QVariant::fromValue(nullptr), servers.at(i)->formattedName(), "qrc:/icons/remote.ico", QVariantMap({}), true, false, false, false);
     }
 
-    if (servers.count()) {
+    autoRefreshLastActionTimestamp = QDateTime::currentMSecsSinceEpoch() + settings.value("options/shuffle_delay_seconds", DEFAULT_SHUFFLE_DELAY_SECONDS).toInt() * 1000 + 5000;
+    autoRefreshLastDay             = settings.value("auto_refresh/last_day", 0).toInt();
+    autoRefreshLastServerIndex     = settings.value("auto_refresh/last_server_index", 0).toInt();
+    autoRefreshLastItem            = settings.value("auto_refresh/last_item", 0).toInt();
+    if (autoRefreshLastItem > AUTO_REFRESH_GENRES) {
+        autoRefreshLastItem = 0;
+        autoRefreshLastServerIndex++;
+    }
+    if (autoRefreshLastServerIndex >= servers.count()) {
+        autoRefreshLastServerIndex = 0;
+    }
+    autoRefresh = settings.value("options/auto_refresh", DEFAULT_AUTO_REFRESH).toBool();
+
+    if (servers.count() > 0) {
         startShuffleCountdown();
     }
 }
@@ -2846,6 +2923,9 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
     if (opData.contains("search_action_parent_id")) {
         searchAction();
     }
+    if (opData.contains("auto_refresh")) {
+        QTimer::singleShot(2500, this, &Waver::autoRefreshNext);
+    }
 }
 
 
@@ -3386,6 +3466,15 @@ void Waver::trackPlayPosition(QString id, bool decoderFinished, long knownDurati
     if ((track == currentTrack) && (knownDurationMilliseconds > 0) && (playlist.size() > 0) && (playlist.at(0)->getStatus() == Track::Idle) && (knownDurationMilliseconds - positionMilliseconds <= 20000 + playlist.at(0)->getFadeDurationSeconds() * 1000)) {
         playlist.at(0)->setStatus(Track::Decoding);
     }
+
+    if (autoRefresh && (autoRefreshLastDay != QDateTime::currentDateTime().date().day()) && (QDateTime::currentMSecsSinceEpoch() >= autoRefreshLastActionTimestamp + AUTO_REFRESH_NO_ACTION_DELAY_MILLISEC)) {
+        autoRefreshLastDay = QDateTime::currentDateTime().date().day();
+
+        QSettings settings;
+        settings.setValue("auto_refresh/last_day", autoRefreshLastDay);
+
+        autoRefreshNext();
+    }
 }
 
 
@@ -3477,6 +3566,7 @@ void Waver::updatedOptions(QString optionsJSON)
     peakFPSMax            = options.value("max_peak_fps").toInt();
     peakDelayOn           = options.value("peak_delay_on").toBool();
     peakDelayMilliseconds = options.value("peak_delay_ms").toInt();
+    autoRefresh           = options.value("auto_refresh").toBool();
 
     crossfadeTags.clear();
     crossfadeTags.append(options.value("crossfade_tags").toString().split(","));
@@ -3512,6 +3602,7 @@ void Waver::updatedOptions(QString optionsJSON)
     settings.setValue("options/fade_seconds", options.value("fade_seconds").toInt());
     settings.setValue("options/starting_index_apply", options.value("starting_index_apply").toBool());
     settings.setValue("options/starting_index_days", options.value("starting_index_days").toLongLong());
+    settings.setValue("options/auto_refresh", options.value("auto_refresh").toBool());
     settings.setValue("options/hide_dot_playlists", options.value("hide_dot_playlists").toBool());
     settings.setValue("options/title_curly_special", options.value("title_curly_special").toBool());
     settings.setValue("options/alphabet_limit", options.value("alphabet_limit").toInt());
