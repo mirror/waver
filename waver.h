@@ -176,8 +176,8 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         int     shuffleServerIndex;
         bool    shuffleFirstAfterStart;
 
-        QStringList       playlistFirstGroupSongIds;
-        Track::TracksInfo playlistFirstGroupTracks;
+        QStringList       playlistLoadSongIds;
+        Track::TracksInfo playlistLoadTracks;
 
         bool   stopByShutdown;
         QMutex shutdownMutex;
@@ -226,8 +226,8 @@ class Waver : public QObject, PeakCallback, DecodingCallback
 
         void explorerNetworkingUISignals(QString id, bool networking);
 
-        void playlistFirstGroupSave();
-        int  playlistFirstGroupLoad();
+        void playlistSave();
+        int  playlistLoad();
 
         bool    playlistAttributeSave(AmpacheServer *server, QString playlistId, QString attribute, QString value);
         QString playlistAttributeLoad(AmpacheServer *server, QString playlistId, QString attribute);
@@ -340,7 +340,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
 
         void uiShowSearchCriteria();
 
-        void playlistAddItem(QVariant title, QVariant artist, QVariant group, QVariant image, QVariant selected);
+        void playlistAddItem(QVariant title, QVariant artist, QVariant group, QVariant image, QVariant selected, QVariant ampacehUrl);
         void playlistClearItems();
         void playlistBufferData(QVariant index, QVariant memoryUsageText);
         void playlistBusy(QVariant index, QVariant busy);

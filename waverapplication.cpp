@@ -98,7 +98,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
 
     QObject::connect(waver ,SIGNAL(uiSetFontSize(QVariant)), uiMainWindow, SLOT(setFontSize(QVariant)));
 
-    QObject::connect(waver, SIGNAL(playlistAddItem(QVariant,QVariant,QVariant,QVariant,QVariant)), uiMainWindow, SLOT(playlistAddItem(QVariant,QVariant,QVariant,QVariant,QVariant)));
+    QObject::connect(waver, SIGNAL(playlistAddItem(QVariant,QVariant,QVariant,QVariant,QVariant,QVariant)), uiMainWindow, SLOT(playlistAddItem(QVariant,QVariant,QVariant,QVariant,QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(playlistClearItems()), uiMainWindow, SLOT(playlistClearItems()));
     QObject::connect(waver, SIGNAL(playlistBusy(QVariant,QVariant)), uiMainWindow, SLOT(playlistBusy(QVariant,QVariant)));
     QObject::connect(waver, SIGNAL(playlistDecoding(QVariant,QVariant,QVariant)), uiMainWindow, SLOT(playlistDecoding(QVariant,QVariant,QVariant)));

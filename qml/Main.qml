@@ -158,9 +158,9 @@ ApplicationWindow {
         options.setEQ(eqObj);
     }
 
-    function playlistAddItem(title, artist, group, image, selected)
+    function playlistAddItem(title, artist, group, image, selected, ampacheURL)
     {
-        playlist.addItem(title, artist, group, image, selected);
+        playlist.addItem(title, artist, group, image, selected, ampacheURL);
     }
 
     function playlistBusy(index, busy)

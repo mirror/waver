@@ -21,7 +21,7 @@ Item {
     signal itemDragDropped(int index, int destinationIndex)
     signal explorerItemDragDroped(string id, int destinationIndex)
 
-    function addItem(title, artist, group, image, selected)
+    function addItem(title, artist, group, image, selected, ampacheURL)
     {
         if ((typeof selected === 'undefined') || (selected === null)) {
             selected = false;
@@ -43,6 +43,7 @@ Item {
             busy: false,
             downloadPercent: 0,
             pcmPercent: 0,
+            ampacheURL: ampacheURL,
             isError: false,
             errorMessage: "",
         }
@@ -173,7 +174,6 @@ Item {
 
             onTriggered: itemClicked(playlistItemsView.currentIndex, globalConstants.action_play);
         }
-        MenuSeparator { }
         MenuItem {
             id: moveToTopPlaylistMenu
 
@@ -196,6 +196,18 @@ Item {
             font.pointSize: fontSize
 
             onTriggered: itemClicked(playlistItemsView.currentIndex, globalConstants.action_remove);
+        }
+        MenuItem {
+            id: ampacheLinkMenu
+
+            icon.source: "qrc:///icons/search.ico"
+            icon.height: 24
+            icon.width: 24
+            text: qsTr("Find on Ampache")
+            font.pointSize: fontSize
+
+            onTriggered: Qt.openUrlExternally(playlistItems.get(playlistItemsView.currentIndex).ampacheURL);
+            enabled: (playlistItemsView.currentIndex >= 0) && (playlistItems.get(playlistItemsView.currentIndex).ampacheURL.length > 0);
         }
         MenuSeparator { }
         MenuItem {
