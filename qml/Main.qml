@@ -36,7 +36,7 @@ ApplicationWindow {
     signal updatedOptions(string optionsJSON);
     signal requestEQ(int eq_chooser)
     signal requestLog();
-    signal peakUILag();
+    signal peakUILag(int lagMS);
     signal searchCriteriaEntered(string criteria);
     signal searchResult(string parent, string id, string extra);
 
@@ -239,8 +239,9 @@ ApplicationWindow {
     {
         peakMeter.setPeak(l, r);
 
-        if (Math.abs(Date.now() - scheduledTimeMS) >= 10) {
-            peakUILag();
+        var lagMS = Date.now() - scheduledTimeMS;
+        if (lagMS >= 10) {
+            peakUILag(lagMS);
         }
     }
 
@@ -995,9 +996,9 @@ ApplicationWindow {
                 anchors.left: albumBackground.left
                 anchors.leftMargin: 7
 
-                color: title.palette.highlightedText
+                color: title.palette.windowText
                 font.italic: true
-                font.pointSize: internal.fontSize * 1.25
+                font.pointSize: internal.fontSize
                 text: "trackNumber"
             }
 
@@ -1007,6 +1008,8 @@ ApplicationWindow {
                 anchors.left: trackNumber.right
                 anchors.right: year.left
                 anchors.verticalCenter: albumBackground.verticalCenter
+                anchors.leftMargin: 7
+                anchors.rightMargin: 7
 
                 color: title.palette.highlightedText
                 font.pointSize: internal.fontSize * (Math.min(title.font.pointSize, performer.font.pointSize) >= internal.outlinePointSize ? 1.25 : 1)
@@ -1022,9 +1025,9 @@ ApplicationWindow {
                 anchors.right: albumBackground.right
                 anchors.rightMargin: 7
 
-                color: title.palette.highlightedText
+                color: title.palette.windowText
                 font.italic: true
-                font.pointSize: internal.fontSize * 1.25
+                font.pointSize: internal.fontSize
                 text: "year"
             }
 

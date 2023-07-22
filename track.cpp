@@ -558,7 +558,7 @@ void Track::optionsUpdated()
         gains.append(settings.value(prefix + "/eq10", DEFAULT_EQ10).toDouble());
 
         bool   on     = settings.value("eq/on", DEFAULT_EQON).toBool();
-        double preAmp = settings.value(prefix + "pre_amp", DEFAULT_PREAMP).toDouble();
+        double preAmp = settings.value(prefix + "/pre_amp", DEFAULT_PREAMP).toDouble();
 
         equalizer->setGains(on, gains, preAmp);
     }

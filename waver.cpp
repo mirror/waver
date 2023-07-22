@@ -71,18 +71,18 @@ Waver::Waver() : QObject()
     peakCallbackInfo.peakFPS        = &peakFPS;
     peakCallbackInfo.peakFPSMutex   = &peakFPSMutex;
 
-    peakCallbackCount    = 0;
-    peakUILagCount       = 0;
-    peakLagCount         = 0;
-    peakLagIgnoreEnd     = 0;
-    peakFPSIncreaseStart = 0;
+    peakUILagLastMS     = 0;
+    peakCallbackCount   = 0;
+    peakLagCount        = 0;
+    peakFPSNextIncrease = 0;
 
     searchQueriesCounter    = 0;
     searchOperationsCounter = 0;
     searchResultsCounter    = 0;
 
     peakFPSMutex.lock();
-    peakFPS = peakFPSMax;
+    peakFPS           = peakFPSMax;
+    peakLagCheckCount = static_cast<int>(round(333.0 / (1000.0 / peakFPS)));
     peakFPSMutex.unlock();
 
     decodingCallbackInfo.callbackObject = (DecodingCallback *)this;
@@ -800,6 +800,8 @@ void Waver::itemActionSearchResult(QString id, int action, QVariantMap extra)
 
             actionPlay(trackInfo);
             playlist.clear();
+            playlistUpdateUISignals();
+            playlistSave();
         }
         else if (id.startsWith(UI_ID_PREFIX_SEARCHRESULT_PLAYLIST)) {
             QObject *opExtra = new QObject();
@@ -1478,39 +1480,33 @@ void Waver::peakCallback(double lPeak, double rPeak, qint64 delayMicroseconds, v
         emit uiSetPeakMeter(1 - lPeak, 1 - rPeak, scheduledTime);
     });
 
-    if (peakCallbackCount % 10 == 0) {
-        int milliseconds = 3000;
-
-        if (peakUILagCount > 0) {
-            peakLagCount++;
-
+    if (peakCallbackCount % peakLagCheckCount == 0) {
+        if (peakUILagLastMS > 0) {
             peakFPSMutex.lock();
-            if (peakFPS > 3) {
-                peakFPS -= 2;
-            }
+            peakFPS             = qMax(static_cast<qint64>(1), static_cast<qint64>(round(1000.0 / (1000.0 / peakFPS + peakUILagLastMS))));
+            peakLagCheckCount   = qMax(static_cast<int>(1), static_cast<int>(round(333.0 / (1000.0 / peakFPS))));
+            peakFPSNextIncrease = peakCallbackCount + static_cast<qint64>(round(500.0 / (1000.0 / peakFPS)));
             peakFPSMutex.unlock();
 
-            peakLagIgnoreEnd     = QDateTime::currentMSecsSinceEpoch() + 500;
-            peakFPSIncreaseStart = QDateTime::currentMSecsSinceEpoch() + qMin(peakLagCount * 50, static_cast<qint64>(milliseconds));
-            peakUILagCount       = 0;
-        }
-        else if ((peakFPS < peakFPSMax) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart)) {
-            peakFPSMutex.lock();
-            peakFPS++;
-            peakFPSMutex.unlock();
-        }
+            peakUILagLastMS = 0;
+            peakLagCount    = 0;
 
-        if ((peakLagCount > 0) && (QDateTime::currentMSecsSinceEpoch() >= peakFPSIncreaseStart + milliseconds)) {
-            peakLagCount = 0;
+
         }
+    }
+    if ((peakFPS < peakFPSMax) && (peakCallbackCount >= peakFPSNextIncrease)) {
+        peakFPSMutex.lock();
+        peakFPS++;
+        peakFPSNextIncrease = peakCallbackCount + static_cast<qint64>(round(150.0 / (1000.0 / peakFPS)));
+        peakFPSMutex.unlock();
     }
 }
 
 
-void Waver::peakUILag()
+void Waver::peakUILag(int lagMS)
 {
-    if (QDateTime::currentMSecsSinceEpoch() > peakLagIgnoreEnd) {
-        peakUILagCount++;
+    if (lagMS > peakUILagLastMS) {
+        peakUILagLastMS = lagMS;
     }
 }
 
@@ -1656,15 +1652,22 @@ void Waver::playlistSave()
     QSettings settings;
     settings.remove("playlist");
 
-    if (playlist.size() < 1) {
+    QList<Track *> toBeSaved;
+
+    if (currentTrack != nullptr) {
+        toBeSaved.append(currentTrack);
+    }
+    toBeSaved.append(playlist);
+
+    if (toBeSaved.size() < 1) {
         return;
     }
 
     settings.beginWriteArray("playlist");
-    for (int i = 0; i < playlist.count(); i++) {
+    for (int i = 0; i < toBeSaved.count(); i++) {
         settings.setArrayIndex(i);
 
-        Track::TrackInfo trackInfo = playlist.at(i)->getTrackInfo();
+        Track::TrackInfo trackInfo = toBeSaved.at(i)->getTrackInfo();
 
         QStringList idParts  = trackInfo.id.split("|");
         QString     serverId = idParts.last();

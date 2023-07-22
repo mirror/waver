@@ -136,7 +136,7 @@ void WaverApplication::setQmlApplicationEngine(QQmlApplicationEngine *qmlApplica
     QObject::connect(waver,        SIGNAL(uiHistoryRemove(QVariant)),     uiMainWindow, SLOT(historyRemove(QVariant)));
     QObject::connect(waver,        SIGNAL(uiRaise()),                     uiMainWindow, SLOT(bringToFront()));
     QObject::connect(waver,        SIGNAL(uiSetIsSnap(QVariant)),         uiMainWindow, SLOT(quickStartGuideSetIsSnap(QVariant)));
-    QObject::connect(uiMainWindow, SIGNAL(peakUILag()),                   waver,        SLOT(peakUILag()));
+    QObject::connect(uiMainWindow, SIGNAL(peakUILag(int)),                waver,        SLOT(peakUILag(int)));
     QObject::connect(uiMainWindow, SIGNAL(saveGeometry(int,int,int,int)), this,         SLOT(uiSaveGeometry(int,int,int,int)));
 
     QObject::connect(waver,        SIGNAL(explorerGetSearchResult(QVariant,QVariant)), uiMainWindow, SLOT(explorerGetSearchResult(QVariant,QVariant)));

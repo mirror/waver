@@ -23,6 +23,7 @@
 #include <QStandardPaths>
 #include <QString>
 #include <QTextDocumentFragment>
+#include <QtGlobal>
 #include <QTimer>
 #include <QUrl>
 #include <QUuid>
@@ -127,7 +128,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         static const int SEARCH_TARGET_SONGS = 0;
         static const int SEARCH_TARGET_REST  = 1;
 
-        static const int AUTO_REFRESH_NO_ACTION_DELAY_MILLISEC = 15000; //60 * 1000;
+        static const int AUTO_REFRESH_NO_ACTION_DELAY_MILLISEC = 60 * 1000;
         static const int AUTO_REFRESH_BROWSE                   = 0;
         static const int AUTO_REFRESH_PLAYLISTS                = 1;
         static const int AUTO_REFRESH_RAIOSTATIONS             = 2;
@@ -150,14 +151,14 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         QObject    *globalConstants;
 
         PeakCallbackInfo peakCallbackInfo;
-        int              peakCallbackCount;
+        qint64           peakCallbackCount;
         qint64           peakFPS;
         QMutex           peakFPSMutex;
         qint64           peakFPSMax;
-        int              peakUILagCount;
+        int              peakUILagLastMS;
+        int              peakLagCheckCount;
         qint64           peakLagCount;
-        qint64           peakLagIgnoreEnd;
-        qint64           peakFPSIncreaseStart;
+        qint64           peakFPSNextIncrease;
         bool             peakDelayOn;
         qint64           peakDelayMilliseconds;
 
@@ -280,7 +281,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void updatedOptions(QString optionsJSON);
         void requestEQ(int eqChooser);
 
-        void peakUILag();
+        void peakUILag(int lagMS);
 
         void shutdown();
 
