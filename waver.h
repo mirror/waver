@@ -205,8 +205,8 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void itemActionServer(QString id, int action, QVariantMap extra);
         void itemActionServerItem(QString id, int action, QVariantMap extra);
 
-        void actionPlay(Track::TrackInfo trackInfo);
-        void actionPlay(Track *track);
+        void actionPlay(Track::TrackInfo trackInfo, bool allowCrossfade = true);
+        void actionPlay(Track *track, bool allowCrossfade = true);
 
         void startNextTrack();
 

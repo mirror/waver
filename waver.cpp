@@ -124,16 +124,16 @@ Waver::~Waver()
 }
 
 
-void Waver::actionPlay(Track::TrackInfo trackInfo)
+void Waver::actionPlay(Track::TrackInfo trackInfo, bool allowCrossfade)
 {
     Track *track = new Track(trackInfo, peakCallbackInfo, decodingCallbackInfo);
     connectTrackSignals(track);
 
-    actionPlay(track);
+    actionPlay(track, allowCrossfade);
 }
 
 
-void Waver::actionPlay(Track *track)
+void Waver::actionPlay(Track *track, bool allowCrossfade)
 {
     killPreviousTrack();
 
@@ -142,7 +142,7 @@ void Waver::actionPlay(Track *track)
         startNextTrack();
     }
     else {
-        bool crossfade = isCrossfade(currentTrack, track);
+        bool crossfade = allowCrossfade && isCrossfade(currentTrack, track);
 
         previousTrack = currentTrack;
         currentTrack  = nullptr;
@@ -1442,7 +1442,7 @@ void Waver::nextButton()
         Track *track = playlist.first();
         playlist.removeFirst();
 
-        actionPlay(track);
+        actionPlay(track, false);
     }
 }
 
@@ -1601,6 +1601,7 @@ int Waver::playlistLoad()
     emit uiSetStatusText(tr("Networking"));
     emit playlistBigBusy(true);
 
+    int loaded = 0;
     for (int i = 0; i < tracksSize; i++) {
         settings.setArrayIndex(i);
 
@@ -1640,10 +1641,12 @@ int Waver::playlistLoad()
 
         playlistLoadSongIds.append(newId);
         ampServer->startOperation(AmpacheServer::Song, {{ "song_id", settings.value("track_id").toString() }}, opExtra);
+
+        loaded++;
     }
     settings.endArray();
 
-    return tracksSize;
+    return loaded;
 }
 
 
@@ -1672,6 +1675,10 @@ void Waver::playlistSave()
         QStringList idParts  = trackInfo.id.split("|");
         QString     serverId = idParts.last();
         int         srvIndex = serverIndex(serverId);
+
+        if (srvIndex < 0) {
+            continue;
+        }
 
         QString settingsId = servers.at(srvIndex)->getSettingsId().toString();
         QString trackId    = idParts.at(0).mid(1);
@@ -1878,11 +1885,11 @@ void Waver::previousButton(int index)
         return;
     }
 
-    actionPlay(history.at(index));
+    actionPlay(history.at(index), false);
     index++;
 
     int i = 0;
-    while (i < index) {
+    while ((i < index) && (i < history.count())) {
         Track *track = new Track(history.at(i), peakCallbackInfo, decodingCallbackInfo);
         connectTrackSignals(track);
         playlist.prepend(track);
