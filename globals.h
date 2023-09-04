@@ -36,9 +36,9 @@ static const bool DEFAULT_TITLE_CURLY_SPECIAL  = true;
 static const bool DEFAULT_STARTING_INDEX_APPLY = true;
 static const int  DEFAULT_STARTING_INDEX_DAYS  = 30;
 
-static const QString DEFAULT_FADE_TAGS         = "live,medley,nonstop";
-static const QString DEFAULT_CROSSFADE_TAGS    = "live";
-static const int     DEFAULT_FADE_SECONDS      = 7;
+static const QString DEFAULT_FADE_TAGS      = "live,medley,nonstop";
+static const QString DEFAULT_CROSSFADE_TAGS = "live";
+static const int     DEFAULT_FADE_SECONDS   = 7;
 
 static const int    DEFAULT_MAX_PEAK_FPS  = 25;
 static const bool   DEFAULT_PEAK_DELAY_ON = false;

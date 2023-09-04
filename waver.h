@@ -141,6 +141,12 @@ class Waver : public QObject, PeakCallback, DecodingCallback
             RecentlyAdded
         };
 
+        enum CrossfadeMode {
+            PlayNormal,
+            Crossfade,
+            ShortCrossfade
+        };
+
         QStringList           localDirs;
         QList<AmpacheServer*> servers;
 
@@ -205,8 +211,8 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void itemActionServer(QString id, int action, QVariantMap extra);
         void itemActionServerItem(QString id, int action, QVariantMap extra);
 
-        void actionPlay(Track::TrackInfo trackInfo, bool allowCrossfade = true);
-        void actionPlay(Track *track, bool allowCrossfade = true);
+        void actionPlay(Track::TrackInfo trackInfo, bool allowCrossfade = false);
+        void actionPlay(Track *track, bool allowCrossfade = false);
 
         void startNextTrack();
 
@@ -217,9 +223,9 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         Track::TrackInfo trackInfoFromIdExtra(QString id, QVariantMap extra);
         QUrl             trackURL(QString id);
 
-        void connectTrackSignals(Track *track, bool newConnect = true);
-        bool isCrossfade(Track *track1, Track *track2);
-        void killPreviousTrack();
+        void          connectTrackSignals(Track *track, bool newConnect = true);
+        CrossfadeMode isCrossfade(Track *track1, Track *track2);
+        void          killPreviousTrack();
 
         void startShuffleCountdown();
         void stopShuffleCountdown();
@@ -295,7 +301,7 @@ class Waver : public QObject, PeakCallback, DecodingCallback
         void errorMessage(QString id, QString info, QString error);
 
         void startNextTrackUISignals();
-        void playlistUpdateUISignals();
+        void playlistUpdated();
         void clearTrackUISignals();
 
         void shuffleCountdown();

@@ -13,6 +13,7 @@ DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x051210
 HEADERS += \
     ampacheserver.h \
     analyzer.h \
+    coefficientlist.h \
     decodergeneric.h \
     decodergenericnetworksource.h \
     decodingcallback.h \
@@ -20,11 +21,15 @@ HEADERS += \
     filescanner.h \
     filesearcher.h \
     globals.h \
+    iirfilter.h \
+    iirfiltercallback.h \
+    iirfilterchain.h \
     notificationshandler.h \
     outputfeeder.h \
     pcmcache.h \
     peakcallback.h \
     radiotitlecallback.h \
+    replaygaincoefficients.h \
     replaygaincalculator.h \
     soundoutput.h \
     track.h \
@@ -34,12 +39,16 @@ HEADERS += \
 SOURCES += \
     ampacheserver.cpp \
     analyzer.cpp \
+    coefficientlist.cpp \
     decodergeneric.cpp \
     decodergenericnetworksource.cpp \
     decodingcallback.cpp \
     equalizer.cpp \
     filescanner.cpp \
     filesearcher.cpp \
+    iirfilter.cpp \
+    iirfiltercallback.cpp \
+    iirfilterchain.cpp \
     main.cpp \
     notificationshandler.cpp \
     outputfeeder.cpp \
@@ -69,7 +78,7 @@ unix:!android {
         mediaplayer2dbusadaptor.cpp \
         mediaplayer2playerdbusadaptor.cpp
 
-    LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -lqt5keychain -ltag -lwaveriir
+    LIBS += -L/usr/lib/i386-linux-gnu -L/usr/lib/x86_64-linux-gnu -lqt5keychain -ltag
 
     target.path = /opt/waver/bin
     INSTALLS += target

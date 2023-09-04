@@ -13,7 +13,6 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
     cacheThread.setObjectName("cache");
     analyzerThread.setObjectName("analyzer");
     equalizerThread.setObjectName("equalizer");
-    outputThread.setObjectName("output");
 
     this->trackInfo = trackInfo;
 
@@ -23,25 +22,22 @@ Track::Track(TrackInfo trackInfo, PeakCallback::PeakCallbackInfo peakCallbackInf
     this->peakCallbackInfo     = peakCallbackInfo;
     this->decodingCallbackInfo = decodingCallbackInfo;
 
-    currentStatus             = Idle;
-    stopping                  = false;
-    decodingDone              = false;
-    finishedSent              = false;
-    fadeoutStartedSent        = false;
-    posMilliseconds           = 0;
-    decodingInfoLastSent      = 0;
-    networkStartingLastState  = false;
+    currentStatus            = Idle;
+    stopping                 = false;
+    decodingDone             = false;
+    finishedSent             = false;
+    fadeoutStartedSent       = false;
+    posMilliseconds          = 0;
+    decodingInfoLastSent     = 0;
+    networkStartingLastState = false;
 
     QSettings settings;
 
     fadeDirection       = FadeDirectionNone;
-    fadeDurationSeconds = settings.value("options/fade_seconds", DEFAULT_FADE_SECONDS).toInt();
+    shortFadeBeginning  = false;
+    shortFadeEnd        = false;
 
-    #ifdef Q_OS_WIN
-        fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds() + 1) * 1000) : 10 * 24 * 60 * 60 * 1000;
-    #elif defined (Q_OS_LINUX)
-        fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds() + 1) * 1000) : std::numeric_limits<qint64>::max();
-    #endif
+    updateFadeoutStartMilliseconds();
 
     fadeTags.append(settings.value("options/fade_tags", DEFAULT_FADE_TAGS).toString().split(","));
     skipLongSilence             = settings.value("options/skip_long_silence", DEFAULT_SKIP_LONG_SILENCE).toBool();
@@ -72,6 +68,7 @@ Track::~Track()
 
     outputThread.quit();
     outputThread.wait();
+
     if (soundOutput != nullptr) {
         disconnect(soundOutput, &SoundOutput::needChunk,       this, &Track::outputNeedChunk);
         disconnect(soundOutput, &SoundOutput::positionChanged, this, &Track::outputPositionChanged);
@@ -152,16 +149,13 @@ void Track::analyzerReplayGain(double replayGain)
 void Track::analyzerSilences(ReplayGainCalculator::Silences silences)
 {
     this->silences = silences;
-
-    if ((silences.count() > 0) && (silences.last().type == ReplayGainCalculator::SilenceAtEnd)) {
-        fadeoutStartMilliseconds = (silences.last().startMicroseconds / 1000) - ((getFadeDurationSeconds() + 1) * 1000);
-    }
+    updateFadeoutStartMilliseconds();
 }
 
 
 void Track::applyFade(QByteArray *chunk)
 {
-    double framesPerPercent = static_cast<double>(desiredPCMFormat.framesForDuration(fadeDurationSeconds * 1000000)) / 100;
+    double framesPerPercent = static_cast<double>(desiredPCMFormat.framesForDuration(getFadeDurationSeconds(fadeDirection) * 1000000)) / 100;
     double framesPerSample  = 1.0 / desiredPCMFormat.channelCount();
 
     int dataType = 0;
@@ -379,6 +373,8 @@ void Track::decoderFinished()
     if (currentStatus == Paused) {
         emit playPosition(trackInfo.id, true, decoder->getDecodedMicroseconds() / 1000, posMilliseconds);
     }
+
+    updateFadeoutStartMilliseconds();
 }
 
 
@@ -451,9 +447,17 @@ QVector<double> Track::getEqualizerBandCenterFrequencies()
 }
 
 
-int Track::getFadeDurationSeconds()
+int Track::getFadeDurationSeconds(FadeDirection fadeDirection)
 {
-    return fadeDurationSeconds;
+    if ((fadeDirection == FadeDirectionIn) && shortFadeBeginning) {
+        return SHORT_FADE_SECONDS;
+    }
+    if ((fadeDirection == FadeDirectionOut) && shortFadeEnd) {
+        return SHORT_FADE_SECONDS;
+    }
+
+    QSettings settings;
+    return settings.value("options/fade_seconds", DEFAULT_FADE_SECONDS).toInt();
 }
 
 
@@ -537,7 +541,8 @@ void Track::optionsUpdated()
     fadeTags.clear();
     fadeTags.append(settings.value("options/fade_tags", DEFAULT_FADE_TAGS).toString().split(","));
 
-    fadeDurationSeconds         = settings.value("options/fade_seconds", DEFAULT_FADE_SECONDS).toInt();
+    updateFadeoutStartMilliseconds();
+
     skipLongSilence             = settings.value("options/skip_long_silence", DEFAULT_SKIP_LONG_SILENCE).toBool();
     skipLongSilenceMicroseconds = settings.value("options/skip_long_silence_seconds", DEFAULT_SKIP_LONG_SILENCE_SECONDS).toInt() * USEC_PER_SEC;
 
@@ -661,7 +666,7 @@ void Track::pcmChunkFromCache(QByteArray chunk, qint64 startMicroseconds)
 
 void Track::pcmChunkFromEqualizer(TimedChunk chunk)
 {
-    if ((chunk.startMicroseconds / 1000 >= fadeoutStartMilliseconds) && (fadeDirection == FadeDirectionNone) && isDoFade()) {
+    if ((fadeDirection == FadeDirectionNone) && isDoFade() && ((chunk.startMicroseconds + desiredPCMFormat.durationForBytes(chunk.chunkPointer->size())) / 1000 >= fadeoutStartMilliseconds)) {
         fadeDirection  = FadeDirectionOut;
         fadePercent    = 100;
         fadeFrameCount = 0;
@@ -740,7 +745,6 @@ void Track::sendFinished()
         return;
     }
     finishedSent = true;
-
     emit finished(trackInfo.id);
 }
 
@@ -770,6 +774,29 @@ void Track::setPosition(double percent)
         emit pause();
         emit resume();
         emit cacheRequestTimestampPCMChunk(static_cast<long>(newPosition));
+    }
+}
+
+
+void Track::setShortFadeBeginning(bool shortFade)
+{
+    shortFadeBeginning = shortFade;
+}
+
+
+void Track::setShortFadeEnd(bool shortFade)
+{
+    shortFadeEnd = shortFade;
+
+    if ((silences.count() > 0) && (silences.last().type == ReplayGainCalculator::SilenceAtEnd)) {
+        fadeoutStartMilliseconds = (silences.last().startMicroseconds / 1000) - ((getFadeDurationSeconds(FadeDirectionOut) + 1) * 1000);
+    }
+    else {
+        #ifdef Q_OS_WIN
+            fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds(FadeDirectionOut) + 1) * 1000) : 10 * 24 * 60 * 60 * 1000;
+        #elif defined (Q_OS_LINUX)
+            fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds(FadeDirectionOut) + 1) * 1000) : std::numeric_limits<qint64>::max();
+        #endif
     }
 }
 
@@ -864,7 +891,7 @@ void Track::setStatus(Status status)
     }
 
     if ((status == Playing) && (currentStatus == Paused)) {
-        if (decodingDone && (posMilliseconds >= decoder->getDecodedMicroseconds() / 1000 - 1000)) {
+        if (decodingDone && (posMilliseconds >= decoder->getDecodedMicroseconds() / 1000 - 2500)) {
             sendFinished();
             return;
         }
@@ -991,7 +1018,6 @@ void Track::setupEqualizer()
 void Track::setupOutput()
 {
     soundOutput = new SoundOutput(desiredPCMFormat, peakCallbackInfo);
-
     soundOutput->setBufferQueue(&outputQueue, &outputQueueMutex);
     soundOutput->moveToThread(&outputThread);
 
@@ -1013,5 +1039,20 @@ void Track::underrunTimeout()
     if ((!decodingDone && (decoder != nullptr) && (decodedMillisecondsAtUnderrun >= decoder->getDecodedMicroseconds() / 1000)) || (decodingDone && (posMilliseconds == posMillisecondsAtUnderrun))) {
         emit error(trackInfo.id, tr("Buffer underrun."), tr("Possible download interruption due to a network error."));
         sendFinished();
+    }
+}
+
+
+void Track::updateFadeoutStartMilliseconds()
+{
+    if ((silences.count() > 0) && (silences.last().type == ReplayGainCalculator::SilenceAtEnd)) {
+        fadeoutStartMilliseconds = (silences.last().startMicroseconds / 1000) - ((getFadeDurationSeconds(FadeDirectionOut) + 1) * 1000);
+    }
+    else {
+        #ifdef Q_OS_WIN
+            fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds(FadeDirectionOut) + 1) * 1000) : 10 * 24 * 60 * 60 * 1000;
+        #elif defined (Q_OS_LINUX)
+            fadeoutStartMilliseconds = getLengthMilliseconds() > 0 ? getLengthMilliseconds() - ((getFadeDurationSeconds(FadeDirectionOut) + 1) * 1000) : std::numeric_limits<qint64>::max();
+        #endif
     }
 }

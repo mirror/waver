@@ -17,10 +17,10 @@
 #include <QTimeZone>
 #include <QVariant>
 #include <QVariantHash>
-#include <waveriir/coefficientlist.h>
-#include <waveriir/iirfilter.h>
-#include <waveriir/iirfilterchain.h>
-#include <waveriir/replaygaincoefficients.h>
+#include <coefficientlist.h>
+#include <iirfilter.h>
+#include <iirfilterchain.h>
+#include <replaygaincoefficients.h>
 
 #include "globals.h"
 #include "replaygaincalculator.h"

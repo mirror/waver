@@ -230,11 +230,6 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
     // downloading
     downloadStarted = true;
 
-    // check if this is the last chunk
-    if (bytesReceived == bytesTotal) {
-        downloadFinished = true;
-    }
-
     // read the data
     QByteArray data = networkReply->readAll();
 
@@ -346,6 +341,11 @@ void DecoderGenericNetworkSource::networkDownloadProgress(qint64 bytesReceived, 
             QTimer::singleShot(250, this, &DecoderGenericNetworkSource::emitReady);
             readyEmitted = true;
         }
+    }
+
+    // check if this is the last chunk
+    if (bytesReceived == bytesTotal) {
+        downloadFinished = true;
     }
 
     // wake up the decoder thread

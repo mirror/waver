@@ -51,6 +51,12 @@ class Track : public QObject, RadioTitleCallback
             Paused
         };
 
+        enum FadeDirection {
+            FadeDirectionNone,
+            FadeDirectionIn,
+            FadeDirectionOut
+        };
+
         struct TrackInfo {
             QString      id;
             QUrl         url;
@@ -89,7 +95,9 @@ class Track : public QObject, RadioTitleCallback
         qint64          getDecodedMilliseconds();
         qint64          getLengthMilliseconds();
         qint64          getPlayedMillseconds();
-        int             getFadeDurationSeconds();
+        int             getFadeDurationSeconds(FadeDirection fadeDirection);
+        void            setShortFadeBeginning(bool shortFade);
+        void            setShortFadeEnd(bool shortFade);
         QVector<double> getEqualizerBandCenterFrequencies();
         bool            getNetworkStartingLastState();
 
@@ -101,15 +109,10 @@ class Track : public QObject, RadioTitleCallback
 
     private:
 
-        enum FadeDirection {
-            FadeDirectionNone,
-            FadeDirectionIn,
-            FadeDirectionOut
-        };
-
         static const long USEC_PER_SEC                   = 1000 * 1000;
         static const int  DECODING_CB_DELAY_MILLISECONDS = 40;
         static const int  UNDERRUN_DELAY_MILLISECONDS    = 5000;
+        static const int  SHORT_FADE_SECONDS             = 2;
 
         struct RadioTitlePosition {
             qint64  microsecondsTimestamp;
@@ -152,11 +155,12 @@ class Track : public QObject, RadioTitleCallback
         qint64 decodingInfoLastSent;
         bool   networkStartingLastState;
 
-        int    fadeDurationSeconds;
-        qint64 fadeoutStartMilliseconds;
-        int    fadeDirection;
-        qint64 fadePercent;
-        double fadeFrameCount;
+        bool          shortFadeBeginning;
+        bool          shortFadeEnd;
+        qint64        fadeoutStartMilliseconds;
+        FadeDirection fadeDirection;
+        qint64        fadePercent;
+        double        fadeFrameCount;
 
         qint64 decodedMillisecondsAtUnderrun;
         qint64 posMillisecondsAtUnderrun;
@@ -174,6 +178,7 @@ class Track : public QObject, RadioTitleCallback
         void setupOutput();
 
         bool isDoFade();
+        void updateFadeoutStartMilliseconds();
         void applyFade(QByteArray *chunk);
 
         void changeStatus(Status status);

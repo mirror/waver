@@ -142,16 +142,16 @@ void Waver::actionPlay(Track *track, bool allowCrossfade)
         startNextTrack();
     }
     else {
-        bool crossfade = allowCrossfade && isCrossfade(currentTrack, track);
+        CrossfadeMode crossfade = isCrossfade(currentTrack, track);
 
         previousTrack = currentTrack;
         currentTrack  = nullptr;
 
-        if (!crossfade) {
+        if (!allowCrossfade || (crossfade == PlayNormal)) {
             previousTrack->setStatus(Track::Paused);
         }
         previousTrack->setStatus(Track::Idle);
-        if (crossfade) {
+        if (allowCrossfade && (crossfade != PlayNormal)) {
             startNextTrack();
         }
     }
@@ -557,14 +557,17 @@ QVariant Waver::globalConstant(QString constName)
 }
 
 
-bool Waver::isCrossfade(Track *track1, Track *track2)
+Waver::CrossfadeMode Waver::isCrossfade(Track *track1, Track *track2)
 {
     if ((track1 == nullptr) || (track2 == nullptr)) {
-        return false;
+        return PlayNormal;
     }
 
     if (crossfadeTags.contains("*")) {
-        return true;
+        if ((track1->getTrackInfo().albumId == track2->getTrackInfo().albumId) && (track1->getTrackInfo().track == track1->getTrackInfo().track - 1)) {
+            return ShortCrossfade;
+        }
+        return Crossfade;
     }
 
     bool crossfade1 = false;
@@ -578,7 +581,14 @@ bool Waver::isCrossfade(Track *track1, Track *track2)
         }
     }
 
-    return (crossfade1 && crossfade2);
+    if (crossfade1 && crossfade2) {
+        if ((track1->getTrackInfo().albumId == track2->getTrackInfo().albumId) && (track1->getTrackInfo().track == track2->getTrackInfo().track - 1)) {
+            return ShortCrossfade;
+        }
+        return Crossfade;
+    }
+
+    return PlayNormal;
 }
 
 
@@ -655,7 +665,7 @@ void Waver::itemActionLocal(QString id, int action, QVariantMap extra)
         else {
             playlist.prepend(track);
         }
-        playlistUpdateUISignals();
+        playlistUpdated();
     }
     else if (action == globalConstant("action_collapse")) {
         emit explorerRemoveChildren(id);
@@ -665,6 +675,8 @@ void Waver::itemActionLocal(QString id, int action, QVariantMap extra)
 
 void Waver::itemActionSearch(QString id, int action, QVariantMap extra)
 {
+    Q_UNUSED(action);
+
     if (searchOperationsCounter > 0) {
         return;
     }
@@ -800,7 +812,7 @@ void Waver::itemActionSearchResult(QString id, int action, QVariantMap extra)
 
             actionPlay(trackInfo);
             playlist.clear();
-            playlistUpdateUISignals();
+            playlistUpdated();
             playlistSave();
         }
         else if (id.startsWith(UI_ID_PREFIX_SEARCHRESULT_PLAYLIST)) {
@@ -944,7 +956,7 @@ void Waver::itemActionSearchResult(QString id, int action, QVariantMap extra)
                 }
             }
 
-            playlistUpdateUISignals();
+            playlistUpdated();
             playlistSave();
         }
         else if (id.startsWith(UI_ID_PREFIX_SEARCHRESULT_PLAYLIST)) {
@@ -1254,7 +1266,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             playlist.clear();
             Track::TrackInfo trackInfo = trackInfoFromIdExtra(id, extra);
             actionPlay(trackInfo);
-            playlistUpdateUISignals();
+            playlistUpdated();
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST)) {
             explorerNetworkingUISignals(id, true);
@@ -1279,7 +1291,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
             trackInfo.attributes.insert("radio_station", "radio_station");
 
             actionPlay(trackInfo);
-            playlistUpdateUISignals();
+            playlistUpdated();
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_SHUFFLE)) {
             startShuffleBatch(srvIndex);
@@ -1364,7 +1376,7 @@ void Waver::itemActionServerItem(QString id, int action, QVariantMap extra)
                 }
             }
 
-            playlistUpdateUISignals();
+            playlistUpdated();
             playlistSave();
         }
         else if (id.startsWith(UI_ID_PREFIX_SERVER_PLAYLIST) || id.startsWith(UI_ID_PREFIX_SERVER_SMARTPLAYLIST)) {
@@ -1442,7 +1454,7 @@ void Waver::nextButton()
         Track *track = playlist.first();
         playlist.removeFirst();
 
-        actionPlay(track, false);
+        actionPlay(track);
     }
 }
 
@@ -1710,7 +1722,7 @@ void Waver::playlistItemClicked(int index, int action)
         emit playlistClearItems();
         foreach (Track *track, playlist) {
             Track::TrackInfo trackInfo = track->getTrackInfo();
-            emit playlistAddItem(trackInfo.title, trackInfo.artist, trackInfo.attributes.contains("group") ? trackInfo.attributes.value("group") : "", trackInfo.arts.first().toString(), trackInfo.attributes.contains("playlist_selected"), trackURL(trackInfo.title).toString());
+            emit playlistAddItem(trackInfo.title, trackInfo.artist, trackInfo.attributes.contains("group") ? trackInfo.attributes.value("group") : "", trackInfo.arts.first().toString(), trackInfo.attributes.contains("playlist_selected"), trackURL(trackInfo.id).toString());
         }
     }
 
@@ -1738,7 +1750,7 @@ void Waver::playlistItemClicked(int index, int action)
             playlist.removeAt(index);
             playlist.insert(0, track);
         }
-        playlistUpdateUISignals();
+        playlistUpdated();
         playlistSave();
         return;
     }
@@ -1758,7 +1770,7 @@ void Waver::playlistItemClicked(int index, int action)
         else {
             playlist.removeAt(index);
         }
-        playlistUpdateUISignals();
+        playlistUpdated();
         playlistSave();
         return;
     }
@@ -1807,7 +1819,7 @@ void Waver::playlistItemDragDropped(int index, int destinationIndex)
     Track *track = playlist.at(index);
     playlist.removeAt(index);
     playlist.insert(destinationIndex, track);
-    playlistUpdateUISignals();
+    playlistUpdated();
     playlistSave();
 }
 
@@ -1825,19 +1837,28 @@ void Waver::playlistExplorerItemDragDropped(QString id, QString extraJSON, int d
 }
 
 
-void Waver::playlistUpdateUISignals()
+void Waver::playlistUpdated()
 {
     qint64 totalMilliSeconds = 0;
     bool   totalIsEstimate   = false;
 
     emit playlistBigBusy(false);
-
     emit playlistClearItems();
-    foreach (Track *track, playlist) {
-        Track::TrackInfo trackInfo = track->getTrackInfo();
+
+    for (int i = 0; i < playlist.count(); i++) {
+        CrossfadeMode  crossfadeMode = PlayNormal;
+        Track         *compareTo     = currentTrack;
+        if (i > 0) {
+            compareTo = playlist.at(i - 1);
+        }
+        crossfadeMode = isCrossfade(compareTo, playlist.at(i));
+        compareTo->setShortFadeEnd(crossfadeMode == ShortCrossfade);
+        playlist.at(i)->setShortFadeBeginning(crossfadeMode == ShortCrossfade);
+
+        Track::TrackInfo trackInfo = playlist.at(i)->getTrackInfo();
         emit playlistAddItem(trackInfo.title, trackInfo.artist, trackInfo.attributes.contains("group") ? trackInfo.attributes.value("group") : "", trackInfo.arts.first().toString(), trackInfo.attributes.contains("playlist_selected"), trackURL(trackInfo.id).toString());
 
-        qint64 milliseconds = track->getLengthMilliseconds();
+        qint64 milliseconds = playlist.at(i)->getLengthMilliseconds();
         if (milliseconds > 0) {
             totalMilliSeconds += milliseconds;
         }
@@ -1845,7 +1866,7 @@ void Waver::playlistUpdateUISignals()
             totalIsEstimate = true;
         }
 
-        track->requestDecodingCallback();
+        playlist.at(i)->requestDecodingCallback();
     }
 
     if (totalMilliSeconds <= 0) {
@@ -1885,7 +1906,7 @@ void Waver::previousButton(int index)
         return;
     }
 
-    actionPlay(history.at(index), false);
+    actionPlay(history.at(index));
     index++;
 
     int i = 0;
@@ -1895,7 +1916,7 @@ void Waver::previousButton(int index)
         playlist.prepend(track);
         i++;
     }
-    playlistUpdateUISignals();
+    playlistUpdated();
     playlistSave();
 
     history.remove(0, index + 1);
@@ -2755,7 +2776,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                             playlist.replace(i, track);
                         }
                     }
-                    playlistUpdateUISignals();
+                    playlistUpdated();
                     playlistSave();
 
                     foreach (Track *track, toBeDeleted) {
@@ -2816,7 +2837,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                 (originalAction.compare("action_insert") == 0)        ||
                 (originalAction.compare("action_enqueueshuffled") == 0)
            ) {
-            playlistUpdateUISignals();
+            playlistUpdated();
             playlistSave();
         }
     }
@@ -2846,7 +2867,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                 (originalAction.compare("action_insert") == 0)        ||
                 (originalAction.compare("action_enqueueshuffled") == 0)
            ) {
-            playlistUpdateUISignals();
+            playlistUpdated();
             playlistSave();
         }
     }
@@ -2899,7 +2920,7 @@ void Waver::serverOperationFinished(AmpacheServer::OpCode opCode, AmpacheServer:
                     }
                 }
 
-                playlistUpdateUISignals();
+                playlistUpdated();
                 playlistSave();
             }
         }
@@ -3006,9 +3027,9 @@ void Waver::startNextTrack()
 
     currentTrack->setStatus(Track::Playing);
 
-    if (isCrossfade(previousTrack, currentTrack)) {
+    if (isCrossfade(previousTrack, currentTrack) != PlayNormal) {
         crossfadeInProgress = true;
-        QTimer::singleShot(currentTrack->getFadeDurationSeconds() * 1000 / 2, this, &Waver::startNextTrackUISignals);
+        QTimer::singleShot(currentTrack->getFadeDurationSeconds(Track::FadeDirectionOut) * 1000 / 2, this, &Waver::startNextTrackUISignals);
     }
     else {
         startNextTrackUISignals();
@@ -3046,7 +3067,7 @@ void Waver::startNextTrackUISignals()
 
     emit requestTrackBufferReplayGainInfo();
 
-    playlistUpdateUISignals();
+    playlistUpdated();
     playlistSave();
 
     emit notify(All);
@@ -3163,7 +3184,7 @@ void Waver::stopButton()
     playlist.clear();
 
     clearTrackUISignals();
-    playlistUpdateUISignals();
+    playlistUpdated();
 
     if (!stopByShutdown) {
         playlistSave();
@@ -3217,7 +3238,7 @@ void Waver::trackFadeoutStarted(QString id)
         return;
     }
 
-    if (isCrossfade(currentTrack, playlist.first())) {
+    if (isCrossfade(currentTrack, playlist.first()) != PlayNormal) {
         killPreviousTrack();
 
         previousTrack = currentTrack;
@@ -3300,7 +3321,7 @@ void Waver::trackFinished(QString id)
         delete track;
     }
 
-    playlistUpdateUISignals();
+    playlistUpdated();
     playlistSave();
 
     if (shuffleOK && (playlist.size() < 1) && (servers.size() > 0)) {
@@ -3461,7 +3482,7 @@ void Waver::trackPlayPosition(QString id, bool decoderFinished, long knownDurati
 
     emit uiSetTrackPosition(QDateTime::fromMSecsSinceEpoch(positionMilliseconds).toUTC().toString("hh:mm:ss"), positionPercent);
 
-    if ((track == currentTrack) && (knownDurationMilliseconds > 0) && (playlist.size() > 0) && (playlist.at(0)->getStatus() == Track::Idle) && (knownDurationMilliseconds - positionMilliseconds <= 20000 + playlist.at(0)->getFadeDurationSeconds() * 1000)) {
+    if ((track == currentTrack) && (knownDurationMilliseconds > 0) && (playlist.size() > 0) && (playlist.at(0)->getStatus() == Track::Idle) && (knownDurationMilliseconds - positionMilliseconds <= 20000 + playlist.at(0)->getFadeDurationSeconds(Track::FadeDirectionIn) * 1000)) {
         playlist.at(0)->setStatus(Track::Decoding);
     }
 

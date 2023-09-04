@@ -6,6 +6,7 @@
 
 #include "soundoutput.h"
 
+
 SoundOutput::SoundOutput(QAudioFormat format, PeakCallback::PeakCallbackInfo peakCallbackInfo, QObject *parent) : QObject(parent)
 {
     this->format = format;
@@ -23,6 +24,9 @@ SoundOutput::SoundOutput(QAudioFormat format, PeakCallback::PeakCallbackInfo pea
 
     bytesToPlay      = nullptr;
     bytesToPlayMutex = nullptr;
+
+    chunkQueue      = nullptr;
+    chunkQueueMutex = nullptr;
 
     this->peakCallbackInfo = peakCallbackInfo;
 }
@@ -55,7 +59,6 @@ SoundOutput::~SoundOutput()
     if (bytesToPlayMutex != nullptr) {
         delete bytesToPlayMutex;
     }
-
 }
 
 
@@ -102,6 +105,10 @@ void SoundOutput::chunkAvailable()
         return;
     }
 
+    if ((chunkQueue == nullptr) || (chunkQueueMutex == nullptr)) {
+        return;
+    }
+
     if (!initialCachingDone) {
         if (chunkQueue->count() < INITIAL_CACHE_BUFFER_COUNT) {
             emit needChunk();
@@ -129,6 +136,10 @@ void SoundOutput::chunkAvailable()
 
 void SoundOutput::clearBuffers()
 {
+    if ((chunkQueue == nullptr) || (chunkQueueMutex == nullptr)) {
+        return;
+    }
+
     chunkQueueMutex->lock();
     chunkQueue->clear();
     chunkQueueMutex->unlock();
@@ -137,6 +148,10 @@ void SoundOutput::clearBuffers()
 
 void SoundOutput::fillBytesToPlay()
 {
+    if ((chunkQueue == nullptr) || (chunkQueueMutex == nullptr)) {
+        return;
+    }
+
     if (chunkQueue->count() < 1) {
         timerWaits = false;
         wasUnderrun = true;
@@ -204,6 +219,9 @@ qint64 SoundOutput::remainingMilliseconds()
     if ((bytesToPlay == nullptr) || (bytesToPlayMutex == nullptr)) {
         return microseconds;
     }
+    if ((chunkQueue == nullptr) || (chunkQueueMutex == nullptr)) {
+        return microseconds;
+    }
 
     bytesToPlayMutex->lock();
     microseconds += format.durationForBytes(bytesToPlay->size());
@@ -242,8 +260,7 @@ void SoundOutput::run()
 
     bytesToPlay      = new QByteArray();
     bytesToPlayMutex = new QMutex();
-
-    feedTimer = new QTimer();
+    feedTimer        = new QTimer();
 
     connect(audioOutput, SIGNAL(notify()),                    this, SLOT(audioOutputNotification()));
     connect(audioOutput, SIGNAL(stateChanged(QAudio::State)), this, SLOT(audioOutputStateChanged(QAudio::State)));

@@ -116,8 +116,10 @@ void DecoderGeneric::decoderBufferReady()
         }
         QByteArray temp(static_cast<const char *>(bufferReady.constData()), bufferReady.byteCount());
         temp.remove(0, i);
+
         bufferReady = QAudioBuffer(temp, decodedFormat, decodedMicroseconds);
     }
+    removeBeginningSilence = false;
 
     decodedMicroseconds += bufferReady.format().durationForBytes(bufferReady.byteCount());
 

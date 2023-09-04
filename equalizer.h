@@ -14,9 +14,9 @@
 #include <QObject>
 #include <QtGlobal>
 #include <QVector>
-#include <waveriir/iirfilter.h>
-#include <waveriir/iirfilterchain.h>
-#include <waveriir/iirfiltercallback.h>
+#include <iirfilter.h>
+#include <iirfilterchain.h>
+#include <iirfiltercallback.h>
 
 #include "globals.h"
 
