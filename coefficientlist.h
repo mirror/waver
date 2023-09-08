@@ -9,10 +9,9 @@
 #define COEFFICIENTLIST_H
 
 #include <QList>
-#include "waveriir_global.h"
 
 
-class WAVERIIR_EXPORT CoefficientList {
+class CoefficientList {
 
     public:
 

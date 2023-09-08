@@ -8,10 +8,8 @@
 #ifndef IIRFILTERCALLBACK_H
 #define IIRFILTERCALLBACK_H
 
-#include "waveriir_global.h"
 
-
-class WAVERIIR_EXPORT IIRFilterCallback {
+class IIRFilterCallback {
 
     public:
 

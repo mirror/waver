@@ -107,9 +107,9 @@ windows {
 
     !winrt {
         INCLUDEPATH += $$PWD/../taglib-1.12 $$PWD/../taglib-1.12/taglib/toolkit
-        LIBS += $$PWD/../qt5keychain/build/Release/qt5keychain.lib $$PWD/../build-waveriir/release/waveriir1.lib $$PWD/../taglib-1.12/taglib/Release/tag.lib
+        LIBS += $$PWD/../qt5keychain/build/Release/qt5keychain.lib $$PWD/../taglib-1.12/taglib/Release/tag.lib
     }
     winrt {
-        LIBS += $$PWD/../qt5keychain/build-uwp/Release/qt5keychain.lib $$PWD/../build-waveriir-uwp/release/waveriir1.lib
+        LIBS += $$PWD/../qt5keychain/build-uwp/Release/qt5keychain.lib
     }
 }

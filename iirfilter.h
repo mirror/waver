@@ -14,10 +14,9 @@
 
 #include "coefficientlist.h"
 #include "iirfiltercallback.h"
-#include "waveriir_global.h"
 
 
-class WAVERIIR_EXPORT IIRFilter {
+class IIRFilter {
 
     public:
 

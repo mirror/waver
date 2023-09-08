@@ -9,13 +9,11 @@
 #define IIRFILTERCHAIN_H
 
 #include <QList>
-#include "iirfilter.h"
 #include "coefficientlist.h"
+#include "iirfilter.h"
 
-#include "waveriir_global.h"
 
-
-class WAVERIIR_EXPORT IIRFilterChain {
+class IIRFilterChain {
 
     public:
 
