@@ -1851,9 +1851,12 @@ void Waver::playlistUpdated()
         if (i > 0) {
             compareTo = playlist.at(i - 1);
         }
-        crossfadeMode = isCrossfade(compareTo, playlist.at(i));
-        compareTo->setShortFadeEnd(crossfadeMode == ShortCrossfade);
-        playlist.at(i)->setShortFadeBeginning(crossfadeMode == ShortCrossfade);
+
+        if (compareTo != nullptr) {
+            crossfadeMode = isCrossfade(compareTo, playlist.at(i));
+            compareTo->setShortFadeEnd(crossfadeMode == ShortCrossfade);
+            playlist.at(i)->setShortFadeBeginning(crossfadeMode == ShortCrossfade);
+        }
 
         Track::TrackInfo trackInfo = playlist.at(i)->getTrackInfo();
         emit playlistAddItem(trackInfo.title, trackInfo.artist, trackInfo.attributes.contains("group") ? trackInfo.attributes.value("group") : "", trackInfo.arts.first().toString(), trackInfo.attributes.contains("playlist_selected"), trackURL(trackInfo.id).toString());

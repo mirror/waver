@@ -38,7 +38,7 @@ class WaverApplication : public QGuiApplication
 
         const int VERSION_MAJOR = 2;
         const int VERSION_MINOR = 1;
-        const int VERSION_SUB   = 5;
+        const int VERSION_SUB   = 6;
 
         QQmlApplicationEngine *qmlApplicationEngine;
 

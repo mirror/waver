@@ -306,13 +306,13 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         { Tags,          "genre" }
     };
 
-    QString                      currentElement = "";
     OpResults                    opResults;
     OpData                       opResult;
     QMultiHash<QString, QString> multiElementsValues;
+    QString                      currentElement = "";
     int                          errorCode      = 0;
     QString                      errorMsg       = "";
-    QString                      lastName       = "";
+    QString                      lastDeepName   = "";
     int                          level          = 0;
     int                          opElementLevel = 0;
 
@@ -355,14 +355,14 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         if (tokenType == QXmlStreamReader::EndElement) {
             QString endingElement = xmlStreamReader.name().toString();
 
-            if (wantedElements.contains(endingElement) && !opResult.contains(endingElement) && lastName.length()) {
+            if (wantedElements.contains(endingElement) && !opResult.contains(endingElement) && lastDeepName.length()) {
                 if (multiElements.contains(endingElement)) {
-                    multiElementsValues.insert(endingElement, lastName);
+                    multiElementsValues.insert(endingElement, lastDeepName);
                 }
                 else {
-                    opResult.insert(endingElement, lastName);
+                    opResult.insert(endingElement, lastDeepName);
                 }
-                lastName = "";
+                lastDeepName = "";
             }
 
             if ((opElement.value(opCode).compare(endingElement) == 0) && opResult.size()) {
@@ -406,8 +406,8 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
                             opResult.insert(currentElement, xmlStreamReader.text().toString());
                         }
                     }
-                    if (currentElement.compare("name") == 0) {
-                        lastName = xmlStreamReader.text().toString();
+                    if ((level > opElementLevel + 1) && (currentElement.compare("name") == 0)) {
+                        lastDeepName = xmlStreamReader.text().toString();
                     }
                 }
             }
@@ -475,6 +475,7 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         return;
     }
     else if (opCode == Shuffle) {
+
         if (opData.contains("favorite")) {
             shuffleFavorites.append(opResults);
             shuffleFavoritesCompleted = true;
@@ -790,10 +791,34 @@ void AmpacheServer::startOperations()
 
             if (operation.opData.contains("favorite")) {
                 query.addQueryItem("action", "advanced_search");
+                query.addQueryItem("type", "song");
                 query.addQueryItem("random", "1");
                 query.addQueryItem("rule_1", "favorite");
                 query.addQueryItem("rule_1_operator", "0");
                 query.addQueryItem("rule_1_input", "%");
+
+                int limit = operation.opData.value("limit", "0").toInt();
+                if (limit <= 0) {
+                    limit = 1;
+                }
+                query.addQueryItem("limit", QString("%1").arg(limit));
+            }
+            else if (operation.opData.contains("recent")) {
+                int days  = settings.value("options/recently_added_days", DEFAULT_RECENTLY_ADDED_COUNT).toInt();
+                int count = settings.value("options/recently_added_count", DEFAULT_RECENTLY_ADDED_COUNT).toInt();
+
+                QDateTime dateLimit = QDateTime::currentDateTime().addDays(days * -1);
+
+                query.addQueryItem("action", "advanced_search");
+                query.addQueryItem("type", "song");
+                query.addQueryItem("random", "1");
+                query.addQueryItem("operator", "or");
+                query.addQueryItem("rule_1", "recent_added");
+                query.addQueryItem("rule_1_operator", "0");
+                query.addQueryItem("rule_1_input", QString::number(count));
+                query.addQueryItem("rule_2", "added");
+                query.addQueryItem("rule_2_operator", "1");
+                query.addQueryItem("rule_2_input", dateLimit.toString("yyyy-MM-dd"));
 
                 int limit = operation.opData.value("limit", "0").toInt();
                 if (limit <= 0) {
@@ -1007,7 +1032,7 @@ void AmpacheServer::startOperations()
                         opExtra->setProperty("original_action", originalAction);
                     }
 
-                    opQueue.append({ Shuffle, {{ "recently_added", "recently_added" }, { "limit", QString("%1").arg(limitRecent) }}, copyExtra(opExtra) });
+                    opQueue.append({ Shuffle, {{ "recent", "recent" }, { "limit", QString("%1").arg(limitRecent) }}, copyExtra(opExtra) });
                 }
                 else {
                     shuffleRecentlyAddedCompleted = true;
