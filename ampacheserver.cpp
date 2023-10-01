@@ -310,14 +310,18 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
     OpResults                    opResults;
     OpData                       opResult;
     QMultiHash<QString, QString> multiElementsValues;
-    int                          errorCode = 0;
-    QString                      errorMsg  = "";
+    int                          errorCode      = 0;
+    QString                      errorMsg       = "";
+    QString                      lastName       = "";
+    int                          level          = 0;
+    int                          opElementLevel = 0;
 
     QXmlStreamReader xmlStreamReader(reply);
     while (!xmlStreamReader.atEnd()) {
         QXmlStreamReader::TokenType tokenType = xmlStreamReader.readNext();
 
         if (tokenType == QXmlStreamReader::StartElement) {
+            level++;
             currentElement = xmlStreamReader.name().toString();
 
             QXmlStreamAttributes attributes = xmlStreamReader.attributes();
@@ -332,6 +336,8 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
             }
 
             if (opElement.value(opCode).compare(currentElement) == 0) {
+                opElementLevel = level;
+
                 opResult.clear();
                 multiElementsValues.clear();
                 if (attributes.hasAttribute("id")) {
@@ -347,7 +353,19 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
         }
 
         if (tokenType == QXmlStreamReader::EndElement) {
-            if ((opElement.value(opCode).compare(xmlStreamReader.name().toString()) == 0) && opResult.size()) {
+            QString endingElement = xmlStreamReader.name().toString();
+
+            if (wantedElements.contains(endingElement) && !opResult.contains(endingElement) && lastName.length()) {
+                if (multiElements.contains(endingElement)) {
+                    multiElementsValues.insert(endingElement, lastName);
+                }
+                else {
+                    opResult.insert(endingElement, lastName);
+                }
+                lastName = "";
+            }
+
+            if ((opElement.value(opCode).compare(endingElement) == 0) && opResult.size()) {
                 foreach(QString element, multiElements) {
                     if (multiElementsValues.contains(element)) {
                         opResult.insert(QString("%1s").arg(element), multiElementsValues.values(element).join("|"));
@@ -355,7 +373,9 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
                 }
                 opResults.append(opResult);
             }
+
             currentElement = "";
+            level--;
         }
 
         if (tokenType == QXmlStreamReader::Characters) {
@@ -375,12 +395,19 @@ void AmpacheServer::networkFinished(QNetworkReply *reply)
                 }
             }
             else {
-                if (wantedElements.contains(currentElement)) {
-                    if (multiElements.contains(currentElement)) {
-                        multiElementsValues.insert(currentElement, xmlStreamReader.text().toString());
+                QString text = xmlStreamReader.text().toString();
+
+                if (!QRegExp("\\s*").exactMatch(text)) {
+                    if ((level <= opElementLevel + 1) && wantedElements.contains(currentElement)) {
+                        if (multiElements.contains(currentElement)) {
+                            multiElementsValues.insert(currentElement, text);
+                        }
+                        else {
+                            opResult.insert(currentElement, xmlStreamReader.text().toString());
+                        }
                     }
-                    else {
-                        opResult.insert(currentElement, xmlStreamReader.text().toString());
+                    if (currentElement.compare("name") == 0) {
+                        lastName = xmlStreamReader.text().toString();
                     }
                 }
             }
@@ -799,7 +826,14 @@ void AmpacheServer::startOperations()
                 shuffleRecentlyAdded.clear();
                 shuffleRecentlyAddedCompleted = true;
 
-                if (serverVersion >= 5200000) {
+                if (serverVersion >= 6000000) {
+                    query.addQueryItem("action", "advanced_search");
+                    query.addQueryItem("random", "1");
+                    query.addQueryItem("rule_1", "favorite");
+                    query.addQueryItem("rule_1_operator", "0");
+                    query.addQueryItem("rule_1_input", "%");
+                }
+                else if (serverVersion >= 5200000) {
                     query.addQueryItem("action", "playlist_generate");
                     query.addQueryItem("mode", "random");
                     query.addQueryItem("flag", "1");
@@ -1000,7 +1034,13 @@ void AmpacheServer::startOperations()
             }
         }
         else if (operation.opCode == CountFlagged) {
-            if (serverVersion >= 5200000) {
+            if (serverVersion >= 6000000) {
+                query.addQueryItem("action", "advanced_search");
+                query.addQueryItem("rule_1", "favorite");
+                query.addQueryItem("rule_1_operator", "0");
+                query.addQueryItem("rule_1_input", "%");
+            }
+            else if (serverVersion >= 5200000) {
                 query.addQueryItem("action", "playlist_generate");
                 query.addQueryItem("flag", "1");
                 query.addQueryItem("format", "index");
